@@ -10,8 +10,9 @@ import (
 type SubNodeParserFactory func() node.SubNodeParser
 
 var ppMap = map[string]SubNodeParserFactory{
-	"ss://":    func() node.SubNodeParser { return new(Shadowsocks) },
-	"vmess://": func() node.SubNodeParser { return new(Vmess) },
+	"ss://":     func() node.SubNodeParser { return new(Shadowsocks) },
+	"vmess://":  func() node.SubNodeParser { return new(Vmess) },
+	"trojan://": func() node.SubNodeParser { return new(Trojan) },
 }
 
 func NewPBParser(schema string) (node.SubNodeParser, error) {
