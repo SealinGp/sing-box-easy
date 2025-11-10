@@ -1,0 +1,15 @@
+# sing-box-easy 应用配置文件
+
+server:
+  # HTTP 服务器端口
+  port: "8080"
+
+sing_box:
+  # sing-box 配置文件路径
+  config_path: "/etc/sing-box/config.json"
+
+  # sing-box 可执行文件路径（留空则使用 PATH 中的 sing-box）
+  binary_path: "sing-box"
+
+  # 订阅配置文件路径
+  subscription_path: "/etc/sing-box/subscriptions.json"
