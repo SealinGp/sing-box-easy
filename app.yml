@@ -2,7 +2,7 @@
 
 server:
   # HTTP 服务器端口
-  port: "8080"
+  port: "5100"
 
 sing_box:
   # sing-box 配置文件路径

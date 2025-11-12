@@ -128,7 +128,7 @@ const prevStep = () => {
       </div>
 
       <!-- Main Content -->
-      <div v-else class="bg-white rounded-lg shadow-lg mt-9 p-2">
+      <div v-else class="bg-white rounded-lg shadow-lg mt-9 p-3">
         <div class="mb-6">
           <h2 class="text-2xl font-bold text-gray-900 mb-1">
             {{ steps[currentStep]?.title }}

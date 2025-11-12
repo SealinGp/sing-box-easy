@@ -1,5 +1,15 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { apiService } from '../services/api'
+import InitWizard from '../views/InitWizard.vue'
+import Dashboard from '../views/Dashboard.vue'
+import Overview from '../views/dashboard/Overview.vue'
+import Inbounds from '../views/dashboard/Inbounds.vue'
+import Outbounds from '../views/dashboard/Outbounds.vue'
+import DNS from '../views/dashboard/DNS.vue'
+import Route from '../views/dashboard/Route.vue'
+import Subscriptions from '../views/dashboard/Subscriptions.vue'
+import Service from '../views/dashboard/Service.vue'
+import Config from '../views/dashboard/Config.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -9,12 +19,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/init',
     name: 'Init',
-    component: () => import('../views/InitWizard.vue'),
+    component: InitWizard,
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('../views/Dashboard.vue'),
+    component: Dashboard,
     children: [
       {
         path: '',
@@ -23,42 +33,42 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'overview',
         name: 'DashboardOverview',
-        component: () => import('../views/dashboard/Overview.vue'),
+        component: Overview,
       },
       {
         path: 'inbounds',
         name: 'DashboardInbounds',
-        component: () => import('../views/dashboard/Inbounds.vue'),
+        component: Inbounds,
       },
       {
         path: 'outbounds',
         name: 'DashboardOutbounds',
-        component: () => import('../views/dashboard/Outbounds.vue'),
+        component: Outbounds,
       },
       {
         path: 'dns',
         name: 'DashboardDNS',
-        component: () => import('../views/dashboard/DNS.vue'),
+        component: DNS,
       },
       {
         path: 'route',
         name: 'DashboardRoute',
-        component: () => import('../views/dashboard/Route.vue'),
+        component: Route,
       },
       {
         path: 'subscriptions',
         name: 'DashboardSubscriptions',
-        component: () => import('../views/dashboard/Subscriptions.vue'),
+        component: Subscriptions,
       },
       {
         path: 'service',
         name: 'DashboardService',
-        component: () => import('../views/dashboard/Service.vue'),
+        component: Service,
       },
       {
         path: 'config',
         name: 'DashboardConfig',
-        component: () => import('../views/dashboard/Config.vue'),
+        component: Config,
       },
     ],
   },
