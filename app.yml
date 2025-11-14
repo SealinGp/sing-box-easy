@@ -6,10 +6,21 @@ server:
 
 sing_box:
   # sing-box 配置文件路径
+  # 所有配置管理 API 都会操作此文件
   config_path: "/etc/sing-box/config.json"
-
-  # sing-box 可执行文件路径（留空则使用 PATH 中的 sing-box）
+  
+  # sing-box 可执行文件路径
+  # 留空或设置为 "sing-box" 将使用系统 PATH 中的 sing-box
+  # 如果 sing-box 不在 PATH 中，请指定完整路径，例如: "/usr/local/bin/sing-box"
   binary_path: "sing-box"
 
   # 订阅配置文件路径
+  # 用于存储订阅信息的 JSON 文件
   subscription_path: "/etc/sing-box/subscriptions.json"
+
+  
+  # 初始化状态文件路径
+  # 用于跟踪首次设置向导的完成状态
+  # 参考示例: init_state.json.example
+  init_state_path: "/etc/sing-box/init_state.json"
+

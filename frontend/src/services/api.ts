@@ -25,7 +25,7 @@ class ApiService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: '/api/1.13.0',
+      baseURL: '/api/1.12.12',
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -48,18 +48,21 @@ class ApiService {
   }
 
   // Installation APIs
-  async installSingBox(version?: string, beta?: boolean): Promise<InstallTask> {
-    const response = await this.client.post<InstallTask>('/install', {
+  async installSingBox(version?: string, beta?: boolean): Promise<{ task_id: string; message: string }> {
+    const response = await this.client.post<{ task_id: string; message: string }>('/install', {
       version,
       beta,
     })
     return response.data
   }
 
-  async getInstallStatus(taskId: string): Promise<InstallTask> {
-    const response = await this.client.get<InstallTask>('/install/status', {
-      params: { task_id: taskId },
-    })
+  async getInstallTask(taskId: string): Promise<InstallTask> {
+    const response = await this.client.get<InstallTask>(`/install/task/${taskId}`)
+    return response.data
+  }
+
+  async getInstallStatus(): Promise<{ installed: boolean; version: string; message: string }> {
+    const response = await this.client.get<{ installed: boolean; version: string; message: string }>('/install/status')
     return response.data
   }
 
@@ -72,17 +75,20 @@ class ApiService {
   }
 
   // Dashboard APIs
-  async downloadDashboard(targetDir?: string): Promise<DashboardTask> {
-    const response = await this.client.post<DashboardTask>('/dashboard/download', {
+  async downloadDashboard(targetDir?: string): Promise<{ task_id: string; message: string }> {
+    const response = await this.client.post<{ task_id: string; message: string }>('/dashboard/download', {
       target_dir: targetDir,
     })
     return response.data
   }
 
-  async getDashboardStatus(targetDir?: string): Promise<{ installed: boolean }> {
-    const response = await this.client.get<{ installed: boolean }>('/dashboard/status', {
-      params: { target_dir: targetDir },
-    })
+  async getDashboardTask(taskId: string): Promise<DashboardTask> {
+    const response = await this.client.get<DashboardTask>(`/dashboard/task/${taskId}`)
+    return response.data
+  }
+
+  async getDashboardStatus(): Promise<{ installed: boolean; path: string }> {
+    const response = await this.client.get<{ installed: boolean; path: string }>('/dashboard/status')
     return response.data
   }
 

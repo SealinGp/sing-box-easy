@@ -91,7 +91,7 @@ router.beforeEach(async (to, _from, next) => {
     const initStatus = await apiService.getInitStatus()
 
     // If not fully initialized, redirect to init wizard
-    if (!initStatus.singbox_installed || !initStatus.config_generated) {
+    if (!initStatus.initialized) {
       next('/init')
       return
     }

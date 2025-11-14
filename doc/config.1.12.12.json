@@ -1,0 +1,33 @@
+{
+  "log": {
+    "level": "info"
+  },
+  "dns": {
+    "servers": [
+       {
+        "type": "tls",
+        "tag": "google-dns",
+        "server": "8.8.8.8",
+        "server_port": 853,
+        "tls": {}
+      }
+    ]
+  },
+  "inbounds": [],
+  "outbounds": [
+    {
+      "type": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+     {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      }
+    ]
+  }
+}

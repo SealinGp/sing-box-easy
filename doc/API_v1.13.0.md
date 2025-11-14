@@ -1,12 +1,12 @@
-# sing-box-easy API v1.13.0 文档
+# sing-box-easy API v1.12.12 文档
 
-本文档描述了 sing-box-easy v1.13.0 版本的 RESTful API 接口。
+本文档描述了 sing-box-easy v1.12.12 版本的 RESTful API 接口。
 
 ## 基本信息
 
-- **Base URL**: `/1.13.0`
+- **Base URL**: `/1.12.12`
 - **Content-Type**: `application/json`
-- **版本**: 1.13.0 (对应 sing-box 1.13.0)
+- **版本**: 1.12.12 (对应 sing-box 1.12.12)
 
 ---
 
@@ -14,7 +14,7 @@
 
 ### 1.1 获取当前配置
 
-**接口**: `GET /1.13.0/config`
+**接口**: `GET /1.12.12/config`
 
 **作用**: 获取当前的 sing-box 配置
 
@@ -33,7 +33,7 @@
 
 ### 1.2 验证配置
 
-**接口**: `POST /1.13.0/config/validate`
+**接口**: `POST /1.12.12/config/validate`
 
 **作用**: 验证配置文件是否合法（使用 sing-box check 命令）
 
@@ -51,7 +51,7 @@
 
 ### 1.3 获取备份配置
 
-**接口**: `GET /1.13.0/config/backup`
+**接口**: `GET /1.12.12/config/backup`
 
 **作用**: 获取上一次备份的配置文件
 
@@ -61,7 +61,7 @@
 
 ### 1.4 回滚配置
 
-**接口**: `POST /1.13.0/config/rollback`
+**接口**: `POST /1.12.12/config/rollback`
 
 **作用**: 将配置回滚到上一个版本
 
@@ -78,7 +78,7 @@
 
 ### 2.1 解析节点
 
-**接口**: `POST /1.13.0/nodes/parse`
+**接口**: `POST /1.12.12/nodes/parse`
 
 **作用**: 解析 base64 编码的节点/订阅链接
 
@@ -102,7 +102,7 @@
 
 ### 2.2 获取所有 Outbound
 
-**接口**: `GET /1.13.0/outbounds`
+**接口**: `GET /1.12.12/outbounds`
 
 **作用**: 获取所有 outbound 节点配置
 
@@ -125,7 +125,7 @@
 
 ### 2.3 获取指定 Outbound
 
-**接口**: `GET /1.13.0/outbounds/:tag`
+**接口**: `GET /1.12.12/outbounds/:tag`
 
 **作用**: 获取指定 tag 的 outbound 配置
 
@@ -138,7 +138,7 @@
 
 ### 2.4 添加 Outbound
 
-**接口**: `POST /1.13.0/outbounds`
+**接口**: `POST /1.12.12/outbounds`
 
 **作用**: 添加新的 outbound 节点
 
@@ -166,7 +166,7 @@
 
 ### 2.5 批量添加 Outbound
 
-**接口**: `POST /1.13.0/outbounds/batch`
+**接口**: `POST /1.12.12/outbounds/batch`
 
 **作用**: 批量添加多个 outbound 节点（通常用于从订阅解析后批量添加）
 
@@ -223,7 +223,7 @@
 
 ### 2.6 更新 Outbound
 
-**接口**: `PUT /1.13.0/outbounds/:tag`
+**接口**: `PUT /1.12.12/outbounds/:tag`
 
 **作用**: 更新指定 tag 的 outbound 配置
 
@@ -236,7 +236,7 @@
 
 ### 2.6 删除 Outbound
 
-**接口**: `DELETE /1.13.0/outbounds/:tag`
+**接口**: `DELETE /1.12.12/outbounds/:tag`
 
 **作用**: 删除指定 tag 的 outbound
 
@@ -247,7 +247,7 @@
 
 ### 2.7 获取所有分组
 
-**接口**: `GET /1.13.0/outbounds/groups`
+**接口**: `GET /1.12.12/outbounds/groups`
 
 **作用**: 获取所有分组类型的 outbound（selector/urltest）
 
@@ -268,7 +268,7 @@
 
 ### 2.8 更新分组成员
 
-**接口**: `PUT /1.13.0/outbounds/:tag/members`
+**接口**: `PUT /1.12.12/outbounds/:tag/members`
 
 **作用**: 更新分组的成员列表
 
@@ -288,7 +288,7 @@
 
 ### 3.1 获取所有 DNS 服务器
 
-**接口**: `GET /1.13.0/dns/servers`
+**接口**: `GET /1.12.12/dns/servers`
 
 **作用**: 获取所有 DNS 服务器配置
 
@@ -296,7 +296,7 @@
 
 ### 3.2 添加 DNS 服务器
 
-**接口**: `POST /1.13.0/dns/servers`
+**接口**: `POST /1.12.12/dns/servers`
 
 **作用**: 添加新的 DNS 服务器
 
@@ -313,25 +313,25 @@
 
 ### 3.3 获取指定 DNS 服务器
 
-**接口**: `GET /1.13.0/dns/servers/:tag`
+**接口**: `GET /1.12.12/dns/servers/:tag`
 
 ---
 
 ### 3.4 更新 DNS 服务器
 
-**接口**: `PUT /1.13.0/dns/servers/:tag`
+**接口**: `PUT /1.12.12/dns/servers/:tag`
 
 ---
 
 ### 3.5 删除 DNS 服务器
 
-**接口**: `DELETE /1.13.0/dns/servers/:tag`
+**接口**: `DELETE /1.12.12/dns/servers/:tag`
 
 ---
 
 ### 3.6 获取 Hosts 配置
 
-**接口**: `GET /1.13.0/dns/hosts`
+**接口**: `GET /1.12.12/dns/hosts`
 
 **作用**: 获取静态 DNS hosts 配置
 
@@ -349,7 +349,7 @@
 
 ### 3.7 更新 Hosts 配置
 
-**接口**: `PUT /1.13.0/dns/hosts`
+**接口**: `PUT /1.12.12/dns/hosts`
 
 **请求体**: hosts 映射对象
 
@@ -357,13 +357,13 @@
 
 ### 3.8 获取所有 DNS 规则
 
-**接口**: `GET /1.13.0/dns/rules`
+**接口**: `GET /1.12.12/dns/rules`
 
 ---
 
 ### 3.9 添加 DNS 规则
 
-**接口**: `POST /1.13.0/dns/rules`
+**接口**: `POST /1.12.12/dns/rules`
 
 **请求体**: DNS 规则配置对象
 
@@ -371,7 +371,7 @@
 
 ### 3.10 更新 DNS 规则
 
-**接口**: `PUT /1.13.0/dns/rules/:index`
+**接口**: `PUT /1.12.12/dns/rules/:index`
 
 **路径参数**:
 - `index`: 规则索引（从 0 开始）
@@ -380,7 +380,7 @@
 
 ### 3.11 删除 DNS 规则
 
-**接口**: `DELETE /1.13.0/dns/rules/:index`
+**接口**: `DELETE /1.12.12/dns/rules/:index`
 
 ---
 
@@ -388,13 +388,13 @@
 
 ### 4.1 获取所有 Inbound
 
-**接口**: `GET /1.13.0/inbounds`
+**接口**: `GET /1.12.12/inbounds`
 
 ---
 
 ### 4.2 添加 Inbound
 
-**接口**: `POST /1.13.0/inbounds`
+**接口**: `POST /1.12.12/inbounds`
 
 **请求体示例**:
 ```json
@@ -410,19 +410,19 @@
 
 ### 4.3 获取指定 Inbound
 
-**接口**: `GET /1.13.0/inbounds/:tag`
+**接口**: `GET /1.12.12/inbounds/:tag`
 
 ---
 
 ### 4.4 更新 Inbound
 
-**接口**: `PUT /1.13.0/inbounds/:tag`
+**接口**: `PUT /1.12.12/inbounds/:tag`
 
 ---
 
 ### 4.5 删除 Inbound
 
-**接口**: `DELETE /1.13.0/inbounds/:tag`
+**接口**: `DELETE /1.12.12/inbounds/:tag`
 
 ---
 
@@ -430,13 +430,13 @@
 
 ### 5.1 获取所有路由规则
 
-**接口**: `GET /1.13.0/route/rules`
+**接口**: `GET /1.12.12/route/rules`
 
 ---
 
 ### 5.2 添加路由规则
 
-**接口**: `POST /1.13.0/route/rules`
+**接口**: `POST /1.12.12/route/rules`
 
 **请求体示例**:
 ```json
@@ -450,25 +450,25 @@
 
 ### 5.3 更新路由规则
 
-**接口**: `PUT /1.13.0/route/rules/:index`
+**接口**: `PUT /1.12.12/route/rules/:index`
 
 ---
 
 ### 5.4 删除路由规则
 
-**接口**: `DELETE /1.13.0/route/rules/:index`
+**接口**: `DELETE /1.12.12/route/rules/:index`
 
 ---
 
 ### 5.5 获取所有规则集
 
-**接口**: `GET /1.13.0/route/rule-sets`
+**接口**: `GET /1.12.12/route/rule-sets`
 
 ---
 
 ### 5.6 添加规则集
 
-**接口**: `POST /1.13.0/route/rule-sets`
+**接口**: `POST /1.12.12/route/rule-sets`
 
 **请求体示例**:
 ```json
@@ -485,25 +485,25 @@
 
 ### 5.7 获取指定规则集
 
-**接口**: `GET /1.13.0/route/rule-sets/:tag`
+**接口**: `GET /1.12.12/route/rule-sets/:tag`
 
 ---
 
 ### 5.8 更新规则集
 
-**接口**: `PUT /1.13.0/route/rule-sets/:tag`
+**接口**: `PUT /1.12.12/route/rule-sets/:tag`
 
 ---
 
 ### 5.9 删除规则集
 
-**接口**: `DELETE /1.13.0/route/rule-sets/:tag`
+**接口**: `DELETE /1.12.12/route/rule-sets/:tag`
 
 ---
 
 ### 5.10 获取兜底策略
 
-**接口**: `GET /1.13.0/route/final`
+**接口**: `GET /1.12.12/route/final`
 
 **响应示例**:
 ```json
@@ -516,7 +516,7 @@
 
 ### 5.11 更新兜底策略
 
-**接口**: `PUT /1.13.0/route/final`
+**接口**: `PUT /1.12.12/route/final`
 
 **请求体**:
 ```json
@@ -531,13 +531,13 @@
 
 ### 6.1 获取日志配置
 
-**接口**: `GET /1.13.0/log`
+**接口**: `GET /1.12.12/log`
 
 ---
 
 ### 6.2 更新日志配置
 
-**接口**: `PUT /1.13.0/log`
+**接口**: `PUT /1.12.12/log`
 
 **请求体示例**:
 ```json
@@ -554,13 +554,13 @@
 
 ### 7.1 获取 Clash API 配置
 
-**接口**: `GET /1.13.0/experimental/clash-api`
+**接口**: `GET /1.12.12/experimental/clash-api`
 
 ---
 
 ### 7.2 更新 Clash API 配置
 
-**接口**: `PUT /1.13.0/experimental/clash-api`
+**接口**: `PUT /1.12.12/experimental/clash-api`
 
 **请求体示例**:
 ```json
@@ -576,13 +576,13 @@
 
 ### 7.3 获取缓存文件配置
 
-**接口**: `GET /1.13.0/experimental/cache-file`
+**接口**: `GET /1.12.12/experimental/cache-file`
 
 ---
 
 ### 7.4 更新缓存文件配置
 
-**接口**: `PUT /1.13.0/experimental/cache-file`
+**接口**: `PUT /1.12.12/experimental/cache-file`
 
 ---
 
@@ -590,7 +590,7 @@
 
 ### 8.1 获取服务状态
 
-**接口**: `GET /1.13.0/service/status`
+**接口**: `GET /1.12.12/service/status`
 
 **响应示例**:
 ```json
@@ -604,7 +604,7 @@
 
 ### 8.2 启动服务
 
-**接口**: `POST /1.13.0/service/start`
+**接口**: `POST /1.12.12/service/start`
 
 **作用**: 启动 sing-box 服务（启动前会先验证配置）
 
@@ -619,13 +619,13 @@
 
 ### 8.3 停止服务
 
-**接口**: `POST /1.13.0/service/stop`
+**接口**: `POST /1.12.12/service/stop`
 
 ---
 
 ### 8.4 重启服务
 
-**接口**: `POST /1.13.0/service/restart`
+**接口**: `POST /1.12.12/service/restart`
 
 **作用**: 重启 sing-box 服务（重启前会先验证配置）
 
@@ -635,7 +635,7 @@
 
 ### 9.1 获取所有订阅
 
-**接口**: `GET /1.13.0/subscriptions`
+**接口**: `GET /1.12.12/subscriptions`
 
 **响应示例**:
 ```json
@@ -659,13 +659,13 @@
 
 ### 9.2 获取指定订阅
 
-**接口**: `GET /1.13.0/subscriptions/:id`
+**接口**: `GET /1.12.12/subscriptions/:id`
 
 ---
 
 ### 9.3 添加订阅
 
-**接口**: `POST /1.13.0/subscriptions`
+**接口**: `POST /1.12.12/subscriptions`
 
 **请求体**:
 ```json
@@ -681,19 +681,19 @@
 
 ### 9.4 更新订阅配置
 
-**接口**: `PUT /1.13.0/subscriptions/:id`
+**接口**: `PUT /1.12.12/subscriptions/:id`
 
 ---
 
 ### 9.5 删除订阅
 
-**接口**: `DELETE /1.13.0/subscriptions/:id`
+**接口**: `DELETE /1.12.12/subscriptions/:id`
 
 ---
 
 ### 9.6 手动更新订阅内容
 
-**接口**: `POST /1.13.0/subscriptions/:id/update`
+**接口**: `POST /1.12.12/subscriptions/:id/update`
 
 **作用**: 手动拉取订阅并解析节点
 

@@ -7,7 +7,7 @@
 #### 步骤 1: 解析订阅节点
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/nodes/parse \
+curl -X POST http://localhost:8080/1.12.12/nodes/parse \
   -H "Content-Type: application/json" \
   -d '{
     "subscription": "ss://YWVzLTEyOC1nY206cGFzc3dvcmQ=@192.168.1.1:8388#节点1\nss://YWVzLTEyOC1nY206cGFzc3dvcmQ=@192.168.1.2:8388#节点2"
@@ -43,7 +43,7 @@ curl -X POST http://localhost:8080/1.13.0/nodes/parse \
 #### 步骤 2: 批量添加解析的节点
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/outbounds/batch \
+curl -X POST http://localhost:8080/1.12.12/outbounds/batch \
   -H "Content-Type: application/json" \
   -d '{
     "outbounds": [
@@ -79,7 +79,7 @@ curl -X POST http://localhost:8080/1.13.0/outbounds/batch \
 #### 步骤 3: 验证节点已添加
 
 ```bash
-curl http://localhost:8080/1.13.0/outbounds
+curl http://localhost:8080/1.12.12/outbounds
 ```
 
 ---
@@ -89,7 +89,7 @@ curl http://localhost:8080/1.13.0/outbounds
 #### 步骤 1: 添加订阅
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/subscriptions \
+curl -X POST http://localhost:8080/1.12.12/subscriptions \
   -H "Content-Type: application/json" \
   -d '{
     "name": "我的订阅",
@@ -110,7 +110,7 @@ curl -X POST http://localhost:8080/1.13.0/subscriptions \
 #### 步骤 2: 手动更新订阅获取节点
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/subscriptions/sub_1234567890/update
+curl -X POST http://localhost:8080/1.12.12/subscriptions/sub_1234567890/update
 ```
 
 响应：
@@ -128,7 +128,7 @@ curl -X POST http://localhost:8080/1.13.0/subscriptions/sub_1234567890/update
 使用上一步返回的 nodes 数组，批量添加到配置：
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/outbounds/batch \
+curl -X POST http://localhost:8080/1.12.12/outbounds/batch \
   -H "Content-Type: application/json" \
   -d '{
     "outbounds": [
@@ -144,13 +144,13 @@ curl -X POST http://localhost:8080/1.13.0/outbounds/batch \
 #### 步骤 1: 获取所有节点
 
 ```bash
-curl http://localhost:8080/1.13.0/outbounds
+curl http://localhost:8080/1.12.12/outbounds
 ```
 
 #### 步骤 2: 创建或更新分组节点
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/outbounds \
+curl -X POST http://localhost:8080/1.12.12/outbounds \
   -H "Content-Type: application/json" \
   -d '{
     "tag": "🚀 节点选择",
@@ -162,7 +162,7 @@ curl -X POST http://localhost:8080/1.13.0/outbounds \
 或者更新现有分组的成员：
 
 ```bash
-curl -X PUT http://localhost:8080/1.13.0/outbounds/🚀%20节点选择/members \
+curl -X PUT http://localhost:8080/1.12.12/outbounds/🚀%20节点选择/members \
   -H "Content-Type: application/json" \
   -d '{
     "outbounds": ["节点1", "节点2", "节点3", "节点4"]
@@ -177,7 +177,7 @@ curl -X PUT http://localhost:8080/1.13.0/outbounds/🚀%20节点选择/members \
 
 ```bash
 # 添加直连 DNS
-curl -X POST http://localhost:8080/1.13.0/dns/servers \
+curl -X POST http://localhost:8080/1.12.12/dns/servers \
   -H "Content-Type: application/json" \
   -d '{
     "tag": "dns_direct",
@@ -186,7 +186,7 @@ curl -X POST http://localhost:8080/1.13.0/dns/servers \
   }'
 
 # 添加代理 DNS
-curl -X POST http://localhost:8080/1.13.0/dns/servers \
+curl -X POST http://localhost:8080/1.12.12/dns/servers \
   -H "Content-Type: application/json" \
   -d '{
     "tag": "dns_proxy",
@@ -198,7 +198,7 @@ curl -X POST http://localhost:8080/1.13.0/dns/servers \
 #### 步骤 2: 配置 DNS 规则
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/dns/rules \
+curl -X POST http://localhost:8080/1.12.12/dns/rules \
   -H "Content-Type: application/json" \
   -d '{
     "rule_set": "geosite-cn",
@@ -209,7 +209,7 @@ curl -X POST http://localhost:8080/1.13.0/dns/rules \
 #### 步骤 3: 配置静态 hosts
 
 ```bash
-curl -X PUT http://localhost:8080/1.13.0/dns/hosts \
+curl -X PUT http://localhost:8080/1.12.12/dns/hosts \
   -H "Content-Type: application/json" \
   -d '{
     "home.example.com": ["192.168.1.100"],
@@ -224,7 +224,7 @@ curl -X PUT http://localhost:8080/1.13.0/dns/hosts \
 #### 步骤 1: 添加直连规则
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/route/rules \
+curl -X POST http://localhost:8080/1.12.12/route/rules \
   -H "Content-Type: application/json" \
   -d '{
     "ip_cidr": ["192.168.0.0/16", "10.0.0.0/8"],
@@ -235,7 +235,7 @@ curl -X POST http://localhost:8080/1.13.0/route/rules \
 #### 步骤 2: 添加代理规则
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/route/rules \
+curl -X POST http://localhost:8080/1.12.12/route/rules \
   -H "Content-Type: application/json" \
   -d '{
     "rule_set": ["geosite-google", "geosite-youtube"],
@@ -246,7 +246,7 @@ curl -X POST http://localhost:8080/1.13.0/route/rules \
 #### 步骤 3: 添加自定义规则集
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/route/rule-sets \
+curl -X POST http://localhost:8080/1.12.12/route/rule-sets \
   -H "Content-Type: application/json" \
   -d '{
     "tag": "my-custom-rules",
@@ -266,7 +266,7 @@ curl -X POST http://localhost:8080/1.13.0/route/rule-sets \
 在修改配置后，可以先验证配置是否正确：
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/config/validate \
+curl -X POST http://localhost:8080/1.12.12/config/validate \
   -H "Content-Type: application/json" \
   -d @current-config.json
 ```
@@ -274,13 +274,13 @@ curl -X POST http://localhost:8080/1.13.0/config/validate \
 #### 重启服务应用配置
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/service/restart
+curl -X POST http://localhost:8080/1.12.12/service/restart
 ```
 
 #### 查看服务状态
 
 ```bash
-curl http://localhost:8080/1.13.0/service/status
+curl http://localhost:8080/1.12.12/service/status
 ```
 
 #### 配置回滚
@@ -288,7 +288,7 @@ curl http://localhost:8080/1.13.0/service/status
 如果发现配置有问题，可以回滚到上一个版本：
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/config/rollback
+curl -X POST http://localhost:8080/1.12.12/config/rollback
 ```
 
 ---
@@ -300,7 +300,7 @@ curl -X POST http://localhost:8080/1.13.0/config/rollback
 ```bash
 #!/bin/bash
 
-API_BASE="http://localhost:8080/1.13.0"
+API_BASE="http://localhost:8080/1.12.12"
 
 # 1. 更新订阅获取节点
 echo "正在获取订阅节点..."
@@ -353,7 +353,7 @@ echo "节点更新完成！"
 ### 处理批量添加时的部分失败
 
 ```bash
-RESPONSE=$(curl -s -X POST http://localhost:8080/1.13.0/outbounds/batch \
+RESPONSE=$(curl -s -X POST http://localhost:8080/1.12.12/outbounds/batch \
   -H "Content-Type: application/json" \
   -d '{
     "outbounds": [...]
@@ -375,7 +375,7 @@ echo "成功添加 $ADDED_COUNT 个新节点"
 ### 处理配置验证失败
 
 ```bash
-VALIDATE_RESPONSE=$(curl -s -X POST http://localhost:8080/1.13.0/config/validate \
+VALIDATE_RESPONSE=$(curl -s -X POST http://localhost:8080/1.12.12/config/validate \
   -H "Content-Type: application/json" \
   -d @new-config.json)
 
@@ -400,7 +400,7 @@ import json
 
 class SingBoxEasyClient:
     def __init__(self, base_url="http://localhost:8080"):
-        self.base_url = f"{base_url}/1.13.0"
+        self.base_url = f"{base_url}/1.12.12"
 
     def parse_nodes(self, subscription):
         """解析订阅节点"""

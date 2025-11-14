@@ -1,13 +1,19 @@
 // API Response Types
 
 export interface InitState {
-  singbox_installed: boolean
-  config_generated: boolean
-  dashboard_installed: boolean
+  initialized: boolean
+  steps: {
+    sing_box_installed: boolean
+    config_generated: boolean
+    dashboard_installed: boolean
+  }
+  sing_box_version?: string
+  init_time?: string
 }
 
 export interface InstallTask {
-  id: string
+  id?: string
+  task_id?: string
   status: 'running' | 'completed' | 'failed'
   message: string
   error?: string

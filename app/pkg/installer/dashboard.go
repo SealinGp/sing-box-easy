@@ -9,11 +9,19 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
 	DashboardURL = "https://gh-proxy.com/https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip"
 )
+
+// DashboardInitStateManager interface for updating initialization state
+type DashboardInitStateManager interface {
+	SetDashboardInstalled() error
+}
 
 // DashboardTask represents a dashboard download task
 type DashboardTask struct {
@@ -26,14 +34,16 @@ type DashboardTask struct {
 
 // DashboardManager manages dashboard download tasks
 type DashboardManager struct {
-	tasks map[string]*DashboardTask
-	mu    sync.RWMutex
+	tasks            map[string]*DashboardTask
+	mu               sync.RWMutex
+	initStateManager DashboardInitStateManager
 }
 
 // NewDashboardManager creates a new dashboard manager
-func NewDashboardManager() *DashboardManager {
+func NewDashboardManager(initStateManager DashboardInitStateManager) *DashboardManager {
 	return &DashboardManager{
-		tasks: make(map[string]*DashboardTask),
+		tasks:            make(map[string]*DashboardTask),
+		initStateManager: initStateManager,
 	}
 }
 
@@ -53,7 +63,7 @@ func (m *DashboardManager) DownloadDashboard(targetDir string) (*DashboardTask, 
 
 	// Run download in background
 	go func() {
-		err := m.downloadAndExtract(targetDir)
+		err := m.downloadAndExtract(task, targetDir)
 
 		task.mu.Lock()
 		if err != nil {
@@ -63,6 +73,16 @@ func (m *DashboardManager) DownloadDashboard(targetDir string) (*DashboardTask, 
 		} else {
 			task.Status = "completed"
 			task.Message = "Download completed successfully"
+
+			// Update initialization state
+			if m.initStateManager != nil {
+				if err := m.initStateManager.SetDashboardInstalled(); err != nil {
+					logger.Error("Failed to update initialization state", zap.Error(err))
+					// Don't fail the task, just log the error
+				} else {
+					logger.Info("Dashboard installation state updated")
+				}
+			}
 		}
 		task.mu.Unlock()
 	}()
@@ -84,7 +104,12 @@ func (m *DashboardManager) GetTask(taskID string) (*DashboardTask, error) {
 }
 
 // downloadAndExtract downloads dashboard zip and extracts it
-func (m *DashboardManager) downloadAndExtract(targetDir string) error {
+func (m *DashboardManager) downloadAndExtract(task *DashboardTask, targetDir string) error {
+	// Update progress: Creating temp file
+	task.mu.Lock()
+	task.Message = "Creating temporary file..."
+	task.mu.Unlock()
+
 	// Create temp file
 	tmpFile, err := os.CreateTemp("", "dashboard-*.zip")
 	if err != nil {
@@ -92,6 +117,11 @@ func (m *DashboardManager) downloadAndExtract(targetDir string) error {
 	}
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
+
+	// Update progress: Starting download
+	task.mu.Lock()
+	task.Message = "Connecting to dashboard server..."
+	task.mu.Unlock()
 
 	// Download file
 	resp, err := http.Get(DashboardURL)
@@ -104,17 +134,32 @@ func (m *DashboardManager) downloadAndExtract(targetDir string) error {
 		return fmt.Errorf("download failed with status: %s", resp.Status)
 	}
 
-	// Write to temp file
-	_, err = io.Copy(tmpFile, resp.Body)
+	// Update progress: Downloading
+	task.mu.Lock()
+	task.Message = fmt.Sprintf("Downloading dashboard... (%.2f MB)", float64(resp.ContentLength)/(1024*1024))
+	task.mu.Unlock()
+
+	// Write to temp file with progress tracking
+	written, err := io.Copy(tmpFile, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to write dashboard file: %w", err)
 	}
+
+	// Update progress: Download complete
+	task.mu.Lock()
+	task.Message = fmt.Sprintf("Download complete (%.2f MB). Extracting...", float64(written)/(1024*1024))
+	task.mu.Unlock()
 
 	// Extract zip
 	err = extractZip(tmpFile.Name(), targetDir)
 	if err != nil {
 		return fmt.Errorf("failed to extract dashboard: %w", err)
 	}
+
+	// Update progress: Extraction complete
+	task.mu.Lock()
+	task.Message = "Dashboard extracted successfully"
+	task.mu.Unlock()
 
 	return nil
 }

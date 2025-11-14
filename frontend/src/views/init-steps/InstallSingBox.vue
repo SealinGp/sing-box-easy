@@ -10,7 +10,7 @@ const emit = defineEmits<{
   prev: []
 }>()
 
-const version = ref('1.13.0')
+const version = ref('1.12.12')
 const beta = ref(false)
 const installing = ref(false)
 const installTask = ref<InstallTask | null>(null)
@@ -24,7 +24,7 @@ onMounted(async () => {
   // 检查是否已经安装
   try {
     const initStatus = await apiService.getInitStatus()
-    if (initStatus.singbox_installed) {
+    if (initStatus.steps.sing_box_installed) {
       alreadyInstalled.value = true
     }
   } catch (err: any) {
@@ -44,14 +44,20 @@ const startInstall = async () => {
   installing.value = true
 
   try {
-    const task = await apiService.installSingBox(
+    const response = await apiService.installSingBox(
       version.value.trim(),
       beta.value
     )
-    installTask.value = task
+
+    // Initialize task with pending status
+    installTask.value = {
+      id: response.task_id,
+      status: 'running',
+      message: response.message,
+    }
 
     // 开始轮询任务状态
-    pollTaskStatus(task.id)
+    pollTaskStatus(response.task_id)
   } catch (err: any) {
     error.value = err.response?.data?.error || err.message || 'Failed to start installation'
     installing.value = false
@@ -61,7 +67,7 @@ const startInstall = async () => {
 const pollTaskStatus = (taskId: string) => {
   pollInterval = setInterval(async () => {
     try {
-      const task = await apiService.getInstallStatus(taskId)
+      const task = await apiService.getInstallTask(taskId)
       installTask.value = task
 
       if (task.status === 'completed') {
@@ -71,7 +77,7 @@ const pollTaskStatus = (taskId: string) => {
       } else if (task.status === 'failed') {
         stopPolling()
         installing.value = false
-        error.value = task.error || 'Installation failed'
+        // Don't set error.value here - let the Card component show the error
       }
     } catch (err: any) {
       console.error('Failed to poll task status:', err)
@@ -132,7 +138,7 @@ onUnmounted(() => {
           <Input
             v-model="version"
             label="Version"
-            placeholder="e.g., 1.13.0"
+            placeholder="e.g., 1.12.12"
             :disabled="true"
             required
           />
@@ -157,12 +163,15 @@ onUnmounted(() => {
 
         <!-- 安装进度 -->
         <Card v-if="installing && installTask" padding="sm" class="bg-blue-50 border-blue-200">
-          <div class="flex items-start space-x-3">
-            <Loading size="sm" />
-            <div class="flex-1">
-              <p class="text-sm font-medium text-blue-900">{{ installTask.message }}</p>
-              <p class="text-xs text-blue-600 mt-1">This may take a few minutes...</p>
+          <div class="space-y-3">
+            <div class="flex items-center space-x-2">
+              <Loading size="sm" />
+              <p class="text-sm font-semibold text-blue-900">Installing sing-box...</p>
             </div>
+            <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs overflow-auto max-h-32">
+              <pre class="whitespace-pre-wrap break-words">{{ installTask.message || 'Starting installation...' }}</pre>
+            </div>
+            <p class="text-xs text-blue-600">This may take a few minutes. Please wait...</p>
           </div>
         </Card>
 
@@ -242,7 +251,7 @@ onUnmounted(() => {
         <p class="font-medium text-gray-900">Notes:</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li>The installation uses the official sing-box installation script</li>
-          <li>Default version is 1.13.0 (recommended)</li>
+          <li>Default version is 1.12.12 (recommended)</li>
           <li>Beta versions may contain experimental features</li>
           <li>You can skip this step if sing-box is already installed manually</li>
         </ul>

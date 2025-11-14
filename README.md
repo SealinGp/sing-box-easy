@@ -61,40 +61,40 @@ HTTP_PORT=9090 ./sing-box-easy
 
 ## API 文档
 
-完整的 API 文档请查看 [API v1.13.0 文档](doc/API_v1.13.0.md)。
+完整的 API 文档请查看 [API v1.12.12 文档](doc/API_v1.12.12.md)。
 
 ### 主要 API 端点
 
 #### 配置管理
-- `GET /1.13.0/config` - 获取当前配置
-- `POST /1.13.0/config/validate` - 验证配置
-- `POST /1.13.0/config/rollback` - 回滚配置
+- `GET /1.12.12/config` - 获取当前配置
+- `POST /1.12.12/config/validate` - 验证配置
+- `POST /1.12.12/config/rollback` - 回滚配置
 
 #### 节点管理
-- `GET /1.13.0/outbounds` - 获取所有节点
-- `POST /1.13.0/outbounds` - 添加节点
-- `PUT /1.13.0/outbounds/:tag` - 更新节点
-- `DELETE /1.13.0/outbounds/:tag` - 删除节点
+- `GET /1.12.12/outbounds` - 获取所有节点
+- `POST /1.12.12/outbounds` - 添加节点
+- `PUT /1.12.12/outbounds/:tag` - 更新节点
+- `DELETE /1.12.12/outbounds/:tag` - 删除节点
 
 #### 服务控制
-- `GET /1.13.0/service/status` - 获取服务状态
-- `POST /1.13.0/service/start` - 启动服务
-- `POST /1.13.0/service/stop` - 停止服务
-- `POST /1.13.0/service/restart` - 重启服务
+- `GET /1.12.12/service/status` - 获取服务状态
+- `POST /1.12.12/service/start` - 启动服务
+- `POST /1.12.12/service/stop` - 停止服务
+- `POST /1.12.12/service/restart` - 重启服务
 
 #### 订阅管理
-- `GET /1.13.0/subscriptions` - 获取所有订阅
-- `POST /1.13.0/subscriptions` - 添加订阅
-- `POST /1.13.0/subscriptions/:id/update` - 更新订阅内容
+- `GET /1.12.12/subscriptions` - 获取所有订阅
+- `POST /1.12.12/subscriptions` - 添加订阅
+- `POST /1.12.12/subscriptions/:id/update` - 更新订阅内容
 
-更多接口请参考完整的 [API 文档](doc/API_v1.13.0.md)。
+更多接口请参考完整的 [API 文档](doc/API_v1.12.12.md)。
 
 ## 使用示例
 
 ### 解析节点
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/nodes/parse \
+curl -X POST http://localhost:8080/1.12.12/nodes/parse \
   -H "Content-Type: application/json" \
   -d '{
     "subscription": "ss://YWVzLTEyOC1nY206dGVzdA==@192.168.1.1:8888"
@@ -104,13 +104,13 @@ curl -X POST http://localhost:8080/1.13.0/nodes/parse \
 ### 获取服务状态
 
 ```bash
-curl http://localhost:8080/1.13.0/service/status
+curl http://localhost:8080/1.12.12/service/status
 ```
 
 ### 添加订阅
 
 ```bash
-curl -X POST http://localhost:8080/1.13.0/subscriptions \
+curl -X POST http://localhost:8080/1.12.12/subscriptions \
   -H "Content-Type: application/json" \
   -d '{
     "name": "我的订阅",
@@ -131,7 +131,7 @@ curl -X POST http://localhost:8080/1.13.0/subscriptions \
    - 应用新配置到 `config.json`
 4. 验证失败时保持原配置不变
 
-任何时候都可以通过 `/1.13.0/config/rollback` 回滚到上一个配置。
+任何时候都可以通过 `/1.12.12/config/rollback` 回滚到上一个配置。
 
 ## 目录结构
 
@@ -145,10 +145,10 @@ sing-box-easy/
 │   │   ├── subscription/    # 订阅管理
 │   │   └── sublink/         # 节点解析
 │   ├── routes/
-│   │   └── v1_13_0/         # v1.13.0 API handlers
+│   │   └── v1_13_0/         # v1.12.12 API handlers
 │   └── svr.go
 ├── doc/
-│   ├── API_v1.13.0.md       # API 文档
+│   ├── API_v1.12.12.md       # API 文档
 │   ├── Configuration.md     # 配置文档
 │   └── Features.md          # 功能需求文档
 ├── app.yml                  # 配置文件
@@ -234,5 +234,5 @@ MIT License
 ## 相关链接
 
 - [sing-box 官方文档](https://sing-box.sagernet.org/)
-- [API 文档](doc/API_v1.13.0.md)
+- [API 文档](doc/API_v1.12.12.md)
 - [配置文档](doc/Configuration.md)

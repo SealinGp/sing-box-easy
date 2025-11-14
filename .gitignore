@@ -1,3 +1,5 @@
 bin
 app.yml
 dev.sh
+# State files (keep example files)
+init_state.json

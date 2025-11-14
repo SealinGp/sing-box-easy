@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -15,14 +18,14 @@ const (
 
 // State represents the initialization state
 type State struct {
-	Initialized         bool   `json:"initialized"`
-	SingBoxInstalled    bool   `json:"sing_box_installed"`
-	ConfigGenerated     bool   `json:"config_generated"`
-	DashboardInstalled  bool   `json:"dashboard_installed"`
-	SingBoxVersion      string `json:"sing_box_version"`
-	InitTime            string `json:"init_time,omitempty"`
-	mu                  sync.RWMutex
-	statePath           string
+	Initialized        bool   `json:"initialized"`
+	SingBoxInstalled   bool   `json:"sing_box_installed"`
+	ConfigGenerated    bool   `json:"config_generated"`
+	DashboardInstalled bool   `json:"dashboard_installed"`
+	SingBoxVersion     string `json:"sing_box_version"`
+	InitTime           string `json:"init_time,omitempty"`
+	mu                 sync.RWMutex
+	statePath          string
 }
 
 // Manager manages initialization state
@@ -41,7 +44,25 @@ func NewManager(statePath string) *Manager {
 	}
 
 	// Load existing state
-	state.load()
+	if err := state.load(); err != nil {
+		logger.Warn("Failed to load state file", zap.Error(err))
+	}
+
+	// If state file doesn't exist, create it with default values
+	if _, err := os.Stat(statePath); os.IsNotExist(err) {
+		// Ensure directory exists
+		dir := filepath.Dir(statePath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			logger.Warn("Failed to create state directory", zap.Error(err), zap.String("dir", dir))
+		} else {
+			// Create initial state file
+			if err := state.save(); err != nil {
+				logger.Warn("Failed to create initial state file", zap.Error(err), zap.String("path", statePath))
+			} else {
+				logger.Info("Created initial state file", zap.String("path", statePath))
+			}
+		}
+	}
 
 	return &Manager{
 		state: state,
@@ -74,15 +95,6 @@ func (m *Manager) SetSingBoxInstalled(version string) error {
 	return m.state.save()
 }
 
-// SetConfigGenerated marks config as generated
-func (m *Manager) SetConfigGenerated() error {
-	m.state.mu.Lock()
-	m.state.ConfigGenerated = true
-	m.state.mu.Unlock()
-
-	return m.state.save()
-}
-
 // SetDashboardInstalled marks dashboard as installed
 func (m *Manager) SetDashboardInstalled() error {
 	m.state.mu.Lock()
@@ -93,9 +105,11 @@ func (m *Manager) SetDashboardInstalled() error {
 }
 
 // CompleteInitialization marks initialization as complete
+// This also sets ConfigGenerated to true as they always happen together
 func (m *Manager) CompleteInitialization() error {
 	m.state.mu.Lock()
 	m.state.Initialized = true
+	m.state.ConfigGenerated = true // Always set when completing initialization
 	m.state.InitTime = getCurrentTimeISO()
 	m.state.mu.Unlock()
 

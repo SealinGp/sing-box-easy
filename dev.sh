@@ -1,2 +1,2 @@
 #!/bin/bash
-go run .
+DEBUG=true go run .

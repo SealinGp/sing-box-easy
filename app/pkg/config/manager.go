@@ -16,19 +16,23 @@ const (
 
 // Manager handles sing-box configuration management
 type Manager struct {
-	configPath    string
-	backupPath    string
-	newConfigPath string
-	singBoxPath   string // Path to sing-box binary
+	configPath       string
+	backupPath       string
+	newConfigPath    string
+	singBoxPath      string // Path to sing-box binary
+	templatePath     string // Path to template config file
 }
 
 // NewManager creates a new configuration manager
-func NewManager(configPath, singBoxPath string) *Manager {
+func NewManager(configPath, singBoxPath, templatePath string) *Manager {
 	if configPath == "" {
 		configPath = DefaultConfigPath
 	}
 	if singBoxPath == "" {
 		singBoxPath = "sing-box" // Use PATH
+	}
+	if templatePath == "" {
+		templatePath = "doc/config.1.12.12.json" // Default template
 	}
 
 	dir := filepath.Dir(configPath)
@@ -37,6 +41,7 @@ func NewManager(configPath, singBoxPath string) *Manager {
 		backupPath:    filepath.Join(dir, "config.old.json"),
 		newConfigPath: filepath.Join(dir, "config_new.json"),
 		singBoxPath:   singBoxPath,
+		templatePath:  templatePath,
 	}
 }
 
@@ -171,4 +176,38 @@ func (m *Manager) copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0644)
+}
+
+// InitializeConfig initializes the configuration from template
+// This should be called after sing-box installation
+func (m *Manager) InitializeConfig() error {
+	// Check if config already exists
+	if _, err := os.Stat(m.configPath); err == nil {
+		return fmt.Errorf("config file already exists at %s", m.configPath)
+	}
+
+	// Ensure config directory exists
+	configDir := filepath.Dir(m.configPath)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Read template config
+	templateData, err := os.ReadFile(m.templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read template config: %w", err)
+	}
+
+	// Validate template is valid JSON
+	var config SingBoxConfig
+	if err := json.Unmarshal(templateData, &config); err != nil {
+		return fmt.Errorf("invalid template config: %w", err)
+	}
+
+	// Write to config path
+	if err := os.WriteFile(m.configPath, templateData, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }

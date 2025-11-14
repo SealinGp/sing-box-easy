@@ -39,7 +39,7 @@ onMounted(async () => {
     initState.value = await apiService.getInitStatus()
 
     // If already initialized, go to dashboard
-    if (initState.value.singbox_installed && initState.value.config_generated) {
+    if (initState.value.initialized) {
       router.push('/dashboard')
     }
   } catch (err: any) {

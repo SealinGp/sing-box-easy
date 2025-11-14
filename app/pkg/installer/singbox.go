@@ -2,31 +2,49 @@ package installer
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"go.uber.org/zap"
 )
+
+// InitStateManager interface for updating initialization state
+type InitStateManager interface {
+	SetSingBoxInstalled(version string) error
+}
+
+// ConfigManager interface for initializing configuration
+type ConfigManager interface {
+	InitializeConfig() error
+}
 
 // InstallTask represents an installation task
 type InstallTask struct {
-	ID        string
-	Status    string // running, completed, failed
-	Message   string
-	Error     string
-	mu        sync.RWMutex
+	ID      string
+	Status  string // running, completed, failed
+	Message string
+	Error   string
+	mu      sync.RWMutex
 }
 
 // Manager manages installation tasks
 type Manager struct {
-	tasks map[string]*InstallTask
-	mu    sync.RWMutex
+	tasks            map[string]*InstallTask
+	mu               sync.RWMutex
+	initStateManager InitStateManager
+	configManager    ConfigManager
 }
 
 // NewManager creates a new installer manager
-func NewManager() *Manager {
+func NewManager(initStateManager InitStateManager, configManager ConfigManager) *Manager {
 	return &Manager{
-		tasks: make(map[string]*InstallTask),
+		tasks:            make(map[string]*InstallTask),
+		initStateManager: initStateManager,
+		configManager:    configManager,
 	}
 }
 
@@ -37,7 +55,7 @@ func (m *Manager) InstallSingBox(version string, beta bool) (*InstallTask, error
 	task := &InstallTask{
 		ID:      taskID,
 		Status:  "running",
-		Message: "Installing sing-box...",
+		Message: "Preparing to install sing-box...",
 	}
 
 	m.mu.Lock()
@@ -46,7 +64,7 @@ func (m *Manager) InstallSingBox(version string, beta bool) (*InstallTask, error
 
 	// Run installation in background
 	go func() {
-		err := m.runInstallScript(version, beta)
+		err := m.runInstallScript(task, version, beta)
 
 		task.mu.Lock()
 		if err != nil {
@@ -56,6 +74,38 @@ func (m *Manager) InstallSingBox(version string, beta bool) (*InstallTask, error
 		} else {
 			task.Status = "completed"
 			task.Message = "Installation completed successfully"
+
+			// Update initialization state
+			if m.initStateManager != nil {
+				installedVersion := version
+				if installedVersion == "" {
+					// Get actual installed version
+					_, installedVersion, _ = m.GetInstallStatus()
+				}
+				if err := m.initStateManager.SetSingBoxInstalled(installedVersion); err != nil {
+					logger.Error("Failed to update initialization state",
+						zap.Error(err),
+						zap.String("version", installedVersion),
+					)
+					// Don't fail the task, just log the error
+				} else {
+					logger.Info("Initialization state updated",
+						zap.String("version", installedVersion),
+					)
+
+					// Initialize config file after successful installation
+					if m.configManager != nil {
+						if err := m.configManager.InitializeConfig(); err != nil {
+							logger.Error("Failed to initialize config file",
+								zap.Error(err),
+							)
+							// Don't fail the task, just log the error
+						} else {
+							logger.Info("Config file initialized successfully")
+						}
+					}
+				}
+			}
 		}
 		task.mu.Unlock()
 	}()
@@ -76,29 +126,138 @@ func (m *Manager) GetTask(taskID string) (*InstallTask, error) {
 	return task, nil
 }
 
-// runInstallScript runs the sing-box installation script
-func (m *Manager) runInstallScript(version string, beta bool) error {
-	// Build install command
-	var cmd *exec.Cmd
+// runInstallScript runs the sing-box installation script with real-time output
+func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool) error {
+	// Build install command with more robust curl options
+	var cmdStr string
+	curlOpts := "curl --retry 3 --retry-delay 2 --connect-timeout 30 --max-time 300 -fsSL"
 
 	if beta {
-		// Install beta version
-		cmd = exec.Command("sh", "-c", "curl -fsSL https://sing-box.app/install.sh | sh -s -- --beta")
+		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh -s -- --beta", curlOpts)
 	} else if version != "" {
-		// Install specific version
-		cmd = exec.Command("sh", "-c", fmt.Sprintf("curl -fsSL https://sing-box.app/install.sh | sh -s -- --version %s", version))
+		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh -s -- --version %s", curlOpts, version)
 	} else {
-		// Install latest version
-		cmd = exec.Command("sh", "-c", "curl -fsSL https://sing-box.app/install.sh | sh")
+		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh", curlOpts)
 	}
 
-	// Run command
-	output, err := cmd.CombinedOutput()
+	// Log command
+	logger.Info("Starting sing-box installation",
+		zap.String("command", cmdStr),
+		zap.String("version", version),
+		zap.Bool("beta", beta),
+	)
+
+	cmd := exec.Command("sh", "-c", cmdStr)
+
+	// Inherit environment variables from parent process
+	// Set working directory to avoid permission issues
+	cmd.Dir = "/tmp"
+	cmd.Env = append(os.Environ(),
+		"DEBIAN_FRONTEND=noninteractive", // Avoid interactive prompts
+		"CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt", // Ensure CA bundle is used
+	)
+
+	logger.Debug("Installation environment",
+		zap.String("workdir", cmd.Dir),
+		zap.String("path", os.Getenv("PATH")),
+		zap.String("user", os.Getenv("USER")),
+	)
+
+	// Create pipes for stdout and stderr
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("installation failed: %s, output: %s", err.Error(), string(output))
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
-	return nil
+	// Start command
+	logger.Info("Starting installation process")
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start installation: %w", err)
+	}
+	logger.Info("Installation process started", zap.Int("pid", cmd.Process.Pid))
+
+	// Update task message with real-time output
+	outputChan := make(chan string, 100)
+	done := make(chan error, 1)
+
+	// Read stdout
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				outputChan <- string(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	// Read stderr
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buf)
+			if n > 0 {
+				outputChan <- string(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	// Wait for command to complete
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	// Collect last few lines for task message
+	lastLines := make([]string, 0, 5)
+
+	// Process output in real-time
+	for {
+		select {
+		case line := <-outputChan:
+			// Keep last 3-5 lines
+			lines := strings.Split(strings.TrimSpace(line), "\n")
+			for _, l := range lines {
+				if l != "" {
+					lastLines = append(lastLines, l)
+					if len(lastLines) > 5 {
+						lastLines = lastLines[1:]
+					}
+				}
+			}
+
+			// Update task message
+			task.mu.Lock()
+			if len(lastLines) > 0 {
+				task.Message = strings.Join(lastLines, "\n")
+			}
+			task.mu.Unlock()
+
+		case err := <-done:
+			// Command finished
+			if err != nil {
+				task.mu.Lock()
+				finalMsg := task.Message
+				task.mu.Unlock()
+				logger.Error("Installation failed",
+					zap.Error(err),
+					zap.String("last_output", finalMsg),
+				)
+				return fmt.Errorf("installation failed: %w\nLast output: %s", err, finalMsg)
+			}
+			logger.Info("Installation completed successfully")
+			return nil
+		}
+	}
 }
 
 // GetInstallStatus checks if sing-box is installed and returns version

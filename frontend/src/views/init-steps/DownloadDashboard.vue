@@ -55,7 +55,7 @@ const checkDashboardInstalled = async () => {
   checkingInstalled.value = true
 
   try {
-    const status = await apiService.getDashboardStatus(externalUIPath.value)
+    const status = await apiService.getDashboardStatus()
     alreadyInstalled.value = status.installed || false
   } catch (err: any) {
     console.log('Failed to check dashboard status:', err)
@@ -70,45 +70,45 @@ const startDownload = async () => {
   downloading.value = true
 
   try {
-    const task = await apiService.downloadDashboard(externalUIPath.value)
-    downloadTask.value = task
+    const response = await apiService.downloadDashboard(externalUIPath.value)
+
+    // Initialize task with pending status
+    downloadTask.value = {
+      id: response.task_id,
+      status: 'running',
+      message: response.message,
+    }
 
     // 开始轮询任务状态
-    pollTaskStatus(task.id)
+    pollTaskStatus(response.task_id)
   } catch (err: any) {
     error.value = err.response?.data?.error || err.message || 'Failed to start download'
     downloading.value = false
   }
 }
 
-const pollTaskStatus = (_taskId: string) => {
+const pollTaskStatus = (taskId: string) => {
   pollInterval = setInterval(async () => {
     try {
-      // 注意：后端没有提供getDashboardTaskStatus的API，
-      // 我们需要通过其他方式检查，这里简化处理
-      // 实际应该等待一段时间后检查dashboard是否存在
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      const task = await apiService.getDashboardTask(taskId)
+      downloadTask.value = task
 
-      await checkDashboardInstalled()
-
-      if (alreadyInstalled.value) {
-        if (downloadTask.value) {
-          downloadTask.value.status = 'completed'
-          downloadTask.value.message = 'Download completed successfully'
-        }
+      if (task.status === 'completed') {
         stopPolling()
         downloading.value = false
+        alreadyInstalled.value = true
+      } else if (task.status === 'failed') {
+        stopPolling()
+        downloading.value = false
+        error.value = task.error || 'Download failed'
       }
     } catch (err: any) {
       console.error('Failed to poll task status:', err)
       stopPolling()
       downloading.value = false
-      if (downloadTask.value) {
-        downloadTask.value.status = 'failed'
-        downloadTask.value.error = 'Failed to verify download'
-      }
+      error.value = 'Failed to check download status'
     }
-  }, 3000) // 每3秒检查一次
+  }, 2000) // 每2秒轮询一次
 }
 
 const stopPolling = () => {
@@ -207,12 +207,15 @@ onUnmounted(() => {
 
           <!-- 下载进度 -->
           <Card v-if="downloading && downloadTask" padding="sm" class="bg-blue-50 border-blue-200">
-            <div class="flex items-start space-x-3">
-              <Loading size="sm" />
-              <div class="flex-1">
-                <p class="text-sm font-medium text-blue-900">{{ downloadTask.message }}</p>
-                <p class="text-xs text-blue-600 mt-1">This may take a few minutes...</p>
+            <div class="space-y-3">
+              <div class="flex items-center space-x-2">
+                <Loading size="sm" />
+                <p class="text-sm font-semibold text-blue-900">Downloading Dashboard...</p>
               </div>
+              <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
+                <pre class="whitespace-pre-wrap break-words">{{ downloadTask.message || 'Preparing download...' }}</pre>
+              </div>
+              <p class="text-xs text-blue-600">This may take a few minutes. Please wait...</p>
             </div>
           </Card>
 
