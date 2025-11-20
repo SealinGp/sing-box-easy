@@ -3,12 +3,17 @@ package v1_13_0
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"strconv"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
+	"github.com/sagernet/sing/common/json/badjson"
+	"github.com/sagernet/sing/common/json/badoption"
 )
 
 // GetDNSServers returns all DNS servers
@@ -23,14 +28,23 @@ func (h *Handler) GetDNSServers(ctx context.Context, c *app.RequestContext) {
 
 	if cfg.DNS == nil {
 		c.JSON(consts.StatusOK, utils.H{
-			"servers": []config.DNSServer{},
+			"servers": []option.DNSServerOptions{},
 		})
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"servers": cfg.DNS.Servers,
-	})
+	// Use sing-box JSON serialization to preserve all DNS server fields
+	dnsCtx := config.CreateContext(ctx)
+	response := map[string]any{"servers": cfg.DNS.Servers}
+	responseJSON, err := json.MarshalContext(dnsCtx, response)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": "failed to serialize DNS servers: " + err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
 }
 
 // GetDNSServerByTag returns a specific DNS server by tag
@@ -48,7 +62,16 @@ func (h *Handler) GetDNSServerByTag(ctx context.Context, c *app.RequestContext) 
 	if cfg.DNS != nil {
 		for _, server := range cfg.DNS.Servers {
 			if server.Tag == tag {
-				c.JSON(consts.StatusOK, server)
+				// Use sing-box JSON serialization to preserve all DNS server fields
+				dnsCtx := config.CreateContext(ctx)
+				serverJSON, err := json.MarshalContext(dnsCtx, server)
+				if err != nil {
+					c.JSON(consts.StatusInternalServerError, utils.H{
+						"error": "failed to serialize DNS server: " + err.Error(),
+					})
+					return
+				}
+				c.Data(consts.StatusOK, "application/json; charset=utf-8", serverJSON)
 				return
 			}
 		}
@@ -61,7 +84,7 @@ func (h *Handler) GetDNSServerByTag(ctx context.Context, c *app.RequestContext) 
 
 // AddDNSServer adds a new DNS server
 func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
-	var server config.DNSServer
+	var server option.DNSServerOptions
 	if err := c.Bind(&server); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),
@@ -78,7 +101,7 @@ func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.DNS == nil {
-			cfg.DNS = &config.DNSConfig{}
+			cfg.DNS = &option.DNSOptions{}
 		}
 
 		// Check if tag already exists
@@ -109,7 +132,7 @@ func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	var server config.DNSServer
+	var server option.DNSServerOptions
 	if err := c.Bind(&server); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),
@@ -162,7 +185,7 @@ func (h *Handler) DeleteDNSServer(ctx context.Context, c *app.RequestContext) {
 			return fmt.Errorf("DNS configuration not found")
 		}
 
-		newServers := make([]config.DNSServer, 0)
+		newServers := make([]option.DNSServerOptions, 0)
 		found := false
 
 		for _, server := range cfg.DNS.Servers {
@@ -207,8 +230,17 @@ func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
 	if cfg.DNS != nil {
 		for _, server := range cfg.DNS.Servers {
 			if server.Tag == "dns_lan" && server.Type == "hosts" {
+				hostsOpts, ok := server.Options.(option.HostsDNSServerOptions)
+				if !ok {
+					c.JSON(consts.StatusOK, utils.H{
+						"error": "failed to parse hosts configuration",
+					})
+					return
+				}
+
+				// 类型断言成功，可以安全使用 hostsOpts
 				c.JSON(consts.StatusOK, utils.H{
-					"hosts": server.Predefined,
+					"hosts": hostsOpts.Predefined, // 或者其他字段
 				})
 				return
 			}
@@ -222,7 +254,7 @@ func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
 
 // UpdateDNSHosts updates the hosts configuration
 func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
-	var hosts map[string][]string
+	var hosts badjson.TypedMap[string, badoption.Listable[netip.Addr]]
 	if err := c.Bind(&hosts); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),
@@ -232,24 +264,33 @@ func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
 
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.DNS == nil {
-			cfg.DNS = &config.DNSConfig{}
+			cfg.DNS = &option.DNSOptions{}
 		}
 
 		found := false
 		for i, server := range cfg.DNS.Servers {
-			if server.Tag == "dns_lan" {
-				cfg.DNS.Servers[i].Predefined = hosts
+			if server.Type == "hosts" {
+				hostsOpts, ok := server.Options.(*option.HostsDNSServerOptions)
+				if !ok {
+					continue
+				}
+				hostsOpts.Predefined = &hosts
+				server.Options = hostsOpts
+
+				cfg.DNS.Servers[i] = server
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			// Create new hosts server
-			cfg.DNS.Servers = append(cfg.DNS.Servers, config.DNSServer{
-				Tag:        "dns_lan",
-				Type:       "hosts",
-				Predefined: hosts,
+			opts := &option.HostsDNSServerOptions{
+				Predefined: &hosts,
+			}
+			cfg.DNS.Servers = append(cfg.DNS.Servers, option.DNSServerOptions{
+				Tag:     "dns_lan",
+				Type:    "hosts",
+				Options: opts,
 			})
 		}
 
@@ -280,7 +321,7 @@ func (h *Handler) GetDNSRules(ctx context.Context, c *app.RequestContext) {
 
 	if cfg.DNS == nil {
 		c.JSON(consts.StatusOK, utils.H{
-			"rules": []config.DNSRule{},
+			"rules": []option.DNSRule{},
 		})
 		return
 	}
@@ -292,7 +333,7 @@ func (h *Handler) GetDNSRules(ctx context.Context, c *app.RequestContext) {
 
 // AddDNSRule adds a new DNS rule
 func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
-	var rule config.DNSRule
+	var rule option.DNSRule
 	if err := c.Bind(&rule); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),
@@ -302,7 +343,7 @@ func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.DNS == nil {
-			cfg.DNS = &config.DNSConfig{}
+			cfg.DNS = &option.DNSOptions{}
 		}
 
 		cfg.DNS.Rules = append(cfg.DNS.Rules, rule)
@@ -332,7 +373,7 @@ func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var rule config.DNSRule
+	var rule option.DNSRule
 	if err := c.Bind(&rule); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),

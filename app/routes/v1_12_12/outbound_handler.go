@@ -8,6 +8,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/sagernet/sing-box/option"
 )
 
 // GetOutbounds returns all outbound configurations
@@ -310,7 +311,25 @@ func (h *Handler) UpdateOutboundMembers(ctx context.Context, c *app.RequestConte
 				if outbound.Type != "selector" && outbound.Type != "urltest" {
 					return fmt.Errorf("outbound '%s' is not a group type (selector/urltest)", tag)
 				}
-				cfg.Outbounds[i].Outbounds = req.Outbounds
+
+				// Update the Outbounds field in the Options
+				switch outbound.Type {
+				case "selector":
+					if opts, ok := outbound.Options.(*option.SelectorOutboundOptions); ok {
+						opts.Outbounds = req.Outbounds
+						cfg.Outbounds[i].Options = opts
+					} else {
+						return fmt.Errorf("invalid selector outbound options")
+					}
+				case "urltest":
+					if opts, ok := outbound.Options.(*option.URLTestOutboundOptions); ok {
+						opts.Outbounds = req.Outbounds
+						cfg.Outbounds[i].Options = opts
+					} else {
+						return fmt.Errorf("invalid urltest outbound options")
+					}
+				}
+
 				found = true
 				break
 			}

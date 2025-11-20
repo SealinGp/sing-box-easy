@@ -6,6 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -16,11 +19,11 @@ const (
 
 // Manager handles sing-box configuration management
 type Manager struct {
-	configPath       string
-	backupPath       string
-	newConfigPath    string
-	singBoxPath      string // Path to sing-box binary
-	templatePath     string // Path to template config file
+	configPath    string
+	backupPath    string
+	newConfigPath string
+	singBoxPath   string // Path to sing-box binary
+	templatePath  string // Path to template config file
 }
 
 // NewManager creates a new configuration manager
@@ -61,6 +64,8 @@ func (m *Manager) GetConfig() (*SingBoxConfig, error) {
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
+
+	logger.Info("read config", zap.Any("config", config), zap.ByteString("data", data))
 
 	return &config, nil
 }

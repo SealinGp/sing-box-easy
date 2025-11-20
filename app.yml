@@ -7,7 +7,7 @@ server:
 sing_box:
   # sing-box 配置文件路径
   # 所有配置管理 API 都会操作此文件
-  config_path: "/etc/sing-box/config.json"
+  config_path: "./bin/config.json"
   
   # sing-box 可执行文件路径
   # 留空或设置为 "sing-box" 将使用系统 PATH 中的 sing-box
