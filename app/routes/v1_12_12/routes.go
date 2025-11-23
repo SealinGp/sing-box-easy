@@ -97,6 +97,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Dashboard APIs
 	v1.POST("/dashboard/download", handler.DownloadDashboard)
+	v1.POST("/dashboard/upload", handler.UploadDashboard)
 	v1.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
 	v1.GET("/dashboard/status", handler.GetDashboardStatus)
 

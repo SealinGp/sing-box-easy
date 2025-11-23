@@ -43,30 +43,48 @@ func NewManager(statePath string) *Manager {
 		statePath: statePath,
 	}
 
+	return &Manager{
+		state: state,
+	}
+}
+
+// Init initializes the state manager by loading or creating the state file
+func (m *Manager) Init() error {
 	// Load existing state
-	if err := state.load(); err != nil {
+	if err := m.state.load(); err != nil {
 		logger.Warn("Failed to load state file", zap.Error(err))
 	}
 
 	// If state file doesn't exist, create it with default values
-	if _, err := os.Stat(statePath); os.IsNotExist(err) {
+	if _, err := os.Stat(m.state.statePath); os.IsNotExist(err) {
 		// Ensure directory exists
-		dir := filepath.Dir(statePath)
+		dir := filepath.Dir(m.state.statePath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			logger.Warn("Failed to create state directory", zap.Error(err), zap.String("dir", dir))
-		} else {
-			// Create initial state file
-			if err := state.save(); err != nil {
-				logger.Warn("Failed to create initial state file", zap.Error(err), zap.String("path", statePath))
-			} else {
-				logger.Info("Created initial state file", zap.String("path", statePath))
-			}
+			logger.Error("Failed to create state directory",
+				zap.Error(err),
+				zap.String("dir", dir),
+			)
+			return fmt.Errorf("failed to create state directory: %w", err)
 		}
+
+		// Create initial state file
+		if err := m.state.save(); err != nil {
+			logger.Error("Failed to create initial state file",
+				zap.Error(err),
+				zap.String("path", m.state.statePath),
+			)
+			return fmt.Errorf("failed to create initial state file: %w", err)
+		}
+
+		logger.Info("Created initial state file", zap.String("path", m.state.statePath))
 	}
 
-	return &Manager{
-		state: state,
-	}
+	logger.Info("State manager initialized",
+		zap.String("path", m.state.statePath),
+		zap.Bool("initialized", m.state.Initialized),
+	)
+
+	return nil
 }
 
 // GetState returns the current state

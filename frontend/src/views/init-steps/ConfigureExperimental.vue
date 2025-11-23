@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { apiService } from '../../services/api'
 import type { ClashAPI, CacheFile } from '../../types/api'
 import { Button, Input, Select, Alert, Card, Loading } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import zashboardIcon from '../../assets/zashboard.svg'
+import yacdIcon from '../../assets/yacd.ico'
 
 const emit = defineEmits<{
   next: []
@@ -40,9 +42,81 @@ const defaultModeOptions = [
   { label: 'Direct (Direct connection)', value: 'direct' },
 ]
 
+// Dashboard 预设选项
+const dashboardOptions = [
+  {
+    id: 'zashboard',
+    name: 'Zashboard',
+    url: 'https://github.com/Zephyruso/zashboard/archive/gh-pages.zip',
+    link: 'https://github.com/Zephyruso/zashboard',
+    icon: zashboardIcon,
+    preview: 'https://raw.githubusercontent.com/Zephyruso/zashboard/refs/heads/main/readme/pc.png',
+    description: 'Modern dashboard with clean UI',
+  },
+  {
+    id: 'yacd',
+    name: 'Yacd',
+    url: 'https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip',
+    link: 'https://github.com/haishanh/yacd',
+    icon: yacdIcon,
+    preview: 'https://user-images.githubusercontent.com/1166872/47954055-97e6cb80-dfc0-11e8-991f-230fd40481e5.png',
+    description: 'Yet another Clash dashboard',
+  },
+]
+
+// 选中的 dashboard
+const selectedDashboard = ref('')
+const customDownloadUrl = ref('')
+const showPreview = ref(false)
+const previewImage = ref('')
+
 // 是否需要下载 Dashboard
 const needsDashboard = computed(() => {
   return enableClashAPI.value && clashAPIConfig.value.external_ui
+})
+
+// 打开预览图
+const openPreview = (imageUrl: string) => {
+  previewImage.value = imageUrl
+  showPreview.value = true
+}
+
+// 关闭预览图
+const closePreview = () => {
+  showPreview.value = false
+  previewImage.value = ''
+}
+
+// 选择 dashboard
+const selectDashboard = (dashboardId: string) => {
+  selectedDashboard.value = dashboardId
+  const dashboard = dashboardOptions.find(d => d.id === dashboardId)
+  if (dashboard) {
+    clashAPIConfig.value.external_ui_download_url = dashboard.url
+    customDownloadUrl.value = ''
+  }
+}
+
+// 使用自定义 URL
+const useCustomUrl = () => {
+  selectedDashboard.value = 'custom'
+  clashAPIConfig.value.external_ui_download_url = customDownloadUrl.value
+}
+
+// 监听自定义 URL 变化
+watch(customDownloadUrl, (newValue) => {
+  if (selectedDashboard.value === 'custom' && newValue) {
+    clashAPIConfig.value.external_ui_download_url = newValue
+  }
+})
+
+// 监听 External UI Path 变化，清空时重置 dashboard 选择
+watch(() => clashAPIConfig.value.external_ui, (newValue) => {
+  if (!newValue) {
+    selectedDashboard.value = ''
+    customDownloadUrl.value = ''
+    clashAPIConfig.value.external_ui_download_url = undefined
+  }
 })
 
 onMounted(async () => {
@@ -60,11 +134,22 @@ const loadConfigs = async () => {
       enableClashAPI.value = true
       clashAPIConfig.value = {
         external_controller: clashAPI.external_controller || '127.0.0.1:9090',
-        external_ui: clashAPI.external_ui || '',
+        external_ui: clashAPI.external_ui || '/etc/sing-box/ui',
         external_ui_download_url: clashAPI.external_ui_download_url,
         external_ui_download_detour: clashAPI.external_ui_download_detour,
         secret: clashAPI.secret || '',
         default_mode: clashAPI.default_mode || 'rule',
+      }
+
+      // 检测是否匹配预设的 dashboard
+      if (clashAPI.external_ui_download_url) {
+        const matchedDashboard = dashboardOptions.find(d => d.url === clashAPI.external_ui_download_url)
+        if (matchedDashboard) {
+          selectedDashboard.value = matchedDashboard.id
+        } else {
+          selectedDashboard.value = 'custom'
+          customDownloadUrl.value = clashAPI.external_ui_download_url
+        }
       }
     }
 
@@ -195,8 +280,115 @@ const handleSkip = () => {
             <Input
               v-model="clashAPIConfig.external_ui"
               label="External UI Path"
-              placeholder="e.g., ./ui or /opt/clash/ui (optional)"
+              placeholder="e.g., /etc/sing-box/ui(default) or ./ui (optional)"
             />
+
+            <!-- Dashboard 选择器 -->
+            <div v-if="clashAPIConfig.external_ui" class="space-y-3">
+              <label class="block text-sm font-medium text-gray-700">
+                Dashboard Download URL (Optional)
+              </label>
+
+              <!-- 当前选择的 URL 显示 -->
+              <div v-if="clashAPIConfig.external_ui_download_url" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-start space-x-2">
+                  <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-green-900">Selected Download URL:</p>
+                    <p class="text-xs text-green-700 break-all mt-1 font-mono">{{ clashAPIConfig.external_ui_download_url }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 预设 Dashboard 选项 -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div
+                  v-for="dashboard in dashboardOptions"
+                  :key="dashboard.id"
+                  @click="selectDashboard(dashboard.id)"
+                  :class="[
+                    'relative border-2 rounded-lg p-3 cursor-pointer transition-all',
+                    selectedDashboard === dashboard.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                  ]"
+                >
+                  <div class="flex items-start space-x-3">
+                    <!-- 图标 -->
+                    <img
+                      v-if="dashboard.icon"
+                      :src="dashboard.icon"
+                      :alt="dashboard.name"
+                      class="w-10 h-10 rounded flex-shrink-0"
+                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                    />
+                    <div class="flex-1 min-w-0">
+                      <!-- 名称（带链接） -->
+                      <a
+                        :href="dashboard.link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        @click.stop
+                      >
+                        {{ dashboard.name }}
+                      </a>
+                      <p class="text-xs text-gray-500 mt-0.5">{{ dashboard.description }}</p>
+                    </div>
+                    <!-- 选中标记 -->
+                    <div
+                      v-if="selectedDashboard === dashboard.id"
+                      class="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
+                    >
+                      <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                  <!-- 预览图 -->
+                  <div v-if="dashboard.preview" class="mt-3">
+                    <img
+                      :src="dashboard.preview"
+                      :alt="`${dashboard.name} preview`"
+                      class="w-full h-32 object-cover rounded cursor-pointer hover:opacity-75 transition-opacity"
+                      @click.stop="openPreview(dashboard.preview)"
+                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 自定义 URL 选项 -->
+              <div
+                @click="selectedDashboard = 'custom'"
+                :class="[
+                  'border-2 rounded-lg p-4 cursor-pointer transition-all',
+                  selectedDashboard === 'custom'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                ]"
+              >
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-sm font-semibold text-gray-900">Custom Download URL</span>
+                  <div
+                    v-if="selectedDashboard === 'custom'"
+                    class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
+                  >
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+                <Input
+                  v-model="customDownloadUrl"
+                  placeholder="https://github.com/user/repo/archive/gh-pages.zip"
+                  @click.stop
+                  @focus="selectedDashboard = 'custom'"
+                />
+              </div>
+            </div>
 
             <Input
               v-model="clashAPIConfig.secret"
@@ -316,5 +508,33 @@ const handleSkip = () => {
         </div>
       </Card>
     </div>
+
+    <!-- 图片预览 Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showPreview"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+        @click="closePreview"
+      >
+        <div class="relative max-w-6xl max-h-full">
+          <!-- 关闭按钮 -->
+          <button
+            @click.stop="closePreview"
+            class="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+          >
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <!-- 预览图片 -->
+          <img
+            :src="previewImage"
+            alt="Dashboard preview"
+            class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            @click.stop
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

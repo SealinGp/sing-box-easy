@@ -75,9 +75,15 @@ class ApiService {
   }
 
   // Dashboard APIs
-  async downloadDashboard(targetDir?: string): Promise<{ task_id: string; message: string }> {
+  async downloadDashboard(
+    targetDir?: string,
+    downloadURL?: string,
+    proxy?: string
+  ): Promise<{ task_id: string; message: string }> {
     const response = await this.client.post<{ task_id: string; message: string }>('/dashboard/download', {
       target_dir: targetDir,
+      download_url: downloadURL,
+      proxy: proxy,
     })
     return response.data
   }
@@ -89,6 +95,33 @@ class ApiService {
 
   async getDashboardStatus(): Promise<{ installed: boolean; path: string }> {
     const response = await this.client.get<{ installed: boolean; path: string }>('/dashboard/status')
+    return response.data
+  }
+
+  async uploadDashboard(
+    file: File,
+    targetDir?: string,
+    folderName?: string
+  ): Promise<{ task_id: string; message: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (targetDir) {
+      formData.append('target_dir', targetDir)
+    }
+    if (folderName) {
+      formData.append('folder_name', folderName)
+    }
+
+    const response = await this.client.post<{ task_id: string; message: string }>(
+      '/dashboard/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 60000, // 1 minute timeout for upload
+      }
+    )
     return response.data
   }
 
@@ -134,11 +167,15 @@ class ApiService {
   }
 
   // Node Parsing APIs
-  async parseNodes(url: string): Promise<ParsedNode[]> {
-    const response = await this.client.post<ParsedNode[]>('/nodes/parse', {
-      url,
+  async parseNodes(subscription: string): Promise<Outbound[]> {
+    const response = await this.client.post<{
+      message: string
+      node_count: number
+      nodes: Outbound[]
+    }>('/nodes/parse', {
+      subscription: subscription,
     })
-    return response.data
+    return response.data.nodes
   }
 
   // Outbound APIs
@@ -282,8 +319,8 @@ class ApiService {
     await this.client.delete(`/route/rules/${index}`)
   }
 
-  async getRuleSets(): Promise<RuleSet[]> {
-    const response = await this.client.get<RuleSet[]>('/route/rule-sets')
+  async getRuleSets(): Promise<{ rule_sets: RuleSet[] }> {
+    const response = await this.client.get<{ rule_sets: RuleSet[] }>('/route/rule-sets')
     return response.data
   }
 

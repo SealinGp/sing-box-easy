@@ -35,5 +35,7 @@ func main() {
 	logger.Infof("Starting HTTP server on port %s", config.Server.Port)
 
 	// Run application
-	app.Run(config)
+	if err := app.Run(config); err != nil {
+		logger.Fatalf("Failed to start application: %v", err)
+	}
 }

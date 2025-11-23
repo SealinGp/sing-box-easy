@@ -148,7 +148,7 @@ const handleSkip = () => {
           <Input
             v-model="logConfig.output"
             label="Log Output Path"
-            placeholder="e.g., /var/log/sing-box/sing-box.log (leave empty for stdout)"
+            placeholder="e.g., /var/log/sing-box/sing-box.log (leave empty for stdout), Will not write log to console after enable."
             :disabled="logConfig.disabled"
           />
 

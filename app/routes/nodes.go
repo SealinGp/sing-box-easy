@@ -33,7 +33,7 @@ func NewRoute(hp string, config *appconfig.Config) *Route {
 	}
 }
 
-func (r *Route) initEndpoints() {
+func (r *Route) initEndpoints() error {
 	r.hz.GET("/health", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(consts.StatusOK, utils.H{"message": "ok"})
 	})
@@ -51,13 +51,24 @@ func (r *Route) initEndpoints() {
 		r.config.SingBox.SubscriptionPath,
 		r.config.SingBox.InitStatePath,
 	)
+
+	// Initialize handler components
+	if err := v1Handler.Init(); err != nil {
+		return err
+	}
+
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
 	// Serve frontend static files (should be registered last)
 	r.hz.StaticFS("/", &app.FS{Root: "./frontend/dist", PathRewrite: app.NewPathSlashesStripper(0)})
+
+	return nil
 }
 
-func (r *Route) Start() {
-	r.initEndpoints()
+func (r *Route) Start() error {
+	if err := r.initEndpoints(); err != nil {
+		return err
+	}
 	r.hz.Run()
+	return nil
 }

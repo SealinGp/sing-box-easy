@@ -5,10 +5,12 @@ import (
 	"fmt"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 )
 
 // GetOutbounds returns all outbound configurations
@@ -100,7 +102,9 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 	}
 
 	var req Request
-	if err := c.Bind(&req); err != nil {
+	data := c.Request.Body()
+	jsonCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(jsonCtx, data, &req); err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
 			"error": "invalid request body: " + err.Error(),
 		})
@@ -156,7 +160,7 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 		}
 
 		if len(addedTags) == 0 {
-			return fmt.Errorf("all outbounds already exist")
+			logger.Warn("all outbounds already exist")
 		}
 
 		return nil
@@ -170,9 +174,9 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 	}
 
 	response := utils.H{
-		"message":      "outbounds batch add completed",
-		"added_count":  len(addedTags),
-		"added_tags":   addedTags,
+		"message":     "outbounds batch add completed",
+		"added_count": len(addedTags),
+		"added_tags":  addedTags,
 	}
 
 	if len(skippedTags) > 0 {
@@ -181,7 +185,15 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 		response["message"] = fmt.Sprintf("added %d outbounds, skipped %d existing outbounds", len(addedTags), len(skippedTags))
 	}
 
-	c.JSON(consts.StatusCreated, response)
+	respData, err := json.Marshal(response)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", respData)
 }
 
 // UpdateOutbound updates an existing outbound

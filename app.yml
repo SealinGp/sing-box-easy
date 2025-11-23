@@ -16,11 +16,11 @@ sing_box:
 
   # 订阅配置文件路径
   # 用于存储订阅信息的 JSON 文件
-  subscription_path: "/etc/sing-box/subscriptions.json"
+  subscription_path: "./bin/subscriptions.json"
 
   
   # 初始化状态文件路径
   # 用于跟踪首次设置向导的完成状态
   # 参考示例: init_state.json.example
-  init_state_path: "/etc/sing-box/init_state.json"
+  init_state_path: "./bin/init_state.json"
 

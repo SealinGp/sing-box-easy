@@ -1,13 +1,14 @@
 package config
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/sagernet/sing/common/json"
 	"go.uber.org/zap"
 )
 
@@ -61,11 +62,10 @@ func (m *Manager) GetConfig() (*SingBoxConfig, error) {
 	}
 
 	var config SingBoxConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	jsonCtx := CreateContext(context.Background())
+	if err := json.UnmarshalContext(jsonCtx, data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
-
-	logger.Info("read config", zap.Any("config", config), zap.ByteString("data", data))
 
 	return &config, nil
 }
@@ -78,7 +78,8 @@ func (m *Manager) GetBackupConfig() (*SingBoxConfig, error) {
 	}
 
 	var config SingBoxConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	jsonCtx := CreateContext(context.Background())
+	if err := json.UnmarshalContext(jsonCtx, data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse backup config file: %w", err)
 	}
 
@@ -88,7 +89,8 @@ func (m *Manager) GetBackupConfig() (*SingBoxConfig, error) {
 // ValidateConfig validates the configuration using sing-box binary
 func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 	// Save to temporary file
-	data, err := json.MarshalIndent(config, "", "  ")
+	jsonCtx := CreateContext(context.Background())
+	data, err := json.MarshalContext(jsonCtx, config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -168,6 +170,7 @@ func (m *Manager) UpdateConfig(updateFn func(*SingBoxConfig) error) error {
 	}
 
 	if err := updateFn(config); err != nil {
+		logger.Error("failed to update config: %v", zap.Error(err))
 		return err
 	}
 

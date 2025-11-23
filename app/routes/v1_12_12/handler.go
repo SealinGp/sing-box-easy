@@ -26,9 +26,12 @@ func NewHandler(configPath, singBoxPath, subscriptionPath, initStatePath string)
 	serviceController := service.NewController(configManager, singBoxPath)
 	subscriptionManager := subscription.NewManager(subscriptionPath)
 	sublinkParser := new(sublink.SubLink)
+
 	initStateManager := initstate.NewManager(initStatePath)
+
 	// Pass initStateManager and configManager to installer
 	installerManager := installer.NewManager(initStateManager, configManager)
+
 	dashboardManager := installer.NewDashboardManager(initStateManager)
 
 	return &Handler{
@@ -40,4 +43,19 @@ func NewHandler(configPath, singBoxPath, subscriptionPath, initStatePath string)
 		dashboardManager:    dashboardManager,
 		initStateManager:    initStateManager,
 	}
+}
+
+// Init initializes all components and returns error if any fails
+func (h *Handler) Init() error {
+	// Initialize state manager
+	if err := h.initStateManager.Init(); err != nil {
+		return err
+	}
+
+	// Initialize installer manager
+	if err := h.installer.Init(); err != nil {
+		return err
+	}
+
+	return nil
 }

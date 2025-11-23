@@ -96,11 +96,11 @@ const loadRuleSets = async () => {
   error.value = ''
 
   try {
-    const ruleSets = await apiService.getRuleSets()
-    existingRuleSets.value = ruleSets || []
+    const {rule_sets} = await apiService.getRuleSets()
+    existingRuleSets.value = rule_sets || []
 
     // 预选已存在的规则集
-    ruleSets?.forEach((ruleSet) => {
+    rule_sets?.forEach((ruleSet) => {
       const preset = presetRuleSets.find(p => p.tag === ruleSet.tag)
       if (preset) {
         selectedPresets.value.add(preset.id)
@@ -137,11 +137,13 @@ const saveRuleSets = async () => {
   success.value = false
 
   try {
+    console.log('Processing preset:', existingRuleSets.value)
     // 获取当前已存在的规则集标签
     const existingTags = new Set(existingRuleSets.value.map(rs => rs.tag))
 
     // 添加选中的预设规则集
     for (const preset of presetRuleSets) {
+      
       if (selectedPresets.value.has(preset.id)) {
         // 如果不存在，则添加
         if (!existingTags.has(preset.tag)) {
@@ -175,6 +177,7 @@ const saveRuleSets = async () => {
 }
 
 const handleNext = () => {
+  console.log('success.value',success.value)
   if (!success.value) {
     saveRuleSets()
   } else {

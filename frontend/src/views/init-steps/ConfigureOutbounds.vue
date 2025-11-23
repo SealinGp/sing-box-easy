@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { apiService } from '../../services/api'
-import type { ParsedNode, Outbound } from '../../types/api'
-import { Button, Input, Alert, Card, Badge } from '../../components'
+import type {  Outbound } from '../../types/api'
+import { Button, Textarea, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits<{
@@ -10,9 +10,9 @@ const emit = defineEmits<{
   prev: []
 }>()
 
-const subscriptionUrl = ref('')
+const subscriptionInput = ref('')
 const parsing = ref(false)
-const parsedNodes = ref<ParsedNode[]>([])
+const parsedNodes = ref<Outbound[]>([])
 const selectedNodes = ref<Set<string>>(new Set())
 const error = ref('')
 const parseError = ref('')
@@ -20,10 +20,10 @@ const parseError = ref('')
 const saving = ref(false)
 const success = ref(false)
 
-// 解析订阅
+// 解析订阅或节点链接
 const parseSubscription = async () => {
-  if (!subscriptionUrl.value.trim()) {
-    parseError.value = 'Please enter a subscription URL'
+  if (!subscriptionInput.value.trim()) {
+    parseError.value = 'Please enter subscription URL(s) or node link(s)'
     return
   }
 
@@ -33,19 +33,28 @@ const parseSubscription = async () => {
   selectedNodes.value.clear()
 
   try {
-    const nodes = await apiService.parseNodes(subscriptionUrl.value.trim())
+    // 将多行输入转换为单行，用换行符分隔
+    const lines = subscriptionInput.value
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+
+    // 拼接成换行符分隔的字符串
+    const linesToParse = lines.join('\n')
+
+    const nodes = await apiService.parseNodes(linesToParse)
     parsedNodes.value = nodes
 
     // 默认全选
     nodes.forEach((node) => {
-      selectedNodes.value.add(node.outbound.tag)
+      selectedNodes.value.add(node.tag)
     })
 
     if (nodes.length === 0) {
-      parseError.value = 'No nodes found in subscription'
+      parseError.value = 'No nodes found'
     }
   } catch (err: any) {
-    parseError.value = err.response?.data?.error || err.message || 'Failed to parse subscription'
+    parseError.value = err.response?.data?.error || err.message || 'Failed to parse subscription/nodes'
   } finally {
     parsing.value = false
   }
@@ -66,7 +75,7 @@ const toggleSelectAll = () => {
     selectedNodes.value.clear()
   } else {
     parsedNodes.value.forEach((node) => {
-      selectedNodes.value.add(node.outbound.tag)
+      selectedNodes.value.add(node.tag)
     })
   }
 }
@@ -83,8 +92,8 @@ const saveOutbounds = async () => {
 
     // 添加选中的代理节点
     parsedNodes.value.forEach((node) => {
-      if (selectedNodes.value.has(node.outbound.tag)) {
-        outboundsToAdd.push(node.outbound)
+      if (selectedNodes.value.has(node.tag)) {
+        outboundsToAdd.push(node)
       }
     })
 
@@ -146,28 +155,31 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Parse Subscription</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Parse Subscription or Nodes</h3>
           <p class="text-sm text-gray-600">
-            Enter your subscription URL to parse and import proxy nodes.
+            Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.
           </p>
         </div>
 
-        <div class="flex gap-3">
-          <Input
-            v-model="subscriptionUrl"
-            placeholder="https://example.com/subscribe?token=xxx"
+        <div class="space-y-3">
+          <Textarea
+            v-model="subscriptionInput"
+            placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
             :disabled="parsing"
             :error="parseError"
+            :rows="6"
             full-width
           />
-          <Button
-            variant="primary"
-            :loading="parsing"
-            :disabled="parsing"
-            @click="parseSubscription"
-          >
-            {{ parsing ? 'Parsing...' : 'Parse' }}
-          </Button>
+          <div class="flex justify-end">
+            <Button
+              variant="primary"
+              :loading="parsing"
+              :disabled="parsing"
+              @click="parseSubscription"
+            >
+              {{ parsing ? 'Parsing...' : 'Parse' }}
+            </Button>
+          </div>
         </div>
       </div>
     </Card>
@@ -198,25 +210,25 @@ const handleSkip = () => {
         <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
           <div
             v-for="node in parsedNodes"
-            :key="node.outbound.tag"
+            :key="node.tag"
             class="flex items-center gap-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 cursor-pointer"
-            @click="toggleNode(node.outbound.tag)"
+            @click="toggleNode(node.tag)"
           >
             <input
               type="checkbox"
-              :checked="selectedNodes.has(node.outbound.tag)"
+              :checked="selectedNodes.has(node.tag)"
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              @click.stop="toggleNode(node.outbound.tag)"
+              @click.stop="toggleNode(node.tag)"
             />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ node.outbound.tag }}
+                  {{ node.tag }}
                 </p>
                 <Badge variant="gray" size="sm">{{ node.protocol }}</Badge>
               </div>
               <p class="text-xs text-gray-500 truncate">
-                {{ node.outbound.server }}:{{ node.outbound.server_port }}
+                {{ node.server }}:{{ node.server_port }}
               </p>
             </div>
           </div>

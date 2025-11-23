@@ -48,6 +48,20 @@ func NewManager(initStateManager InitStateManager, configManager ConfigManager) 
 	}
 }
 
+func (m *Manager) Init() error {
+	installed, ver, _ := m.GetInstallStatus()
+	if installed {
+		err := m.initStateManager.SetSingBoxInstalled(ver)
+		logger.Info("Installer manager initialized",
+			zap.Bool("installed", installed),
+			zap.String("version", ver),
+			zap.Error(err),
+		)
+	}
+
+	return nil
+}
+
 // InstallSingBox installs sing-box
 func (m *Manager) InstallSingBox(version string, beta bool) (*InstallTask, error) {
 	taskID := fmt.Sprintf("install_%d", getCurrentTimestamp())
@@ -153,7 +167,7 @@ func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool)
 	// Set working directory to avoid permission issues
 	cmd.Dir = "/tmp"
 	cmd.Env = append(os.Environ(),
-		"DEBIAN_FRONTEND=noninteractive", // Avoid interactive prompts
+		"DEBIAN_FRONTEND=noninteractive",                    // Avoid interactive prompts
 		"CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt", // Ensure CA bundle is used
 	)
 
