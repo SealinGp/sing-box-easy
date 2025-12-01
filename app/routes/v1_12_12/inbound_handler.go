@@ -8,6 +8,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 )
 
 // GetInbounds returns all inbound configurations
@@ -20,9 +22,18 @@ func (h *Handler) GetInbounds(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"inbounds": cfg.Inbounds,
-	})
+	// Use sing-box JSON serialization to preserve all inbound fields
+	inboundCtx := config.CreateContext(ctx)
+	response := map[string]any{"inbounds": cfg.Inbounds}
+	responseJSON, err := json.MarshalContext(inboundCtx, response)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": "failed to serialize inbounds: " + err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
 }
 
 // GetInboundByTag returns a specific inbound by tag
@@ -39,7 +50,16 @@ func (h *Handler) GetInboundByTag(ctx context.Context, c *app.RequestContext) {
 
 	for _, inbound := range cfg.Inbounds {
 		if inbound.Tag == tag {
-			c.JSON(consts.StatusOK, inbound)
+			// Use sing-box JSON serialization to preserve all inbound fields
+			inboundCtx := config.CreateContext(ctx)
+			inboundJSON, err := json.MarshalContext(inboundCtx, inbound)
+			if err != nil {
+				c.JSON(consts.StatusInternalServerError, utils.H{
+					"error": "failed to serialize inbound: " + err.Error(),
+				})
+				return
+			}
+			c.Data(consts.StatusOK, "application/json; charset=utf-8", inboundJSON)
 			return
 		}
 	}
@@ -51,10 +71,20 @@ func (h *Handler) GetInboundByTag(ctx context.Context, c *app.RequestContext) {
 
 // AddInbound adds a new inbound
 func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
-	var inbound config.Inbound
-	if err := c.Bind(&inbound); err != nil {
+	// Use sing-box JSON deserialization to properly parse inbound config
+	body, err := c.Body()
+	if err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
+			"error": "failed to read request body: " + err.Error(),
+		})
+		return
+	}
+
+	var inbound option.Inbound
+	inboundCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(inboundCtx, body, &inbound); err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "invalid inbound configuration: " + err.Error(),
 		})
 		return
 	}
@@ -66,7 +96,7 @@ func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		// Check if tag already exists
 		for _, existing := range cfg.Inbounds {
 			if existing.Tag == inbound.Tag {
@@ -95,10 +125,20 @@ func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) UpdateInbound(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	var inbound config.Inbound
-	if err := c.Bind(&inbound); err != nil {
+	// Use sing-box JSON deserialization to properly parse inbound config
+	body, err := c.Body()
+	if err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
+			"error": "failed to read request body: " + err.Error(),
+		})
+		return
+	}
+
+	var inbound option.Inbound
+	inboundCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(inboundCtx, body, &inbound); err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "invalid inbound configuration: " + err.Error(),
 		})
 		return
 	}
@@ -106,7 +146,7 @@ func (h *Handler) UpdateInbound(ctx context.Context, c *app.RequestContext) {
 	// Ensure the tag matches
 	inbound.Tag = tag
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		found := false
 		for i, existing := range cfg.Inbounds {
 			if existing.Tag == tag {

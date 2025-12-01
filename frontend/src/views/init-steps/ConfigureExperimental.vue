@@ -20,7 +20,7 @@ const success = ref(false)
 // Clash API 配置
 const enableClashAPI = ref(false)
 const clashAPIConfig = ref<ClashAPI>({
-  external_controller: '127.0.0.1:9090',
+  external_controller: '0.0.0.0:9090',
   external_ui: '',
   secret: '',
   default_mode: 'rule',

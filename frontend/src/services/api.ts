@@ -279,8 +279,8 @@ class ApiService {
   }
 
   // Inbound APIs
-  async getInbounds(): Promise<Inbound[]> {
-    const response = await this.client.get<Inbound[]>('/inbounds')
+  async getInbounds(): Promise<{inbounds:Inbound[]}> {
+    const response = await this.client.get<{inbounds:Inbound[]}>('/inbounds')
     return response.data
   }
 

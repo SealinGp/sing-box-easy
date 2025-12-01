@@ -23,9 +23,18 @@ func (h *Handler) GetOutbounds(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"outbounds": cfg.Outbounds,
-	})
+	// Use sing-box JSON serialization to preserve all outbound fields
+	outboundCtx := config.CreateContext(ctx)
+	response := map[string]any{"outbounds": cfg.Outbounds}
+	responseJSON, err := json.MarshalContext(outboundCtx, response)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": "failed to serialize outbounds: " + err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
 }
 
 // GetOutboundByTag returns a specific outbound by tag
@@ -42,7 +51,16 @@ func (h *Handler) GetOutboundByTag(ctx context.Context, c *app.RequestContext) {
 
 	for _, outbound := range cfg.Outbounds {
 		if outbound.Tag == tag {
-			c.JSON(consts.StatusOK, outbound)
+			// Use sing-box JSON serialization to preserve all outbound fields
+			outboundCtx := config.CreateContext(ctx)
+			outboundJSON, err := json.MarshalContext(outboundCtx, outbound)
+			if err != nil {
+				c.JSON(consts.StatusInternalServerError, utils.H{
+					"error": "failed to serialize outbound: " + err.Error(),
+				})
+				return
+			}
+			c.Data(consts.StatusOK, "application/json; charset=utf-8", outboundJSON)
 			return
 		}
 	}
@@ -54,10 +72,20 @@ func (h *Handler) GetOutboundByTag(ctx context.Context, c *app.RequestContext) {
 
 // AddOutbound adds a new outbound
 func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
-	var outbound config.Outbound
-	if err := c.Bind(&outbound); err != nil {
+	// Use sing-box JSON deserialization to properly parse outbound config
+	body, err := c.Body()
+	if err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
+			"error": "failed to read request body: " + err.Error(),
+		})
+		return
+	}
+
+	var outbound option.Outbound
+	outboundCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(outboundCtx, body, &outbound); err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "invalid outbound configuration: " + err.Error(),
 		})
 		return
 	}
@@ -70,7 +98,7 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		// Check if tag already exists
 		for _, existing := range cfg.Outbounds {
 			if existing.Tag == outbound.Tag {
@@ -200,10 +228,20 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	var outbound config.Outbound
-	if err := c.Bind(&outbound); err != nil {
+	// Use sing-box JSON deserialization to properly parse outbound config
+	body, err := c.Body()
+	if err != nil {
 		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
+			"error": "failed to read request body: " + err.Error(),
+		})
+		return
+	}
+
+	var outbound option.Outbound
+	outboundCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(outboundCtx, body, &outbound); err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "invalid outbound configuration: " + err.Error(),
 		})
 		return
 	}
@@ -211,7 +249,7 @@ func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 	// Ensure the tag matches
 	outbound.Tag = tag
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		found := false
 		for i, existing := range cfg.Outbounds {
 			if existing.Tag == tag {
@@ -288,16 +326,25 @@ func (h *Handler) GetOutboundGroups(ctx context.Context, c *app.RequestContext) 
 		return
 	}
 
-	groups := make([]config.Outbound, 0)
+	groups := make([]option.Outbound, 0)
 	for _, outbound := range cfg.Outbounds {
 		if outbound.Type == "selector" || outbound.Type == "urltest" {
 			groups = append(groups, outbound)
 		}
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"groups": groups,
-	})
+	// Use sing-box JSON serialization to preserve all outbound fields
+	outboundCtx := config.CreateContext(ctx)
+	response := map[string]any{"groups": groups}
+	responseJSON, err := json.MarshalContext(outboundCtx, response)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": "failed to serialize outbound groups: " + err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
 }
 
 // UpdateOutboundMembers updates the members of a group outbound

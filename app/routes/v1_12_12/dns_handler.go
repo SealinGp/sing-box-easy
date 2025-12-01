@@ -16,6 +16,74 @@ import (
 	"github.com/sagernet/sing/common/json/badoption"
 )
 
+// GetDNS returns the complete DNS configuration
+func (h *Handler) GetDNS(ctx context.Context, c *app.RequestContext) {
+	cfg, err := h.configManager.GetConfig()
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if cfg.DNS == nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"servers": []option.DNSServerOptions{},
+		})
+		return
+	}
+
+	// Use sing-box JSON serialization to preserve all DNS fields
+	dnsCtx := config.CreateContext(ctx)
+	dnsJSON, err := json.MarshalContext(dnsCtx, cfg.DNS)
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": "failed to serialize DNS configuration: " + err.Error(),
+		})
+		return
+	}
+
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", dnsJSON)
+}
+
+// UpdateDNS updates the complete DNS configuration
+func (h *Handler) UpdateDNS(ctx context.Context, c *app.RequestContext) {
+	var dnsOptions option.DNSOptions
+
+	// Use sing-box JSON deserialization to properly parse DNS config
+	body, err := c.Body()
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "failed to read request body: " + err.Error(),
+		})
+		return
+	}
+
+	dnsCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(dnsCtx, body, &dnsOptions); err != nil {
+		c.JSON(consts.StatusBadRequest, utils.H{
+			"error": "invalid DNS configuration: " + err.Error(),
+		})
+		return
+	}
+
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+		cfg.DNS = &dnsOptions
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, utils.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, utils.H{
+		"message": "DNS configuration updated successfully",
+	})
+}
+
 // GetDNSServers returns all DNS servers
 func (h *Handler) GetDNSServers(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()

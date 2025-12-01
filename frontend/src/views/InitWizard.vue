@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { apiService } from '../services/api'
 import type { InitState } from '../types/api'
 import InstallSingBox from './init-steps/InstallSingBox.vue'
@@ -15,6 +15,7 @@ import ConfigureRoutes from './init-steps/ConfigureRoutes.vue'
 import Complete from './init-steps/Complete.vue'
 
 const router = useRouter()
+const route = useRoute()
 const currentStep = ref(0)
 const initState = ref<InitState | null>(null)
 const loading = ref(false)
@@ -26,14 +27,53 @@ const steps = [
   { title: 'Configure Experimental', component: ConfigureExperimental },
   { title: 'Download Dashboard', component: DownloadDashboard },
   { title: 'Configure Outbounds', component: ConfigureOutbounds },
-  { title: 'Configure Rule Sets', component: ConfigureRuleSets },
+  { title: 'Configure Route / Rule Sets', component: ConfigureRuleSets },
   { title: 'Configure DNS', component: ConfigureDNS },
   { title: 'Configure Inbounds', component: ConfigureInbounds },
   { title: 'Configure Routes', component: ConfigureRoutes },
   { title: 'Complete', component: Complete },
 ]
 
+// Initialize step from query param
+const initializeStep = () => {
+  const stepParam = route.query.step
+  if (stepParam) {
+    const stepIndex = parseInt(stepParam as string, 10)
+    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.length) {
+      currentStep.value = stepIndex
+      return
+    }
+  }
+  // Default to step 0 if no valid query param
+  if (currentStep.value === 0) {
+    updateQueryParam(0)
+  }
+}
+
+// Update query param when step changes
+const updateQueryParam = (step: number) => {
+  router.replace({ query: { step: step.toString() } })
+}
+
+// Watch for query param changes (browser back/forward)
+watch(() => route.query.step, (newStep) => {
+  if (newStep) {
+    const stepIndex = parseInt(newStep as string, 10)
+    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.length) {
+      currentStep.value = stepIndex
+    }
+  }
+})
+
+// Watch currentStep and update query param
+watch(currentStep, (newStep) => {
+  updateQueryParam(newStep)
+})
+
 onMounted(async () => {
+  // Initialize step from query param first
+  initializeStep()
+
   try {
     loading.value = true
     initState.value = await apiService.getInitStatus()
@@ -53,6 +93,7 @@ const nextStep = () => {
   if (currentStep.value < steps.length - 1) {
     currentStep.value++
   }
+  console.log('currentStep.value',currentStep.value)
 }
 
 const prevStep = () => {

@@ -6,7 +6,7 @@
     "servers": [
        {
         "type": "tls",
-        "tag": "google-dns",
+        "tag": "dns-google-tls",
         "server": "8.8.8.8",
         "server_port": 853,
         "tls": {}

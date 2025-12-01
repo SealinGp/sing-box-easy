@@ -1,7 +1,9 @@
 package config
 
 import (
+	"bytes"
 	"context"
+	js "encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -88,14 +90,20 @@ func (m *Manager) GetBackupConfig() (*SingBoxConfig, error) {
 
 // ValidateConfig validates the configuration using sing-box binary
 func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
-	// Save to temporary file
+	// Save to temporary file with pretty printing
 	jsonCtx := CreateContext(context.Background())
 	data, err := json.MarshalContext(jsonCtx, config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(m.newConfigPath, data, 0644); err != nil {
+	// Pretty print the JSON
+	var prettyBuf bytes.Buffer
+	if err := js.Indent(&prettyBuf, data, "", "  "); err != nil {
+		return fmt.Errorf("failed to indent config: %w", err)
+	}
+
+	if err := os.WriteFile(m.newConfigPath, prettyBuf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("failed to write temp config file: %w", err)
 	}
 

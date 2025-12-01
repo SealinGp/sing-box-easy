@@ -1,4 +1,6 @@
 // API Response Types
+import type { DNSOptions } from './dns'
+import type { Inbound as InboundType } from './inbound'
 
 export interface InitState {
   initialized: boolean
@@ -69,37 +71,53 @@ export interface Subscription {
   node_count?: number
 }
 
-export interface DNSServer {
-  tag: string
-  address: string
-  address_resolver?: string
-  address_strategy?: string
-  strategy?: string
-  detour?: string
-}
+// Re-export DNS types from dns.ts
+export type {
+  DNSServerOptions as DNSServer,
+  DNSRule,
+  DNSOptions as DNS,
+  DomainStrategy,
+  DNSServerType,
+  LegacyDNSServerOptions,
+  LocalDNSServerOptions,
+  RemoteDNSServerOptions,
+  RemoteTLSDNSServerOptions,
+  RemoteHTTPSDNSServerOptions,
+  FakeIPDNSServerOptions,
+  DHCPDNSServerOptions,
+  HostsDNSServerOptions,
+  DefaultDNSRule,
+  LogicalDNSRule,
+  DNSRuleActionType,
+  DNSRuleType,
+  DNSLogicalMode,
+  TLSOptions,
+} from './dns'
 
-export interface DNSRule {
-  query_type?: string[]
-  rule_set?: string[]
-  server: string
-  disable_cache?: boolean
-  [key: string]: any
-}
-
-export interface DNS {
-  servers?: DNSServer[]
-  rules?: DNSRule[]
-  final?: string
-  strategy?: string
-  disable_cache?: boolean
-  disable_expire?: boolean
-  independent_cache?: boolean
-  fakeip?: {
-    enabled: boolean
-    inet4_range?: string
-    inet6_range?: string
-  }
-}
+// Re-export Inbound types from inbound.ts
+export type {
+  InboundType,
+  BaseInbound,
+  ListenOptions,
+  TunInboundOptions,
+  RedirectInboundOptions,
+  TProxyInboundOptions,
+  DirectInboundOptions,
+  SocksInboundOptions,
+  HTTPMixedInboundOptions,
+  ShadowsocksInboundOptions,
+  VMessInboundOptions,
+  TrojanInboundOptions,
+  NaiveInboundOptions,
+  HysteriaInboundOptions,
+  Hysteria2InboundOptions,
+  VLESSInboundOptions,
+  TUICInboundOptions,
+  ShadowTLSInboundOptions,
+  InboundTLSOptions,
+  V2RayTransportOptions,
+  MultiplexOptions,
+} from './inbound'
 
 export interface RouteRule {
   inbound?: string[]
@@ -129,16 +147,8 @@ export interface RuleSet {
   update_interval?: string
 }
 
-export interface Inbound {
-  tag: string
-  type: string
-  listen?: string
-  listen_port?: number
-  sniff?: boolean
-  sniff_override_destination?: boolean
-  domain_strategy?: string
-  [key: string]: any
-}
+// Re-export Inbound types from inbound.ts
+export type { Inbound } from './inbound'
 
 export interface LogConfig {
   disabled?: boolean
@@ -171,16 +181,8 @@ export interface SingBoxConfig {
     clash_api?: ClashAPI
     cache_file?: CacheFile
   }
-  dns?: {
-    servers: DNSServer[]
-    rules?: DNSRule[]
-    hosts?: Record<string, string | string[]>
-    final?: string
-    strategy?: string
-    disable_cache?: boolean
-    disable_expire?: boolean
-  }
-  inbounds?: Inbound[]
+  dns?: DNSOptions
+  inbounds?: InboundType[]
   outbounds?: Outbound[]
   route?: {
     rules?: RouteRule[]

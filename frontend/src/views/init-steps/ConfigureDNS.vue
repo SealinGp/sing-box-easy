@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { apiService } from '../../services/api'
-import type { DNS, DNSServer } from '../../types/api'
+import type { DNS } from '../../types/api'
 import { Button, Alert, Card, Select, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import type { DNSServerOptions, HostsDNSServerOptions, DomainStrategy } from '../../types/dns'
 
 const emit = defineEmits<{
   next: []
@@ -17,23 +18,27 @@ const success = ref(false)
 
 const selectedPreset = ref<string>('smart')
 const enableFakeIP = ref(false)
+const enableHosts = ref(false)
+const hostEntries = ref<Record<string, string | string[]>>({})
+const newHostDomain = ref('')
+const newHostIP = ref('')
 
 // DNS 策略选项
-const strategyOptions = [
+const strategyOptions: Array<{ label: string; value: DomainStrategy }> = [
   { label: 'Prefer IPv4', value: 'prefer_ipv4' },
   { label: 'Prefer IPv6', value: 'prefer_ipv6' },
   { label: 'IPv4 Only', value: 'ipv4_only' },
   { label: 'IPv6 Only', value: 'ipv6_only' },
 ]
 
-const selectedStrategy = ref('prefer_ipv4')
+const selectedStrategy = ref<DomainStrategy>('prefer_ipv4')
 
 // 预设 DNS 配置方案
 interface DNSPreset {
   id: string
   name: string
   description: string
-  servers: DNSServer[]
+  servers: DNSServerOptions[]
 }
 
 const dnsPresets: DNSPreset[] = [
@@ -43,20 +48,18 @@ const dnsPresets: DNSPreset[] = [
     description: 'Uses different DNS servers for domestic and foreign domains',
     servers: [
       {
-        tag: 'dns-remote',
-        address: 'https://1.1.1.1/dns-query',
-        address_resolver: 'dns-local',
-        detour: 'proxy-group',
+        type: 'udp',
+        tag: 'dns-china',
+        server: '223.5.5.5',
+        server_port: 53,
       },
       {
-        tag: 'dns-local',
-        address: '223.5.5.5',
-        detour: 'direct',
-      },
-      {
-        tag: 'dns-block',
-        address: 'rcode://success',
-      },
+        type: 'tls',
+        tag: 'dns-google-tls',
+        server: '8.8.8.8',
+        server_port: 853,
+        tls: {}
+      }
     ],
   },
   {
@@ -65,13 +68,12 @@ const dnsPresets: DNSPreset[] = [
     description: 'Uses Cloudflare DNS (1.1.1.1) for all queries',
     servers: [
       {
+        type: 'https',
         tag: 'dns-cloudflare',
-        address: 'https://1.1.1.1/dns-query',
-      },
-      {
-        tag: 'dns-block',
-        address: 'rcode://success',
-      },
+        server: '1.1.1.1',
+        server_port: 443,
+        tls: {},
+      }
     ],
   },
   {
@@ -80,13 +82,12 @@ const dnsPresets: DNSPreset[] = [
     description: 'Uses Google DNS (8.8.8.8) for all queries',
     servers: [
       {
+        type: 'https',
         tag: 'dns-google',
-        address: 'https://dns.google/dns-query',
-      },
-      {
-        tag: 'dns-block',
-        address: 'rcode://success',
-      },
+        server: 'dns.google',
+        server_port: 443,
+        tls: {},
+      }
     ],
   },
   {
@@ -95,16 +96,43 @@ const dnsPresets: DNSPreset[] = [
     description: 'Uses domestic DNS servers (Alibaba 223.5.5.5)',
     servers: [
       {
+        type: 'udp',
         tag: 'dns-china',
-        address: '223.5.5.5',
-      },
-      {
-        tag: 'dns-block',
-        address: 'rcode://success',
-      },
+        server: '223.5.5.5',
+        server_port: 53,
+      }
     ],
   },
 ]
+
+// Hosts management functions
+const addHostEntry = () => {
+  if (!newHostDomain.value || !newHostIP.value) {
+    return
+  }
+
+  // Check if IP contains comma (multiple IPs)
+  if (newHostIP.value.includes(',')) {
+    const ips = newHostIP.value.split(',').map(ip => ip.trim()).filter(ip => ip)
+    hostEntries.value[newHostDomain.value] = ips
+  } else {
+    hostEntries.value[newHostDomain.value] = newHostIP.value.trim()
+  }
+
+  newHostDomain.value = ''
+  newHostIP.value = ''
+}
+
+const removeHostEntry = (domain: string) => {
+  delete hostEntries.value[domain]
+}
+
+const getHostIPDisplay = (value: string | string[]): string => {
+  if (Array.isArray(value)) {
+    return value.join(', ')
+  }
+  return value
+}
 
 onMounted(async () => {
   await loadDNSConfig()
@@ -129,6 +157,13 @@ const loadDNSConfig = async () => {
 
       if (matchedPreset) {
         selectedPreset.value = matchedPreset.id
+      }
+
+      // 检查 hosts DNS 服务器
+      const hostsServer = dnsServers.find(s => s.type === 'hosts')
+      if (hostsServer && 'predefined' in hostsServer && hostsServer.predefined) {
+        enableHosts.value = true
+        hostEntries.value = { ...hostsServer.predefined }
       }
 
       // 检查是否启用了 FakeIP
@@ -160,8 +195,21 @@ const saveDNSConfig = async () => {
       return
     }
 
+    const servers: DNSServerOptions[] = [...preset.servers]
+
+    // 添加 hosts DNS 服务器（如果启用）
+    if (enableHosts.value && Object.keys(hostEntries.value).length > 0) {
+      const hostsServer: HostsDNSServerOptions = {
+        type: 'hosts',
+        tag: 'local-hosts',
+        path: [],
+        predefined: hostEntries.value,
+      }
+      servers.push(hostsServer)
+    }
+
     const dnsConfig: DNS = {
-      servers: preset.servers,
+      servers,
       strategy: selectedStrategy.value,
     }
 
@@ -174,20 +222,52 @@ const saveDNSConfig = async () => {
       }
     }
 
-    // 添加规则（如果是智能 DNS）
-    if (selectedPreset.value === 'smart') {
-      dnsConfig.rules = [
-        {
-          rule_set: ['geosite-cn'],
-          server: 'dns-local',
-        },
-        {
-          rule_set: ['geosite-category-ads-all'],
-          server: 'dns-block',
-          disable_cache: true,
-        },
-      ]
-      dnsConfig.final = 'dns-remote'
+    // 添加规则和 final 服务器
+    switch (selectedPreset.value) {
+      case 'smart':
+        dnsConfig.rules = [
+          {
+            rule_set: ['geosite-cn'],
+            server: 'dns-china',
+          },
+          {
+            rule_set: ['geosite-category-ads-all'],
+            server: 'dns-block',
+            disable_cache: true,
+          },
+        ]
+        dnsConfig.final = 'dns-google-tls'
+        break
+      case 'cloudflare':
+        dnsConfig.rules = [
+          {
+            rule_set: ['geosite-category-ads-all'],
+            server: 'dns-block',
+            disable_cache: true,
+          },
+        ]
+        dnsConfig.final = 'dns-cloudflare'
+        break
+      case 'google':
+        dnsConfig.rules = [
+          {
+            rule_set: ['geosite-category-ads-all'],
+            server: 'dns-block',
+            disable_cache: true,
+          },
+        ]
+        dnsConfig.final = 'dns-google'
+        break
+      case 'china':
+        dnsConfig.rules = [
+          {
+            rule_set: ['geosite-category-ads-all'],
+            server: 'dns-block',
+            disable_cache: true,
+          },
+        ]
+        dnsConfig.final = 'dns-china'
+        break
     }
 
     await apiService.updateDNS(dnsConfig)
@@ -261,18 +341,125 @@ const handleSkip = () => {
                 <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">Recommended</Badge>
               </div>
               <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
-              <div class="flex flex-wrap gap-2 mt-2">
-                <Badge
+              <div class="space-y-1 mt-2">
+                <div
                   v-for="server in preset.servers"
                   :key="server.tag"
-                  variant="gray"
-                  size="sm"
+                  class="text-xs text-gray-700"
                 >
-                  {{ server.tag }}
-                </Badge>
+                  <span class="font-medium">{{ server.tag }}</span>
+                  <span class="text-gray-500"> ({{ server.type || 'legacy' }})</span>
+                  <span v-if="'server' in server" class="text-gray-600">
+                    : {{ server.server }}<span v-if="'server_port' in server && server.server_port !== 53 && server.server_port !== 853">:{{ server.server_port }}</span>
+                  </span>
+                  <span v-else-if="'address' in server" class="text-gray-600">
+                    : {{ server.address }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </Card>
+
+    <!-- Hosts DNS 配置 -->
+    <Card>
+      <div class="space-y-4">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Hosts DNS (Optional)</h3>
+          <p class="text-sm text-gray-600">
+            Add custom host entries to override DNS resolution for specific domains.
+          </p>
+        </div>
+
+        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+          <input
+            v-model="enableHosts"
+            type="checkbox"
+            id="enable-hosts"
+            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            :disabled="loading || saving || success"
+          />
+          <label for="enable-hosts" class="flex-1 cursor-pointer">
+            <span class="text-sm font-medium text-gray-900">Enable Hosts DNS</span>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Map domain names to specific IP addresses
+            </p>
+          </label>
+        </div>
+
+        <div v-if="enableHosts" class="space-y-3">
+          <!-- Add new host entry -->
+          <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-sm font-medium text-gray-900 mb-3">Add Host Entry</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Domain</label>
+                <input
+                  v-model="newHostDomain"
+                  type="text"
+                  placeholder="e.g., www.example.com"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  :disabled="saving || success"
+                  @keyup.enter="addHostEntry"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">
+                  IP Address(es)
+                  <span class="text-gray-500 font-normal">(comma-separated for multiple)</span>
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    v-model="newHostIP"
+                    type="text"
+                    placeholder="e.g., 127.0.0.1 or 127.0.0.1, ::1"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                    :disabled="saving || success"
+                    @keyup.enter="addHostEntry"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    :disabled="!newHostDomain || !newHostIP || saving || success"
+                    @click="addHostEntry"
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Host entries list -->
+          <div v-if="Object.keys(hostEntries).length > 0" class="space-y-2">
+            <p class="text-sm font-medium text-gray-900">Host Entries:</p>
+            <div class="space-y-2">
+              <div
+                v-for="(value, domain) in hostEntries"
+                :key="domain"
+                class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+              >
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">{{ domain }}</p>
+                  <p class="text-xs text-gray-600 truncate">{{ getHostIPDisplay(value) }}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  :disabled="saving || success"
+                  @click="removeHostEntry(domain)"
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Alert v-else type="info" title="No host entries">
+            Add custom host entries above to map domains to specific IP addresses.
+          </Alert>
         </div>
       </div>
     </Card>
@@ -371,11 +558,23 @@ const handleSkip = () => {
     <!-- DNS 服务器详情 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Selected DNS Servers:</p>
+        <p class="font-medium text-gray-900">Selected DNS Configuration:</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li v-for="server in dnsPresets.find(p => p.id === selectedPreset)?.servers" :key="server.tag">
-            <strong>{{ server.tag }}:</strong> {{ server.address }}
-            <span v-if="server.detour" class="text-gray-500"> (via {{ server.detour }})</span>
+            <strong>{{ server.tag }}</strong>
+            <span class="text-gray-500"> ({{ server.type || 'legacy' }})</span>:
+            <span v-if="'server' in server">
+              {{ server.server }}<span v-if="'server_port' in server">:{{ server.server_port }}</span>
+            </span>
+            <span v-else-if="'address' in server">
+              {{ server.address }}
+            </span>
+            <span v-if="'detour' in server && server.detour" class="text-gray-500"> (via {{ server.detour }})</span>
+          </li>
+          <li v-if="enableHosts && Object.keys(hostEntries).length > 0">
+            <strong>local-hosts</strong>
+            <span class="text-gray-500"> (hosts)</span>:
+            {{ Object.keys(hostEntries).length }} custom host{{ Object.keys(hostEntries).length > 1 ? 's' : '' }}
           </li>
         </ul>
       </div>

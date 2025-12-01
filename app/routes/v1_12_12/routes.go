@@ -28,6 +28,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.PUT("/outbounds/:tag/members", handler.UpdateOutboundMembers)
 
 	// DNS Management APIs
+	v1.GET("/dns", handler.GetDNS)
+	v1.PUT("/dns", handler.UpdateDNS)
+
 	v1.GET("/dns/servers", handler.GetDNSServers)
 	v1.POST("/dns/servers", handler.AddDNSServer)
 	v1.GET("/dns/servers/:tag", handler.GetDNSServerByTag)

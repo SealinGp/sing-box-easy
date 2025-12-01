@@ -94,8 +94,11 @@ const inboundPresets: InboundPreset[] = [
       tag: 'tun-in',
       type: 'tun',
       interface_name: 'tun0',
-      inet4_address: '172.19.0.1/30',
-      inet6_address: 'fdfe:dcba:9876::1/126',
+      address: [
+        "172.19.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      mtu: 9000,
       auto_route: true,
       strict_route: true,
       sniff: true,
@@ -113,7 +116,11 @@ const loadInbounds = async () => {
   error.value = ''
 
   try {
-    const inbounds = await apiService.getInbounds()
+    let {inbounds} = await apiService.getInbounds()
+    if (!inbounds) {
+      inbounds = []
+    }
+
 
     // 预选已存在的入站
     inbounds?.forEach((inbound) => {
@@ -155,8 +162,12 @@ const saveInbounds = async () => {
 
   try {
     // 获取当前已存在的入站
-    const existingInbounds = await apiService.getInbounds()
-    const existingTags = new Set(existingInbounds.map(ib => ib.tag))
+    let {inbounds} = await apiService.getInbounds()
+    if (!inbounds) {
+      inbounds = []
+    }
+
+    const existingTags = new Set(inbounds.map(ib => ib.tag))
 
     // 添加选中的入站
     for (const preset of inboundPresets) {
