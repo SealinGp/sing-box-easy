@@ -62,6 +62,7 @@ const handleChange = (option: Option | null) => {
       @update:model-value="handleChange"
       :class="[
         'vue-select-wrapper',
+        'z-50',
         error ? 'has-error' : '',
         disabled ? 'is-disabled' : '',
       ]"

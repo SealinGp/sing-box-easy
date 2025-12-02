@@ -179,8 +179,8 @@ class ApiService {
   }
 
   // Outbound APIs
-  async getOutbounds(): Promise<Outbound[]> {
-    const response = await this.client.get<Outbound[]>('/outbounds')
+  async getOutbounds(): Promise<{outbounds:Outbound[]}> {
+    const response = await this.client.get<{outbounds:Outbound[]}>('/outbounds')
     return response.data
   }
 

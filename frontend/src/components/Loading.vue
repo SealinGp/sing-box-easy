@@ -21,7 +21,7 @@ const sizeClasses = {
   <div
     :class="[
       'flex flex-col items-center justify-center',
-      fullScreen ? 'fixed inset-0 bg-white bg-opacity-90 z-50' : '',
+      fullScreen ? 'fixed inset-0 bg-white opacity-90 z-50' : '',
     ]"
   >
     <svg

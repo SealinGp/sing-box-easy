@@ -34,20 +34,35 @@ export interface ServiceStatus {
   uptime?: string
 }
 
-export interface Outbound {
-  tag: string
-  type: string
-  server?: string
-  server_port?: number
-  method?: string
-  password?: string
-  uuid?: string
-  alter_id?: number
-  security?: string
-  network?: string
-  tls?: any
-  [key: string]: any
-}
+// Re-export Outbound types from outbound.ts
+export type {
+  Outbound,
+  OutboundType,
+  BaseOutbound,
+  DialerOptions,
+  ServerOptions,
+  DirectOutboundOptions,
+  BlockOutboundOptions,
+  DNSOutboundOptions,
+  SocksOutboundOptions,
+  HTTPOutboundOptions,
+  ShadowsocksOutboundOptions,
+  VMessOutboundOptions,
+  TrojanOutboundOptions,
+  WireGuardOutboundOptions,
+  HysteriaOutboundOptions,
+  Hysteria2OutboundOptions,
+  VLESSOutboundOptions,
+  TUICOutboundOptions,
+  ShadowTLSOutboundOptions,
+  TorOutboundOptions,
+  SSHOutboundOptions,
+  SelectorOutboundOptions,
+  URLTestOutboundOptions,
+  OutboundTLSOptions,
+  V2RayTransportOptions,
+  MultiplexOptions,
+} from './outbound'
 
 export interface OutboundGroup {
   tag: string

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-interface Props {
-  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'gray'
+export interface Props {
+  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary' | 'gray'
   size?: 'sm' | 'md' | 'lg'
   dot?: boolean
 }
@@ -21,6 +21,8 @@ const classes = computed(() => {
     success: 'bg-green-100 text-green-800',
     warning: 'bg-amber-100 text-amber-800',
     danger: 'bg-red-100 text-red-800',
+    info: 'bg-purple-100 text-purple-800',
+    secondary: 'bg-gray-100 text-gray-800',
     gray: 'bg-gray-100 text-gray-800',
   }
 
@@ -39,6 +41,8 @@ const dotColorClass = computed(() => {
     success: 'bg-green-500',
     warning: 'bg-amber-500',
     danger: 'bg-red-500',
+    info: 'bg-purple-500',
+    secondary: 'bg-gray-500',
     gray: 'bg-gray-500',
   }
   return colors[props.variant]

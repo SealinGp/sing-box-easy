@@ -3,6 +3,7 @@ package v1_13_0
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -281,18 +282,27 @@ func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 
 // DeleteOutbound deletes an outbound
 func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
-	tag := c.Param("tag")
+	tag := c.Param("tag") //tag or index
+	idx, err := strconv.ParseInt(tag, 10, 64)
+	if err != nil {
+		idx = -1
+	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		newOutbounds := make([]config.Outbound, 0)
 		found := false
 
-		for _, outbound := range cfg.Outbounds {
-			if outbound.Tag != tag {
-				newOutbounds = append(newOutbounds, outbound)
-			} else {
+		for i, outbound := range cfg.Outbounds {
+			if idx > -1 && int(idx) == i {
 				found = true
+				continue
 			}
+			if outbound.Tag == tag {
+				found = true
+				continue
+			}
+
+			newOutbounds = append(newOutbounds, outbound)
 		}
 
 		if !found {

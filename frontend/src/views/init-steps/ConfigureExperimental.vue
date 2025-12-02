@@ -513,7 +513,7 @@ const handleSkip = () => {
     <Teleport to="body">
       <div
         v-if="showPreview"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-75 p-4"
         @click="closePreview"
       >
         <div class="relative max-w-6xl max-h-full">
