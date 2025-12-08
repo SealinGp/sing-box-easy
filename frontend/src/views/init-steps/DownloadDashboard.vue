@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { DashboardTask } from '../../types/api'
 import { Button, Alert, Card, Loading, Input } from '../../components'
 import { CheckCircleIcon, XCircleIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { dashboardService, experimentalService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -40,8 +40,9 @@ const checkClashAPIConfig = async () => {
   error.value = ''
 
   try {
-    // 检查 Clash API 配置
-    const clashAPI = await apiService.getClashAPI()
+    // 检查 Clash API 配
+    const {data} = await experimentalService.getClashAPI()
+    const clashAPI = data
 
     if (clashAPI?.external_ui) {
       clashAPIConfigured.value = true
@@ -66,7 +67,8 @@ const checkDashboardInstalled = async () => {
   checkingInstalled.value = true
 
   try {
-    const status = await apiService.getDashboardStatus()
+    const {data} = await dashboardService.getDashboardStatus()
+    const status = data
     alreadyInstalled.value = status.installed || false
   } catch (err: any) {
     console.log('Failed to check dashboard status:', err)
@@ -79,7 +81,11 @@ const checkDashboardInstalled = async () => {
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    uploadFile.value = target.files[0]
+    const file = target.files[0]
+    if(file instanceof File) {
+      uploadFile.value = file
+    }
+    
     error.value = ''
   }
 }
@@ -90,7 +96,7 @@ const startDownload = async () => {
   uploadTask.value = null
 
   try {
-    const response = await apiService.downloadDashboard(
+    const {data} = await dashboardService.downloadDashboard(
       externalUIPath.value,
       downloadURL.value || undefined,
       proxy.value || undefined
@@ -98,13 +104,13 @@ const startDownload = async () => {
 
     // Initialize task with pending status
     downloadTask.value = {
-      id: response.task_id,
+      id: data.task_id,
       status: 'running',
-      message: response.message,
+      message: data.message,
     }
 
     // 开始轮询任务状态
-    pollTaskStatus(response.task_id, 'download')
+    pollTaskStatus(data.task_id, 'download')
   } catch (err: any) {
     error.value = err.response?.data?.error || err.message || 'Failed to start download'
     downloading.value = false
@@ -122,7 +128,7 @@ const startUpload = async () => {
   downloadTask.value = null
 
   try {
-    const response = await apiService.uploadDashboard(
+    const {data} = await dashboardService.uploadDashboard(
       uploadFile.value,
       externalUIPath.value,
       folderName.value || undefined
@@ -130,13 +136,13 @@ const startUpload = async () => {
 
     // Initialize task with pending status
     uploadTask.value = {
-      id: response.task_id,
+      id: data.task_id,
       status: 'running',
-      message: response.message,
+      message: data.message,
     }
 
     // 开始轮询任务状态
-    pollTaskStatus(response.task_id, 'upload')
+    pollTaskStatus(data.task_id, 'upload')
   } catch (err: any) {
     error.value = err.response?.data?.error || err.message || 'Failed to start upload'
     uploading.value = false
@@ -146,7 +152,8 @@ const startUpload = async () => {
 const pollTaskStatus = (taskId: string, type: 'download' | 'upload') => {
   pollInterval = setInterval(async () => {
     try {
-      const task = await apiService.getDashboardTask(taskId)
+      const {data} = await dashboardService.getDashboardTask(taskId)
+      const task = data
 
       // Update the appropriate task
       if (type === 'download') {

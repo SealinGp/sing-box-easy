@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { apiService } from '../../services/api'
-import type {  Outbound } from '../../types/api'
-import { Button, Textarea, Alert, Card, Badge } from '../../components'
+import { ref, onMounted } from 'vue'
+import type { Outbound } from '../../types/api'
+import { Button, Textarea, Alert, Card, Badge, NodeList } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { nodesService, outboundService } from '../../services'
 
 const emit = defineEmits<{
   next: []
   prev: []
 }>()
+
+// Current outbounds from config
+const currentOutbounds = ref<Outbound[]>([])
+const loadingOutbounds = ref(false)
 
 const subscriptionInput = ref('')
 const parsing = ref(false)
@@ -42,7 +46,8 @@ const parseSubscription = async () => {
     // 拼接成换行符分隔的字符串
     const linesToParse = lines.join('\n')
 
-    const nodes = await apiService.parseNodes(linesToParse)
+    const {data} = await nodesService.parseNodes(linesToParse)    
+    const nodes = data.nodes
     parsedNodes.value = nodes
 
     // 默认全选
@@ -110,10 +115,13 @@ const saveOutbounds = async () => {
 
     // 批量添加
     if (outboundsToAdd.length > 0) {
-      await apiService.addOutboundsBatch(outboundsToAdd)
+      await outboundService.addOutboundsBatch(outboundsToAdd)
     }
 
     success.value = true
+
+    // Refresh current outbounds list
+    await loadCurrentOutbounds()
 
     // 2秒后自动进入下一步
     setTimeout(() => {
@@ -137,181 +145,265 @@ const handleNext = () => {
 const handleSkip = () => {
   emit('next')
 }
+
+// Load current outbounds on mount
+const loadCurrentOutbounds = async () => {
+  loadingOutbounds.value = true
+  try {
+    const {data} = await outboundService.getOutbounds()
+    currentOutbounds.value = data.outbounds || []
+  } catch (err) {
+    // Silently fail - outbounds may not exist yet
+    currentOutbounds.value = []
+  } finally {
+    loadingOutbounds.value = false
+  }
+}
+
+onMounted(() => {
+  loadCurrentOutbounds()
+})
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- 成功提示 -->
-    <Alert v-if="success" type="success" title="Outbounds Saved">
-      Outbound nodes have been added successfully. Proceeding to next step...
-    </Alert>
+  <div class="2xl:grid 2xl:grid-cols-[1fr_400px] 2xl:gap-6">
+    <!-- Left column: Main content -->
+    <div class="space-y-6">
+      <!-- 成功提示 -->
+      <Alert v-if="success" type="success" title="Outbounds Saved">
+        Outbound nodes have been added successfully. Proceeding to next step...
+      </Alert>
 
-    <!-- 错误提示 -->
-    <Alert v-if="error" type="error" closable @close="error = ''">
-      {{ error }}
-    </Alert>
+      <!-- 错误提示 -->
+      <Alert v-if="error" type="error" closable @close="error = ''">
+        {{ error }}
+      </Alert>
 
-    <!-- 订阅解析 -->
-    <Card>
-      <div class="space-y-4">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Parse Subscription or Nodes</h3>
-          <p class="text-sm text-gray-600">
-            Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.
-          </p>
+      <!-- 订阅解析 -->
+      <Card>
+        <div class="space-y-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Parse Subscription or Nodes</h3>
+            <p class="text-sm text-gray-600">
+              Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            <Textarea
+              v-model="subscriptionInput"
+              placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
+              :disabled="parsing"
+              :error="parseError"
+              :rows="6"
+              full-width
+            />
+            <div class="flex justify-end">
+              <Button
+                variant="primary"
+                :loading="parsing"
+                :disabled="parsing"
+                @click="parseSubscription"
+              >
+                {{ parsing ? 'Parsing...' : 'Parse' }}
+              </Button>
+            </div>
+          </div>
         </div>
+      </Card>
 
-        <div class="space-y-3">
-          <Textarea
-            v-model="subscriptionInput"
-            placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
-            :disabled="parsing"
-            :error="parseError"
-            :rows="6"
-            full-width
+      <!-- 节点列表 -->
+      <Card v-if="parsedNodes.length > 0">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Parsed Nodes
+                <Badge variant="primary" class="ml-2">{{ parsedNodes.length }}</Badge>
+              </h3>
+              <p class="text-sm text-gray-600 mt-1">
+                Select nodes to add ({{ selectedNodes.size }} selected)
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              @click="toggleSelectAll"
+            >
+              {{ selectedNodes.size === parsedNodes.length ? 'Deselect All' : 'Select All' }}
+            </Button>
+          </div>
+
+          <!-- 节点列表 -->
+          <NodeList
+            :nodes="parsedNodes"
+            max-height="max-h-96"
+            selectable
+            :selected-tags="selectedNodes"
+            @select="toggleNode"
           />
-          <div class="flex justify-end">
+
+          <!-- 保存按钮 -->
+          <div class="flex gap-3 pt-4 border-t">
             <Button
               variant="primary"
-              :loading="parsing"
-              :disabled="parsing"
-              @click="parseSubscription"
+              :loading="saving"
+              :disabled="saving || success || selectedNodes.size === 0"
+              @click="saveOutbounds"
             >
-              {{ parsing ? 'Parsing...' : 'Parse' }}
+              {{ success ? 'Saved' : saving ? 'Saving...' : `Add ${selectedNodes.size} Nodes` }}
+            </Button>
+            <Button
+              v-if="success"
+              variant="primary"
+              @click="handleNext"
+            >
+              Continue to Next Step
             </Button>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
 
-    <!-- 节点列表 -->
-    <Card v-if="parsedNodes.length > 0">
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
+      <!-- 手动添加基础节点 -->
+      <Card v-if="parsedNodes.length === 0 && !parsing">
+        <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">
-              Parsed Nodes
-              <Badge variant="primary" class="ml-2">{{ parsedNodes.length }}</Badge>
-            </h3>
-            <p class="text-sm text-gray-600 mt-1">
-              Select nodes to add ({{ selectedNodes.size }} selected)
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Manual Setup</h3>
+            <p class="text-sm text-gray-600">
+              Skip subscription parsing and add basic outbounds (direct, block) only.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            @click="toggleSelectAll"
-          >
-            {{ selectedNodes.size === parsedNodes.length ? 'Deselect All' : 'Select All' }}
-          </Button>
-        </div>
 
-        <!-- 节点列表 -->
-        <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-          <div
-            v-for="node in parsedNodes"
-            :key="node.tag"
-            class="flex items-center gap-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 cursor-pointer"
-            @click="toggleNode(node.tag)"
-          >
-            <input
-              type="checkbox"
-              :checked="selectedNodes.has(node.tag)"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              @click.stop="toggleNode(node.tag)"
-            />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ node.tag }}
+          <div class="bg-blue-50 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div class="text-sm text-blue-900">
+                <p class="font-medium mb-1">Basic outbounds will be added:</p>
+                <ul class="list-disc list-inside ml-2 text-blue-800">
+                  <li><strong>direct</strong>: Direct connection (no proxy)</li>
+                  <li><strong>block</strong>: Block connection</li>
+                </ul>
+                <p class="mt-2 text-xs text-blue-700">
+                  You can add proxy nodes later from the dashboard.
                 </p>
-                <Badge variant="gray" size="sm">{{ node.protocol }}</Badge>
               </div>
-              <p class="text-xs text-gray-500 truncate">
-                {{ node.server }}:{{ node.server_port }}
-              </p>
             </div>
           </div>
-        </div>
 
-        <!-- 保存按钮 -->
-        <div class="flex gap-3 pt-4 border-t">
-          <Button
-            variant="primary"
-            :loading="saving"
-            :disabled="saving || success || selectedNodes.size === 0"
-            @click="saveOutbounds"
-          >
-            {{ success ? 'Saved' : saving ? 'Saving...' : `Add ${selectedNodes.size} Nodes` }}
-          </Button>
-          <Button
-            v-if="success"
-            variant="primary"
-            @click="handleNext"
-          >
-            Continue to Next Step
-          </Button>
-        </div>
-      </div>
-    </Card>
-
-    <!-- 手动添加基础节点 -->
-    <Card v-if="parsedNodes.length === 0 && !parsing">
-      <div class="space-y-4">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Manual Setup</h3>
-          <p class="text-sm text-gray-600">
-            Skip subscription parsing and add basic outbounds (direct, block) only.
-          </p>
-        </div>
-
-        <div class="bg-blue-50 rounded-lg p-4">
-          <div class="flex items-start space-x-3">
-            <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div class="text-sm text-blue-900">
-              <p class="font-medium mb-1">Basic outbounds will be added:</p>
-              <ul class="list-disc list-inside ml-2 text-blue-800">
-                <li><strong>direct</strong>: Direct connection (no proxy)</li>
-                <li><strong>block</strong>: Block connection</li>
-              </ul>
-              <p class="mt-2 text-xs text-blue-700">
-                You can add proxy nodes later from the dashboard.
-              </p>
-            </div>
+          <div class="flex gap-3">
+            <Button
+              variant="primary"
+              :loading="saving"
+              :disabled="saving || success"
+              @click="saveOutbounds"
+            >
+              {{ success ? 'Saved' : saving ? 'Saving...' : 'Add Basic Outbounds' }}
+            </Button>
+            <Button
+              variant="ghost"
+              :disabled="saving || success"
+              @click="handleSkip"
+            >
+              Skip this step
+            </Button>
           </div>
         </div>
+      </Card>
 
-        <div class="flex gap-3">
-          <Button
-            variant="primary"
-            :loading="saving"
-            :disabled="saving || success"
-            @click="saveOutbounds"
-          >
-            {{ success ? 'Saved' : saving ? 'Saving...' : 'Add Basic Outbounds' }}
-          </Button>
-          <Button
-            variant="ghost"
-            :disabled="saving || success"
-            @click="handleSkip"
-          >
-            Skip this step
-          </Button>
+      <!-- 当前节点列表 - shown inline on smaller screens -->
+      <Card v-if="!loadingOutbounds && currentOutbounds.length > 0" class="2xl:hidden">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Current Nodes
+                <Badge variant="gray" class="ml-2">{{ currentOutbounds.length }}</Badge>
+              </h3>
+              <p class="text-sm text-gray-600 mt-1">
+                Outbound nodes already configured
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              @click="loadCurrentOutbounds"
+            >
+              Refresh
+            </Button>
+          </div>
+
+          <!-- 节点列表 -->
+          <NodeList :nodes="currentOutbounds" max-height="max-h-64" />
         </div>
-      </div>
-    </Card>
+      </Card>
 
-    <!-- 说明信息 -->
-    <Card padding="sm" class="bg-gray-50">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">About Outbounds:</p>
-        <ul class="list-disc list-inside space-y-1 ml-2">
-          <li><strong>Proxy Nodes:</strong> Servers that relay your traffic (shadowsocks, vmess, etc.)</li>
-          <li><strong>Direct:</strong> Connect directly without proxy</li>
-          <li><strong>Block:</strong> Block the connection entirely</li>
-          <li>You can manage nodes and create groups in the dashboard later</li>
-        </ul>
+      <!-- Loading state for current outbounds - shown inline on smaller screens -->
+      <Card v-if="loadingOutbounds" class="2xl:hidden">
+        <div class="flex items-center justify-center py-4">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
+        </div>
+      </Card>
+
+      <!-- 说明信息 -->
+      <Card padding="sm" class="bg-gray-50">
+        <div class="text-sm text-gray-600 space-y-2">
+          <p class="font-medium text-gray-900">About Outbounds:</p>
+          <ul class="list-disc list-inside space-y-1 ml-2">
+            <li><strong>Proxy Nodes:</strong> Servers that relay your traffic (shadowsocks, vmess, etc.)</li>
+            <li><strong>Direct:</strong> Connect directly without proxy</li>
+            <li><strong>Block:</strong> Block the connection entirely</li>
+            <li>You can manage nodes and create groups in the dashboard later</li>
+          </ul>
+        </div>
+      </Card>
+    </div>
+
+    <!-- Right column: Current Nodes (2xl screens only) -->
+    <div class="hidden 2xl:block">
+      <div class="sticky top-6 space-y-4">
+        <!-- 当前节点列表 -->
+        <Card v-if="!loadingOutbounds && currentOutbounds.length > 0">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  Current Nodes
+                  <Badge variant="gray" class="ml-2">{{ currentOutbounds.length }}</Badge>
+                </h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  Outbound nodes already configured
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                @click="loadCurrentOutbounds"
+              >
+                Refresh
+              </Button>
+            </div>
+
+            <!-- 节点列表 -->
+            <NodeList :nodes="currentOutbounds" max-height="max-h-[calc(100vh-200px)]" />
+          </div>
+        </Card>
+
+        <!-- Loading state for current outbounds -->
+        <Card v-if="loadingOutbounds">
+          <div class="flex items-center justify-center py-4">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
+          </div>
+        </Card>
+
+        <!-- Empty state -->
+        <Card v-if="!loadingOutbounds && currentOutbounds.length === 0">
+          <div class="text-center py-8">
+            <p class="text-sm text-gray-500">No nodes configured yet</p>
+          </div>
+        </Card>
       </div>
-    </Card>
+    </div>
   </div>
 </template>

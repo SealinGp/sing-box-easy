@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { apiService } from '../services/api'
 import InitWizard from '../views/InitWizard.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Overview from '../views/dashboard/Overview.vue'
@@ -10,6 +9,7 @@ import Route from '../views/dashboard/Route.vue'
 import Subscriptions from '../views/dashboard/Subscriptions.vue'
 import Service from '../views/dashboard/Service.vue'
 import Config from '../views/dashboard/Config.vue'
+import { serviceControlService } from '../services'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -88,7 +88,8 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   try {
-    const initStatus = await apiService.getInitStatus()
+    const { data } = await serviceControlService.getInitStatus()
+    const initStatus = data
 
     // If not fully initialized, redirect to init wizard
     if (!initStatus.initialized) {
@@ -103,5 +104,6 @@ router.beforeEach(async (to, _from, next) => {
     next()
   }
 })
+
 
 export default router

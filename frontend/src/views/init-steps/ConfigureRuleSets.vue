@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { RuleSet } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { routeService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -96,7 +96,8 @@ const loadRuleSets = async () => {
   error.value = ''
 
   try {
-    const {rule_sets} = await apiService.getRuleSets()
+    const {data} = await routeService.getRuleSets()
+    const rule_sets = data.rule_sets
     existingRuleSets.value = rule_sets || []
 
     // 预选已存在的规则集
@@ -153,12 +154,12 @@ const saveRuleSets = async () => {
             format: preset.format,
             url: preset.url,
           }
-          await apiService.addRuleSet(ruleSet)
+          await routeService.addRuleSet(ruleSet)
         }
       } else {
         // 如果已存在但未选中，则删除
         if (existingTags.has(preset.tag)) {
-          await apiService.deleteRuleSet(preset.tag)
+          await routeService.deleteRuleSet(preset.tag)
         }
       }
     }
@@ -177,7 +178,6 @@ const saveRuleSets = async () => {
 }
 
 const handleNext = () => {
-  console.log('success.value',success.value)
   if (!success.value) {
     saveRuleSets()
   } else {

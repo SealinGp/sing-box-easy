@@ -7,14 +7,13 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/vue'
-import { apiService } from '../../services/api'
 import type { Inbound } from '../../types/api'
 import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
-import Select from '../../components/Select.vue'
 import Badge from '../../components/Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { inboundService } from '../../services'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
@@ -68,9 +67,9 @@ const getInboundBadgeVariant = (type: string): 'primary' | 'success' | 'warning'
 const fetchInbounds = async () => {
   loading.value = true
   error.value = null
-  try {
-    const response = await apiService.getInbounds()
-    inbounds.value = response.inbounds || []
+  try {    
+    const { data } = await inboundService.getInbounds()    
+    inbounds.value = data.inbounds || []
   } catch (err: any) {
     console.error('Failed to fetch inbounds:', err)
     error.value = err.response?.data?.error || 'Failed to fetch inbounds'
@@ -131,10 +130,10 @@ const handleSave = async () => {
   loading.value = true
   try {
     if (isEditMode.value) {
-      await apiService.updateInbound(editingTag.value, currentInbound.value as Inbound)
+      await inboundService.updateInbound(editingTag.value, currentInbound.value as Inbound)
       successMessage.value = 'Inbound updated successfully'
     } else {
-      await apiService.addInbound(currentInbound.value as Inbound)
+      await inboundService.addInbound(currentInbound.value as Inbound)
       successMessage.value = 'Inbound added successfully'
     }
     closeModal()
@@ -165,7 +164,7 @@ const handleDelete = async () => {
   loading.value = true
 
   try {
-    await apiService.deleteInbound(deletingInbound.value.tag)
+    await inboundService.deleteInbound(deletingInbound.value.tag)
     successMessage.value = 'Inbound deleted successfully'
     closeDeleteConfirm()
     await fetchInbounds()
@@ -334,7 +333,10 @@ onMounted(fetchInbounds)
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                    <Select v-model="(currentInbound as any).type" :options="inboundTypes" :disabled="isEditMode" />
+                    <select class="select" v-model="(currentInbound as any).type" :disabled="isEditMode">
+                        <option disabled selected>Pick inbound type</option>
+                        <option v-for="inboundType in inboundTypes" :value="inboundType.value" >{{ inboundType.label }}</option>
+                      </select>
                   </div>
 
                   <div v-if="currentInbound.type !== 'tun'">

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiService } from '../../services/api'
 import { Button, Alert, Card } from '../../components'
 import { CheckCircleIcon, RocketLaunchIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { serviceControlService } from '../../services'
 
 const router = useRouter()
 
@@ -16,7 +16,7 @@ const completeSetup = async () => {
 
   try {
     // 标记初始化完成
-    await apiService.completeInit()
+    await serviceControlService.completeInit()
 
     // 跳转到管理面板
     router.push('/dashboard')

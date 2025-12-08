@@ -6,40 +6,31 @@ import (
 	"strconv"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // GetRouteRules returns all route rules
 func (h *Handler) GetRouteRules(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.Route == nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"rules": []config.RouteRule{},
-		})
+		respOK(ctx, c, map[string]any{"rules": []config.RouteRule{}})
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"rules": cfg.Route.Rules,
-	})
+	respOK(ctx, c, map[string]any{"rules": cfg.Route.Rules})
 }
 
 // AddRouteRule adds a new route rule
 func (h *Handler) AddRouteRule(ctx context.Context, c *app.RequestContext) {
 	var rule config.RouteRule
 	if err := c.Bind(&rule); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -53,15 +44,11 @@ func (h *Handler) AddRouteRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
-		"message": "route rule added successfully",
-	})
+	respOK(ctx, c, map[string]any{"message": "route rule added successfully"})
 }
 
 // UpdateRouteRule updates a route rule at specific index
@@ -69,17 +56,13 @@ func (h *Handler) UpdateRouteRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid index",
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid index")
 		return
 	}
 
 	var rule config.RouteRule
 	if err := c.Bind(&rule); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -93,13 +76,11 @@ func (h *Handler) UpdateRouteRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "route rule updated successfully",
 		"index":   index,
 	})
@@ -110,9 +91,7 @@ func (h *Handler) DeleteRouteRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid index",
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid index")
 		return
 	}
 
@@ -126,13 +105,11 @@ func (h *Handler) DeleteRouteRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "route rule deleted successfully",
 		"index":   index,
 	})
@@ -142,22 +119,16 @@ func (h *Handler) DeleteRouteRule(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetRuleSets(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.Route == nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"rule_sets": []config.RuleSet{},
-		})
+		respOK(ctx, c, map[string]any{"rule_sets": []config.RuleSet{}})
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"rule_sets": cfg.Route.RuleSet,
-	})
+	respOK(ctx, c, map[string]any{"rule_sets": cfg.Route.RuleSet})
 }
 
 // GetRuleSetByTag returns a specific rule set by tag
@@ -166,40 +137,32 @@ func (h *Handler) GetRuleSetByTag(ctx context.Context, c *app.RequestContext) {
 
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.Route != nil {
 		for _, ruleSet := range cfg.Route.RuleSet {
 			if ruleSet.Tag == tag {
-				c.JSON(consts.StatusOK, ruleSet)
+				respOK(ctx, c, ruleSet)
 				return
 			}
 		}
 	}
 
-	c.JSON(consts.StatusNotFound, utils.H{
-		"error": "rule set not found",
-	})
+	respErr(ctx, c, CodeNotFound, "rule set not found")
 }
 
 // AddRuleSet adds a new rule set
 func (h *Handler) AddRuleSet(ctx context.Context, c *app.RequestContext) {
 	var ruleSet config.RuleSet
 	if err := c.Bind(&ruleSet); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	if ruleSet.Tag == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "tag is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "tag is required")
 		return
 	}
 
@@ -211,7 +174,8 @@ func (h *Handler) AddRuleSet(ctx context.Context, c *app.RequestContext) {
 		// Check if tag already exists
 		for _, existing := range cfg.Route.RuleSet {
 			if existing.Tag == ruleSet.Tag {
-				return fmt.Errorf("rule set with tag '%s' already exists", ruleSet.Tag)
+				logger.Warnf("rule set with tag '%s' already exists, skip it", ruleSet.Tag)
+				continue
 			}
 		}
 
@@ -220,13 +184,11 @@ func (h *Handler) AddRuleSet(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "rule set added successfully",
 		"tag":     ruleSet.Tag,
 	})
@@ -238,9 +200,7 @@ func (h *Handler) UpdateRuleSet(ctx context.Context, c *app.RequestContext) {
 
 	var ruleSet config.RuleSet
 	if err := c.Bind(&ruleSet); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -268,13 +228,11 @@ func (h *Handler) UpdateRuleSet(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "rule set updated successfully",
 		"tag":     tag,
 	})
@@ -309,13 +267,11 @@ func (h *Handler) DeleteRuleSet(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "rule set deleted successfully",
 		"tag":     tag,
 	})
@@ -325,9 +281,7 @@ func (h *Handler) DeleteRuleSet(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetRouteFinal(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
@@ -336,9 +290,7 @@ func (h *Handler) GetRouteFinal(ctx context.Context, c *app.RequestContext) {
 		final = cfg.Route.Final
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"final": final,
-	})
+	respOK(ctx, c, map[string]any{"final": final})
 }
 
 // UpdateRouteFinal updates the final route policy
@@ -349,9 +301,7 @@ func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -365,13 +315,11 @@ func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "final route policy updated successfully",
 		"final":   req.Final,
 	})

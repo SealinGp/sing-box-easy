@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { LogConfig } from '../../types/api'
 import { Button, Input, Select, Alert, Card, Loading } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { logService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -41,7 +41,8 @@ const loadLogConfig = async () => {
   error.value = ''
 
   try {
-    const config = await apiService.getLog()
+    const {data} = await logService.getLog()
+    const config = data    
     if (config) {
       logConfig.value = {
         disabled: config.disabled || false,
@@ -64,7 +65,7 @@ const saveLogConfig = async () => {
   success.value = false
 
   try {
-    await apiService.updateLog(logConfig.value)
+    await logService.updateLog(logConfig.value)
     success.value = true
 
     // 2秒后自动进入下一步

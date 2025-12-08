@@ -1,6 +1,42 @@
 // API Response Types
 import type { DNSOptions } from './dns'
 import type { Inbound as InboundType } from './inbound'
+import type { Outbound } from './outbound'
+
+// Business response codes (matches backend Code type)
+export const Code = {
+  Success: 0,         // Operation successful
+  BadRequest: 1,      // Invalid request parameters
+  NotFound: 2,        // Resource not found
+  InternalError: 3,   // Internal server error
+  ValidationError: 4, // Validation failed
+  Conflict: 5,        // Resource conflict (e.g., duplicate)
+  Unauthorized: 6,    // Unauthorized access
+  Forbidden: 7,       // Forbidden operation
+  ServiceError: 8,    // External service error
+  ConfigError: 9,     // Configuration error
+  OperationFailed: 10, // Operation failed
+} as const
+
+export type Code = (typeof Code)[keyof typeof Code]
+
+// Standard response structure from backend
+export interface BasicResponse<T = unknown> {
+  code: Code
+  data: T
+  msg: string
+}
+
+// API Error class for handling non-success responses
+export class ApiError extends Error {
+  code: Code
+
+  constructor(code: Code, message: string) {
+    super(message)
+    this.code = code
+    this.name = 'ApiError'
+  }
+}
 
 export interface InitState {
   initialized: boolean
@@ -130,8 +166,6 @@ export type {
   TUICInboundOptions,
   ShadowTLSInboundOptions,
   InboundTLSOptions,
-  V2RayTransportOptions,
-  MultiplexOptions,
 } from './inbound'
 
 export interface RouteRule {

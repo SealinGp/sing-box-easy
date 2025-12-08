@@ -5,8 +5,6 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 )
@@ -109,7 +107,5 @@ func (h *Handler) GetDefaultRuleSets(ctx context.Context, c *app.RequestContext)
 		),
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"rule_sets": ruleSets,
-	})
+	respOK(ctx, c, map[string]any{"rule_sets": ruleSets})
 }

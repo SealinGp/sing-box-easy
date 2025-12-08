@@ -8,8 +8,6 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 )
@@ -18,24 +16,12 @@ import (
 func (h *Handler) GetOutbounds(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	// Use sing-box JSON serialization to preserve all outbound fields
-	outboundCtx := config.CreateContext(ctx)
 	response := map[string]any{"outbounds": cfg.Outbounds}
-	responseJSON, err := json.MarshalContext(outboundCtx, response)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize outbounds: " + err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
+	respOK(ctx, c, response)
 }
 
 // GetOutboundByTag returns a specific outbound by tag
@@ -44,31 +30,18 @@ func (h *Handler) GetOutboundByTag(ctx context.Context, c *app.RequestContext) {
 
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	for _, outbound := range cfg.Outbounds {
 		if outbound.Tag == tag {
-			// Use sing-box JSON serialization to preserve all outbound fields
-			outboundCtx := config.CreateContext(ctx)
-			outboundJSON, err := json.MarshalContext(outboundCtx, outbound)
-			if err != nil {
-				c.JSON(consts.StatusInternalServerError, utils.H{
-					"error": "failed to serialize outbound: " + err.Error(),
-				})
-				return
-			}
-			c.Data(consts.StatusOK, "application/json; charset=utf-8", outboundJSON)
+			respOK(ctx, c, outbound)
 			return
 		}
 	}
 
-	c.JSON(consts.StatusNotFound, utils.H{
-		"error": "outbound not found",
-	})
+	respErr(ctx, c, CodeNotFound, "outbound not found")
 }
 
 // AddOutbound adds a new outbound
@@ -76,26 +49,20 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 	// Use sing-box JSON deserialization to properly parse outbound config
 	body, err := c.Body()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to read request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
 	var outbound option.Outbound
 	outboundCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(outboundCtx, body, &outbound); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid outbound configuration: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid outbound configuration: "+err.Error())
 		return
 	}
 
 	// Validate required fields
 	if outbound.Tag == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "tag is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "tag is required")
 		return
 	}
 
@@ -112,13 +79,11 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "outbound added successfully",
 		"tag":     outbound.Tag,
 	})
@@ -134,16 +99,12 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 	data := c.Request.Body()
 	jsonCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(jsonCtx, data, &req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	if len(req.Outbounds) == 0 {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "outbounds array is required and cannot be empty",
-		})
+		respErr(ctx, c, CodeBadRequest, "outbounds array is required and cannot be empty")
 		return
 	}
 
@@ -151,17 +112,13 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 	tagMap := make(map[string]bool)
 	for i, outbound := range req.Outbounds {
 		if outbound.Tag == "" {
-			c.JSON(consts.StatusBadRequest, utils.H{
-				"error": fmt.Sprintf("outbound at index %d: tag is required", i),
-			})
+			respErr(ctx, c, CodeBadRequest, fmt.Sprintf("outbound at index %d: tag is required", i))
 			return
 		}
 
 		// Check for duplicate tags in request
 		if tagMap[outbound.Tag] {
-			c.JSON(consts.StatusBadRequest, utils.H{
-				"error": fmt.Sprintf("duplicate tag '%s' in request", outbound.Tag),
-			})
+			respErr(ctx, c, CodeBadRequest, fmt.Sprintf("duplicate tag '%s' in request", outbound.Tag))
 			return
 		}
 		tagMap[outbound.Tag] = true
@@ -196,13 +153,11 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	response := utils.H{
+	response := map[string]any{
 		"message":     "outbounds batch add completed",
 		"added_count": len(addedTags),
 		"added_tags":  addedTags,
@@ -214,15 +169,7 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 		response["message"] = fmt.Sprintf("added %d outbounds, skipped %d existing outbounds", len(addedTags), len(skippedTags))
 	}
 
-	respData, err := json.Marshal(response)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", respData)
+	respOK(ctx, c, response)
 }
 
 // UpdateOutbound updates an existing outbound
@@ -232,18 +179,14 @@ func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 	// Use sing-box JSON deserialization to properly parse outbound config
 	body, err := c.Body()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to read request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
 	var outbound option.Outbound
 	outboundCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(outboundCtx, body, &outbound); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid outbound configuration: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid outbound configuration: "+err.Error())
 		return
 	}
 
@@ -268,13 +211,11 @@ func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "outbound updated successfully",
 		"tag":     tag,
 	})
@@ -314,13 +255,11 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "outbound deleted successfully",
 		"tag":     tag,
 	})
@@ -330,9 +269,7 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetOutboundGroups(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
@@ -343,18 +280,7 @@ func (h *Handler) GetOutboundGroups(ctx context.Context, c *app.RequestContext) 
 		}
 	}
 
-	// Use sing-box JSON serialization to preserve all outbound fields
-	outboundCtx := config.CreateContext(ctx)
-	response := map[string]any{"groups": groups}
-	responseJSON, err := json.MarshalContext(outboundCtx, response)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize outbound groups: " + err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
+	respOK(ctx, c, map[string]any{"groups": groups})
 }
 
 // UpdateOutboundMembers updates the members of a group outbound
@@ -367,9 +293,7 @@ func (h *Handler) UpdateOutboundMembers(ctx context.Context, c *app.RequestConte
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -412,13 +336,11 @@ func (h *Handler) UpdateOutboundMembers(ctx context.Context, c *app.RequestConte
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "outbound members updated successfully",
 		"tag":     tag,
 	})

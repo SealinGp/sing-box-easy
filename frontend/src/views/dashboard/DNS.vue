@@ -7,16 +7,14 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/vue'
-import { apiService } from '../../services/api'
 import type { DNSServer, DNS } from '../../types/api'
-import type { DNSServerType } from '../../types/dns'
 import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
-import Select from '../../components/Select.vue'
 import Badge from '../../components/Badge.vue'
 import Card from '../../components/Card.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { dnsService } from '../../services'
 
 const dnsServers = ref<DNSServer[]>([])
 const dnsConfig = ref<DNS | null>(null)
@@ -93,7 +91,8 @@ const fetchDNSServers = async () => {
   loading.value = true
   error.value = null
   try {
-    dnsServers.value = await apiService.getDNSServers()
+    const { data } = await dnsService.getDNSServers()
+    dnsServers.value = data.servers
   } catch (err: any) {
     console.error('Failed to fetch DNS servers:', err)
     error.value = err.response?.data?.error || 'Failed to fetch DNS servers'
@@ -104,7 +103,8 @@ const fetchDNSServers = async () => {
 
 const fetchDNSConfig = async () => {
   try {
-    dnsConfig.value = await apiService.getDNS()
+    const { data } = await dnsService.getDNS()
+    dnsConfig.value = data
     if (dnsConfig.value) {
       currentSettings.value = {
         strategy: dnsConfig.value.strategy || 'prefer_ipv4',
@@ -169,10 +169,10 @@ const handleSaveServer = async () => {
   loading.value = true
   try {
     if (isEditMode.value) {
-      await apiService.updateDNSServer(editingServerTag.value, currentServer.value)
+      await dnsService.updateDNSServer(editingServerTag.value, currentServer.value)
       successMessage.value = 'DNS server updated successfully'
     } else {
-      await apiService.addDNSServer(currentServer.value)
+      await dnsService.addDNSServer(currentServer.value)
       successMessage.value = 'DNS server added successfully'
     }
     closeServerModal()
@@ -203,7 +203,7 @@ const handleDeleteServer = async () => {
   loading.value = true
 
   try {
-    await apiService.deleteDNSServer(deletingServer.value.tag)
+    await dnsService.deleteDNSServer(deletingServer.value.tag)
     successMessage.value = 'DNS server deleted successfully'
     closeDeleteConfirm()
     await fetchDNSServers()
@@ -233,7 +233,7 @@ const handleSaveSettings = async () => {
       ...dnsConfig.value,
       ...currentSettings.value,
     }
-    await apiService.updateDNS(updatedDNS)
+    await dnsService.updateDNS(updatedDNS)
     successMessage.value = 'DNS settings updated successfully'
     closeSettingsModal()
     await fetchDNSConfig()
@@ -405,7 +405,11 @@ onMounted(async () => {
 
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                      <Select v-model="currentServer.type" :options="serverTypes" :disabled="isEditMode" />
+
+                      <select class="select" v-model="currentServer.type" :disabled="isEditMode">
+                        <option disabled selected>Pick dns type</option>
+                        <option v-for="serverType in serverTypes" :value="serverType.value" >{{ serverType.label }}</option>
+                      </select>
                     </div>
                   </div>
 

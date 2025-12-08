@@ -13,6 +13,7 @@ import ConfigureDNS from './init-steps/ConfigureDNS.vue'
 import ConfigureInbounds from './init-steps/ConfigureInbounds.vue'
 import ConfigureRoutes from './init-steps/ConfigureRoutes.vue'
 import Complete from './init-steps/Complete.vue'
+import { serviceControlService } from '../services'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,10 +77,12 @@ onMounted(async () => {
 
   try {
     loading.value = true
-    initState.value = await apiService.getInitStatus()
+    serviceControlService.getServiceStatus()
+    const {data} = await serviceControlService.getInitStatus()
+    initState.value = data
 
     // If already initialized, go to dashboard
-    if (initState.value.initialized) {
+    if (initState.value && initState.value.initialized) {
       router.push('/dashboard')
     }
   } catch (err: any) {
@@ -93,7 +96,6 @@ const nextStep = () => {
   if (currentStep.value < steps.length - 1) {
     currentStep.value++
   }
-  console.log('currentStep.value',currentStep.value)
 }
 
 const prevStep = () => {
@@ -105,7 +107,7 @@ const prevStep = () => {
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
-    <div class="mx-auto w-full 2xl:w-1/2 xl:w-2/3 p-3 grid grid-cols-1 gap-y-2">
+    <div class="mx-auto w-full 2xl:w-3/4 xl:w-2/3 p-3 grid grid-cols-1 gap-y-2">
       <!-- Header -->
       <div class="text-center">
         <h1 class="text-4xl font-bold text-gray-900 mb-1">Sing-box Easy Setup</h1>

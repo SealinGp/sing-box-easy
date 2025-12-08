@@ -4,12 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/json"
 )
 
 // ParseNodes parses base64 encoded nodes/subscription
@@ -20,16 +16,12 @@ func (h *Handler) ParseNodes(ctx context.Context, c *app.RequestContext) {
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	if req.Subscription == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "subscription is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "subscription is required")
 		return
 	}
 
@@ -39,9 +31,7 @@ func (h *Handler) ParseNodes(ctx context.Context, c *app.RequestContext) {
 	// Parse nodes using sublink package
 	subNodes, err := h.sublink.ListNodes(lines)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to parse nodes: " + err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, "failed to parse nodes: "+err.Error())
 		return
 	}
 
@@ -56,18 +46,9 @@ func (h *Handler) ParseNodes(ctx context.Context, c *app.RequestContext) {
 		outbounds = append(outbounds, outbound)
 	}
 
-	resp := utils.H{
+	respOK(ctx, c, map[string]any{
 		"message":    "nodes parsed successfully",
 		"node_count": len(outbounds),
 		"nodes":      outbounds,
-	}
-	jsonCtx := config.CreateContext(ctx)
-	responseJSON, err := json.MarshalContext(jsonCtx, resp)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize DNS servers: " + err.Error(),
-		})
-		return
-	}
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
+	})
 }

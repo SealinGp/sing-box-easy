@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { apiService } from '../../services/api'
 import type { ServiceStatus } from '../../types/api'
 import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
+import { serviceControlService } from '../../services'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
@@ -38,8 +38,9 @@ const statusIcon = computed(() => {
 const fetchStatus = async () => {
   loading.value = true
   error.value = null
-  try {
-    status.value = await apiService.getServiceStatus()
+  try {    
+    const {data} = await serviceControlService.getServiceStatus()
+    status.value = data
   } catch (err) {
     console.error('Failed to get service status:', err)
     error.value = 'Failed to fetch service status'
@@ -53,7 +54,7 @@ const handleStart = async () => {
   error.value = null
   successMessage.value = null
   try {
-    await apiService.startService()
+    await serviceControlService.startService()
     successMessage.value = 'Service started successfully'
     await fetchStatus()
   } catch (err: any) {
@@ -69,7 +70,7 @@ const handleStop = async () => {
   error.value = null
   successMessage.value = null
   try {
-    await apiService.stopService()
+    await serviceControlService.stopService()
     successMessage.value = 'Service stopped successfully'
     await fetchStatus()
   } catch (err: any) {
@@ -85,7 +86,7 @@ const handleRestart = async () => {
   error.value = null
   successMessage.value = null
   try {
-    await apiService.restartService()
+    await serviceControlService.restartService()
     successMessage.value = 'Service restarted successfully'
     await fetchStatus()
   } catch (err: any) {

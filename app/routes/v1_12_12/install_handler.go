@@ -5,8 +5,6 @@ import (
 	"os"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // InstallSingBox installs sing-box
@@ -18,21 +16,17 @@ func (h *Handler) InstallSingBox(ctx context.Context, c *app.RequestContext) {
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	task, err := h.installer.InstallSingBox(req.Version, req.Beta)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "sing-box installation started",
 		"task_id": task.ID,
 	})
@@ -42,21 +36,17 @@ func (h *Handler) InstallSingBox(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetInstallTask(ctx context.Context, c *app.RequestContext) {
 	taskID := c.Param("task_id")
 	if taskID == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "task_id is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "task_id is required")
 		return
 	}
 
 	task, err := h.installer.GetTask(taskID)
 	if err != nil {
-		c.JSON(consts.StatusNotFound, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeNotFound, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"id":      task.ID,
 		"status":  task.Status,
 		"message": task.Message,
@@ -68,9 +58,7 @@ func (h *Handler) GetInstallTask(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetInstallStatus(ctx context.Context, c *app.RequestContext) {
 	installed, version, err := h.installer.GetInstallStatus()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
@@ -79,7 +67,7 @@ func (h *Handler) GetInstallStatus(ctx context.Context, c *app.RequestContext) {
 		message = "sing-box is installed"
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"installed": installed,
 		"version":   version,
 		"message":   message,
@@ -95,21 +83,17 @@ func (h *Handler) UpdateSingBox(ctx context.Context, c *app.RequestContext) {
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	task, err := h.installer.UpdateSingBox(req.Version, req.Beta)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "sing-box update started",
 		"task_id": task.ID,
 	})
@@ -125,9 +109,7 @@ func (h *Handler) DownloadDashboard(ctx context.Context, c *app.RequestContext) 
 
 	var req Request
 	if err := c.Bind(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -151,13 +133,11 @@ func (h *Handler) DownloadDashboard(ctx context.Context, c *app.RequestContext) 
 
 	task, err := h.dashboardManager.DownloadDashboard(targetDir, downloadURL, req.Proxy)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "dashboard download started",
 		"task_id": task.ID,
 	})
@@ -167,21 +147,17 @@ func (h *Handler) DownloadDashboard(ctx context.Context, c *app.RequestContext) 
 func (h *Handler) GetDashboardTask(ctx context.Context, c *app.RequestContext) {
 	taskID := c.Param("task_id")
 	if taskID == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "task_id is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "task_id is required")
 		return
 	}
 
 	task, err := h.dashboardManager.GetTask(taskID)
 	if err != nil {
-		c.JSON(consts.StatusNotFound, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeNotFound, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"id":      task.ID,
 		"status":  task.Status,
 		"message": task.Message,
@@ -202,13 +178,11 @@ func (h *Handler) GetDashboardStatus(ctx context.Context, c *app.RequestContext)
 
 	installed, err := h.dashboardManager.GetDashboardStatus(targetDir)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"installed": installed,
 		"path":      targetDir,
 	})
@@ -219,18 +193,14 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 	// Parse multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to parse multipart form: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to parse multipart form: "+err.Error())
 		return
 	}
 
 	// Get uploaded file
 	files := form.File["file"]
 	if len(files) == 0 {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "no file uploaded",
-		})
+		respErr(ctx, c, CodeBadRequest, "no file uploaded")
 		return
 	}
 
@@ -255,9 +225,7 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 	// Save uploaded file to temp location
 	tmpFile, err := os.CreateTemp("", "dashboard-upload-*.zip")
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to create temp file: " + err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, "failed to create temp file: "+err.Error())
 		return
 	}
 	tmpFile.Close()
@@ -265,9 +233,7 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 	// Save uploaded file
 	if err := c.SaveUploadedFile(uploadedFile, tmpFile.Name()); err != nil {
 		os.Remove(tmpFile.Name())
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to save uploaded file: " + err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, "failed to save uploaded file: "+err.Error())
 		return
 	}
 
@@ -275,13 +241,11 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 	task, err := h.dashboardManager.UploadDashboard(tmpFile.Name(), targetDir, folderName)
 	if err != nil {
 		os.Remove(tmpFile.Name())
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "dashboard upload started",
 		"task_id": task.ID,
 	})

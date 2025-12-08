@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { apiService } from '../../services/api'
 import type { RouteRule, Outbound } from '../../types/api'
-import { Button, Alert, Card, Badge, Select } from '../../components'
+import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { outboundService, routeService } from '../../services';
 
 const emit = defineEmits<{
   next: []
@@ -100,7 +100,8 @@ const loadConfiguration = async () => {
 
   try {
     // 加载可用的出站节点
-    const outbounds = await apiService.getOutbounds()
+    const {data} = await outboundService.getOutbounds()
+    const outbounds = data.outbounds
     availableOutbounds.value = outbounds || []
 
     // 查找第一个代理节点或选择器组
@@ -115,8 +116,10 @@ const loadConfiguration = async () => {
     }
 
     // 尝试识别当前配置
-    const existingRules = await apiService.getRouteRules()
-    const finalOutbound = await apiService.getRouteFinal()
+    const resp = await routeService.getRouteRules()
+    const existingRules = resp.data.rules    
+    const resp1 = await routeService.getRouteFinal()
+    const finalOutbound = resp1.data
 
     if (existingRules.length > 0) {
       // 尝试匹配预设
@@ -158,18 +161,19 @@ const saveRouteConfig = async () => {
     }
 
     // 删除所有现有规则
-    const existingRules = await apiService.getRouteRules()
+    const {data} = await routeService.getRouteRules()
+    const existingRules = data.rules    
     for (let i = existingRules.length - 1; i >= 0; i--) {
-      await apiService.deleteRouteRule(i)
+      await routeService.deleteRouteRule(i)
     }
 
     // 添加新规则
     for (const rule of preset.rules) {
-      await apiService.addRouteRule(rule as RouteRule)
+      await routeService.addRouteRule(rule as RouteRule)
     }
 
     // 设置最终出站
-    await apiService.updateRouteFinal(preset.final)
+    await routeService.updateRouteFinal(preset.final)
 
     success.value = true
 

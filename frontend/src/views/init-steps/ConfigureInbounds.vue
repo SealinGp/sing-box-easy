@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { Inbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { inboundService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -116,7 +116,8 @@ const loadInbounds = async () => {
   error.value = ''
 
   try {
-    let {inbounds} = await apiService.getInbounds()
+    const {data} = await inboundService.getInbounds()
+    let inbounds = data.inbounds
     if (!inbounds) {
       inbounds = []
     }
@@ -162,7 +163,8 @@ const saveInbounds = async () => {
 
   try {
     // 获取当前已存在的入站
-    let {inbounds} = await apiService.getInbounds()
+    let {data} = await inboundService.getInbounds()
+    let inbounds = data.inbounds
     if (!inbounds) {
       inbounds = []
     }
@@ -171,15 +173,15 @@ const saveInbounds = async () => {
 
     // 添加选中的入站
     for (const preset of inboundPresets) {
-      if (selectedInbounds.value.has(preset.id)) {
+      if (selectedInbounds.value.has(preset.id) && !existingTags.has(preset.tag)) {
         // 如果不存在，则添加
         if (!existingTags.has(preset.tag)) {
-          await apiService.addInbound(preset.config as Inbound)
+          await inboundService.addInbound(preset.config as Inbound)
         }
       } else {
         // 如果已存在但未选中，则删除
         if (existingTags.has(preset.tag)) {
-          await apiService.deleteInbound(preset.tag)
+          await inboundService.deleteInbound(preset.tag)
         }
       }
     }

@@ -8,8 +8,6 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -20,30 +18,16 @@ import (
 func (h *Handler) GetDNS(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.DNS == nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"servers": []option.DNSServerOptions{},
-		})
+		respOK(ctx, c, map[string]any{"servers": []option.DNSServerOptions{}})
 		return
 	}
 
-	// Use sing-box JSON serialization to preserve all DNS fields
-	dnsCtx := config.CreateContext(ctx)
-	dnsJSON, err := json.MarshalContext(dnsCtx, cfg.DNS)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize DNS configuration: " + err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", dnsJSON)
+	respOK(ctx, c, cfg.DNS)
 }
 
 // UpdateDNS updates the complete DNS configuration
@@ -53,17 +37,13 @@ func (h *Handler) UpdateDNS(ctx context.Context, c *app.RequestContext) {
 	// Use sing-box JSON deserialization to properly parse DNS config
 	body, err := c.Body()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to read request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
 	dnsCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(dnsCtx, body, &dnsOptions); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid DNS configuration: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid DNS configuration: "+err.Error())
 		return
 	}
 
@@ -73,46 +53,27 @@ func (h *Handler) UpdateDNS(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"message": "DNS configuration updated successfully",
-	})
+	respOK(ctx, c, map[string]any{"message": "DNS configuration updated successfully"})
 }
 
 // GetDNSServers returns all DNS servers
 func (h *Handler) GetDNSServers(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.DNS == nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"servers": []option.DNSServerOptions{},
-		})
+		respOK(ctx, c, map[string]any{"servers": []option.DNSServerOptions{}})
 		return
 	}
 
-	// Use sing-box JSON serialization to preserve all DNS server fields
-	dnsCtx := config.CreateContext(ctx)
-	response := map[string]any{"servers": cfg.DNS.Servers}
-	responseJSON, err := json.MarshalContext(dnsCtx, response)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize DNS servers: " + err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
+	respOK(ctx, c, map[string]any{"servers": cfg.DNS.Servers})
 }
 
 // GetDNSServerByTag returns a specific DNS server by tag
@@ -121,49 +82,32 @@ func (h *Handler) GetDNSServerByTag(ctx context.Context, c *app.RequestContext) 
 
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.DNS != nil {
 		for _, server := range cfg.DNS.Servers {
 			if server.Tag == tag {
-				// Use sing-box JSON serialization to preserve all DNS server fields
-				dnsCtx := config.CreateContext(ctx)
-				serverJSON, err := json.MarshalContext(dnsCtx, server)
-				if err != nil {
-					c.JSON(consts.StatusInternalServerError, utils.H{
-						"error": "failed to serialize DNS server: " + err.Error(),
-					})
-					return
-				}
-				c.Data(consts.StatusOK, "application/json; charset=utf-8", serverJSON)
+				respOK(ctx, c, server)
 				return
 			}
 		}
 	}
 
-	c.JSON(consts.StatusNotFound, utils.H{
-		"error": "DNS server not found",
-	})
+	respErr(ctx, c, CodeNotFound, "DNS server not found")
 }
 
 // AddDNSServer adds a new DNS server
 func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 	var server option.DNSServerOptions
 	if err := c.Bind(&server); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	if server.Tag == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "tag is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "tag is required")
 		return
 	}
 
@@ -184,13 +128,11 @@ func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "DNS server added successfully",
 		"tag":     server.Tag,
 	})
@@ -202,9 +144,7 @@ func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 
 	var server option.DNSServerOptions
 	if err := c.Bind(&server); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -232,13 +172,11 @@ func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "DNS server updated successfully",
 		"tag":     tag,
 	})
@@ -273,13 +211,11 @@ func (h *Handler) DeleteDNSServer(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "DNS server deleted successfully",
 		"tag":     tag,
 	})
@@ -289,9 +225,7 @@ func (h *Handler) DeleteDNSServer(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
@@ -300,33 +234,24 @@ func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
 			if server.Tag == "dns_lan" && server.Type == "hosts" {
 				hostsOpts, ok := server.Options.(option.HostsDNSServerOptions)
 				if !ok {
-					c.JSON(consts.StatusOK, utils.H{
-						"error": "failed to parse hosts configuration",
-					})
+					respErr(ctx, c, CodeInternalError, "failed to parse hosts configuration")
 					return
 				}
 
-				// 类型断言成功，可以安全使用 hostsOpts
-				c.JSON(consts.StatusOK, utils.H{
-					"hosts": hostsOpts.Predefined, // 或者其他字段
-				})
+				respOK(ctx, c, map[string]any{"hosts": hostsOpts.Predefined})
 				return
 			}
 		}
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"hosts": map[string][]string{},
-	})
+	respOK(ctx, c, map[string]any{"hosts": map[string][]string{}})
 }
 
 // UpdateDNSHosts updates the hosts configuration
 func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
 	var hosts badjson.TypedMap[string, badoption.Listable[netip.Addr]]
 	if err := c.Bind(&hosts); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -366,46 +291,34 @@ func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"message": "DNS hosts updated successfully",
-	})
+	respOK(ctx, c, map[string]any{"message": "DNS hosts updated successfully"})
 }
 
 // GetDNSRules returns all DNS rules
 func (h *Handler) GetDNSRules(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	if cfg.DNS == nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"rules": []option.DNSRule{},
-		})
+		respOK(ctx, c, map[string]any{"rules": []option.DNSRule{}})
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
-		"rules": cfg.DNS.Rules,
-	})
+	respOK(ctx, c, map[string]any{"rules": cfg.DNS.Rules})
 }
 
 // AddDNSRule adds a new DNS rule
 func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 	var rule option.DNSRule
 	if err := c.Bind(&rule); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -419,15 +332,11 @@ func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
-		"message": "DNS rule added successfully",
-	})
+	respOK(ctx, c, map[string]any{"message": "DNS rule added successfully"})
 }
 
 // UpdateDNSRule updates a DNS rule at specific index
@@ -435,17 +344,13 @@ func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid index",
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid index")
 		return
 	}
 
 	var rule option.DNSRule
 	if err := c.Bind(&rule); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
@@ -459,13 +364,11 @@ func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "DNS rule updated successfully",
 		"index":   index,
 	})
@@ -476,9 +379,7 @@ func (h *Handler) DeleteDNSRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid index",
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid index")
 		return
 	}
 
@@ -492,13 +393,11 @@ func (h *Handler) DeleteDNSRule(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "DNS rule deleted successfully",
 		"index":   index,
 	})

@@ -1,7 +1,7 @@
 {
   "files": [],
   "compilerOptions":{
-    "lib": ["ES2015"]
+    "lib": ["ES2016"]
   },
   "references": [
     { "path": "./tsconfig.app.json" },

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { apiService } from '../../services/api'
 import type { ClashAPI, CacheFile } from '../../types/api'
 import { Button, Input, Select, Alert, Card, Loading } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import zashboardIcon from '../../assets/zashboard.svg'
 import yacdIcon from '../../assets/yacd.ico'
+import { experimentalService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -128,8 +128,9 @@ const loadConfigs = async () => {
   error.value = ''
 
   try {
-    // 加载 Clash API 配置
-    const clashAPI = await apiService.getClashAPI()
+    // 加载 Clash API 配置    
+    const resp = await experimentalService.getClashAPI()
+    const clashAPI = resp.data
     if (clashAPI && clashAPI.external_controller) {
       enableClashAPI.value = true
       clashAPIConfig.value = {
@@ -154,7 +155,8 @@ const loadConfigs = async () => {
     }
 
     // 加载 Cache File 配置
-    const cacheFile = await apiService.getCacheFile()
+    const respCache = await experimentalService.getCacheFile()
+    const cacheFile = respCache.data
     if (cacheFile && cacheFile.enabled) {
       enableCacheFile.value = true
       cacheFileConfig.value = {
@@ -181,21 +183,21 @@ const saveConfigs = async () => {
   try {
     // 保存 Clash API 配置
     if (enableClashAPI.value) {
-      await apiService.updateClashAPI(clashAPIConfig.value)
+      await experimentalService.updateClashAPI(clashAPIConfig.value)
     } else {
       // 如果禁用，发送空配置
-      await apiService.updateClashAPI({})
+      await experimentalService.updateClashAPI({})
     }
 
     // 保存 Cache File 配置
     if (enableCacheFile.value) {
-      await apiService.updateCacheFile({
+      await experimentalService.updateCacheFile({
         ...cacheFileConfig.value,
         enabled: true,
       })
     } else {
       // 如果禁用，发送禁用配置
-      await apiService.updateCacheFile({ enabled: false })
+      await experimentalService.updateCacheFile({ enabled: false })
     }
 
     success.value = true
@@ -513,7 +515,7 @@ const handleSkip = () => {
     <Teleport to="body">
       <div
         v-if="showPreview"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-75 p-4"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
         @click="closePreview"
       >
         <div class="relative max-w-6xl max-h-full">

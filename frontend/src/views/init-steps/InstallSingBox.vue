@@ -23,7 +23,8 @@ let pollInterval: ReturnType<typeof setInterval> | null = null
 onMounted(async () => {
   // 检查是否已经安装
   try {
-    const initStatus = await apiService.getInitStatus()
+    const {data} = await serviceControlService.getInitStatus()
+    const initStatus = data
     if (initStatus.steps.sing_box_installed) {
       alreadyInstalled.value = true
     }
@@ -44,20 +45,20 @@ const startInstall = async () => {
   installing.value = true
 
   try {
-    const response = await apiService.installSingBox(
+    const {data} = await serviceControlService.installSingBox(
       version.value.trim(),
       beta.value
     )
 
     // Initialize task with pending status
     installTask.value = {
-      id: response.task_id,
+      id: data.task_id,
       status: 'running',
-      message: response.message,
+      message: data.message,
     }
 
     // 开始轮询任务状态
-    pollTaskStatus(response.task_id)
+    pollTaskStatus(data.task_id)
   } catch (err: any) {
     error.value = err.response?.data?.error || err.message || 'Failed to start installation'
     installing.value = false
@@ -67,8 +68,9 @@ const startInstall = async () => {
 const pollTaskStatus = (taskId: string) => {
   pollInterval = setInterval(async () => {
     try {
-      const task = await apiService.getInstallTask(taskId)
-      installTask.value = task
+      const {data} = await serviceControlService.getInstallTask(taskId)
+      const task = data
+      installTask.value = data
 
       if (task.status === 'completed') {
         stopPolling()
@@ -107,6 +109,7 @@ const handleSkip = () => {
 
 // 组件卸载时清理定时器
 import { onUnmounted } from 'vue'
+import { serviceControlService } from '../../services'
 onUnmounted(() => {
   stopPolling()
 })

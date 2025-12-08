@@ -16,7 +16,12 @@
   "inbounds": [],
   "outbounds": [
     {
-      "type": "direct"
+      "type": "direct",
+      "tag":"direct-out"
+    },
+    {
+      "type": "block",
+      "tag":"block-out"
     }
   ],
   "route": {

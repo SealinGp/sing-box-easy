@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { DNS } from '../../types/api'
-import { Button, Alert, Card, Select, Badge } from '../../components'
+import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import type { DNSServerOptions, HostsDNSServerOptions, DomainStrategy } from '../../types/dns'
+import { dnsService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -143,7 +143,8 @@ const loadDNSConfig = async () => {
   error.value = ''
 
   try {
-    const dns = await apiService.getDNS()
+    const {data} = await dnsService.getDNS()
+    const dns = data
     if (dns && dns.servers && dns.servers.length > 0) {
       // 尝试识别预设配置
       const dnsServers = dns.servers
@@ -270,7 +271,7 @@ const saveDNSConfig = async () => {
         break
     }
 
-    await apiService.updateDNS(dnsConfig)
+    await dnsService.updateDNS(dnsConfig)
     success.value = true
 
     // 2秒后自动进入下一步

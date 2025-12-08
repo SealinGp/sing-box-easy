@@ -7,16 +7,14 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/vue'
-import { apiService } from '../../services/api'
 import type { Outbound } from '../../types/api'
 import type { OutboundType } from '../../types/outbound'
-import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
-import Select from '../../components/Select.vue'
 import Badge from '../../components/Badge.vue'
 import Textarea from '../../components/Textarea.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
+import { nodesService, outboundService } from '../../services'
 
 const outbounds = ref<Outbound[]>([])
 const loading = ref(false)
@@ -66,6 +64,8 @@ const outboundTypes = [
   { value: 'urltest', label: 'URLTest (Group)' },
 ]
 
+
+
 const getOutboundTypeLabel = (type: string) => {
   return outboundTypes.find(t => t.value === type)?.label || type
 }
@@ -103,8 +103,8 @@ const fetchOutbounds = async () => {
   loading.value = true
   error.value = null
   try {
-    const resp = await apiService.getOutbounds() 
-    outbounds.value = resp.outbounds
+    const {data} = await outboundService.getOutbounds() 
+    outbounds.value = data.outbounds
   } catch (err: any) {
     console.error('Failed to fetch outbounds:', err)
     error.value = err.response?.data?.error || 'Failed to fetch outbounds'
@@ -187,10 +187,10 @@ const handleSave = async () => {
   loading.value = true
   try {
     if (isEditMode.value) {
-      await apiService.updateOutbound(editingTag.value, currentOutbound.value)
+      await outboundService.updateOutbound(editingTag.value, currentOutbound.value)
       successMessage.value = 'Outbound updated successfully'
     } else {
-      await apiService.addOutbound(currentOutbound.value)
+      await outboundService.addOutbound(currentOutbound.value)
       successMessage.value = 'Outbound added successfully'
     }
     closeModal()
@@ -223,7 +223,7 @@ const handleDelete = async () => {
 
   try {
     const val = deletingOutboundIdx.value > -1 ? `${deletingOutboundIdx.value}` : deletingOutbound.value.tag
-    await apiService.deleteOutbound(val)
+    await outboundService.deleteOutbound(val)
     successMessage.value = 'Outbound deleted successfully'
     closeDeleteConfirm()
     await fetchOutbounds()
@@ -270,16 +270,15 @@ const parseSubscription = async () => {
       .filter(line => line.length > 0)
 
     const linesToParse = lines.join('\n')
-
-    const nodes = await apiService.parseNodes(linesToParse)
-    parsedNodes.value = nodes
+    const {data} = await nodesService.parseNodes(linesToParse)
+    parsedNodes.value = data.nodes
 
     // Select all by default
-    nodes.forEach((node) => {
+    data.nodes.forEach((node) => {
       selectedNodes.value.add(node.tag)
     })
 
-    if (nodes.length === 0) {
+    if (data.nodes.length === 0) {
       parseError.value = 'No nodes found'
     }
   } catch (err: any) {
@@ -321,8 +320,8 @@ const handleImport = async () => {
     })
 
     if (outboundsToAdd.length > 0) {
-      const result = await apiService.addOutboundsBatch(outboundsToAdd)
-      successMessage.value = `Successfully imported ${result.added} outbounds (${result.skipped} skipped)`
+      const {data} = await outboundService.addOutboundsBatch(outboundsToAdd)
+      successMessage.value = `Successfully imported ${data.added} outbounds (${data.skipped} skipped)`
       closeImportModal()
       await fetchOutbounds()
     }
@@ -379,6 +378,7 @@ onMounted(fetchOutbounds)
       </div>
     </div>
 
+
     <Alert v-if="error" type="error" closable @close="error = null" class="mb-6">
       {{ error }}
     </Alert>
@@ -400,33 +400,31 @@ onMounted(fetchOutbounds)
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="table">
+          <!-- head -->
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Port</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th></th>
+              <th>Tag</th>
+              <th>Type</th>
+              <th>Server</th>
+              <th>Port</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(outbound,i) in outbounds" :key="outbound.tag" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ outbound.tag || i }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+          <tbody>
+            <!-- 动态行 -->
+            <tr v-for="(outbound,i) in outbounds" :key="outbound.tag" class="hover">
+              <th>{{ i + 1 }}</th>
+              <td>{{ outbound.tag || i }}</td>
+              <td>
                 <Badge :variant="getOutboundBadgeVariant(outbound.type)">
                   {{ getOutboundTypeLabel(outbound.type) }}
                 </Badge>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ (outbound as any).server || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ (outbound as any).server_port || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td>{{ (outbound as any).server || '-' }}</td>
+              <td>{{ (outbound as any).server_port || '-' }}</td>
+              <td class="text-right">
                 <div class="flex items-center justify-end gap-2">
                   <Button @click="openEditModal(outbound)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
@@ -496,7 +494,10 @@ onMounted(fetchOutbounds)
 
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                      <Select v-model="currentOutbound.type" :options="outboundTypes" :disabled="isEditMode" />
+                      <select class="select" v-model="currentOutbound.type" :disabled="isEditMode">
+                        <option disabled selected>Pick outbound type</option>
+                        <option v-for="outboundType in outboundTypes" :value="outboundType.value" >{{ outboundType.label }}</option>
+                      </select>
                     </div>
                   </div>
 

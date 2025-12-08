@@ -6,8 +6,6 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 )
@@ -16,24 +14,11 @@ import (
 func (h *Handler) GetInbounds(ctx context.Context, c *app.RequestContext) {
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	// Use sing-box JSON serialization to preserve all inbound fields
-	inboundCtx := config.CreateContext(ctx)
-	response := map[string]any{"inbounds": cfg.Inbounds}
-	responseJSON, err := json.MarshalContext(inboundCtx, response)
-	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": "failed to serialize inbounds: " + err.Error(),
-		})
-		return
-	}
-
-	c.Data(consts.StatusOK, "application/json; charset=utf-8", responseJSON)
+	respOK(ctx, c, map[string]any{"inbounds": cfg.Inbounds})
 }
 
 // GetInboundByTag returns a specific inbound by tag
@@ -42,31 +27,18 @@ func (h *Handler) GetInboundByTag(ctx context.Context, c *app.RequestContext) {
 
 	cfg, err := h.configManager.GetConfig()
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
 	for _, inbound := range cfg.Inbounds {
 		if inbound.Tag == tag {
-			// Use sing-box JSON serialization to preserve all inbound fields
-			inboundCtx := config.CreateContext(ctx)
-			inboundJSON, err := json.MarshalContext(inboundCtx, inbound)
-			if err != nil {
-				c.JSON(consts.StatusInternalServerError, utils.H{
-					"error": "failed to serialize inbound: " + err.Error(),
-				})
-				return
-			}
-			c.Data(consts.StatusOK, "application/json; charset=utf-8", inboundJSON)
+			respOK(ctx, c, inbound)
 			return
 		}
 	}
 
-	c.JSON(consts.StatusNotFound, utils.H{
-		"error": "inbound not found",
-	})
+	respErr(ctx, c, CodeNotFound, "inbound not found")
 }
 
 // AddInbound adds a new inbound
@@ -74,25 +46,19 @@ func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
 	// Use sing-box JSON deserialization to properly parse inbound config
 	body, err := c.Body()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to read request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
 	var inbound option.Inbound
 	inboundCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(inboundCtx, body, &inbound); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid inbound configuration: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid inbound configuration: "+err.Error())
 		return
 	}
 
 	if inbound.Tag == "" {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "tag is required",
-		})
+		respErr(ctx, c, CodeBadRequest, "tag is required")
 		return
 	}
 
@@ -109,13 +75,11 @@ func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusCreated, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "inbound added successfully",
 		"tag":     inbound.Tag,
 	})
@@ -128,18 +92,14 @@ func (h *Handler) UpdateInbound(ctx context.Context, c *app.RequestContext) {
 	// Use sing-box JSON deserialization to properly parse inbound config
 	body, err := c.Body()
 	if err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "failed to read request body: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
 	var inbound option.Inbound
 	inboundCtx := config.CreateContext(ctx)
 	if err := json.UnmarshalContext(inboundCtx, body, &inbound); err != nil {
-		c.JSON(consts.StatusBadRequest, utils.H{
-			"error": "invalid inbound configuration: " + err.Error(),
-		})
+		respErr(ctx, c, CodeBadRequest, "invalid inbound configuration: "+err.Error())
 		return
 	}
 
@@ -164,13 +124,11 @@ func (h *Handler) UpdateInbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "inbound updated successfully",
 		"tag":     tag,
 	})
@@ -201,13 +159,11 @@ func (h *Handler) DeleteInbound(ctx context.Context, c *app.RequestContext) {
 	})
 
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, utils.H{
-			"error": err.Error(),
-		})
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	c.JSON(consts.StatusOK, utils.H{
+	respOK(ctx, c, map[string]any{
 		"message": "inbound deleted successfully",
 		"tag":     tag,
 	})
