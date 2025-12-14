@@ -3,9 +3,9 @@
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 mb-6">Configuration</h2>
-    <div class="bg-white p-6 rounded-lg shadow">
-      <p class="text-gray-500">Configuration editor coming soon...</p>
+    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Configuration</h2>
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
+      <p class="text-gray-500 dark:text-gray-500">Configuration editor coming soon...</p>
     </div>
   </div>
 </template>

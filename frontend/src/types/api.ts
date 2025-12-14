@@ -169,6 +169,8 @@ export type {
 } from './inbound'
 
 export interface RouteRule {
+  // Common fields (matching criteria)
+  action?: 'route' | 'reject' | 'route-options' | 'sniff' | 'resolve' | 'hijack-dns'
   inbound?: string[]
   protocol?: string[]
   network?: string[]
@@ -176,14 +178,45 @@ export interface RouteRule {
   domain_suffix?: string[]
   domain_keyword?: string[]
   domain_regex?: string[]
-  geosite?: string[]
+  geosite?: string[] | string
   source_geoip?: string[]
-  geoip?: string[]
+  geoip?: string[] | string
   ip_cidr?: string[]
   source_ip_cidr?: string[]
   source_port?: number[]
   port?: number[]
-  outbound: string
+  rule_set?: string[] | string
+
+  // Action: route
+  outbound?: string
+
+  // Action: reject
+  method?: 'default' | 'drop'
+  no_drop?: boolean
+
+  // Action: route-options
+  override_address?: string
+  override_port?: number
+  network_strategy?: string
+  fallback_delay?: string
+  udp_disable_domain_unmapping?: boolean
+  udp_connect?: boolean
+  udp_timeout?: string
+  tls_fragment?: boolean
+  tls_fragment_fallback_delay?: string
+  tls_record_fragment?: string
+
+  // Action: sniff
+  sniffer?: string[] | string
+  timeout?: string
+
+  // Action: resolve
+  server?: string
+  strategy?: string
+  disable_cache?: boolean
+  rewrite_ttl?: number | null
+  client_subnet?: string | null
+
   [key: string]: any
 }
 

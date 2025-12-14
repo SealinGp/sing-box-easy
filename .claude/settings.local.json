@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(go get:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "WebSearch",
+      "WebFetch(domain:v3.primevue.org)",
+      "Bash(go doc:*)",
+      "Bash(go list:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -15,11 +15,11 @@ import Badge from '../../components/Badge.vue'
 import Textarea from '../../components/Textarea.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { nodesService, outboundService } from '../../services'
+import { useToast } from 'primevue/usetoast'
 
 const outbounds = ref<Outbound[]>([])
 const loading = ref(false)
-const error = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
+const toast = useToast()
 
 // Modal state
 const showModal = ref(false)
@@ -41,7 +41,6 @@ const importInput = ref('')
 const parsing = ref(false)
 const parsedNodes = ref<Outbound[]>([])
 const selectedNodes = ref<Set<string>>(new Set())
-const parseError = ref('')
 const importing = ref(false)
 
 const outboundTypes = [
@@ -101,13 +100,17 @@ const needsOutbounds = computed(() => isGroupType(currentOutbound.value.type))
 
 const fetchOutbounds = async () => {
   loading.value = true
-  error.value = null
   try {
-    const {data} = await outboundService.getOutbounds() 
+    const {data} = await outboundService.getOutbounds()
     outbounds.value = data.outbounds
   } catch (err: any) {
     console.error('Failed to fetch outbounds:', err)
-    error.value = err.response?.data?.error || 'Failed to fetch outbounds'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch outbounds',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -138,49 +141,86 @@ const closeModal = () => {
 }
 
 const handleSave = async () => {
-  error.value = null
-  successMessage.value = null
-
   // Validation
   if (!currentOutbound.value.tag?.trim()) {
-    error.value = 'Tag is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Tag is required',
+      life: 3000
+    })
     return
   }
 
   if (!currentOutbound.value.type) {
-    error.value = 'Type is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Type is required',
+      life: 3000
+    })
     return
   }
 
   // Validate proxy-specific fields
   if (needsServer.value) {
     if (!currentOutbound.value.server?.trim()) {
-      error.value = 'Server address is required'
+      toast.add({
+        severity: 'error',
+        summary: 'Validation Error',
+        detail: 'Server address is required',
+        life: 3000
+      })
       return
     }
     if (!currentOutbound.value.server_port) {
-      error.value = 'Server port is required'
+      toast.add({
+        severity: 'error',
+        summary: 'Validation Error',
+        detail: 'Server port is required',
+        life: 3000
+      })
       return
     }
   }
 
   if (needsPassword.value && !currentOutbound.value.password?.trim()) {
-    error.value = 'Password is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Password is required',
+      life: 3000
+    })
     return
   }
 
   if (needsUUID.value && !currentOutbound.value.uuid?.trim()) {
-    error.value = 'UUID is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'UUID is required',
+      life: 3000
+    })
     return
   }
 
   if (needsMethod.value && !currentOutbound.value.method?.trim()) {
-    error.value = 'Encryption method is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Encryption method is required',
+      life: 3000
+    })
     return
   }
 
   if (needsOutbounds.value && (!currentOutbound.value.outbounds || currentOutbound.value.outbounds.length === 0)) {
-    error.value = 'At least one outbound is required for groups'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'At least one outbound is required for groups',
+      life: 3000
+    })
     return
   }
 
@@ -188,16 +228,31 @@ const handleSave = async () => {
   try {
     if (isEditMode.value) {
       await outboundService.updateOutbound(editingTag.value, currentOutbound.value)
-      successMessage.value = 'Outbound updated successfully'
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Outbound updated successfully',
+        life: 3000
+      })
     } else {
       await outboundService.addOutbound(currentOutbound.value)
-      successMessage.value = 'Outbound added successfully'
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Outbound added successfully',
+        life: 3000
+      })
     }
     closeModal()
     await fetchOutbounds()
   } catch (err: any) {
     console.error('Failed to save outbound:', err)
-    error.value = err.response?.data?.error || 'Failed to save outbound'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to save outbound',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -217,19 +272,27 @@ const closeDeleteConfirm = () => {
 const handleDelete = async () => {
   if (!deletingOutbound.value) return
 
-  error.value = null
-  successMessage.value = null
   loading.value = true
 
   try {
     const val = deletingOutboundIdx.value > -1 ? `${deletingOutboundIdx.value}` : deletingOutbound.value.tag
     await outboundService.deleteOutbound(val)
-    successMessage.value = 'Outbound deleted successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Outbound deleted successfully',
+      life: 3000
+    })
     closeDeleteConfirm()
     await fetchOutbounds()
   } catch (err: any) {
     console.error('Failed to delete outbound:', err)
-    error.value = err.response?.data?.error || 'Failed to delete outbound'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete outbound',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -240,7 +303,6 @@ const openImportModal = () => {
   importInput.value = ''
   parsedNodes.value = []
   selectedNodes.value.clear()
-  parseError.value = ''
   showImportModal.value = true
 }
 
@@ -249,17 +311,20 @@ const closeImportModal = () => {
   importInput.value = ''
   parsedNodes.value = []
   selectedNodes.value.clear()
-  parseError.value = ''
 }
 
 const parseSubscription = async () => {
   if (!importInput.value.trim()) {
-    parseError.value = 'Please enter subscription URL(s) or node link(s)'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Please enter subscription URL(s) or node link(s)',
+      life: 3000
+    })
     return
   }
 
   parsing.value = true
-  parseError.value = ''
   parsedNodes.value = []
   selectedNodes.value.clear()
 
@@ -279,10 +344,20 @@ const parseSubscription = async () => {
     })
 
     if (data.nodes.length === 0) {
-      parseError.value = 'No nodes found'
+      toast.add({
+        severity: 'warn',
+        summary: 'No Nodes Found',
+        detail: 'No valid nodes were found in the input',
+        life: 3000
+      })
     }
   } catch (err: any) {
-    parseError.value = err.response?.data?.error || err.message || 'Failed to parse subscription/nodes'
+    toast.add({
+      severity: 'error',
+      summary: 'Parse Error',
+      detail: err.response?.data?.error || err.message || 'Failed to parse subscription/nodes',
+      life: 3000
+    })
   } finally {
     parsing.value = false
   }
@@ -308,7 +383,6 @@ const toggleSelectAll = () => {
 
 const handleImport = async () => {
   importing.value = true
-  error.value = ''
 
   try {
     const outboundsToAdd: Outbound[] = []
@@ -321,12 +395,22 @@ const handleImport = async () => {
 
     if (outboundsToAdd.length > 0) {
       const {data} = await outboundService.addOutboundsBatch(outboundsToAdd)
-      successMessage.value = `Successfully imported ${data.added} outbounds (${data.skipped} skipped)`
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: `Successfully imported ${data.added} outbounds (${data.skipped} skipped)`,
+        life: 3000
+      })
       closeImportModal()
       await fetchOutbounds()
     }
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to import outbounds'
+    toast.add({
+      severity: 'error',
+      summary: 'Import Error',
+      detail: err.response?.data?.error || err.message || 'Failed to import outbounds',
+      life: 3000
+    })
   } finally {
     importing.value = false
   }
@@ -365,7 +449,7 @@ onMounted(fetchOutbounds)
 <template>
   <div class="p-8">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900">Outbounds Management</h2>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Outbounds Management</h2>
       <div class="flex gap-3">
         <Button @click="openImportModal" variant="secondary">
           <ArrowDownTrayIcon class="h-5 w-5 mr-2" />
@@ -379,20 +463,13 @@ onMounted(fetchOutbounds)
     </div>
 
 
-    <Alert v-if="error" type="error" closable @close="error = null" class="mb-6">
-      {{ error }}
-    </Alert>
-    <Alert v-if="successMessage" type="success" closable @close="successMessage = null" class="mb-6">
-      {{ successMessage }}
-    </Alert>
-
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
       <div v-if="loading && outbounds.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
 
       <div v-else-if="outbounds.length === 0" class="text-center py-12">
-        <p class="text-gray-500 mb-4">No outbounds configured</p>
+        <p class="text-gray-500 dark:text-gray-500 mb-4">No outbounds configured</p>
         <Button @click="openAddModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
           Add Your First Outbound
@@ -452,7 +529,7 @@ onMounted(fetchOutbounds)
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -466,9 +543,9 @@ onMounted(fetchOutbounds)
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {{ isEditMode ? 'Edit Outbound' : 'Add Outbound' }}
                   </DialogTitle>
                   <button
@@ -483,7 +560,7 @@ onMounted(fetchOutbounds)
                 <div class="space-y-4 pr-2">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Tag *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag *</label>
                       <Input
                         v-model="currentOutbound.tag"
                         placeholder="e.g., proxy-us"
@@ -493,7 +570,7 @@ onMounted(fetchOutbounds)
                     </div>
 
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
                       <select class="select" v-model="currentOutbound.type" :disabled="isEditMode">
                         <option disabled selected>Pick outbound type</option>
                         <option v-for="outboundType in outboundTypes" :value="outboundType.value" >{{ outboundType.label }}</option>
@@ -504,7 +581,7 @@ onMounted(fetchOutbounds)
                   <!-- Proxy Server Fields -->
                   <div v-if="needsServer" class="grid grid-cols-2 gap-4">
                     <div class="col-span-1">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Server *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Server *</label>
                       <Input
                         v-model="currentOutbound.server"
                         placeholder="example.com or 1.2.3.4"
@@ -512,7 +589,7 @@ onMounted(fetchOutbounds)
                     </div>
 
                     <div class="col-span-1">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Port *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port *</label>
                       <Input
                         v-model.number="currentOutbound.server_port"
                         type="number"
@@ -523,7 +600,7 @@ onMounted(fetchOutbounds)
 
                   <!-- Method (Shadowsocks) -->
                   <div v-if="needsMethod">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Encryption Method *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Encryption Method *</label>
                     <Input
                       v-model="currentOutbound.method"
                       placeholder="e.g., aes-256-gcm, chacha20-ietf-poly1305"
@@ -532,7 +609,7 @@ onMounted(fetchOutbounds)
 
                   <!-- Password -->
                   <div v-if="needsPassword">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password *</label>
                     <Input
                       v-model="currentOutbound.password"
                       type="password"
@@ -542,7 +619,7 @@ onMounted(fetchOutbounds)
 
                   <!-- UUID (VMess, VLESS, TUIC) -->
                   <div v-if="needsUUID">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">UUID *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UUID *</label>
                     <Input
                       v-model="currentOutbound.uuid"
                       placeholder="e.g., 12345678-1234-1234-1234-123456789012"
@@ -551,7 +628,7 @@ onMounted(fetchOutbounds)
 
                   <!-- Group Outbounds (Selector, URLTest) -->
                   <div v-if="needsOutbounds">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Outbounds *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outbounds *</label>
                     <Input
                       v-model="currentOutbound.outbounds"
                       placeholder="Comma-separated tags: proxy-us, proxy-uk"
@@ -562,14 +639,14 @@ onMounted(fetchOutbounds)
                   <!-- URLTest specific -->
                   <div v-if="currentOutbound.type === 'urltest'" class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Test URL</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Test URL</label>
                       <Input
                         v-model="currentOutbound.url"
                         placeholder="https://www.gstatic.com/generate_204"
                       />
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Interval</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interval</label>
                       <Input
                         v-model="currentOutbound.interval"
                         placeholder="3m"
@@ -603,7 +680,7 @@ onMounted(fetchOutbounds)
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -617,9 +694,9 @@ onMounted(fetchOutbounds)
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Import Outbounds
                   </DialogTitle>
                   <button
@@ -634,14 +711,13 @@ onMounted(fetchOutbounds)
                 <div class="space-y-4">
                   <!-- Input Section -->
                   <div v-if="parsedNodes.length === 0">
-                    <p class="text-sm text-gray-600 mb-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
                       Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.
                     </p>
                     <Textarea
                       v-model="importInput"
                       placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
                       :disabled="parsing"
-                      :error="parseError"
                       :rows="6"
                       full-width
                     />
@@ -661,11 +737,11 @@ onMounted(fetchOutbounds)
                   <div v-else>
                     <div class="flex items-center justify-between mb-3">
                       <div>
-                        <h4 class="text-sm font-semibold text-gray-900">
+                        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                           Parsed Nodes
                           <Badge variant="primary" class="ml-2" size="sm">{{ parsedNodes.length }}</Badge>
                         </h4>
-                        <p class="text-xs text-gray-600 mt-1">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
                           {{ selectedNodes.size }} selected
                         </p>
                       </div>
@@ -679,11 +755,11 @@ onMounted(fetchOutbounds)
                     </div>
 
                     <!-- Nodes List -->
-                    <div class="max-h-80 overflow-y-auto border border-gray-200 rounded-lg">
+                    <div class="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div
                         v-for="node in parsedNodes"
                         :key="node.tag"
-                        class="flex items-center gap-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 cursor-pointer"
+                        class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer"
                         @click="toggleNode(node.tag)"
                       >
                         <input
@@ -694,22 +770,22 @@ onMounted(fetchOutbounds)
                         />
                         <div class="flex-1 min-w-0">
                           <div class="flex items-center gap-2">
-                            <p class="text-sm font-medium text-gray-900 truncate">
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                               {{ node.tag }}
                             </p>
                             <Badge variant="info" size="sm">{{ node.type }}</Badge>
                           </div>
-                          <p class="text-xs text-gray-500 truncate">
+                          <p class="text-xs text-gray-500 dark:text-gray-500 truncate">
                             {{ (node as any).server || '-' }}:{{ (node as any).server_port || '-' }}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div class="flex justify-between items-center mt-4 pt-4 border-t">
+                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <Button
                         variant="ghost"
-                        @click="() => { parsedNodes = []; selectedNodes.clear(); parseError = '' }"
+                        @click="() => { parsedNodes = []; selectedNodes.clear() }"
                       >
                         Back to Input
                       </Button>
@@ -751,7 +827,7 @@ onMounted(fetchOutbounds)
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -765,9 +841,9 @@ onMounted(fetchOutbounds)
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Delete Outbound
                   </DialogTitle>
                   <button
@@ -779,7 +855,7 @@ onMounted(fetchOutbounds)
                   </button>
                 </div>
 
-                <p class="text-gray-700">
+                <p class="text-gray-700 dark:text-gray-300">
                   Are you sure you want to delete the outbound
                   <strong>{{ deletingOutbound?.tag }}</strong>?
                   This action cannot be undone.

@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import type { ServiceStatus } from '../../types/api'
-import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
+import { useToast } from 'primevue/usetoast'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
 const actionLoading = ref(false)
-const error = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
+const toast = useToast()
 
 const statusColor = computed(() => {
   if (!status.value) return 'text-gray-500'
@@ -37,13 +36,17 @@ const statusIcon = computed(() => {
 
 const fetchStatus = async () => {
   loading.value = true
-  error.value = null
-  try {    
+  try {
     const {data} = await serviceControlService.getServiceStatus()
     status.value = data
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to get service status:', err)
-    error.value = 'Failed to fetch service status'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch service status',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -51,15 +54,23 @@ const fetchStatus = async () => {
 
 const handleStart = async () => {
   actionLoading.value = true
-  error.value = null
-  successMessage.value = null
   try {
     await serviceControlService.startService()
-    successMessage.value = 'Service started successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Service started successfully',
+      life: 3000
+    })
     await fetchStatus()
   } catch (err: any) {
     console.error('Failed to start service:', err)
-    error.value = err.response?.data?.error || 'Failed to start service'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to start service',
+      life: 3000
+    })
   } finally {
     actionLoading.value = false
   }
@@ -67,15 +78,23 @@ const handleStart = async () => {
 
 const handleStop = async () => {
   actionLoading.value = true
-  error.value = null
-  successMessage.value = null
   try {
     await serviceControlService.stopService()
-    successMessage.value = 'Service stopped successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Service stopped successfully',
+      life: 3000
+    })
     await fetchStatus()
   } catch (err: any) {
     console.error('Failed to stop service:', err)
-    error.value = err.response?.data?.error || 'Failed to stop service'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to stop service',
+      life: 3000
+    })
   } finally {
     actionLoading.value = false
   }
@@ -83,15 +102,23 @@ const handleStop = async () => {
 
 const handleRestart = async () => {
   actionLoading.value = true
-  error.value = null
-  successMessage.value = null
   try {
     await serviceControlService.restartService()
-    successMessage.value = 'Service restarted successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Service restarted successfully',
+      life: 3000
+    })
     await fetchStatus()
   } catch (err: any) {
     console.error('Failed to restart service:', err)
-    error.value = err.response?.data?.error || 'Failed to restart service'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to restart service',
+      life: 3000
+    })
   } finally {
     actionLoading.value = false
   }
@@ -102,19 +129,12 @@ onMounted(fetchStatus)
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
-
-    <Alert v-if="error" type="error" closable @close="error = null" class="mb-6">
-      {{ error }}
-    </Alert>
-    <Alert v-if="successMessage" type="success" closable @close="successMessage = null" class="mb-6">
-      {{ successMessage }}
-    </Alert>
+    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Dashboard Overview</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Service Status Card -->
-      <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Service Status</h3>
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
+        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Service Status</h3>
 
         <div v-if="loading" class="flex items-center justify-center py-4">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -128,15 +148,15 @@ onMounted(fetchStatus)
             </span>
           </div>
 
-          <div v-if="status.pid" class="text-sm text-gray-600">
+          <div v-if="status.pid" class="text-sm text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">PID:</span> {{ status.pid }}</p>
           </div>
 
-          <div v-if="status.uptime" class="text-sm text-gray-600">
+          <div v-if="status.uptime" class="text-sm text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">Uptime:</span> {{ status.uptime }}</p>
           </div>
 
-          <div class="pt-4 border-t border-gray-200">
+          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-3 gap-2">
               <Button
                 @click="handleStart"

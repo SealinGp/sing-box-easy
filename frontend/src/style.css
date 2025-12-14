@@ -1,5 +1,6 @@
 /* 先导入 Tailwind */
-@import "tailwindcss" ;
+@import "tailwindcss";
+@import "tailwindcss-primeui";
 
 /* 然后导入 DaisyUI 插件 */
 @plugin "daisyui";
@@ -19,19 +20,19 @@
   --color-danger: #ef4444;
   --color-info: #06b6d4;
 
-  /* 背景色 */
+  /* 背景色 - Light mode */
   --color-bg-primary: #f9fafb;
   --color-bg-secondary: #ffffff;
   --color-bg-tertiary: #f3f4f6;
   --color-bg-dark: #1f2937;
 
-  /* 文本色 */
+  /* 文本色 - Light mode */
   --color-text-primary: #111827;
   --color-text-secondary: #6b7280;
   --color-text-tertiary: #9ca3af;
   --color-text-inverse: #ffffff;
 
-  /* 边框色 */
+  /* 边框色 - Light mode */
   --color-border: #e5e7eb;
   --color-border-light: #f3f4f6;
   --color-border-dark: #d1d5db;
@@ -42,23 +43,56 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
-  /* 阴影 */
+  /* 阴影 - Light mode */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
+/* Dark mode theme overrides */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    /* 背景色 - Dark mode */
+    --color-bg-primary: #0f172a;
+    --color-bg-secondary: #1e293b;
+    --color-bg-tertiary: #334155;
+
+    /* 文本色 - Dark mode */
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #cbd5e1;
+    --color-text-tertiary: #94a3b8;
+    --color-text-inverse: #0f172a;
+
+    /* 边框色 - Dark mode */
+    --color-border: #334155;
+    --color-border-light: #1e293b;
+    --color-border-dark: #475569;
+
+    /* 阴影 - Dark mode */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
 /* 全局基础样式 */
-
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue',
                'Arial', 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
                'Segoe UI Symbol', 'Noto Color Emoji';
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-primary);
+  color: #111827;
+  background-color: #f9fafb;
   line-height: 1.5;
+}
+
+/* Dark mode body styles */
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #f1f5f9;
+    background-color: #0f172a;
+  }
 }
 
 
@@ -79,6 +113,21 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
+}
+
+/* Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-track {
+    background: var(--color-bg-tertiary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-dark);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+  }
 }
 
 /* 动画 */

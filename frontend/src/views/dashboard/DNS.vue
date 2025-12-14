@@ -8,19 +8,18 @@ import {
   DialogTitle,
 } from '@headlessui/vue'
 import type { DNSServer, DNS } from '../../types/api'
-import Alert from '../../components/Alert.vue'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Card from '../../components/Card.vue'
+import Select from '../../components/Select.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { dnsService } from '../../services'
-
+import { useToast } from 'primevue'
 const dnsServers = ref<DNSServer[]>([])
 const dnsConfig = ref<DNS | null>(null)
 const loading = ref(false)
-const error = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
+const toast = useToast()
 
 // DNS Server Modal state
 const showServerModal = ref(false)
@@ -89,13 +88,16 @@ const needsPath = computed(() => {
 
 const fetchDNSServers = async () => {
   loading.value = true
-  error.value = null
   try {
     const { data } = await dnsService.getDNSServers()
     dnsServers.value = data.servers
   } catch (err: any) {
-    console.error('Failed to fetch DNS servers:', err)
-    error.value = err.response?.data?.error || 'Failed to fetch DNS servers'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch DNS servers',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -147,22 +149,34 @@ const closeServerModal = () => {
 }
 
 const handleSaveServer = async () => {
-  error.value = null
-  successMessage.value = null
-
   // Validation
   if (!currentServer.value.tag?.trim()) {
-    error.value = 'Tag is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Tag is required',
+      life: 3000
+    })
     return
   }
 
   if (!currentServer.value.type) {
-    error.value = 'Type is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Type is required',
+      life: 3000
+    })
     return
   }
 
   if (needsServerAddress.value && !currentServer.value.server?.trim()) {
-    error.value = 'Server address is required'
+    toast.add({
+      severity: 'error',
+      summary: 'Validation Error',
+      detail: 'Server address is required',
+      life: 3000
+    })
     return
   }
 
@@ -170,16 +184,31 @@ const handleSaveServer = async () => {
   try {
     if (isEditMode.value) {
       await dnsService.updateDNSServer(editingServerTag.value, currentServer.value)
-      successMessage.value = 'DNS server updated successfully'
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS server updated successfully',
+        life: 300000
+      })
     } else {
       await dnsService.addDNSServer(currentServer.value)
-      successMessage.value = 'DNS server added successfully'
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS server added successfully',
+        life: 3000
+      })
     }
     closeServerModal()
     await fetchDNSServers()
   } catch (err: any) {
     console.error('Failed to save DNS server:', err)
-    error.value = err.response?.data?.error || 'Failed to save DNS server'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to save DNS server',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -198,18 +227,26 @@ const closeDeleteConfirm = () => {
 const handleDeleteServer = async () => {
   if (!deletingServer.value) return
 
-  error.value = null
-  successMessage.value = null
   loading.value = true
 
   try {
     await dnsService.deleteDNSServer(deletingServer.value.tag)
-    successMessage.value = 'DNS server deleted successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'DNS server deleted successfully',
+      life: 3000
+    })
     closeDeleteConfirm()
     await fetchDNSServers()
   } catch (err: any) {
     console.error('Failed to delete DNS server:', err)
-    error.value = err.response?.data?.error || 'Failed to delete DNS server'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete DNS server',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -224,8 +261,6 @@ const closeSettingsModal = () => {
 }
 
 const handleSaveSettings = async () => {
-  error.value = null
-  successMessage.value = null
   loading.value = true
 
   try {
@@ -234,12 +269,22 @@ const handleSaveSettings = async () => {
       ...currentSettings.value,
     }
     await dnsService.updateDNS(updatedDNS)
-    successMessage.value = 'DNS settings updated successfully'
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'DNS settings updated successfully',
+      life: 3000
+    })
     closeSettingsModal()
     await fetchDNSConfig()
   } catch (err: any) {
     console.error('Failed to update DNS settings:', err)
-    error.value = err.response?.data?.error || 'Failed to update DNS settings'
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update DNS settings',
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
@@ -253,8 +298,10 @@ onMounted(async () => {
 
 <template>
   <div class="p-8">
+ 
+
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900">DNS Configuration</h2>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">DNS Configuration</h2>
       <div class="flex gap-3">
         <Button @click="openSettingsModal" variant="secondary">
           <Cog6ToothIcon class="h-5 w-5 mr-2" />
@@ -267,19 +314,12 @@ onMounted(async () => {
       </div>
     </div>
 
-    <Alert v-if="error" type="error" closable @close="error = null" class="mb-6">
-      {{ error }}
-    </Alert>
-    <Alert v-if="successMessage" type="success" closable @close="successMessage = null" class="mb-6">
-      {{ successMessage }}
-    </Alert>
-
     <!-- DNS Global Settings Card -->
     <Card class="mb-6">
       <div class="flex justify-between items-start">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Global DNS Settings</h3>
-          <div class="space-y-2 text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Global DNS Settings</h3>
+          <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <p><span class="font-medium">Strategy:</span> {{ dnsConfig?.strategy || 'prefer_ipv4' }}</p>
             <p><span class="font-medium">Cache:</span> {{ dnsConfig?.disable_cache ? 'Disabled' : 'Enabled' }}</p>
             <p><span class="font-medium">Final Server:</span> {{ dnsConfig?.final || 'Not set' }}</p>
@@ -292,9 +332,9 @@ onMounted(async () => {
     </Card>
 
     <!-- DNS Servers Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">DNS Servers</h3>
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Servers</h3>
       </div>
 
       <div v-if="loading && dnsServers.length === 0" class="flex items-center justify-center py-12">
@@ -302,7 +342,7 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="dnsServers.length === 0" class="text-center py-12">
-        <p class="text-gray-500 mb-4">No DNS servers configured</p>
+        <p class="text-gray-500 dark:text-gray-500 mb-4">No DNS servers configured</p>
         <Button @click="openAddServerModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
           Add Your First DNS Server
@@ -310,20 +350,20 @@ onMounted(async () => {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-slate-900">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Port</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Tag</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Server</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Port</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="server in dnsServers" :key="server.tag" class="hover:bg-gray-50">
+          <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-for="server in dnsServers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-slate-700">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ server.tag }}</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ server.tag }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <Badge :variant="getServerBadgeVariant((server as any).type || 'udp')">
@@ -331,10 +371,10 @@ onMounted(async () => {
                 </Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ (server as any).server || '-' }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ (server as any).server_port || '-' }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server_port || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
@@ -364,7 +404,7 @@ onMounted(async () => {
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -378,9 +418,9 @@ onMounted(async () => {
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {{ isEditMode ? 'Edit DNS Server' : 'Add DNS Server' }}
                   </DialogTitle>
                   <button
@@ -395,7 +435,7 @@ onMounted(async () => {
                 <div class="space-y-4">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Tag *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag *</label>
                       <Input
                         v-model="currentServer.tag"
                         placeholder="e.g., cloudflare"
@@ -404,7 +444,7 @@ onMounted(async () => {
                     </div>
 
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
 
                       <select class="select" v-model="currentServer.type" :disabled="isEditMode">
                         <option disabled selected>Pick dns type</option>
@@ -415,7 +455,7 @@ onMounted(async () => {
 
                   <div v-if="needsServerAddress" class="grid grid-cols-3 gap-4">
                     <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Server Address *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Server Address *</label>
                       <Input
                         v-model="currentServer.server"
                         placeholder="1.1.1.1 or dns.cloudflare.com"
@@ -423,7 +463,7 @@ onMounted(async () => {
                     </div>
 
                     <div class="col-span-1">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Port</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
                       <Input
                         v-model.number="currentServer.server_port"
                         type="number"
@@ -433,7 +473,7 @@ onMounted(async () => {
                   </div>
 
                   <div v-if="needsPath">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Path</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Path</label>
                     <Input
                       v-model="currentServer.path"
                       placeholder="/dns-query"
@@ -442,7 +482,7 @@ onMounted(async () => {
                   </div>
 
                   <div v-if="currentServer.type === 'dhcp'">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Interface</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interface</label>
                     <Input
                       v-model="currentServer.interface"
                       placeholder="e.g., eth0"
@@ -451,14 +491,14 @@ onMounted(async () => {
 
                   <div v-if="currentServer.type === 'fakeip'" class="space-y-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">IPv4 Range</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IPv4 Range</label>
                       <Input
                         v-model="currentServer.inet4_range"
                         placeholder="198.18.0.0/15"
                       />
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">IPv6 Range</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IPv6 Range</label>
                       <Input
                         v-model="currentServer.inet6_range"
                         placeholder="fc00::/18"
@@ -492,7 +532,7 @@ onMounted(async () => {
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -506,9 +546,9 @@ onMounted(async () => {
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     DNS Global Settings
                   </DialogTitle>
                   <button
@@ -522,13 +562,13 @@ onMounted(async () => {
 
                 <div class="space-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Domain Strategy</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Strategy</label>
                     <Select v-model="currentSettings.strategy" :options="strategyOptions" />
                     <p class="mt-1 text-xs text-gray-500">IP version preference for DNS queries</p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Final DNS Server</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Final DNS Server</label>
                     <Input
                       v-model="currentSettings.final"
                       placeholder="Tag of the default DNS server"
@@ -543,7 +583,7 @@ onMounted(async () => {
                       v-model="currentSettings.disable_cache"
                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <label for="disable_cache" class="text-sm font-medium text-gray-700">Disable DNS Cache</label>
+                    <label for="disable_cache" class="text-sm font-medium text-gray-700 dark:text-gray-300">Disable DNS Cache</label>
                   </div>
 
                   <div class="flex items-center gap-2">
@@ -553,7 +593,7 @@ onMounted(async () => {
                       v-model="currentSettings.disable_expire"
                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <label for="disable_expire" class="text-sm font-medium text-gray-700">Disable Cache Expiration</label>
+                    <label for="disable_expire" class="text-sm font-medium text-gray-700 dark:text-gray-300">Disable Cache Expiration</label>
                   </div>
                 </div>
 
@@ -582,7 +622,7 @@ onMounted(async () => {
           leave-from="opacity-100"
           leave-to="opacity-0"
         >
-          <div class="fixed inset-0 bg-black/25" />
+          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
@@ -596,9 +636,9 @@ onMounted(async () => {
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900">
+                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Delete DNS Server
                   </DialogTitle>
                   <button
@@ -610,7 +650,7 @@ onMounted(async () => {
                   </button>
                 </div>
 
-                <p class="text-gray-700">
+                <p class="text-gray-700 dark:text-gray-300">
                   Are you sure you want to delete the DNS server
                   <strong>{{ deletingServer?.tag }}</strong>?
                   This action cannot be undone.
