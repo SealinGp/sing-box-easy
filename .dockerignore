@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+sing-box-easy
+*.exe
+*.test
+*.out
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Go
+vendor/
+*.mod.sum
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Config files (will be mounted as volumes)
+app.yml
+/etc/sing-box/
+
+# Test files
+*_test.go
+testdata/
+
+# Development scripts
+dev.sh

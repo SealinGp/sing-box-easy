@@ -55,7 +55,8 @@ npm run preview
 
 - **App config**: `app.yml` (copy from `app.yml.example`)
 - **sing-box config**: Managed via API, default path `/etc/sing-box/config.json`
-- **Subscriptions**: Stored at `/etc/sing-box/subscriptions.json`
+- **Database**: SQLite database at `/etc/sing-box/sing-box-easy.db` (stores subscriptions and init state)
+- **Subscriptions**: Now stored in SQLite database (legacy JSON path kept for migration)
 - Port can be overridden via `HTTP_PORT` environment variable
 
 ## Architecture
@@ -66,7 +67,9 @@ npm run preview
 - `app/pkg/appconfig/` - Application configuration loading (app.yml)
 - `app/pkg/config/` - sing-box config management with validation and rollback
 - `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart)
-- `app/pkg/subscription/` - Subscription CRUD operations
+- `app/pkg/database/` - SQLite database management, migrations, and JSON import
+- `app/pkg/subscription/` - Subscription CRUD operations (database-backed)
+- `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching
 - `app/pkg/installer/` - sing-box and dashboard installation
 
@@ -78,9 +81,9 @@ npm run preview
 
 **HTTP Layer**:
 - Framework: CloudWeGo Hertz (high-performance HTTP framework)
-- Routes: `app/routes/v1_13_0/` - All API handlers for v1.12.12
+- Routes: `app/routes/v1_12_12/` - All API handlers for v1.12.12
 - API prefix: `/api/1.12.12/`
-- Route registration: `routes.go` in v1_13_0 package
+- Route registration: `routes.go` in v1_12_12 package
 
 ### Configuration Safety Mechanism
 
@@ -101,13 +104,26 @@ The `service.Controller` manages sing-box lifecycle:
 - Graceful shutdown via SIGTERM, force stop via SIGKILL
 - Reload support via SIGHUP (falls back to restart if unsupported)
 
+### Database Architecture
+
+The application uses SQLite with XORM ORM for persistent storage:
+- **ORM**: XORM (xorm.io/xorm) for struct-based models
+- **Database initialization**: Automatic on startup via `database.Init()`
+- **Schema migrations**: Automatic sync via `engine.Sync2()` (no manual SQL)
+- **Models**: `database.InitState`, `database.Subscription` structs
+- **Automatic migration**: JSON files automatically imported on first run
+- **Tables**: `init_state`, `subscriptions`
+- **Managers**: XORM-backed managers with interface compatibility
+
 ### Subscription Flow
 
 1. User adds subscription with URL and settings
-2. `SubLink.fetchNodes()` downloads and base64-decodes content
-3. Each line parsed through protocol factory
-4. Parsed nodes can be added to outbounds as batch
-5. Auto-update can be configured per subscription
+2. Subscription stored in SQLite database
+3. `SubLink.fetchNodes()` downloads and base64-decodes content
+4. Each line parsed through protocol factory
+5. Parsed nodes can be added to outbounds as batch
+6. Auto-update can be configured per subscription
+7. All subscription data persisted in database with ACID guarantees
 
 ### Frontend Architecture
 
@@ -132,8 +148,8 @@ The `service.Controller` manages sing-box lifecycle:
 
 ### Adding a New API Endpoint
 
-1. Add handler method in `app/routes/v1_13_0/handler.go` or specific handler file
-2. Register route in `app/routes/v1_13_0/routes.go`
+1. Add handler method in `app/routes/v1_12_12/handler.go` or specific handler file
+2. Register route in `app/routes/v1_12_12/routes.go`
 3. Use Hertz's `c.JSON()` for responses, `c.Bind()` for request parsing
 4. Follow existing error handling pattern: return 400 for bad requests, 500 for server errors
 5. Update frontend API client in `frontend/src/services/api.ts`
@@ -156,15 +172,17 @@ This ensures validation and backup happen automatically.
 - **Go**: 1.25.3+
 - **HTTP Framework**: CloudWeGo Hertz v0.10.3
 - **HTTP Client**: imroc/req/v3 for subscription fetching
+- **ORM**: xorm.io/xorm v1.3.11 (XORM ORM framework)
+- **Database Driver**: github.com/mattn/go-sqlite3 (SQLite3 driver)
 - **sing-box**: Must be installed and accessible (in PATH or via binary_path config)
-- **Node**: Use version specified in `frontend/.nvmrc` for frontend development
-- **Frontend**: Vue 3.5+, TypeScript 5.9+, Vite 7+
+- **Node**: v22.21.1 (specified in `frontend/.nvmrc`)
+- **Frontend**: Vue 3.5+, TypeScript 5.9+, Vite 7+, Tailwind CSS 4+
 
 ## API Versioning
 
 Current version: v1.12.12 (corresponds to sing-box 1.12.12)
 - All routes prefixed with `/api/1.12.12/`
-- Version-specific handlers in `app/routes/v1_13_0/`
+- Version-specific handlers in `app/routes/v1_12_12/`
 - For new sing-box versions, create new versioned route group
 
 ## Testing Notes
@@ -177,8 +195,10 @@ Current version: v1.12.12 (corresponds to sing-box 1.12.12)
 ## Important File Paths
 
 - `main.go` - Entry point, loads config and starts server
-- `app/svr.go` - Application initialization
-- `app/routes/v1_13_0/routes.go` - API route definitions
+- `app/svr.go` - Application initialization, database setup
+- `app/pkg/database/` - Database initialization, migrations, and JSON import
+- `app/routes/v1_12_12/routes.go` - API route definitions
 - `app/pkg/config/types.go` - sing-box config struct definitions
 - `frontend/src/router/index.ts` - Frontend routing configuration
-- `doc/API_v1.12.12.md` - Complete API documentation (Chinese)
+- `doc/API_v1.13.0.md` - Complete API documentation (Chinese)
+- `DATABASE_MIGRATION.md` - Database migration guide

@@ -41,15 +41,10 @@ func (r *Route) initEndpoints() error {
 		return nil
 	})
 
-	// Legacy v1 API
-	r.hz.POST("/v1/parse-nodes", r.ListNodes)
-
 	// Register v1.12.12 API routes with configuration
 	v1Handler := v1_12_12.NewHandler(
 		r.config.SingBox.ConfigPath,
 		r.config.SingBox.BinaryPath,
-		r.config.SingBox.SubscriptionPath,
-		r.config.SingBox.InitStatePath,
 	)
 
 	// Initialize handler components
@@ -60,7 +55,7 @@ func (r *Route) initEndpoints() error {
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
 	// Serve frontend static files (should be registered last)
-	r.hz.StaticFS("/", &app.FS{Root: "./frontend/dist", PathRewrite: app.NewPathSlashesStripper(0)})
+	r.hz.StaticFS("/", &app.FS{Root: "./dist", PathRewrite: app.NewPathSlashesStripper(0)})
 
 	return nil
 }

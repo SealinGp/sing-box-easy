@@ -10,6 +10,7 @@ sing-box-easy 是一个 sing-box 配置管理和服务控制的 RESTful API 服�
 - 🔐 配置安全机制（自动备份、验证、回滚）
 - 📝 支持 shadowsocks、vmess 等多种协议节点解析
 - 🌐 RESTful API 设计，易于集成
+- 🗄️ SQLite + XORM 数据库存储，性能更优，支持并发访问
 
 ## 快速开始
 
@@ -41,7 +42,7 @@ server:
 sing_box:
   config_path: "/etc/sing-box/config.json"
   binary_path: "sing-box"
-  subscription_path: "/etc/sing-box/subscriptions.json"
+  database_path: "/etc/sing-box/sing-box-easy.db"
 ```
 
 详细配置说明请查看 [配置文档](doc/Configuration.md)。
@@ -171,57 +172,36 @@ sing-box-easy/
 go build -o sing-box-easy ./main.go
 ```
 
-### 运行测试
-
-```bash
-go test ./...
-```
-
 ## 部署
-
-### Systemd 服务
-
-创建 `/etc/systemd/system/sing-box-easy.service`:
-
-```ini
-[Unit]
-Description=sing-box-easy API Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-ExecStart=/usr/local/bin/sing-box-easy -c /etc/sing-box-easy/config.yml
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启动服务：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable sing-box-easy
-sudo systemctl start sing-box-easy
-```
-
 ### Docker 部署
 
-```dockerfile
-FROM golang:1.19 AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o sing-box-easy ./main.go
+使用 Docker 部署 sing-box-easy 非常简单。项目提供了完整的 Docker 支持，包括多阶段构建和 docker-compose 配置。
 
-FROM debian:bullseye-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/sing-box-easy /usr/local/bin/
-COPY app.yml /etc/sing-box-easy/config.yml
-EXPOSE 8080
-CMD ["sing-box-easy", "-c", "/etc/sing-box-easy/config.yml"]
+**快速启动：**
+
+```bash
+# 准备配置目录
+mkdir -p config
+cp app.yml.example app.yml
+
+# 使用 docker-compose 启动
+docker-compose up -d
 ```
+
+**或使用 Docker 命令：**
+
+```bash
+# 构建镜像
+docker build -t sing-box-easy:latest .
+
+# 运行容器
+docker run -d -p 8080:8080 \
+  -v $(pwd)/config:/etc/sing-box \
+  -v $(pwd)/app.yml:/app/app.yml:ro \
+  sing-box-easy:latest
+```
+
+完整的 Docker 部署文档，包括架构说明、环境变量配置、生产环境建议等，请参考 [Docker 部署指南](DOCKER.md)。
 
 ## 贡献
 
@@ -231,8 +211,16 @@ CMD ["sing-box-easy", "-c", "/etc/sing-box-easy/config.yml"]
 
 MIT License
 
+## 数据库迁移
+
+**重要提示**: 新版本使用 SQLite 数据库替代 JSON 文件存储。首次启动时会自动迁移现有数据。
+
+详细迁移指南: [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md)
+
 ## 相关链接
 
 - [sing-box 官方文档](https://sing-box.sagernet.org/)
 - [API 文档](doc/API_v1.12.12.md)
 - [配置文档](doc/Configuration.md)
+- [Docker 部署指南](DOCKER.md)
+- [数据库迁移指南](DATABASE_MIGRATION.md)

@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  sing-box-easy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sing-box-easy
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount config directory
+      - /etc/sing-box:/etc/sing-box
+      # Mount app config
+      - ./app.yml:/app/app.yml:ro
+    environment:
+      - HTTP_PORT=8080
+    restart: unless-stopped
+    networks:
+      - sing-box-network
+
+networks:
+  sing-box-network:
+    driver: bridge

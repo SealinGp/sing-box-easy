@@ -19,25 +19,39 @@ import (
 type Handler struct {
 	configManager       *config.Manager
 	serviceController   *service.Controller
-	subscriptionManager *subscription.Manager
-	sublink             *sublink.SubLink
-	installer           *installer.Manager
-	dashboardManager    *installer.DashboardManager
-	initStateManager    *initstate.Manager
+	subscriptionManager interface {
+		List() ([]subscription.Subscription, error)
+		Get(id string) (*subscription.Subscription, error)
+		Add(sub subscription.Subscription) error
+		Update(id string, sub subscription.Subscription) error
+		Delete(id string) error
+		UpdateLastUpdate(id string) error
+	}
+	sublink          *sublink.SubLink
+	installer        *installer.Manager
+	dashboardManager *installer.DashboardManager
+	initStateManager interface {
+		Init() error
+		GetState() *initstate.State
+		SetSingBoxInstalled(version string) error
+		SetDashboardInstalled() error
+		CompleteInitialization() error
+		Reset() error
+	}
 }
 
-// NewHandler creates a new v1.12.12 handler
-func NewHandler(configPath, singBoxPath, subscriptionPath, initStatePath string) *Handler {
+// NewHandler creates a new v1.12.12 handler using XORM-backed managers
+func NewHandler(configPath, singBoxPath string) *Handler {
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := service.NewController(configManager, singBoxPath)
-	subscriptionManager := subscription.NewManager(subscriptionPath)
-	sublinkParser := new(sublink.SubLink)
 
-	initStateManager := initstate.NewManager(initStatePath)
+	// Use XORM-backed managers
+	subscriptionManager := subscription.NewManagerXORM()
+	sublinkParser := new(sublink.SubLink)
+	initStateManager := initstate.NewManagerXORM()
 
 	// Pass initStateManager and configManager to installer
 	installerManager := installer.NewManager(initStateManager, configManager)
-
 	dashboardManager := installer.NewDashboardManager(initStateManager)
 
 	return &Handler{

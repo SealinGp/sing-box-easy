@@ -1,2 +1,2 @@
 #!/bin/bash
-DEBUG=true go run .
+DEBUG=true go run . -c bin/app.yml

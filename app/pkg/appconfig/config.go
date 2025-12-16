@@ -9,7 +9,7 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server ServerConfig `yaml:"server"`
+	Server  ServerConfig  `yaml:"server"`
 	SingBox SingBoxConfig `yaml:"sing_box"`
 }
 
@@ -20,10 +20,9 @@ type ServerConfig struct {
 
 // SingBoxConfig represents sing-box related configuration
 type SingBoxConfig struct {
-	ConfigPath      string `yaml:"config_path"`
-	BinaryPath      string `yaml:"binary_path"`
-	SubscriptionPath string `yaml:"subscription_path"`
-	InitStatePath    string `yaml:"init_state_path"`
+	ConfigPath   string `yaml:"config_path"`
+	BinaryPath   string `yaml:"binary_path"`
+	DatabasePath string `yaml:"database_path"`
 }
 
 // LoadConfig loads configuration from YAML file
@@ -55,12 +54,8 @@ func LoadConfig(configPath string) (*Config, error) {
 		config.SingBox.BinaryPath = "sing-box"
 	}
 
-	if config.SingBox.SubscriptionPath == "" {
-		config.SingBox.SubscriptionPath = "/etc/sing-box/subscriptions.json"
-	}
-
-	if config.SingBox.InitStatePath == "" {
-		config.SingBox.InitStatePath = "/etc/sing-box/init_state.json"
+	if config.SingBox.DatabasePath == "" {
+		config.SingBox.DatabasePath = "/etc/sing-box/sing-box-easy.db"
 	}
 
 	return &config, nil

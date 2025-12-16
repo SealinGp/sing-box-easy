@@ -16,11 +16,6 @@ sing_box:
   # 如果 sing-box 不在 PATH 中，请指定完整路径，例如: "/usr/local/bin/sing-box"
   binary_path: "sing-box"
 
-  # 订阅配置文件路径
-  # 用于存储订阅信息的 JSON 文件
-  subscription_path: "/etc/sing-box/subscriptions.json"
-
-  # 初始化状态文件路径
-  # 用于跟踪首次设置向导的完成状态
-  # 参考示例: init_state.json.example
-  init_state_path: "/etc/sing-box/init_state.json"
+  # SQLite 数据库文件路径
+  # 用于存储订阅信息和初始化状态
+  database_path: "/etc/sing-box/sing-box-easy.db"

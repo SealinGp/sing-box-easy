@@ -17,6 +17,7 @@ type Subscription struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
 	URL            string    `json:"url"`
+	Enabled        bool      `json:"enabled"`
 	AutoUpdate     bool      `json:"auto_update"`
 	UpdateInterval string    `json:"update_interval"` // e.g., "24h"
 	LastUpdate     time.Time `json:"last_update"`
@@ -57,6 +58,16 @@ func (m *Manager) List() ([]Subscription, error) {
 		return nil, fmt.Errorf("failed to parse subscriptions file: %w", err)
 	}
 
+	// Set default enabled value for backward compatibility with old JSON files
+	// Old files won't have the enabled field, so default to true for existing subscriptions
+	for i := range subscriptions {
+		// Check if this subscription was loaded from an old file without enabled field
+		// We can approximate this by checking if both created_at and updated_at are zero
+		if subscriptions[i].CreatedAt.IsZero() && subscriptions[i].UpdatedAt.IsZero() {
+			subscriptions[i].Enabled = true // Default to enabled for old subscriptions
+		}
+	}
+
 	return subscriptions, nil
 }
 
@@ -88,10 +99,14 @@ func (m *Manager) Add(sub Subscription) error {
 		sub.ID = fmt.Sprintf("sub_%d", time.Now().Unix())
 	}
 
-	// Set timestamps
+	// Set timestamps and default values
 	now := time.Now()
 	sub.CreatedAt = now
 	sub.UpdatedAt = now
+	// Default to enabled if not explicitly set
+	if !sub.Enabled && !sub.AutoUpdate { // This is a heuristic - if both are false, likely old code
+		sub.Enabled = true
+	}
 
 	// Check for duplicate ID
 	for _, existing := range subscriptions {
