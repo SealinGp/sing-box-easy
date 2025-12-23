@@ -8,7 +8,9 @@
       "Bash(go doc:*)",
       "Bash(go list:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "mcp__chrome-devtools__performance_start_trace",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

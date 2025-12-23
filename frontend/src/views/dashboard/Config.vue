@@ -1,11 +1,332 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { CodeEditor } from 'monaco-editor-vue3'
+import { configService } from '../../services'
+import type { SingBoxConfig } from '../../types/api'
+import { useToast } from 'primevue'
+
+const configContent = ref('')
+const originalContent = ref('')
+const loading = ref(false)
+const saving = ref(false)
+const validating = ref(false)
+const hasChanges = ref(false)
+const isFullscreen = ref(false)
+const toast = useToast()
+
+const editorOptions = {
+  automaticLayout: true,
+  formatOnType: true,
+  formatOnPaste: true,
+  minimap: { enabled: true },
+  scrollBeyondLastLine: false,
+  fontSize: 14,
+  tabSize: 2,
+}
+
+onMounted(async () => {
+  await loadConfig()
+})
+
+const loadConfig = async () => {
+  loading.value = true
+  try {
+    const response = await configService.getConfig()
+    if (response.data) {
+      configContent.value = JSON.stringify(response.data, null, 2)
+      originalContent.value = configContent.value
+      hasChanges.value = false
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: response.msg || 'Failed to load configuration',
+        life: 3000
+      })
+    }
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.message || 'Failed to load configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleEditorChange = (value: string) => {
+  configContent.value = value
+  hasChanges.value = value !== originalContent.value
+}
+
+const validateConfig = async () => {
+  validating.value = true
+
+  try {
+    const config: SingBoxConfig = JSON.parse(configContent.value)
+    const response = await configService.validateConfig(config)
+
+    if (response.data?.valid) {
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Configuration is valid',
+        life: 3000
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Validation Failed',
+        detail: response.data?.error || 'Configuration validation failed',
+        life: 3000
+      })
+    }
+  } catch (err: any) {
+    if (err instanceof SyntaxError) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid JSON',
+        detail: err.message,
+        life: 3000
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: err.message || 'Validation failed',
+        life: 3000
+      })
+    }
+  } finally {
+    validating.value = false
+  }
+}
+
+const saveConfig = async () => {
+  saving.value = true
+
+  try {
+    const config: SingBoxConfig = JSON.parse(configContent.value)
+    const validateResponse = await configService.validateConfig(config)
+
+    if (!validateResponse.data?.valid) {
+      toast.add({
+        severity: 'error',
+        summary: 'Validation Failed',
+        detail: validateResponse.data?.error || 'Configuration validation failed',
+        life: 3000
+      })
+      saving.value = false
+      return
+    }
+
+    // Note: The backend doesn't have a direct update config endpoint
+    // The config is updated through specific API endpoints
+    // This is a placeholder - you may need to add a PUT /config endpoint in backend
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Configuration validated successfully. Use specific APIs to update config sections.',
+      life: 3000
+    })
+    originalContent.value = configContent.value
+    hasChanges.value = false
+  } catch (err: any) {
+    if (err instanceof SyntaxError) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid JSON',
+        detail: err.message,
+        life: 3000
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: err.message || 'Failed to save configuration',
+        life: 3000
+      })
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+const rollback = async () => {
+  if (!confirm('Are you sure you want to rollback to the backup configuration?')) {
+    return
+  }
+
+  loading.value = true
+
+  try {
+    const response = await configService.rollbackConfig()
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: response.msg || 'Configuration rolled back successfully',
+      life: 3000
+    })
+    await loadConfig()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.message || 'Rollback failed',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const resetChanges = () => {
+  configContent.value = originalContent.value
+  hasChanges.value = false
+}
+
+const loadBackup = async () => {
+  loading.value = true
+
+  try {
+    const response = await configService.getBackupConfig()
+    if (response.data) {
+      configContent.value = JSON.stringify(response.data, null, 2)
+      hasChanges.value = configContent.value !== originalContent.value
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Backup configuration loaded',
+        life: 3000
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: response.msg || 'Failed to load backup configuration',
+        life: 3000
+      })
+    }
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.message || 'Failed to load backup configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+}
 </script>
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Configuration</h2>
-    <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
-      <p class="text-gray-500 dark:text-gray-500">Configuration editor coming soon...</p>
+    <div class="mb-6">
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Configuration Editor</h2>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        Edit the raw sing-box configuration file. Changes are validated before saving.
+      </p>
+    </div>
+
+    <div
+      :class="[
+        'bg-white dark:bg-slate-800 rounded-lg shadow',
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
+      ]"
+    >
+      <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <span v-if="hasChanges" class="text-sm text-orange-600 dark:text-orange-400 font-medium">
+            Unsaved changes
+          </span>
+          <span v-else class="text-sm text-gray-500 dark:text-gray-400">
+            No changes
+          </span>
+        </div>
+
+        <div class="flex space-x-2">
+          <button
+            @click="loadBackup"
+            :disabled="loading"
+            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Load Backup
+          </button>
+
+          <button
+            @click="rollback"
+            :disabled="loading"
+            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Rollback
+          </button>
+
+          <button
+            @click="resetChanges"
+            :disabled="!hasChanges || loading"
+            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Reset
+          </button>
+
+          <button
+            @click="validateConfig"
+            :disabled="validating || loading"
+            class="px-2 py-1 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ validating ? 'Validating...' : 'Validate' }}
+          </button>
+
+          <button
+            @click="saveConfig"
+            :disabled="!hasChanges || saving || loading"
+            class="px-2 py-1 text-sm font-medium text-white bg-green-600 dark:bg-green-700 rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+
+          <button
+            @click="toggleFullscreen"
+            class="p-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600"
+            :title="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          >
+            <svg v-if="!isFullscreen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div :class="[
+        isFullscreen ? 'h-[calc(100vh-73px)]' : 'h-[calc(100vh-200px)]'
+      ]">
+        <div v-if="loading" class="h-full flex items-center justify-center">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-gray-500 dark:text-gray-400">Loading configuration...</p>
+          </div>
+        </div>
+
+        <CodeEditor
+          v-else
+          v-model:value="configContent"
+          language="json"
+          theme="vs-dark"
+          :options="editorOptions"
+          @change="handleEditorChange"
+          class="h-full"
+        />
+      </div>
     </div>
   </div>
 </template>

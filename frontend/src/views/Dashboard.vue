@@ -7,7 +7,6 @@ import {
   GlobeAltIcon,
   MapIcon,
   SignalIcon,
-  Cog6ToothIcon,
   DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 
@@ -24,7 +23,6 @@ const menuItems: MenuItem[] = [
   { name: 'DNS', icon: GlobeAltIcon, path: '/dashboard/dns' },
   { name: 'Route', icon: MapIcon, path: '/dashboard/route' },
   { name: 'Subscriptions', icon: SignalIcon, path: '/dashboard/subscriptions' },
-  { name: 'Service', icon: Cog6ToothIcon, path: '/dashboard/service' },
   { name: 'Config', icon: DocumentTextIcon, path: '/dashboard/config' },
 ]
 </script>

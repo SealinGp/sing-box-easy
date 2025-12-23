@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { apiService } from '../services/api'
 import type { InitState } from '../types/api'
 import InstallSingBox from './init-steps/InstallSingBox.vue'
 import ConfigureLog from './init-steps/ConfigureLog.vue'

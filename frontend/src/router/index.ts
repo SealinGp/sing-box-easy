@@ -7,8 +7,8 @@ import Outbounds from '../views/dashboard/Outbounds.vue'
 import DNS from '../views/dashboard/DNS.vue'
 import Route from '../views/dashboard/Route.vue'
 import Subscriptions from '../views/dashboard/Subscriptions.vue'
-import Service from '../views/dashboard/Service.vue'
 import Config from '../views/dashboard/Config.vue'
+import Log from '../views/dashboard/Log.vue'
 import { serviceControlService } from '../services'
 
 const routes: RouteRecordRaw[] = [
@@ -61,14 +61,14 @@ const routes: RouteRecordRaw[] = [
         component: Subscriptions,
       },
       {
-        path: 'service',
-        name: 'DashboardService',
-        component: Service,
-      },
-      {
         path: 'config',
         name: 'DashboardConfig',
         component: Config,
+      },
+      {
+        path: 'log',
+        name: 'DashboardLog',
+        component: Log,
       },
     ],
   },

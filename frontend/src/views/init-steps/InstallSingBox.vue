@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiService } from '../../services/api'
 import type { InstallTask } from '../../types/api'
 import { Button, Input, Alert, Card, Loading } from '../../components'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
