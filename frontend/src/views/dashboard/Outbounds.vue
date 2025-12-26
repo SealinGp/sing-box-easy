@@ -463,7 +463,7 @@ onMounted(fetchOutbounds)
     </div>
 
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
       <div v-if="loading && outbounds.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>

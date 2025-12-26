@@ -2,7 +2,6 @@
 import { ref, watch } from 'vue'
 import type { DNS, DNSServer } from '../types/api'
 import Button from './Button.vue'
-import Input from './Input.vue'
 import Card from './Card.vue'
 import Select from './Select.vue'
 

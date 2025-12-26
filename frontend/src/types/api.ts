@@ -116,7 +116,7 @@ export interface Subscription {
   id: string
   name: string
   url: string
-  update_interval: number
+  update_interval: string
   enabled: boolean
   last_update?: string
   node_count?: number

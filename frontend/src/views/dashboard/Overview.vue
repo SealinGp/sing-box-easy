@@ -133,7 +133,7 @@ onMounted(fetchStatus)
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Service Status Card -->
-      <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:border-white border">
         <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Service Status</h3>
 
         <div v-if="loading" class="flex items-center justify-center py-4">

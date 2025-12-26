@@ -250,7 +250,7 @@ onMounted(fetchInbounds)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
       <div v-if="loading && inbounds.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
@@ -264,7 +264,7 @@ onMounted(fetchInbounds)
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700  rounded-xl border">
           <thead class="bg-gray-50 dark:bg-slate-900">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Tag</th>

@@ -30,11 +30,11 @@ const theme = ref<MultiSelectPassThroughOptions>({
     label: ({ props, state }) => ({
         class: `flex-auto block overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer
             px-3 py-2 rounded-l-md
-            bg-white dark:bg-gray-700
+            bg-white dark:bg-gray-800
             border border-r-0 border-gray-300 dark:border-gray-600
             text-gray-900 dark:text-gray-100
-            transition-colors duration-200
-            ${state.focused ? 'border-blue-500 dark:border-blue-500 ring-1 ring-blue-500' : ''}
+            transition-all duration-200
+            ${state.focused ? 'border-blue-500 dark:border-blue-400 ring-1 ring-blue-500 dark:ring-blue-400' : ''}
             ${!props.modelValue || (Array.isArray(props.modelValue) && props.modelValue.length === 0) ? 'text-gray-400 dark:text-gray-500' : ''}`
     }),
     chipItem: `inline-flex items-center py-0.5 px-2 mr-1 mb-0.5 rounded-md
@@ -50,17 +50,17 @@ const theme = ref<MultiSelectPassThroughOptions>({
     dropdown: ({ state, props }) => ({
         class: `flex items-center justify-center shrink-0
             px-3 py-2 rounded-r-md
-            bg-white dark:bg-gray-700
+            bg-white dark:bg-gray-800
             border border-gray-300 dark:border-gray-600
             text-gray-500 dark:text-gray-400
-            transition-colors duration-200
-            ${state.focused ? 'border-blue-500 dark:border-blue-500 ring-1 ring-blue-500' : ''}
-            ${!props.disabled ? 'hover:bg-gray-50 dark:hover:bg-gray-600' : ''}`
+            transition-all duration-200
+            ${state.focused ? 'border-blue-500 dark:border-blue-400 ring-1 ring-blue-500 dark:ring-blue-400' : ''}
+            ${!props.disabled ? 'hover:bg-gray-50 dark:hover:bg-gray-700' : ''}`
     }),
-    dropdownIcon: `w-4 h-4`,
-    loadingIcon: `w-4 h-4 animate-spin`,
-    overlay: `absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg mt-1 max-h-80 overflow-hidden z-50`,
-    header: `px-3 py-2 border-b border-gray-200 dark:border-gray-700`,
+    dropdownIcon: `w-4 h-4 text-gray-600 dark:text-gray-400`,
+    loadingIcon: `w-4 h-4 animate-spin text-gray-500 dark:text-gray-400`,
+    overlay: `absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg dark:shadow-gray-900/50 mt-1 max-h-80 overflow-hidden z-50`,
+    header: `px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800`,
     pcHeaderCheckbox: {
         root: `relative inline-flex items-center justify-center w-5 h-5 mr-2
             border-2 border-gray-300 dark:border-gray-600
@@ -85,28 +85,29 @@ const theme = ref<MultiSelectPassThroughOptions>({
     },
     pcFilter: {
         root: `w-full px-3 py-2 pr-10
-            bg-white dark:bg-gray-700
+            bg-white dark:bg-gray-800
             border border-gray-300 dark:border-gray-600
             rounded-md
             text-gray-900 dark:text-gray-100
             placeholder:text-gray-400 dark:placeholder:text-gray-500
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-            transition-colors duration-200`
+            focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400
+            transition-all duration-200`
     },
     pcFilterIconContainer: {
         root: `absolute top-1/2 right-3 -translate-y-1/2`
     },
     filterIcon: `w-4 h-4 text-gray-400 dark:text-gray-500`,
-    listContainer: `overflow-auto`,
+    listContainer: `overflow-auto bg-white dark:bg-gray-800`,
     list: `py-1 list-none m-0 p-0`,
-    optionGroup: `px-3 py-2 bg-gray-50 dark:bg-gray-700/50 font-semibold text-sm text-gray-700 dark:text-gray-300`,
+    optionGroup: `px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 font-semibold text-sm text-gray-700 dark:text-gray-300`,
     option: ({ context }) => ({
         class: `relative flex items-center gap-2 px-3 py-2 m-1 mx-2 rounded-md cursor-pointer
             text-gray-900 dark:text-gray-100
-            transition-colors duration-200
-            ${context.focused ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-            ${context.selected ? 'bg-blue-100 dark:bg-blue-900/30' : ''}
-            ${!context.disabled ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'}`
+            transition-all duration-200
+            ${context.focused ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : ''}
+            ${context.selected ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 font-semibold' : ''}
+            ${!context.disabled ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'}
+            ${context.focused && context.selected ? 'bg-blue-200 dark:bg-blue-800/50' : ''}`
     }),
     optionLabel: `flex-auto`,
     pcOptionCheckbox: {
@@ -125,7 +126,7 @@ const theme = ref<MultiSelectPassThroughOptions>({
         input: `absolute appearance-none w-5 h-5 peer cursor-pointer opacity-0`,
         icon: `w-3.5 h-3.5 text-white`
     },
-    emptyMessage: `px-3 py-2 text-center text-gray-500 dark:text-gray-400`,
+    emptyMessage: `px-3 py-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800`,
     transition: {
         enterFromClass: 'opacity-0 scale-95',
         enterActiveClass: 'transition-all duration-100 ease-out',

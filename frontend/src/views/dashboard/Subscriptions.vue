@@ -8,6 +8,7 @@ import Modal from '../../components/Modal.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Notification from '../../components/Notification.vue'
+import { parseDurationToHours, isValidDuration } from '../../plugins/dayjs'
 import {
   PlusIcon,
   PencilIcon,
@@ -28,6 +29,13 @@ interface NotificationMessage {
   duration?: number
 }
 
+interface FormData {
+  name: string
+  url: string
+  auto_update: boolean
+  update_interval: string
+}
+
 const subscriptions = ref<Subscription[]>([])
 const isLoading = ref(false)
 const isUpdating = ref<string[]>([])
@@ -38,7 +46,7 @@ const deletingSubscriptionId = ref<string>('')
 const notifications = ref<NotificationMessage[]>([])
 
 // Form data
-const formData = ref({
+const formData = ref<FormData>({
   name: '',
   url: '',
   auto_update: true,
@@ -98,7 +106,7 @@ const resetForm = () => {
     url: '',
     auto_update: true,
     update_interval: '24h'
-  }
+  } as FormData
   formErrors.value = {}
   editingSubscription.value = null
 }
@@ -113,7 +121,7 @@ const openEditModal = (subscription: Subscription) => {
     name: subscription.name,
     url: subscription.url,
     auto_update: subscription.enabled,
-    update_interval: `${subscription.update_interval}h`
+    update_interval: subscription.update_interval  // Already a string from backend (e.g., "24h")
   }
   editingSubscription.value = subscription
   showModal.value = true
@@ -136,6 +144,20 @@ const validateForm = () => {
     }
   }
 
+  // Validate update_interval format if auto_update is enabled
+  if (formData.value.auto_update) {
+    if (!formData.value.update_interval) {
+      errors.update_interval = 'Update interval is required when auto-update is enabled'
+    } else if (!isValidDuration(formData.value.update_interval)) {
+      errors.update_interval = 'Invalid interval format (e.g., 24h, 7d, 30min, 2w)'
+    } else {
+      const hours = parseDurationToHours(formData.value.update_interval)
+      if (hours && hours < 1) {
+        errors.update_interval = 'Interval must be at least 1 hour'
+      }
+    }
+  }
+
   formErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -149,8 +171,8 @@ const saveSubscription = async () => {
     const subscriptionData = {
       name: formData.value.name,
       url: formData.value.url,
-      auto_update: formData.value.auto_update,
-      update_interval: formData.value.update_interval
+      enabled: formData.value.auto_update,  // Map auto_update to enabled
+      update_interval: formData.value.update_interval  // Send as string
     }
 
     let response
@@ -236,9 +258,10 @@ const formatDate = (dateString?: string) => {
   return new Date(dateString).toLocaleString()
 }
 
-const getIntervalHours = (interval: string) => {
-  const match = interval.match(/(\d+)h/)
-  return match ? parseInt(match[1]) : 24
+const getIntervalHours = (interval: string | undefined) => {
+  // Use dayjs parser for more flexible duration parsing
+  const hours = parseDurationToHours(interval)
+  return hours ?? 24  // Default to 24 hours if invalid or undefined
 }
 
 const getStatusBadge = (subscription: Subscription) => {
@@ -252,7 +275,7 @@ const getStatusBadge = (subscription: Subscription) => {
 
   const lastUpdate = new Date(subscription.last_update)
   const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60)
-  const intervalHours = getIntervalHours(subscription.update_interval)
+  const intervalHours = getIntervalHours(subscription.update_interval)  // Function handles undefined
 
   if (hoursSinceUpdate > intervalHours * 1.5) {
     return { type: 'warning' as const, icon: ClockIcon, text: 'Outdated' }
@@ -303,7 +326,7 @@ onMounted(() => {
     </div>
 
     <!-- Subscriptions List -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
       <div v-if="isLoading && subscriptions.length === 0" class="p-12 text-center">
         <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mb-4">
           <ServerIcon class="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -323,7 +346,7 @@ onMounted(() => {
         </Button>
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div v-else>
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -464,6 +487,7 @@ onMounted(() => {
               placeholder="24h"
               class="flex-1"
               :disabled="!formData.auto_update"
+              :error="formErrors.update_interval"
             />
           </div>
         </div>
@@ -534,3 +558,22 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Ensure proper rounded corners for table */
+table thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+table thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
+</style>

@@ -13,7 +13,7 @@ export class SubscriptionService {
     return response.data
   }
 
-  async addSubscription(subscription: Omit<Subscription, 'id'>): Promise<BasicResponse<{ message: string; id: string }>> {
+  async addSubscription(subscription: Partial<Subscription>): Promise<BasicResponse<{ message: string; id: string }>> {
     const response = await this.api.post<BasicResponse<{ message: string; id: string }>>('/subscriptions', subscription)
     return response.data
   }

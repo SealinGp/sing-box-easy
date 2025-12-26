@@ -106,7 +106,7 @@ const resetToDefaults = () => {
       </div>
     </div>
 
-    <div v-else class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
+    <div v-else class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:border-white border">
       <div class="space-y-6">
         <!-- Disabled -->
         <div class="flex items-center justify-between">

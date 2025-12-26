@@ -111,7 +111,7 @@ const getRuleConditionsSummary = (rule: any) => {
 
 <template>
   <div>
-    <div class="flex justify-end mb-4">
+    <div class="flex justify-end mb-2">
       <Button @click="openAddRuleModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
         Add DNS Rule
@@ -119,7 +119,7 @@ const getRuleConditionsSummary = (rule: any) => {
     </div>
 
     <!-- DNS Rules Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Rules</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -140,7 +140,7 @@ const getRuleConditionsSummary = (rule: any) => {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700  rounded-xl border">
           <thead class="bg-gray-50 dark:bg-slate-900">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">#</th>
