@@ -37,7 +37,7 @@ export function useNotification() {
     notifications.value.push(notification)
 
     // Auto remove after duration
-    if (notification.duration > 0) {
+    if (notification.duration && notification.duration > 0) {
       setTimeout(() => {
         remove(id)
       }, notification.duration)

@@ -97,11 +97,11 @@ const selectDashboard = (dashboardId: string) => {
   }
 }
 
-// 使用自定义 URL
-const useCustomUrl = () => {
-  selectedDashboard.value = 'custom'
-  clashAPIConfig.value.external_ui_download_url = customDownloadUrl.value
-}
+// 使用自定义 URL - removed as not currently used
+// const useCustomUrl = () => {
+//   selectedDashboard.value = 'custom'
+//   clashAPIConfig.value.external_ui_download_url = customDownloadUrl.value
+// }
 
 // 监听自定义 URL 变化
 watch(customDownloadUrl, (newValue) => {

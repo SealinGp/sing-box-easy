@@ -13,7 +13,7 @@ import Input from './Input.vue'
 import Badge from './Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
-const props = defineProps<{
+defineProps<{
   rules: DNSRule[]
   servers: DNSServer[]
   loading: boolean

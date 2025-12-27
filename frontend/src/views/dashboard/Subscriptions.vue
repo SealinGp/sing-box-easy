@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { apiService } from '../../services/api'
 import { SubscriptionService } from '../../services/subscription'
-import { Code, type Subscription, type Outbound } from '../../types/api'
+import { Code, type Subscription } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Modal from '../../components/Modal.vue'
 import Input from '../../components/Input.vue'

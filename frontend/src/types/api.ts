@@ -70,12 +70,11 @@ export interface ServiceStatus {
   uptime?: string
 }
 
-// Re-export Outbound types from outbound.ts
+// Re-export Outbound types from outbound.ts (DialerOptions is from shared.ts)
 export type {
   Outbound,
   OutboundType,
   BaseOutbound,
-  DialerOptions,
   ServerOptions,
   DirectOutboundOptions,
   BlockOutboundOptions,
@@ -99,6 +98,9 @@ export type {
   V2RayTransportOptions,
   MultiplexOptions,
 } from './outbound'
+
+// Re-export DialerOptions from shared.ts
+export type { DialerOptions } from './shared'
 
 export interface OutboundGroup {
   tag: string

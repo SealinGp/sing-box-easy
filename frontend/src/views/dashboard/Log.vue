@@ -24,13 +24,13 @@ const loadLog = async () => {
   loading.value = true
   try {
     const response = await logService.getLog()
-    if (response.success && response.data) {
+    if (response.code === 0 && response.data) {
       logConfig.value = response.data
     } else {
       toast.add({
         severity: 'error',
         summary: 'Error',
-        detail: response.message || 'Failed to load log configuration',
+        detail: response.msg || 'Failed to load log configuration',
         life: 3000
       })
     }
@@ -51,7 +51,7 @@ const saveLog = async () => {
 
   try {
     const response = await logService.updateLog(logConfig.value)
-    if (response.success) {
+    if (response.code === 0) {
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -62,7 +62,7 @@ const saveLog = async () => {
       toast.add({
         severity: 'error',
         summary: 'Error',
-        detail: response.message || 'Failed to save log configuration',
+        detail: response.msg || 'Failed to save log configuration',
         life: 3000
       })
     }

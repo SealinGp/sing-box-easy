@@ -21,7 +21,7 @@ interface Props extends /* @vue-ignore */ MultiSelectProps {}
 defineProps<Props>();
 
 const theme = ref<MultiSelectPassThroughOptions>({
-    root: ({ props, state }) => ({
+    root: ({ props }) => ({
         class: `relative inline-flex cursor-pointer select-none
             ${props.disabled ? 'opacity-50 cursor-not-allowed' : ''}
             ${props.invalid ? 'border-red-500' : ''}`

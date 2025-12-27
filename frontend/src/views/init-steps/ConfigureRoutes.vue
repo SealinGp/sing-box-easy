@@ -325,7 +325,7 @@ const handleSkip = () => {
               v-for="(rule, index) in routePresets.find(p => p.id === selectedPreset)!.rules"
               :key="index"
             >
-              <strong v-if="rule.rule_set">Rule Set {{ rule.rule_set.join(', ') }}:</strong>
+              <strong v-if="rule.rule_set">Rule Set {{ Array.isArray(rule.rule_set) ? rule.rule_set.join(', ') : rule.rule_set }}:</strong>
               <strong v-else-if="rule.ip_cidr">Private IPs:</strong>
               → {{ rule.outbound }}
             </li>

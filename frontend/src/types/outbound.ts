@@ -1,7 +1,10 @@
 // Outbound Type definitions for sing-box v1.12.12
 // Mirrors the structures from github.com/sagernet/sing-box@v1.12.12/option/outbound.go
 
-import type { DomainStrategy } from './dns'
+import type { DialerOptions, V2RayTransportOptions, MultiplexOptions } from './shared'
+
+// Re-export shared types so they're available from this module (except DialerOptions which conflicts with dns.ts)
+export type { V2RayTransportOptions, MultiplexOptions }
 
 // Outbound Types
 export type OutboundType =
@@ -28,24 +31,6 @@ export type OutboundType =
 export interface BaseOutbound {
   type: OutboundType
   tag: string
-}
-
-// Dialer Options (common for most outbounds)
-export interface DialerOptions {
-  detour?: string
-  bind_interface?: string
-  inet4_bind_address?: string
-  inet6_bind_address?: string
-  protect_path?: string
-  routing_mark?: number
-  reuse_addr?: boolean
-  netns?: string
-  connect_timeout?: string
-  tcp_fast_open?: boolean
-  tcp_multi_path?: boolean
-  udp_fragment?: boolean
-  domain_strategy?: DomainStrategy
-  fallback_delay?: string
 }
 
 // Server Options (common for proxy outbounds)
@@ -270,41 +255,6 @@ export interface OutboundTLSOptions {
     enabled?: boolean
     public_key?: string
     short_id?: string
-  }
-}
-
-// V2Ray Transport Options
-export interface V2RayTransportOptions {
-  type?: string
-  // WebSocket
-  path?: string
-  headers?: Record<string, string>
-  max_early_data?: number
-  early_data_header_name?: string
-  // HTTP
-  host?: string[]
-  method?: string
-  // gRPC
-  service_name?: string
-  idle_timeout?: string
-  ping_timeout?: string
-  permit_without_stream?: boolean
-  // HTTPUpgrade
-  // (similar to WebSocket)
-}
-
-// Multiplex Options
-export interface MultiplexOptions {
-  enabled?: boolean
-  protocol?: string
-  max_connections?: number
-  min_streams?: number
-  max_streams?: number
-  padding?: boolean
-  brutal?: {
-    enabled?: boolean
-    up_mbps?: number
-    down_mbps?: number
   }
 }
 

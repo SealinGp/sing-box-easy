@@ -8,7 +8,7 @@ const { notifications, remove } = useNotification()
 
 // Group notifications by position
 const notificationsByPosition = computed(() => {
-  const grouped: Record<NotificationPosition, typeof notifications.value> = {
+  const grouped: Record<NotificationPosition, Array<typeof notifications.value[number]>> = {
     'top-left': [],
     'top': [],
     'top-right': [],

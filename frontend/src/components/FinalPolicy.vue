@@ -10,7 +10,7 @@ interface Emits {
   (e: 'update', value: string): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const finalRoute = defineModel<string>('finalRoute')

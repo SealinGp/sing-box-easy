@@ -269,7 +269,7 @@ const handleSkip = () => {
               <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
               <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
                 <span v-if="preset.listen">Listen: {{ preset.listen }}:{{ preset.listen_port }}</span>
-                <span v-if="preset.type === 'tun'">Interface: {{ preset.config.interface_name }}</span>
+                <span v-if="preset.type === 'tun'">Interface: {{ (preset.config as any).interface_name }}</span>
               </div>
             </div>
           </div>

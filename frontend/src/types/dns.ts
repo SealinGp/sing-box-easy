@@ -47,8 +47,8 @@ export interface DomainResolverOptions {
   strategy?: DomainStrategy
 }
 
-// Dialer Options (used by Local and Remote DNS)
-export interface DialerOptions {
+// DNS-specific Dialer Options (used by Local and Remote DNS)
+export interface DNSDialerOptions {
   detour?: string
   bind_interface?: string
   inet4_bind_address?: string
@@ -64,7 +64,7 @@ export interface DialerOptions {
 }
 
 // Local DNS Server Options
-export interface LocalDNSServerOptions extends DialerOptions {
+export interface LocalDNSServerOptions extends DNSDialerOptions {
   tag: string
   type: 'local'
 }
@@ -76,7 +76,7 @@ export interface DNSServerAddressOptions {
 }
 
 // Remote DNS Server Options (UDP, TCP, QUIC)
-export interface RemoteDNSServerOptions extends DialerOptions, DNSServerAddressOptions {
+export interface RemoteDNSServerOptions extends DNSDialerOptions, DNSServerAddressOptions {
   tag: string
   type: 'udp' | 'tcp' | 'quic'
 }
@@ -111,14 +111,14 @@ export interface TLSOptions {
 }
 
 // Remote TLS DNS Server Options (TLS)
-export interface RemoteTLSDNSServerOptions extends DialerOptions, DNSServerAddressOptions {
+export interface RemoteTLSDNSServerOptions extends DNSDialerOptions, DNSServerAddressOptions {
   tag: string
   type: 'tls'
   tls?: TLSOptions
 }
 
 // Remote HTTPS DNS Server Options (HTTPS, HTTP3)
-export interface RemoteHTTPSDNSServerOptions extends DialerOptions, DNSServerAddressOptions {
+export interface RemoteHTTPSDNSServerOptions extends DNSDialerOptions, DNSServerAddressOptions {
   tag: string
   type: 'https' | 'http3'
   tls?: TLSOptions
@@ -136,7 +136,7 @@ export interface FakeIPDNSServerOptions {
 }
 
 // DHCP DNS Server Options
-export interface DHCPDNSServerOptions extends DialerOptions {
+export interface DHCPDNSServerOptions extends DNSDialerOptions {
   tag: string
   type: 'dhcp'
   interface?: string

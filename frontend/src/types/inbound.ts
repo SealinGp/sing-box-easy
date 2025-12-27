@@ -2,6 +2,10 @@
 // Mirrors the structures from github.com/sagernet/sing-box@v1.12.12/option/inbound.go
 
 import type { DomainStrategy } from './dns'
+import type { V2RayTransportOptions, MultiplexOptions } from './shared'
+
+// Re-export shared types so they're available from this module
+export type { V2RayTransportOptions, MultiplexOptions }
 
 // Inbound Types
 export type InboundType =
@@ -312,41 +316,6 @@ export interface InboundTLSOptions {
     private_key?: string
     short_id?: string[]
     max_time_difference?: string
-  }
-}
-
-// V2Ray Transport Options
-export interface V2RayTransportOptions {
-  type?: string
-  // WebSocket
-  path?: string
-  headers?: Record<string, string>
-  max_early_data?: number
-  early_data_header_name?: string
-  // HTTP
-  host?: string[]
-  method?: string
-  // gRPC
-  service_name?: string
-  idle_timeout?: string
-  ping_timeout?: string
-  permit_without_stream?: boolean
-  // HTTPUpgrade
-  // (similar to WebSocket)
-}
-
-// Multiplex Options
-export interface MultiplexOptions {
-  enabled?: boolean
-  protocol?: string
-  max_connections?: number
-  min_streams?: number
-  max_streams?: number
-  padding?: boolean
-  brutal?: {
-    enabled?: boolean
-    up_mbps?: number
-    down_mbps?: number
   }
 }
 

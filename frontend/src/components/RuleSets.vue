@@ -16,7 +16,7 @@ interface Emits {
   (e: 'delete-rule-set', tag: string): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // State for dialog
@@ -33,10 +33,11 @@ const typeOptions = [
   { label: 'Local', value: 'local' },
 ]
 
-const formatOptions = [
-  { label: 'Source', value: 'source' },
-  { label: 'Binary', value: 'binary' },
-]
+// formatOptions removed - not currently used
+// const formatOptions = [
+//   { label: 'Source', value: 'source' },
+//   { label: 'Binary', value: 'binary' },
+// ]
 
 // Computed properties for v-model
 const currentRuleSetTag = computed({
@@ -61,16 +62,17 @@ const currentRuleSetType = computed({
   }
 })
 
-const currentRuleSetFormat = computed({
-  get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.format : ruleSetForm.value.format,
-  set: (val) => {
-    if (editingRuleSet.value) {
-      editingRuleSet.value.ruleSet.format = val
-    } else {
-      ruleSetForm.value.format = val
-    }
-  }
-})
+// currentRuleSetFormat removed - not currently used
+// const currentRuleSetFormat = computed({
+//   get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.format : ruleSetForm.value.format,
+//   set: (val) => {
+//     if (editingRuleSet.value) {
+//       editingRuleSet.value.ruleSet.format = val
+//     } else {
+//       ruleSetForm.value.format = val
+//     }
+//   }
+// })
 
 const currentRuleSetUrl = computed({
   get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.url : ruleSetForm.value.url,

@@ -31,14 +31,14 @@ const theme = ref<ChipsPassThroughOptions>({
             focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`
     }),
     input: `flex items-center flex-wrap gap-2 list-none m-0 p-0`,
-    inputitem: `flex-1 inline-flex`,
-    inputitemfield: ({ props }) => ({
+    inputItem: `flex-1 inline-flex`,
+    inputItemField: ({ props }: { props: any }) => ({
         class: `w-full border-0 outline-none bg-transparent p-1 m-0
             text-gray-900 dark:text-gray-100
             placeholder:text-gray-400 dark:placeholder:text-gray-500
             ${props.disabled ? 'cursor-not-allowed' : ''}`
     }),
-    chipitem: `mr-2`,
+    chipItem: `mr-2`,
     pcChip: {
         root: `inline-flex items-center gap-2 px-3 py-1.5 rounded-md
             bg-violet-100 dark:bg-violet-900/30
