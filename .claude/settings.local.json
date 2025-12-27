@@ -10,7 +10,11 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "mcp__chrome-devtools__performance_start_trace",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__get_console_message"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installer"
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
@@ -13,46 +14,41 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing/common/json"
+	"go.uber.org/zap"
 )
 
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
 	configManager       *config.Manager
 	serviceController   *service.Controller
-	subscriptionManager interface {
-		List() ([]subscription.Subscription, error)
-		Get(id string) (*subscription.Subscription, error)
-		Add(sub subscription.Subscription) error
-		Update(id string, sub subscription.Subscription) error
-		Delete(id string) error
-		UpdateLastUpdate(id string) error
-	}
-	sublink          *sublink.SubLink
-	installer        *installer.Manager
-	dashboardManager *installer.DashboardManager
-	initStateManager interface {
-		Init() error
-		GetState() *initstate.State
-		SetSingBoxInstalled(version string) error
-		SetDashboardInstalled() error
-		CompleteInitialization() error
-		Reset() error
-	}
+	subscriptionManager subscription.SubscriptionManager
+	sublink             *sublink.SubLink
+	installer           *installer.Manager
+	dashboardManager    *installer.DashboardManager
+	initStateManager    initstate.InitStateManager
+	autoUpdater         *subscription.AutoUpdater
+	schedulerHandler    *schedulerHandler
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers
-func NewHandler(configPath, singBoxPath string) *Handler {
+func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) *Handler {
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := service.NewController(configManager, singBoxPath)
 
 	// Use XORM-backed managers
 	subscriptionManager := subscription.NewManagerXORM()
-	sublinkParser := new(sublink.SubLink)
+	if err := subscriptionManager.Init(); err != nil {
+		logger.Fatal("Failed to initialize subscription manager", zap.Error(err))
+	}
 	initStateManager := initstate.NewManagerXORM()
 
 	// Pass initStateManager and configManager to installer
 	installerManager := installer.NewManager(initStateManager, configManager)
 	dashboardManager := installer.NewDashboardManager(initStateManager)
+
+	// Initialize auto-updater
+	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser)
+	schedulerHandler := newSchedulerHandler(autoUpdater)
 
 	return &Handler{
 		configManager:       configManager,
@@ -62,6 +58,8 @@ func NewHandler(configPath, singBoxPath string) *Handler {
 		installer:           installerManager,
 		dashboardManager:    dashboardManager,
 		initStateManager:    initStateManager,
+		autoUpdater:         autoUpdater,
+		schedulerHandler:    schedulerHandler,
 	}
 }
 
@@ -78,6 +76,21 @@ func (h *Handler) Init() error {
 	}
 
 	return nil
+}
+
+// StartAutoUpdater starts the auto-updater with the given cron expression
+func (h *Handler) StartAutoUpdater(cronExpression string) error {
+	if h.autoUpdater == nil {
+		return nil // Auto-updater not initialized, skip silently
+	}
+	return h.autoUpdater.Start(cronExpression)
+}
+
+// StopAutoUpdater stops the auto-updater
+func (h *Handler) StopAutoUpdater() {
+	if h.autoUpdater != nil {
+		h.autoUpdater.Stop()
+	}
 }
 
 // Code represents business response codes

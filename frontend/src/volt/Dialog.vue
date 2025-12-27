@@ -39,7 +39,7 @@ const theme = ref<DialogPassThroughOptions>({
             hover:bg-gray-100 dark:hover:bg-gray-700
             hover:text-gray-700 dark:hover:text-gray-200
             transition-colors duration-200
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`,
+            focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`,
         icon: `w-5 h-5`
     },
     content: `px-6 py-4 overflow-y-auto flex-1

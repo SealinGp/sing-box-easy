@@ -250,9 +250,9 @@ onMounted(fetchInbounds)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
       <div v-if="loading && inbounds.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="inbounds.length === 0" class="text-center py-12">
@@ -264,19 +264,19 @@ onMounted(fetchInbounds)
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700  rounded-xl border">
-          <thead class="bg-gray-50 dark:bg-slate-900">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Listen Address</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Port</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Sniff</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Listen Address</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sniff</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="inbound in inbounds" :key="inbound.tag" class="hover:bg-gray-50 dark:hover:bg-slate-700">
+            <tr v-for="inbound in inbounds" :key="inbound.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ inbound.tag }}</div>
               </td>
@@ -300,7 +300,7 @@ onMounted(fetchInbounds)
                   <Button @click="openEditModal(inbound)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>
@@ -393,7 +393,7 @@ onMounted(fetchInbounds)
                       type="checkbox"
                       id="sniff"
                       v-model="(currentInbound as any).sniff"
-                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
                     <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Traffic Sniffing</label>
                   </div>
@@ -403,7 +403,7 @@ onMounted(fetchInbounds)
                       type="checkbox"
                       id="sniff_override"
                       v-model="(currentInbound as any).sniff_override_destination"
-                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
                     <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">Override Destination</label>
                   </div>
@@ -430,7 +430,7 @@ onMounted(fetchInbounds)
                       type="checkbox"
                       id="auto_route"
                       v-model="(currentInbound as any).auto_route"
-                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
                     <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Route</label>
                   </div>

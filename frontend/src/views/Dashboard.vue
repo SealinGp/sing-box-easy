@@ -31,9 +31,9 @@ const menuItems: MenuItem[] = [
   <div class="flex h-screen bg-gray-100 dark:bg-bg-dark">
 
     <!-- Sidebar -->
-    <div class="w-64 bg-gray-100 dark:bg-bg-dark shadow-lg">
+    <div class="w-64 bg-gray-100 dark:bg-bg-dark shadow-lg dark:shadow-xl dark:shadow-slate-700/50">
       <div class="p-6 border-b">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">sing-box Easy</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Sing-box Easy</h1>
         <p class="text-sm text-gray-500">Management Dashboard</p>
       </div>
       <nav class="p-4">
@@ -41,9 +41,8 @@ const menuItems: MenuItem[] = [
           v-for="item in menuItems"
           :key="item.path"
           :to="item.path"
-          class="flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-          active-class="bg-blue-500 text-blue-600"
-          
+          class="flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 dark:hover:text-violet-400 transition-colors"
+          active-class="bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-600 dark:text-white"
         >
           <component :is="item.icon" class="h-5 w-5" />
           <span>{{ item.name }}</span>

@@ -25,32 +25,152 @@ Currently, there is no automatic job/scheduler to check and refresh subscription
 ## Implementation Requirements
 
 ### 1. Background Scheduler Component
-Create a new scheduler package at `app/pkg/scheduler/subscription_scheduler.go`:
+Create auto-update feature in `app/pkg/subscription/auto_updater.go` using cron library:
 
 ```go
-type SubscriptionScheduler struct {
-    subscriptionManager *subscription.Manager
-    sublinkManager     *sublink.Manager
+import (
+    "github.com/robfig/cron/v3"
+    "github.com/SealinGp/sing-box-easy/app/pkg/sublink"
+    "github.com/SealinGp/sing-box-easy/app/pkg/config"
+)
+
+type AutoUpdater struct {
+    subscriptionManager SubscriptionManager
+    sublinkManager     *sublink.SubLink
     configManager      *config.Manager
-    ticker             *time.Ticker
-    stopChan           chan struct{}
+    cron               *cron.Cron
 }
 ```
 
 Features needed:
-- Run periodic checks (e.g., every 5 minutes)
+- Use `github.com/robfig/cron` for job scheduling
+- Run periodic checks (e.g., every 5 minutes: `*/5 * * * *`)
 - Check all enabled subscriptions with `AutoUpdate = true`
 - Calculate if update is needed based on `LastUpdate` + `UpdateInterval`
 - Trigger update for expired subscriptions
 
-### 2. Update Logic
+### 2. Update Logic (Detailed Flow)
 When a subscription needs updating:
-1. Fetch new nodes from subscription URL using `sublink.Manager`
-2. Parse nodes and validate them
-3. Update outbound configuration
-4. Save new configuration
-5. Update `LastUpdate` timestamp in database
-6. Log success/failure
+
+#### Step 1: List and Check Subscriptions
+```go
+func (au *AutoUpdater) CheckSubscriptions() {
+    // List all enabled subscriptions
+    subs, _ := au.subscriptionManager.List()
+    for _, sub := range subs {
+        if !sub.Enabled || !sub.AutoUpdate {
+            continue
+        }
+        // Check if time to update based on LastUpdate + UpdateInterval
+        if time.Since(sub.LastUpdate) >= parseDuration(sub.UpdateInterval) {
+            au.UpdateSubscription(sub)
+        }
+    }
+}
+```
+
+#### Step 2: Fetch New Nodes
+```go
+func (au *AutoUpdater) UpdateSubscription(sub Subscription) {
+    // Call ListNodes from sublink package
+    lines := []string{sub.URL}
+    newNodes, err := au.sublinkManager.ListNodes(lines)
+    if err != nil {
+        // Handle error
+        return
+    }
+    // Continue to Step 3...
+}
+```
+
+#### Step 3: Compare and Diff Nodes
+```go
+func (au *AutoUpdater) UpdateSubscription(sub Subscription) {
+    // ... (Step 2 above)
+
+    // Get current config
+    cfg, _ := au.configManager.GetConfig()
+
+    // Create maps for comparison using server field as key
+    // A: Current outbounds with matching servers
+    currentOutbounds := make(map[string]Outbound)
+    for _, outbound := range cfg.Outbounds {
+        if server := getServerField(outbound); server != "" {
+            currentOutbounds[server] = outbound
+        }
+    }
+
+    // B: New nodes from subscription
+    newOutbounds := make(map[string]Outbound)
+    for _, node := range newNodes {
+        if server := getServerField(node.Outbound); server != "" {
+            newOutbounds[server] = node.Outbound
+        }
+    }
+
+    // Calculate differences
+    // Nodes to delete: diff(A, B) - in current but not in new
+    toDelete := []string{}
+    for server := range currentOutbounds {
+        if _, exists := newOutbounds[server]; !exists {
+            toDelete = append(toDelete, server)
+        }
+    }
+
+    // Nodes to add: diff(B, A) - in new but not in current
+    toAdd := []Outbound{}
+    for server, outbound := range newOutbounds {
+        if _, exists := currentOutbounds[server]; !exists {
+            toAdd = append(toAdd, outbound)
+        }
+    }
+
+    // Apply changes to config
+    au.ApplyChanges(cfg, toDelete, toAdd)
+}
+```
+
+#### Step 4: Apply Changes to Config
+```go
+func (au *AutoUpdater) ApplyChanges(cfg *Config, toDelete []string, toAdd []Outbound) {
+    // Remove old nodes
+    newOutbounds := []Outbound{}
+    for _, outbound := range cfg.Outbounds {
+        server := getServerField(outbound)
+        if !contains(toDelete, server) {
+            newOutbounds = append(newOutbounds, outbound)
+        }
+    }
+
+    // Add new nodes
+    newOutbounds = append(newOutbounds, toAdd...)
+
+    // Update config
+    cfg.Outbounds = newOutbounds
+    au.configManager.UpdateConfig(func(c *Config) error {
+        c.Outbounds = newOutbounds
+        return nil
+    })
+}
+```
+
+#### Note on Go Struct Comparison
+Go can compare structs as map keys if all fields are comparable. For complex structs with slices/maps, use the server field as a unique identifier:
+```go
+// Helper function to extract server field from different outbound types
+func getServerField(outbound Outbound) string {
+    // Type switch or reflection to get server field
+    // Each outbound type (VMess, Trojan, etc.) has a server field
+    switch o := outbound.(type) {
+    case *VMessOutbound:
+        return o.Server
+    case *TrojanOutbound:
+        return o.Server
+    // ... other types
+    }
+    return ""
+}
+```
 
 ### 3. Duration Parsing
 Implement duration parsing to convert strings like "24h", "7d", "30min" to Go `time.Duration`:
@@ -61,11 +181,61 @@ func ParseUpdateInterval(interval string) (time.Duration, error) {
 }
 ```
 
-### 4. Integration Points
+### 4. Cron Job Setup
+
+#### Using robfig/cron Library
+```go
+import "github.com/robfig/cron/v3"
+
+func (au *AutoUpdater) Start() {
+    au.cron = cron.New()
+
+    // Schedule job to run every 5 minutes
+    au.cron.AddFunc("*/5 * * * *", au.CheckSubscriptions)
+
+    // Or use more readable format with cron.WithSeconds()
+    c := cron.New(cron.WithSeconds())
+    c.AddFunc("0 */5 * * * *", au.CheckSubscriptions)
+
+    au.cron.Start()
+}
+
+func (au *AutoUpdater) Stop() {
+    if au.cron != nil {
+        au.cron.Stop()
+    }
+}
+```
+
+#### Cron Expression Examples:
+- `*/5 * * * *` - Every 5 minutes
+- `0 * * * *` - Every hour at minute 0
+- `0 0 * * *` - Daily at midnight
+- `0 0 * * 0` - Weekly on Sunday at midnight
+- `@hourly` - Every hour (predefined)
+- `@daily` - Every day at midnight (predefined)
+
+### 5. Integration Points
 
 #### a. Main Application (`app/svr.go` or `main.go`)
-- Initialize and start the scheduler on app startup
-- Ensure graceful shutdown on app termination
+```go
+func main() {
+    // ... existing initialization
+
+    // Initialize auto-updater
+    autoUpdater := subscription.NewAutoUpdater(
+        subscriptionManager,
+        sublinkManager,
+        configManager,
+    )
+
+    // Start cron job
+    autoUpdater.Start()
+    defer autoUpdater.Stop()
+
+    // ... rest of application
+}
+```
 
 #### b. API Endpoints
 Add new endpoints for scheduler control:
@@ -73,32 +243,34 @@ Add new endpoints for scheduler control:
 - `POST /api/1.12.12/scheduler/start` - Start scheduler
 - `POST /api/1.12.12/scheduler/stop` - Stop scheduler
 - `POST /api/1.12.12/scheduler/trigger` - Manually trigger check
+- `GET /api/1.12.12/scheduler/jobs` - List scheduled jobs
 
 #### c. Configuration
 Add scheduler configuration to `app.yml`:
 ```yaml
 scheduler:
   enabled: true
-  check_interval: 5m  # How often to check subscriptions
+  cron_expression: "*/5 * * * *"  # Cron expression for check interval
   retry_attempts: 3
   retry_delay: 1m
+  concurrent_updates: 3  # Max concurrent subscription updates
 ```
 
-### 5. Error Handling & Logging
+### 6. Error Handling & Logging
 
 - Implement retry mechanism for failed updates
 - Log all update attempts with results
 - Track failed update count per subscription
 - Optional: Send notifications on repeated failures
 
-### 6. Database Updates
+### 7. Database Updates
 
 Consider adding fields to subscription table:
 - `last_error`: String to store last error message
 - `failed_count`: Number of consecutive failed updates
 - `next_update`: Calculated next update time for easier querying
 
-### 7. Outbound Update Strategy
+### 8. Outbound Update Strategy
 
 When subscription nodes are updated:
 1. **Replace Strategy**: Remove old nodes, add new ones

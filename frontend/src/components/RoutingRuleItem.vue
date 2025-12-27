@@ -93,7 +93,7 @@ function handleDelete() {
       <div class="flex space-x-2 ml-4">
         <button
           @click="handleEdit"
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          class="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300"
         >
           Edit
         </button>

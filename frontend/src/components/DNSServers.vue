@@ -137,13 +137,13 @@ const handleDeleteServer = () => {
     </div>
 
     <!-- DNS Servers Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Servers</h3>
       </div>
 
       <div v-if="loading && servers.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="servers.length === 0" class="text-center py-12">
@@ -155,18 +155,18 @@ const handleDeleteServer = () => {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700  rounded-xl border">
-          <thead class="bg-gray-50 dark:bg-slate-900">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Port</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Server</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="server in servers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-slate-700">
+            <tr v-for="server in servers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ server.tag }}</div>
               </td>
@@ -186,7 +186,7 @@ const handleDeleteServer = () => {
                   <Button @click="openEditServerModal(server)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(server)" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  <Button @click="openDeleteConfirm(server)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>

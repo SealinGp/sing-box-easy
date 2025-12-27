@@ -126,7 +126,7 @@ const handleSkip = () => {
               v-model="logConfig.disabled"
               type="checkbox"
               id="disable-log"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="disable-log" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">Disable Logging</span>
@@ -159,7 +159,7 @@ const handleSkip = () => {
               v-model="logConfig.timestamp"
               type="checkbox"
               id="enable-timestamp"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
               :disabled="logConfig.disabled"
             />
             <label for="enable-timestamp" class="flex-1 cursor-pointer">
@@ -193,19 +193,19 @@ const handleSkip = () => {
       </Card>
 
       <!-- 配置说明 -->
-      <Card padding="sm" class="bg-blue-50 border-blue-200">
+      <Card padding="sm" class="bg-violet-50 border-violet-200">
         <div class="flex items-start space-x-3">
-          <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-blue-900 space-y-2">
+          <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+          <div class="text-sm text-violet-900 space-y-2">
             <p class="font-medium">Log Level Guide:</p>
-            <ul class="list-disc list-inside space-y-1 ml-2 text-blue-800">
+            <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
               <li><strong>Trace:</strong> Most detailed, includes all debug info (high disk usage)</li>
               <li><strong>Debug:</strong> Detailed information for debugging</li>
               <li><strong>Info:</strong> General operational messages (recommended for production)</li>
               <li><strong>Warn:</strong> Warning messages for potential issues</li>
               <li><strong>Error:</strong> Only error messages (minimal logging)</li>
             </ul>
-            <p class="mt-2 text-xs text-blue-700">
+            <p class="mt-2 text-xs text-violet-700">
               💡 Tip: Use "Info" level for normal operation and "Debug" for troubleshooting.
             </p>
           </div>

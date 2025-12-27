@@ -137,14 +137,14 @@ function handleDeleteRuleSet(tag: string) {
         </h3>
         <button
           @click="showAddRuleSetDialog = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
         >
           Add Rule Set
         </button>
       </div>
 
       <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="ruleSets.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -185,7 +185,7 @@ function handleDeleteRuleSet(tag: string) {
             <div class="flex space-x-2 ml-4">
               <button
                 @click="startEditRuleSet(ruleSet)"
-                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                class="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300"
               >
                 Edit
               </button>

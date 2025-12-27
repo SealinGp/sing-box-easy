@@ -385,14 +385,14 @@ function handleDeleteRule(index: number) {
         </h3>
         <button
           @click="showAddRuleDialog = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
         >
           Add Rule
         </button>
       </div>
 
       <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="rules.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">

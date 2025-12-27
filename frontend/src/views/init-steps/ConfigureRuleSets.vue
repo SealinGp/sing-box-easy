@@ -237,14 +237,14 @@ const handleSkip = () => {
           <div
             v-for="preset in presetRuleSets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            :class="{ 'border-blue-500 bg-blue-50': selectedPresets.has(preset.id) }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
+            :class="{ 'border-violet-500 bg-violet-50': selectedPresets.has(preset.id) }"
             @click="togglePreset(preset.id)"
           >
             <input
               type="checkbox"
               :checked="selectedPresets.has(preset.id)"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="togglePreset(preset.id)"
             />
@@ -289,19 +289,19 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-blue-50 border-blue-200">
+    <Card padding="sm" class="bg-violet-50 border-violet-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-blue-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-violet-900 space-y-2">
           <p class="font-medium">About Rule Sets:</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-blue-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
             <li><strong>GeoSite:</strong> Domain-based rules (e.g., cn = Chinese domains)</li>
             <li><strong>GeoIP:</strong> IP address-based rules (e.g., cn = Chinese IPs)</li>
             <li><strong>Format:</strong> Binary (.srs) format for better performance</li>
             <li>Rule sets are downloaded from official repositories and cached locally</li>
             <li>You can add custom rule sets or manage them in the dashboard later</li>
           </ul>
-          <p class="mt-2 text-xs text-blue-700">
+          <p class="mt-2 text-xs text-violet-700">
             💡 Tip: Select "GeoSite CN" + "GeoIP CN" for basic routing (direct for CN, proxy for others)
           </p>
         </div>

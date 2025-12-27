@@ -17,7 +17,7 @@ const classes = computed(() => {
   const base = 'inline-flex items-center font-medium rounded-full'
 
   const variants = {
-    primary: 'bg-blue-100 text-blue-800',
+    primary: 'bg-violet-100 text-violet-800',
     success: 'bg-green-100 text-green-800',
     warning: 'bg-amber-100 text-amber-800',
     danger: 'bg-red-100 text-red-800',
@@ -37,7 +37,7 @@ const classes = computed(() => {
 
 const dotColorClass = computed(() => {
   const colors = {
-    primary: 'bg-blue-500',
+    primary: 'bg-violet-500',
     success: 'bg-green-500',
     warning: 'bg-amber-500',
     danger: 'bg-red-500',

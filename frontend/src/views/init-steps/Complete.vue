@@ -134,13 +134,13 @@ const goToDashboard = () => {
     </Card>
 
     <!-- 下一步操作 -->
-    <Card class="bg-blue-50 border-blue-200">
+    <Card class="bg-violet-50 border-violet-200">
       <div class="space-y-4">
         <div class="flex items-start space-x-3">
-          <RocketLaunchIcon class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+          <RocketLaunchIcon class="w-6 h-6 text-violet-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 class="text-lg font-semibold text-blue-900 mb-2">Next Steps</h3>
-            <ul class="space-y-2 text-sm text-blue-800">
+            <h3 class="text-lg font-semibold text-violet-900 mb-2">Next Steps</h3>
+            <ul class="space-y-2 text-sm text-violet-800">
               <li class="flex items-start">
                 <span class="mr-2">1.</span>
                 <span>Start the sing-box service from the dashboard</span>

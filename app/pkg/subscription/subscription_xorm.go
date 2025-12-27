@@ -6,34 +6,57 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"go.uber.org/zap"
+	"xorm.io/xorm"
 )
 
 // ManagerXORM manages subscriptions using XORM
-type ManagerXORM struct{}
+type ManagerXORM struct {
+	e *xorm.Engine
+}
 
 // NewManagerXORM creates a new XORM-backed subscription manager
 func NewManagerXORM() *ManagerXORM {
-	return &ManagerXORM{}
+	e, err := database.GetEngine()
+	if err != nil {
+		logger.Fatal("Failed to get database engine", zap.Error(err))
+	}
+
+	return &ManagerXORM{
+		e: e,
+	}
+}
+
+// Init initializes the subscription manager and ensures database schema is ready
+func (m *ManagerXORM) Init() error {
+	logger.Info("Initializing subscription manager with XORM")
+
+	// Sync subscription table
+	if err := m.e.Sync2(new(repo.Subscription)); err != nil {
+		logger.Error("Failed to sync subscription table", zap.Error(err))
+		return fmt.Errorf("failed to sync subscription table: %w", err)
+	}
+
+	logger.Info("Subscription table synced successfully")
+	return nil
 }
 
 // List returns all subscriptions
-func (m *ManagerXORM) List() ([]Subscription, error) {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database engine: %w", err)
-	}
+func (m *ManagerXORM) List() ([]*Subscription, error) {
+	session := m.e.NewSession()
+	defer session.Close()
 
-	var dbSubscriptions []database.Subscription
-	err = engine.Desc("created_at").Find(&dbSubscriptions)
+	var dbSubscriptions []repo.Subscription
+	err := session.Desc("created_at").Find(&dbSubscriptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query subscriptions: %w", err)
 	}
 
 	// Convert database models to Subscription structs
-	subscriptions := make([]Subscription, len(dbSubscriptions))
+	subscriptions := make([]*Subscription, len(dbSubscriptions))
 	for i, dbSub := range dbSubscriptions {
-		subscriptions[i] = Subscription{
+		subscriptions[i] = &Subscription{
 			ID:             dbSub.ID,
 			Name:           dbSub.Name,
 			URL:            dbSub.URL,
@@ -51,13 +74,11 @@ func (m *ManagerXORM) List() ([]Subscription, error) {
 
 // Get returns a subscription by ID
 func (m *ManagerXORM) Get(id string) (*Subscription, error) {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	var dbSub database.Subscription
-	has, err := engine.ID(id).Get(&dbSub)
+	var dbSub repo.Subscription
+	has, err := session.ID(id).Get(&dbSub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscription: %w", err)
 	}
@@ -83,10 +104,8 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 
 // Add adds a new subscription
 func (m *ManagerXORM) Add(sub Subscription) error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
 	// Generate ID if not provided
 	if sub.ID == "" {
@@ -94,7 +113,7 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 	}
 
 	// Set timestamps (XORM will handle created_at and updated_at automatically)
-	dbSub := &database.Subscription{
+	dbSub := &repo.Subscription{
 		ID:             sub.ID,
 		Name:           sub.Name,
 		URL:            sub.URL,
@@ -104,7 +123,7 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 		LastUpdate:     sub.LastUpdate,
 	}
 
-	_, err = engine.Insert(dbSub)
+	_, err := session.Insert(dbSub)
 	if err != nil {
 		return fmt.Errorf("failed to add subscription: %w", err)
 	}
@@ -115,13 +134,11 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 
 // Update updates an existing subscription
 func (m *ManagerXORM) Update(id string, sub Subscription) error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
 	// Check if subscription exists
-	has, err := engine.ID(id).Exist(&database.Subscription{})
+	has, err := session.ID(id).Exist(&repo.Subscription{})
 	if err != nil {
 		return fmt.Errorf("failed to check subscription existence: %w", err)
 	}
@@ -144,7 +161,7 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 		updates["last_update"] = sub.LastUpdate
 	}
 
-	_, err = engine.ID(id).Update(&database.Subscription{}, updates)
+	_, err = session.ID(id).Update(&repo.Subscription{}, updates)
 	if err != nil {
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
@@ -155,12 +172,10 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 
 // Delete deletes a subscription by ID
 func (m *ManagerXORM) Delete(id string) error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	affected, err := engine.ID(id).Delete(&database.Subscription{})
+	affected, err := session.ID(id).Delete(&repo.Subscription{})
 	if err != nil {
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
@@ -175,13 +190,8 @@ func (m *ManagerXORM) Delete(id string) error {
 
 // UpdateLastUpdate updates the last_update timestamp for a subscription
 func (m *ManagerXORM) UpdateLastUpdate(id string) error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
-
 	// Use a session for the update
-	session := engine.NewSession()
+	session := m.e.NewSession()
 	defer session.Close()
 
 	if err := session.Begin(); err != nil {
@@ -190,7 +200,7 @@ func (m *ManagerXORM) UpdateLastUpdate(id string) error {
 
 	// First check if subscription exists
 	var count int64
-	count, err = session.ID(id).Count(&database.Subscription{})
+	count, err := session.ID(id).Count(&repo.Subscription{})
 	if err != nil {
 		session.Rollback()
 		return fmt.Errorf("failed to check subscription existence: %w", err)

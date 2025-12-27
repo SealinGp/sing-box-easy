@@ -66,6 +66,10 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	// Generate unique tag to avoid conflicts
+	originalTag := outbound.Tag
+	outbound.Tag = config.GenerateUniqueTag(originalTag, outbound)
+
 	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		// Check if tag already exists
 		for _, existing := range cfg.Outbounds {
@@ -136,6 +140,10 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 
 		// Add outbounds that don't exist
 		for _, outbound := range req.Outbounds {
+			// Generate unique tag to avoid conflicts between different subscriptions
+			originalTag := outbound.Tag
+			outbound.Tag = config.GenerateUniqueTag(originalTag, outbound)
+
 			if existingTags[outbound.Tag] {
 				skippedTags = append(skippedTags, outbound.Tag)
 				continue

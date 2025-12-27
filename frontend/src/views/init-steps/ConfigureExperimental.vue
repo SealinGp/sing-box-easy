@@ -261,7 +261,7 @@ const handleSkip = () => {
               v-model="enableClashAPI"
               type="checkbox"
               id="enable-clash-api"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="enable-clash-api" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">Enable Clash API</span>
@@ -271,7 +271,7 @@ const handleSkip = () => {
             </label>
           </div>
 
-          <div v-if="enableClashAPI" class="space-y-4 pl-4 border-l-2 border-blue-200">
+          <div v-if="enableClashAPI" class="space-y-4 pl-4 border-l-2 border-violet-200">
             <Input
               v-model="clashAPIConfig.external_controller"
               label="External Controller"
@@ -313,8 +313,8 @@ const handleSkip = () => {
                   :class="[
                     'relative border-2 rounded-lg p-3 cursor-pointer transition-all',
                     selectedDashboard === dashboard.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                      ? 'border-violet-500 bg-violet-50'
+                      : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
                   ]"
                 >
                   <div class="flex items-start space-x-3">
@@ -332,7 +332,7 @@ const handleSkip = () => {
                         :href="dashboard.link"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        class="text-sm font-semibold text-violet-600 hover:text-violet-800 hover:underline"
                         @click.stop
                       >
                         {{ dashboard.name }}
@@ -342,7 +342,7 @@ const handleSkip = () => {
                     <!-- 选中标记 -->
                     <div
                       v-if="selectedDashboard === dashboard.id"
-                      class="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
+                      class="absolute top-2 right-2 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
                     >
                       <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -368,15 +368,15 @@ const handleSkip = () => {
                 :class="[
                   'border-2 rounded-lg p-4 cursor-pointer transition-all',
                   selectedDashboard === 'custom'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    ? 'border-violet-500 bg-violet-50'
+                    : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
                 ]"
               >
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm font-semibold text-gray-900">Custom Download URL</span>
                   <div
                     v-if="selectedDashboard === 'custom'"
-                    class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
+                    class="w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
                   >
                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -429,7 +429,7 @@ const handleSkip = () => {
               v-model="enableCacheFile"
               type="checkbox"
               id="enable-cache-file"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="enable-cache-file" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">Enable Cache File</span>
@@ -458,7 +458,7 @@ const handleSkip = () => {
                 v-model="cacheFileConfig.store_fakeip"
                 type="checkbox"
                 id="store-fakeip"
-                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
               />
               <label for="store-fakeip" class="flex-1 cursor-pointer">
                 <span class="text-sm font-medium text-gray-900">Store Fake-IP mappings</span>
@@ -492,18 +492,18 @@ const handleSkip = () => {
       </div>
 
       <!-- 说明信息 -->
-      <Card padding="sm" class="bg-blue-50 border-blue-200">
+      <Card padding="sm" class="bg-violet-50 border-violet-200">
         <div class="flex items-start space-x-3">
-          <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-blue-900 space-y-2">
+          <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+          <div class="text-sm text-violet-900 space-y-2">
             <p class="font-medium">About Experimental Features:</p>
-            <ul class="list-disc list-inside space-y-1 ml-2 text-blue-800">
+            <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
               <li><strong>Clash API:</strong> Enables web-based dashboard and third-party app control</li>
               <li><strong>External Controller:</strong> The HTTP API endpoint (host:port)</li>
               <li><strong>External UI:</strong> Path to web dashboard files (e.g., yacd, metacubexd)</li>
               <li><strong>Cache File:</strong> Speeds up DNS resolution and routing decisions</li>
             </ul>
-            <p class="mt-2 text-xs text-blue-700">
+            <p class="mt-2 text-xs text-violet-700">
               💡 Tip: Enable Clash API if you want to use a web dashboard to manage sing-box.
             </p>
           </div>

@@ -36,6 +36,7 @@ require (
 	github.com/quic-go/quic-go v0.53.0 // indirect
 	github.com/refraction-networking/utls v1.7.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagernet/sing v0.7.13 // indirect
 	github.com/sagernet/sing-box v1.12.12 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect

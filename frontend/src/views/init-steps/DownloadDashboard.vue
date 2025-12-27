@@ -280,7 +280,7 @@ onUnmounted(() => {
                 @click="activeTab = 'download'"
                 :class="[
                   activeTab === 'download'
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-violet-500 text-violet-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
@@ -291,7 +291,7 @@ onUnmounted(() => {
                 @click="activeTab = 'upload'"
                 :class="[
                   activeTab === 'upload'
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-violet-500 text-violet-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
@@ -344,8 +344,8 @@ onUnmounted(() => {
               <p class="mt-1 text-xs text-gray-500">
                 Select a dashboard ZIP file (e.g., zashboard-gh-pages.zip, yacd-gh-pages.zip)
               </p>
-              <div v-if="uploadFile" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                <p class="text-sm text-blue-900">
+              <div v-if="uploadFile" class="mt-2 p-2 bg-violet-50 border border-violet-200 rounded">
+                <p class="text-sm text-violet-900">
                   Selected: <span class="font-medium">{{ uploadFile.name }}</span> ({{ (uploadFile.size / 1024 / 1024).toFixed(2) }} MB)
                 </p>
               </div>
@@ -365,30 +365,30 @@ onUnmounted(() => {
           </div>
 
           <!-- 下载进度 -->
-          <Card v-if="downloading && downloadTask" padding="sm" class="bg-blue-50 border-blue-200">
+          <Card v-if="downloading && downloadTask" padding="sm" class="bg-violet-50 border-violet-200">
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-blue-900">Downloading Dashboard...</p>
+                <p class="text-sm font-semibold text-violet-900">Downloading Dashboard...</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
                 <pre class="whitespace-pre-wrap break-words">{{ downloadTask.message || 'Preparing download...' }}</pre>
               </div>
-              <p class="text-xs text-blue-600">This may take a few minutes. Please wait...</p>
+              <p class="text-xs text-violet-600">This may take a few minutes. Please wait...</p>
             </div>
           </Card>
 
           <!-- 上传进度 -->
-          <Card v-if="uploading && uploadTask" padding="sm" class="bg-blue-50 border-blue-200">
+          <Card v-if="uploading && uploadTask" padding="sm" class="bg-violet-50 border-violet-200">
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-blue-900">Uploading Dashboard...</p>
+                <p class="text-sm font-semibold text-violet-900">Uploading Dashboard...</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
                 <pre class="whitespace-pre-wrap break-words">{{ uploadTask.message || 'Preparing upload...' }}</pre>
               </div>
-              <p class="text-xs text-blue-600">Extracting and installing dashboard...</p>
+              <p class="text-xs text-violet-600">Extracting and installing dashboard...</p>
             </div>
           </Card>
 

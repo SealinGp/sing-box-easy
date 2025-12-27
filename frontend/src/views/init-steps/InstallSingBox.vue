@@ -150,7 +150,7 @@ onUnmounted(() => {
               <input
                 v-model="beta"
                 type="checkbox"
-                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                 :disabled="installing || alreadyInstalled"
               />
               <span class="text-sm font-medium text-gray-700">Install beta version</span>
@@ -164,16 +164,16 @@ onUnmounted(() => {
         </Alert>
 
         <!-- 安装进度 -->
-        <Card v-if="installing && installTask" padding="sm" class="bg-blue-50 border-blue-200">
+        <Card v-if="installing && installTask" padding="sm" class="bg-violet-50 border-violet-200">
           <div class="space-y-3">
             <div class="flex items-center space-x-2">
               <Loading size="sm" />
-              <p class="text-sm font-semibold text-blue-900">Installing sing-box...</p>
+              <p class="text-sm font-semibold text-violet-900">Installing sing-box...</p>
             </div>
             <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs overflow-auto max-h-32">
               <pre class="whitespace-pre-wrap break-words">{{ installTask.message || 'Starting installation...' }}</pre>
             </div>
-            <p class="text-xs text-blue-600">This may take a few minutes. Please wait...</p>
+            <p class="text-xs text-violet-600">This may take a few minutes. Please wait...</p>
           </div>
         </Card>
 

@@ -8,19 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"go.uber.org/zap"
 )
-
-// InitStateManager interface for updating initialization state
-type InitStateManager interface {
-	SetSingBoxInstalled(version string) error
-}
-
-// ConfigManager interface for initializing configuration
-type ConfigManager interface {
-	InitializeConfig() error
-}
 
 // InstallTask represents an installation task
 type InstallTask struct {
@@ -35,12 +27,12 @@ type InstallTask struct {
 type Manager struct {
 	tasks            map[string]*InstallTask
 	mu               sync.RWMutex
-	initStateManager InitStateManager
-	configManager    ConfigManager
+	initStateManager initstate.InitStateManager
+	configManager    *config.Manager
 }
 
 // NewManager creates a new installer manager
-func NewManager(initStateManager InitStateManager, configManager ConfigManager) *Manager {
+func NewManager(initStateManager initstate.InitStateManager, configManager *config.Manager) *Manager {
 	return &Manager{
 		tasks:            make(map[string]*InstallTask),
 		initStateManager: initStateManager,

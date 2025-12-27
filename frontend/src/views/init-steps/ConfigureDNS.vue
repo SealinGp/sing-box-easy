@@ -325,14 +325,14 @@ const handleSkip = () => {
           <div
             v-for="preset in dnsPresets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            :class="{ 'border-blue-500 bg-blue-50': selectedPreset === preset.id }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
+            :class="{ 'border-violet-500 bg-violet-50': selectedPreset === preset.id }"
             @click="selectedPreset = preset.id"
           >
             <input
               type="radio"
               :checked="selectedPreset === preset.id"
-              class="w-4 h-4 text-blue-600 border-gray-300 mt-0.5"
+              class="w-4 h-4 text-violet-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="selectedPreset = preset.id"
             />
@@ -379,7 +379,7 @@ const handleSkip = () => {
             v-model="enableHosts"
             type="checkbox"
             id="enable-hosts"
-            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             :disabled="loading || saving || success"
           />
           <label for="enable-hosts" class="flex-1 cursor-pointer">
@@ -392,7 +392,7 @@ const handleSkip = () => {
 
         <div v-if="enableHosts" class="space-y-3">
           <!-- Add new host entry -->
-          <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="p-4 bg-violet-50 border border-violet-200 rounded-lg">
             <p class="text-sm font-medium text-gray-900 mb-3">Add Host Entry</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -401,7 +401,7 @@ const handleSkip = () => {
                   v-model="newHostDomain"
                   type="text"
                   placeholder="e.g., www.example.com"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
                   :disabled="saving || success"
                   @keyup.enter="addHostEntry"
                 />
@@ -416,7 +416,7 @@ const handleSkip = () => {
                     v-model="newHostIP"
                     type="text"
                     placeholder="e.g., 127.0.0.1 or 127.0.0.1, ::1"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
                     :disabled="saving || success"
                     @keyup.enter="addHostEntry"
                   />
@@ -499,7 +499,7 @@ const handleSkip = () => {
             v-model="enableFakeIP"
             type="checkbox"
             id="enable-fakeip"
-            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             :disabled="loading || saving || success"
           />
           <label for="enable-fakeip" class="flex-1 cursor-pointer">
@@ -537,19 +537,19 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-blue-50 border-blue-200">
+    <Card padding="sm" class="bg-violet-50 border-violet-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-blue-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-violet-900 space-y-2">
           <p class="font-medium">About DNS Configuration:</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-blue-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
             <li><strong>Smart DNS:</strong> Uses domestic DNS for CN domains, foreign DNS for others (best for China users)</li>
             <li><strong>Cloudflare/Google:</strong> Uses single DNS provider for all queries (simple, reliable)</li>
             <li><strong>China DNS:</strong> Uses only domestic DNS (fastest for China-only access)</li>
             <li><strong>FakeIP:</strong> Returns fake IPs to speed up connections, recommended for most users</li>
             <li><strong>Strategy:</strong> Prefer IPv4 is recommended for better compatibility</li>
           </ul>
-          <p class="mt-2 text-xs text-blue-700">
+          <p class="mt-2 text-xs text-violet-700">
             💡 Tip: Use "Smart DNS" for the best routing performance with split DNS.
           </p>
         </div>

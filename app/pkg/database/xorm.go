@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	engine *xorm.Engine
-	once   sync.Once
+	engine  *xorm.Engine
+	once    sync.Once
 	dbMutex sync.RWMutex
 )
 
@@ -63,27 +63,11 @@ func Init(dbPath string) error {
 
 		engine = eng
 
-		// Sync schema (auto-migration)
-		if err := syncSchema(); err != nil {
-			engine.Close()
-			engine = nil
-			initErr = fmt.Errorf("failed to sync schema: %w", err)
-			return
-		}
-
 		// Run migrations
 		if err := runMigrations(); err != nil {
 			engine.Close()
 			engine = nil
 			initErr = fmt.Errorf("failed to run migrations: %w", err)
-			return
-		}
-
-		// Initialize default data
-		if err := initDefaultData(); err != nil {
-			engine.Close()
-			engine = nil
-			initErr = fmt.Errorf("failed to initialize default data: %w", err)
 			return
 		}
 
@@ -114,45 +98,6 @@ func Close() error {
 		engine = nil
 		return err
 	}
-	return nil
-}
-
-// syncSchema synchronizes the database schema
-func syncSchema() error {
-	logger.Info("Syncing database schema with XORM...")
-
-	// Sync tables
-	if err := engine.Sync2(new(InitState), new(Subscription)); err != nil {
-		return fmt.Errorf("failed to sync schema: %w", err)
-	}
-
-	logger.Info("Database schema synced successfully")
-	return nil
-}
-
-// initDefaultData initializes default data
-func initDefaultData() error {
-	// Check if init_state has data
-	count, err := engine.Count(new(InitState))
-	if err != nil {
-		return fmt.Errorf("failed to count init_state: %w", err)
-	}
-
-	// Insert default init_state if not exists
-	if count == 0 {
-		initState := &InitState{
-			Initialized:        false,
-			SingBoxInstalled:   false,
-			ConfigGenerated:    false,
-			DashboardInstalled: false,
-			SingBoxVersion:     "",
-		}
-		if _, err := engine.Insert(initState); err != nil {
-			return fmt.Errorf("failed to insert default init_state: %w", err)
-		}
-		logger.Info("Default init_state created")
-	}
-
 	return nil
 }
 

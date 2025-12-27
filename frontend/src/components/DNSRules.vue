@@ -119,7 +119,7 @@ const getRuleConditionsSummary = (rule: any) => {
     </div>
 
     <!-- DNS Rules Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Rules</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -128,7 +128,7 @@ const getRuleConditionsSummary = (rule: any) => {
       </div>
 
       <div v-if="loading && rules.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="rules.length === 0" class="text-center py-12">
@@ -140,18 +140,18 @@ const getRuleConditionsSummary = (rule: any) => {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700  rounded-xl border">
-          <thead class="bg-gray-50 dark:bg-slate-900">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">#</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Action</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Conditions</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Action</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Server</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Conditions</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="(rule, index) in rules" :key="index" class="hover:bg-gray-50 dark:hover:bg-slate-700">
+            <tr v-for="(rule, index) in rules" :key="index" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900 dark:text-gray-100">{{ index + 1 }}</div>
               </td>
@@ -173,7 +173,7 @@ const getRuleConditionsSummary = (rule: any) => {
                   <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>
@@ -230,7 +230,7 @@ const getRuleConditionsSummary = (rule: any) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Action *</label>
                     <select
                       v-model="currentRule.action"
-                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                     >
                       <option v-for="action in actionTypes" :key="action.value" :value="action.value">
                         {{ action.label }}
@@ -243,7 +243,7 @@ const getRuleConditionsSummary = (rule: any) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNS Server *</label>
                     <select
                       v-model="currentRule.server"
-                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                     >
                       <option value="">Select a server</option>
                       <option v-for="server in servers" :key="server.tag" :value="server.tag">

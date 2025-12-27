@@ -52,7 +52,7 @@ const handleClick = (tag: string) => {
         v-if="selectable && selectedTags"
         type="checkbox"
         :checked="selectedTags.has(node.tag)"
-        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
         @click.stop="handleClick(node.tag)"
       />
       <div class="flex-1 min-w-0">

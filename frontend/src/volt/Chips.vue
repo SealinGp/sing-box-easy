@@ -28,7 +28,7 @@ const theme = ref<ChipsPassThroughOptions>({
             rounded-md
             transition-colors duration-200
             ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : ''}
-            focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500`
+            focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`
     }),
     input: `flex items-center flex-wrap gap-2 list-none m-0 p-0`,
     inputitem: `flex-1 inline-flex`,
@@ -41,11 +41,11 @@ const theme = ref<ChipsPassThroughOptions>({
     chipitem: `mr-2`,
     pcChip: {
         root: `inline-flex items-center gap-2 px-3 py-1.5 rounded-md
-            bg-blue-100 dark:bg-blue-900/30
-            text-blue-700 dark:text-blue-300
+            bg-violet-100 dark:bg-violet-900/30
+            text-violet-700 dark:text-violet-300
             text-sm border-0`,
         label: `text-sm font-medium`,
-        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-blue-900 dark:hover:text-blue-100 transition-colors`
+        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-violet-900 dark:hover:text-violet-100 transition-colors`
     }
 });
 </script>

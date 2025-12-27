@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -21,28 +22,25 @@ const (
 )
 
 // DashboardInitStateManager interface for updating initialization state
-type DashboardInitStateManager interface {
-	SetDashboardInstalled() error
-}
 
 // DashboardTask represents a dashboard download task
 type DashboardTask struct {
-	ID        string
-	Status    string // running, completed, failed
-	Message   string
-	Error     string
-	mu        sync.RWMutex
+	ID      string
+	Status  string // running, completed, failed
+	Message string
+	Error   string
+	mu      sync.RWMutex
 }
 
 // DashboardManager manages dashboard download tasks
 type DashboardManager struct {
 	tasks            map[string]*DashboardTask
 	mu               sync.RWMutex
-	initStateManager DashboardInitStateManager
+	initStateManager initstate.InitStateManager
 }
 
 // NewDashboardManager creates a new dashboard manager
-func NewDashboardManager(initStateManager DashboardInitStateManager) *DashboardManager {
+func NewDashboardManager(initStateManager initstate.InitStateManager) *DashboardManager {
 	return &DashboardManager{
 		tasks:            make(map[string]*DashboardTask),
 		initStateManager: initStateManager,

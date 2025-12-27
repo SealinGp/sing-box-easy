@@ -97,16 +97,16 @@ const resetToDefaults = () => {
       </p>
     </div>
 
-    <div v-if="loading" class="bg-white dark:bg-slate-800 p-8 rounded-lg shadow">
+    <div v-if="loading" class="bg-white dark:bg-slate-800 p-8 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50">
       <div class="flex items-center justify-center">
         <div class="text-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
           <p class="mt-4 text-gray-500 dark:text-gray-400">Loading log configuration...</p>
         </div>
       </div>
     </div>
 
-    <div v-else class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:border-white border">
+    <div v-else class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50">
       <div class="space-y-6">
         <!-- Disabled -->
         <div class="flex items-center justify-between">
@@ -121,8 +121,8 @@ const resetToDefaults = () => {
           <button
             @click="logConfig.disabled = !logConfig.disabled"
             :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2',
-              logConfig.disabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-violet-600 focus:ring-offset-2',
+              logConfig.disabled ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-700'
             ]"
           >
             <span
@@ -144,7 +144,7 @@ const resetToDefaults = () => {
           </p>
           <select
             v-model="logConfig.level"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
           >
             <option v-for="level in logLevels" :key="level" :value="level">
               {{ level.toUpperCase() }}
@@ -164,7 +164,7 @@ const resetToDefaults = () => {
             v-model="logConfig.output"
             type="text"
             placeholder="/var/log/sing-box.log"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
         </div>
 
@@ -181,8 +181,8 @@ const resetToDefaults = () => {
           <button
             @click="logConfig.timestamp = !logConfig.timestamp"
             :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2',
-              logConfig.timestamp ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-violet-600 focus:ring-offset-2',
+              logConfig.timestamp ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-700'
             ]"
           >
             <span
@@ -206,7 +206,7 @@ const resetToDefaults = () => {
           <button
             @click="saveLog"
             :disabled="saving"
-            class="px-6 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-6 py-2 text-sm font-medium text-white bg-violet-600 dark:bg-violet-700 rounded-md hover:bg-violet-700 dark:hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ saving ? 'Saving...' : 'Save Configuration' }}
           </button>

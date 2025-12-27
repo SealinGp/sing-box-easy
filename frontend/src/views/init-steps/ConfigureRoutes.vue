@@ -247,14 +247,14 @@ const handleSkip = () => {
           <div
             v-for="preset in routePresets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            :class="{ 'border-blue-500 bg-blue-50': selectedPreset === preset.id }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
+            :class="{ 'border-violet-500 bg-violet-50': selectedPreset === preset.id }"
             @click="selectedPreset = preset.id"
           >
             <input
               type="radio"
               :checked="selectedPreset === preset.id"
-              class="w-4 h-4 text-blue-600 border-gray-300 mt-0.5"
+              class="w-4 h-4 text-violet-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="selectedPreset = preset.id"
             />
@@ -295,12 +295,12 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-blue-50 border-blue-200">
+    <Card padding="sm" class="bg-violet-50 border-violet-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-blue-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-violet-900 space-y-2">
           <p class="font-medium">About Routing Strategies:</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-blue-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
             <li><strong>Smart Routing:</strong> Blocks ads, directs CN traffic, proxies everything else (best for China users)</li>
             <li><strong>Global Proxy:</strong> Routes all traffic through proxy except private IPs</li>
             <li><strong>Direct Connection:</strong> No proxy, all traffic goes directly</li>
@@ -308,7 +308,7 @@ const handleSkip = () => {
             <li>Rules are evaluated in order, first match wins</li>
             <li>Final outbound is used when no rules match</li>
           </ul>
-          <p class="mt-2 text-xs text-blue-700">
+          <p class="mt-2 text-xs text-violet-700">
             💡 Tip: Use "Smart Routing" for balanced performance and privacy.
           </p>
         </div>

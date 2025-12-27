@@ -25,6 +25,7 @@
     "vue-select": "^4.0.0-beta.6"
   },
   "devDependencies": {
+    "@monaco-editor/loader": "^1.7.0",
     "@primevue/auto-import-resolver": "^4.5.3",
     "@tailwindcss/vite": "^4.1.17",
     "@types/node": "^24.6.0",

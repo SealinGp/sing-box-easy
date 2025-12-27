@@ -92,6 +92,13 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.DELETE("/subscriptions/:id", handler.DeleteSubscription)
 	v1.POST("/subscriptions/:id/update", handler.UpdateSubscriptionContent)
 
+	// Scheduler Management APIs
+	v1.GET("/scheduler/status", handler.schedulerHandler.GetStatus)
+	v1.POST("/scheduler/start", handler.schedulerHandler.Start)
+	v1.POST("/scheduler/stop", handler.schedulerHandler.Stop)
+	v1.POST("/scheduler/trigger", handler.schedulerHandler.Trigger)
+	v1.GET("/scheduler/jobs", handler.schedulerHandler.GetJobs)
+
 	// Installation APIs
 	v1.POST("/install", handler.InstallSingBox)
 	v1.GET("/install/task/:task_id", handler.GetInstallTask)

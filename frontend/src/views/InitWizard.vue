@@ -105,7 +105,7 @@ const prevStep = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
+  <div class="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
     <div class="mx-auto w-full 2xl:w-3/4 xl:w-2/3 p-3 grid grid-cols-1 gap-y-2">
       <!-- Header -->
       <div class="text-center">
@@ -128,7 +128,7 @@ const prevStep = () => {
                   index < currentStep
                     ? 'bg-green-500 text-white'
                     : index === currentStep
-                    ? 'bg-blue-600 text-white ring-4 ring-blue-200'
+                    ? 'bg-violet-600 text-white ring-4 ring-violet-200'
                     : 'bg-gray-300 text-gray-600',
                 ]"
               >
@@ -147,7 +147,7 @@ const prevStep = () => {
               <p
                 :class="[
                   'text-xs font-medium',
-                  index === currentStep ? 'text-blue-600' : 'text-gray-500',
+                  index === currentStep ? 'text-violet-600' : 'text-gray-500',
                 ]"
               >
                 {{ step.title }}
@@ -158,8 +158,8 @@ const prevStep = () => {
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="bg-white dark:bg-bg-dark rounded-lg shadow-lg p-8 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div v-if="loading" class="bg-white dark:bg-bg-dark rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 p-8 text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
         <p class="mt-4 text-gray-600">Loading initialization status...</p>
       </div>
 
@@ -170,14 +170,14 @@ const prevStep = () => {
       </div>
 
       <!-- Main Content -->
-      <div v-else class="bg-white dark:bg-bg-dark rounded-lg shadow-lg mt-9 p-3">
+      <div v-else class="bg-white dark:bg-bg-dark rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 mt-9 p-3">
         <div class="mb-6">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {{ steps[currentStep]?.title }}
           </h2>
           <div class="w-full bg-gray-200 rounded-full h-2">
             <div
-              class="bg-blue-600 h-2 rounded-full transition-all"
+              class="bg-violet-600 h-2 rounded-full transition-all"
               :style="{ width: `${((currentStep + 1) / steps.length) * 100}%` }"
             ></div>
           </div>
@@ -205,7 +205,7 @@ const prevStep = () => {
               <button
                 v-if="currentStep < steps.length - 1"
                 @click="nextStep"
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                class="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
               >
                 Next
               </button>

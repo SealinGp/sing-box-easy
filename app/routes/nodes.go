@@ -12,6 +12,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"go.uber.org/zap"
 )
 
 type Route struct {
@@ -45,11 +46,20 @@ func (r *Route) initEndpoints() error {
 	v1Handler := v1_12_12.NewHandler(
 		r.config.SingBox.ConfigPath,
 		r.config.SingBox.BinaryPath,
+		r.sl,
 	)
 
 	// Initialize handler components
 	if err := v1Handler.Init(); err != nil {
 		return err
+	}
+
+	// Start the auto-updater with default cron expression
+	if err := v1Handler.StartAutoUpdater("*/5 * * * *"); err != nil {
+		// Log error but don't fail initialization
+		logger.L.Error("Failed to start auto-updater", zap.Error(err))
+	} else {
+		logger.L.Info("Auto-updater started successfully with 5-minute interval")
 	}
 
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)

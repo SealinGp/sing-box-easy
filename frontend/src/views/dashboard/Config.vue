@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { CodeEditor } from 'monaco-editor-vue3'
 import { configService } from '../../services'
 import type { SingBoxConfig } from '../../types/api'
@@ -12,9 +12,11 @@ const saving = ref(false)
 const validating = ref(false)
 const hasChanges = ref(false)
 const isFullscreen = ref(false)
+const editorReady = ref(false)
+const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
 const toast = useToast()
 
-const editorOptions = {
+const editorOptions = computed(() => ({
   automaticLayout: true,
   formatOnType: true,
   formatOnPaste: true,
@@ -22,10 +24,26 @@ const editorOptions = {
   scrollBeyondLastLine: false,
   fontSize: 14,
   tabSize: 2,
-}
+  // Folding (collapse/expand) options
+  folding: true, // Enable code folding
+  showFoldingControls: 'always', // 'always' | 'mouseover' | 'never'
+  foldingStrategy: 'auto', // 'auto' | 'indentation'
+  foldingHighlight: true, // Highlight folded regions
+  // Additional helpful options for JSON editing
+  lineNumbers: 'on',
+  renderLineHighlight: 'all',
+  bracketPairColorization: {
+    enabled: true,
+  },
+  wordWrap: 'on',
+  theme: editorTheme.value,
+}))
 
 onMounted(async () => {
   await loadConfig()
+  // Wait for the next DOM update cycle
+  await nextTick()
+  editorReady.value = true
 })
 
 const loadConfig = async () => {
@@ -224,6 +242,10 @@ const loadBackup = async () => {
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value
 }
+
+const toggleTheme = () => {
+  editorTheme.value = editorTheme.value === 'vs-dark' ? 'vs-light' : 'vs-dark'
+}
 </script>
 
 <template>
@@ -237,7 +259,7 @@ const toggleFullscreen = () => {
 
     <div
       :class="[
-        'bg-white dark:bg-slate-800 rounded-lg shadow',
+        'bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50',
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
       ]"
     >
@@ -255,7 +277,7 @@ const toggleFullscreen = () => {
           <button
             @click="loadBackup"
             :disabled="loading"
-            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Load Backup
           </button>
@@ -263,7 +285,7 @@ const toggleFullscreen = () => {
           <button
             @click="rollback"
             :disabled="loading"
-            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Rollback
           </button>
@@ -271,7 +293,7 @@ const toggleFullscreen = () => {
           <button
             @click="resetChanges"
             :disabled="!hasChanges || loading"
-            class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reset
           </button>
@@ -279,7 +301,7 @@ const toggleFullscreen = () => {
           <button
             @click="validateConfig"
             :disabled="validating || loading"
-            class="px-2 py-1 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium text-white bg-violet-600 dark:bg-violet-700 rounded-md hover:bg-violet-700 dark:hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ validating ? 'Validating...' : 'Validate' }}
           </button>
@@ -287,10 +309,25 @@ const toggleFullscreen = () => {
           <button
             @click="saveConfig"
             :disabled="!hasChanges || saving || loading"
-            class="px-2 py-1 text-sm font-medium text-white bg-green-600 dark:bg-green-700 rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm font-medium text-white bg-green-600 dark:bg-green-700 rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
+
+          <label class="flex items-center cursor-pointer gap-2">
+            <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <input
+              type="checkbox"
+              class="toggle toggle-sm"
+              :checked="editorTheme === 'vs-dark'"
+              @change="toggleTheme"
+            />
+            <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </label>
 
           <button
             @click="toggleFullscreen"
@@ -312,16 +349,15 @@ const toggleFullscreen = () => {
       ]">
         <div v-if="loading" class="h-full flex items-center justify-center">
           <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
             <p class="mt-4 text-gray-500 dark:text-gray-400">Loading configuration...</p>
           </div>
         </div>
 
         <CodeEditor
-          v-else
+          v-else-if="editorReady"
           v-model:value="configContent"
           language="json"
-          theme="vs-dark"
           :options="editorOptions"
           @change="handleEditorChange"
           class="h-full"

@@ -27,7 +27,7 @@ const inputClasses = computed(() => {
   const base = 'block rounded-lg border px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors'
   const state = props.error
     ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+    : 'border-gray-300 focus:border-violet-500 focus:ring-violet-500'
   const width = props.fullWidth ? 'w-full' : ''
 
   return [base, state, width].join(' ')

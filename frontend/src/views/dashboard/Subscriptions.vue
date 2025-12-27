@@ -326,10 +326,10 @@ onMounted(() => {
     </div>
 
     <!-- Subscriptions List -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
       <div v-if="isLoading && subscriptions.length === 0" class="p-12 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mb-4">
-          <ServerIcon class="h-8 w-8 text-blue-600 dark:text-blue-400" />
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900 rounded-full mb-4">
+          <ServerIcon class="h-8 w-8 text-violet-600 dark:text-violet-400" />
         </div>
         <p class="text-gray-500 dark:text-gray-400">Loading subscriptions...</p>
       </div>
@@ -368,7 +368,7 @@ onMounted(() => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Auto Update
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -476,7 +476,7 @@ onMounted(() => {
               <input
                 v-model="formData.auto_update"
                 type="checkbox"
-                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                class="rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 dark:bg-gray-700"
               />
               <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Auto Update</span>
             </label>

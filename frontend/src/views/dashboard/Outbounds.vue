@@ -463,9 +463,9 @@ onMounted(fetchOutbounds)
     </div>
 
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border-white border">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
       <div v-if="loading && outbounds.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
       <div v-else-if="outbounds.length === 0" class="text-center py-12">
@@ -477,36 +477,42 @@ onMounted(fetchOutbounds)
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="table">
-          <!-- head -->
-          <thead>
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th></th>
-              <th>Tag</th>
-              <th>Type</th>
-              <th>Server</th>
-              <th>Port</th>
-              <th class="text-right">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Server</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            <!-- 动态行 -->
-            <tr v-for="(outbound,i) in outbounds" :key="outbound.tag" class="hover">
-              <th>{{ i + 1 }}</th>
-              <td>{{ outbound.tag || i }}</td>
-              <td>
+          <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-for="(outbound,i) in outbounds" :key="outbound.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ i + 1 }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ outbound.tag || i }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <Badge :variant="getOutboundBadgeVariant(outbound.type)">
                   {{ getOutboundTypeLabel(outbound.type) }}
                 </Badge>
               </td>
-              <td>{{ (outbound as any).server || '-' }}</td>
-              <td>{{ (outbound as any).server_port || '-' }}</td>
-              <td class="text-right">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (outbound as any).server || '-' }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (outbound as any).server_port || '-' }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
                   <Button @click="openEditModal(outbound)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(outbound, i)" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  <Button @click="openDeleteConfirm(outbound, i)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>
@@ -765,7 +771,7 @@ onMounted(fetchOutbounds)
                         <input
                           type="checkbox"
                           :checked="selectedNodes.has(node.tag)"
-                          class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                           @click.stop="toggleNode(node.tag)"
                         />
                         <div class="flex-1 min-w-0">

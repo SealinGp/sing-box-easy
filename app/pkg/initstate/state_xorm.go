@@ -5,34 +5,82 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
+	"github.com/SealinGp/sing-box-easy/app/pkg/initstate/repo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"go.uber.org/zap"
+	"xorm.io/xorm"
 )
 
 // ManagerXORM manages initialization state using XORM
-type ManagerXORM struct{}
+type ManagerXORM struct {
+	e *xorm.Engine
+}
 
 // NewManagerXORM creates a new XORM-backed initialization state manager
 func NewManagerXORM() *ManagerXORM {
-	return &ManagerXORM{}
+	e, err := database.GetEngine()
+	if err != nil {
+		logger.Fatal("Failed to get database engine", zap.Error(err))
+	}
+
+	return &ManagerXORM{
+		e: e,
+	}
 }
 
 // Init initializes the state manager
 func (m *ManagerXORM) Init() error {
 	logger.Info("State manager initialized with XORM")
+
+	// Ensure the init_state table exists
+	if err := m.e.Sync2(new(repo.InitState)); err != nil {
+		logger.Error("Failed to sync init_state table", zap.Error(err))
+		return err
+	}
+
+	if err := m.initDefaultData(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initDefaultData initializes default data
+func (m *ManagerXORM) initDefaultData() error {
+	session := m.e.NewSession()
+	defer session.Close()
+
+	// Check if init_state has data
+	count, err := session.Count(new(repo.InitState))
+	if err != nil {
+		return fmt.Errorf("failed to count init_state: %w", err)
+	}
+
+	// Insert default init_state if not exists
+	if count == 0 {
+		initState := &repo.InitState{
+			Initialized:        false,
+			SingBoxInstalled:   false,
+			ConfigGenerated:    false,
+			DashboardInstalled: false,
+			SingBoxVersion:     "",
+		}
+		if _, err := session.Insert(initState); err != nil {
+			return fmt.Errorf("failed to insert default init_state: %w", err)
+		}
+		logger.Info("Default init_state created")
+	}
+
 	return nil
 }
 
 // GetState returns the current state
 func (m *ManagerXORM) GetState() *State {
-	engine, err := database.GetEngine()
-	if err != nil {
-		logger.Error("Failed to get database engine", zap.Error(err))
-		return &State{}
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	var dbState database.InitState
-	has, err := engine.ID(1).Get(&dbState)
+	var dbState repo.InitState
+	has, err := session.ID(1).Get(&dbState)
 	if err != nil {
 		logger.Error("Failed to get init state", zap.Error(err))
 		return &State{}
@@ -63,17 +111,15 @@ func (m *ManagerXORM) GetState() *State {
 
 // SetSingBoxInstalled marks sing-box as installed
 func (m *ManagerXORM) SetSingBoxInstalled(version string) error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	updates := &database.InitState{
+	updates := &repo.InitState{
 		SingBoxInstalled: true,
 		SingBoxVersion:   version,
 	}
 
-	_, err = engine.ID(1).Update(updates)
+	_, err := session.ID(1).Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to update sing_box_installed: %w", err)
 	}
@@ -84,16 +130,14 @@ func (m *ManagerXORM) SetSingBoxInstalled(version string) error {
 
 // SetDashboardInstalled marks dashboard as installed
 func (m *ManagerXORM) SetDashboardInstalled() error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	updates := &database.InitState{
+	updates := &repo.InitState{
 		DashboardInstalled: true,
 	}
 
-	_, err = engine.ID(1).Update(updates)
+	_, err := session.ID(1).Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to update dashboard_installed: %w", err)
 	}
@@ -104,19 +148,17 @@ func (m *ManagerXORM) SetDashboardInstalled() error {
 
 // CompleteInitialization marks initialization as complete
 func (m *ManagerXORM) CompleteInitialization() error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
 	now := time.Now().UTC()
-	updates := &database.InitState{
-		Initialized:      true,
-		ConfigGenerated:  true,
-		InitTime:         now,
+	updates := &repo.InitState{
+		Initialized:     true,
+		ConfigGenerated: true,
+		InitTime:        now,
 	}
 
-	_, err = engine.ID(1).Update(updates)
+	_, err := session.ID(1).Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to complete initialization: %w", err)
 	}
@@ -127,13 +169,11 @@ func (m *ManagerXORM) CompleteInitialization() error {
 
 // Reset resets the initialization state
 func (m *ManagerXORM) Reset() error {
-	engine, err := database.GetEngine()
-	if err != nil {
-		return fmt.Errorf("failed to get database engine: %w", err)
-	}
+	session := m.e.NewSession()
+	defer session.Close()
 
-	updates := &database.InitState{
-		Initialized:         false,
+	updates := &repo.InitState{
+		Initialized:        false,
 		SingBoxInstalled:   false,
 		ConfigGenerated:    false,
 		DashboardInstalled: false,
@@ -141,7 +181,7 @@ func (m *ManagerXORM) Reset() error {
 		InitTime:           time.Time{},
 	}
 
-	_, err = engine.ID(1).Update(updates)
+	_, err := session.ID(1).Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to reset initialization: %w", err)
 	}

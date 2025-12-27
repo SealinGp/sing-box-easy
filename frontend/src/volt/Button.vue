@@ -42,9 +42,9 @@ function getSeverityClasses(severity?: string): string {
                 hover:bg-green-700
                 focus:ring-green-500`;
         case 'info':
-            return `bg-blue-600 text-white
-                hover:bg-blue-700
-                focus:ring-blue-500`;
+            return `bg-violet-600 text-white
+                hover:bg-violet-700
+                focus:ring-violet-500`;
         case 'warn':
             return `bg-yellow-600 text-white
                 hover:bg-yellow-700
@@ -62,9 +62,9 @@ function getSeverityClasses(severity?: string): string {
                 hover:bg-gray-800 dark:hover:bg-gray-200
                 focus:ring-gray-500`;
         default: // primary
-            return `bg-blue-600 text-white
-                hover:bg-blue-700
-                focus:ring-blue-500`;
+            return `bg-violet-600 text-white
+                hover:bg-violet-700
+                focus:ring-violet-500`;
     }
 }
 </script>

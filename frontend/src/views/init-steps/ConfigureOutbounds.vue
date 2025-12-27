@@ -274,16 +274,16 @@ onMounted(() => {
             </p>
           </div>
 
-          <div class="bg-blue-50 rounded-lg p-4">
+          <div class="bg-violet-50 rounded-lg p-4">
             <div class="flex items-start space-x-3">
-              <InformationCircleIcon class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div class="text-sm text-blue-900">
+              <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
+              <div class="text-sm text-violet-900">
                 <p class="font-medium mb-1">Basic outbounds will be added:</p>
-                <ul class="list-disc list-inside ml-2 text-blue-800">
+                <ul class="list-disc list-inside ml-2 text-violet-800">
                   <li><strong>direct</strong>: Direct connection (no proxy)</li>
                   <li><strong>block</strong>: Block connection</li>
                 </ul>
-                <p class="mt-2 text-xs text-blue-700">
+                <p class="mt-2 text-xs text-violet-700">
                   You can add proxy nodes later from the dashboard.
                 </p>
               </div>
@@ -340,7 +340,7 @@ onMounted(() => {
       <!-- Loading state for current outbounds - shown inline on smaller screens -->
       <Card v-if="loadingOutbounds" class="2xl:hidden">
         <div class="flex items-center justify-center py-4">
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
           <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
         </div>
       </Card>
@@ -392,7 +392,7 @@ onMounted(() => {
         <!-- Loading state for current outbounds -->
         <Card v-if="loadingOutbounds">
           <div class="flex items-center justify-center py-4">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
             <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
           </div>
         </Card>

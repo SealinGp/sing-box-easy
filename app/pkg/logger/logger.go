@@ -9,6 +9,7 @@ import (
 
 var Logger *zap.Logger
 var Sugar *zap.SugaredLogger
+var L *zap.Logger // Alias for Logger for convenience
 
 // Init initializes the global logger
 func Init(debug bool) error {
@@ -33,6 +34,7 @@ func Init(debug bool) error {
 		return err
 	}
 
+	L = Logger // Set alias
 	Sugar = Logger.Sugar()
 	return nil
 }
