@@ -78,6 +78,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.GET("/experimental/cache-file", handler.GetCacheFile)
 	v1.PUT("/experimental/cache-file", handler.UpdateCacheFile)
 
+	v1.GET("/experimental/v2ray-api", handler.GetV2RayAPI)
+	v1.PUT("/experimental/v2ray-api", handler.UpdateV2RayAPI)
+
 	// Service Control APIs
 	v1.GET("/service/status", handler.GetServiceStatus)
 	v1.POST("/service/start", handler.StartService)

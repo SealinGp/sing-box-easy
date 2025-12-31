@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import type { DNSServer, DNS, DNSRule } from '../../types/api'
 import DNSServers from '../../components/DNSServers.vue'
 import DNSRules from '../../components/DNSRules.vue'
@@ -57,6 +57,7 @@ const fetchDNSRules = async () => {
   }
 }
 
+
 const fetchDNSConfig = async () => {
   try {
     const { data } = await dnsService.getDNS()
@@ -66,12 +67,36 @@ const fetchDNSConfig = async () => {
   }
 }
 
-const loadData = async () => {
-  await Promise.all([
-    fetchDNSServers(),
-    fetchDNSRules(),
-    fetchDNSConfig(),
-  ])
+// Load data for the active tab
+const loadTabData = async (tabId: string) => {
+  switch (tabId) {
+    case 'servers':
+      await fetchDNSServers()
+      break
+    case 'rules':
+      await fetchDNSRules()
+      break
+    case 'settings':
+      await fetchDNSConfig()
+      break
+  }
+}
+
+// Watch for tab changes and load data
+watch(activeTab, async (newTab) => {
+  // Load data when tab changes
+  await loadTabData(newTab)
+})
+
+// Handle tab click - will load data even if clicking the same tab
+const handleTabClick = async (tabId: string) => {
+  if (activeTab.value === tabId) {
+    // If clicking the same tab, force reload
+    await loadTabData(tabId)
+  } else {
+    // If different tab, just change activeTab and let the watch handle loading
+    activeTab.value = tabId
+  }
 }
 
 // DNS Server handlers
@@ -273,7 +298,10 @@ const handleUpdateSettings = async (dns: DNS) => {
   }
 }
 
-onMounted(loadData)
+// Load initial tab data on mount
+onMounted(() => {
+  loadTabData(activeTab.value)
+})
 </script>
 
 <template>
@@ -286,7 +314,7 @@ onMounted(loadData)
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          @click="activeTab = tab.id"
+          @click="handleTabClick(tab.id)"
           :class="[
             'py-2 px-1 border-b-2 font-medium text-sm transition-colors',
             activeTab === tab.id

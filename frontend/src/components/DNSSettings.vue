@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { DNS, DNSServer } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -21,6 +21,18 @@ const strategyOptions = [
   { value: 'ipv4_only', label: 'IPv4 Only' },
   { value: 'ipv6_only', label: 'IPv6 Only' },
 ]
+
+const serverOptions = computed(() => {
+  const options = [
+    { value: '', label: 'Select default server' }
+  ]
+  if (props.servers) {
+    props.servers.forEach(server => {
+      options.push({ value: server.tag, label: server.tag })
+    })
+  }
+  return options
+})
 
 const settings = ref({
   strategy: 'prefer_ipv4',
@@ -76,15 +88,7 @@ const handleSave = () => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Final DNS Server
           </label>
-          <select
-            v-model="settings.final"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="">Select default server</option>
-            <option v-for="server in servers" :key="server.tag" :value="server.tag">
-              {{ server.tag }}
-            </option>
-          </select>
+          <Select v-model="settings.final" :options="serverOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Fallback server when no rules match
           </p>

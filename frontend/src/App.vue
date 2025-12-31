@@ -3,7 +3,7 @@ import Toast from './volt/Toast.vue'
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-slate-900">
+  <div class="min-h-screen bg-gray-100 dark:bg-slate-600">
     <router-view />
     <Toast />
   </div>

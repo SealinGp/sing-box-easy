@@ -28,16 +28,18 @@ func (c *SingBoxConfig) MarshalJSON() ([]byte, error) {
 
 // Type aliases for backward compatibility
 type (
-	LogConfig          = option.LogOptions
-	ExperimentalConfig = option.ExperimentalOptions
-	ClashAPIConfig     = option.ClashAPIOptions
-	CacheFileConfig    = option.CacheFileOptions
-	Inbound            = option.Inbound
-	Outbound           = option.Outbound
-	RouteConfig        = option.RouteOptions
-	RouteRule          = option.Rule
-	DNSRule            = option.DNSRule
-	RuleSet            = option.RuleSet
+	LogConfig            = option.LogOptions
+	ExperimentalConfig   = option.ExperimentalOptions
+	ClashAPIConfig       = option.ClashAPIOptions
+	CacheFileConfig      = option.CacheFileOptions
+	V2RayAPIOptions      = option.V2RayAPIOptions
+	V2RayStatsService    = option.V2RayStatsServiceOptions
+	Inbound              = option.Inbound
+	Outbound             = option.Outbound
+	RouteConfig          = option.RouteOptions
+	RouteRule            = option.Rule
+	DNSRule              = option.DNSRule
+	RuleSet              = option.RuleSet
 )
 
 // GetOutboundServerKey returns the server endpoint key (server:port) for the outbound

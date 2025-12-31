@@ -6,6 +6,7 @@ import Inbounds from '../views/dashboard/Inbounds.vue'
 import Outbounds from '../views/dashboard/Outbounds.vue'
 import DNS from '../views/dashboard/DNS.vue'
 import Route from '../views/dashboard/Route.vue'
+import Experimental from '../views/dashboard/Experimental.vue'
 import Subscriptions from '../views/dashboard/Subscriptions.vue'
 import Config from '../views/dashboard/Config.vue'
 import Log from '../views/dashboard/Log.vue'
@@ -54,6 +55,11 @@ const routes: RouteRecordRaw[] = [
         path: 'route',
         name: 'DashboardRoute',
         component: Route,
+      },
+      {
+        path: 'experimental',
+        name: 'DashboardExperimental',
+        component: Experimental,
       },
       {
         path: 'subscriptions',

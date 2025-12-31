@@ -14,8 +14,8 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div
     :class="[
-      'bg-white dark:bg-bg-dark rounded-lg border border-gray-200 transition-shadow',
-      hoverable ? 'hover:shadow-md cursor-pointer' : 'shadow-sm',
+      'bg-white dark:bg-slate-800 rounded-lg transition-shadow',
+      hoverable ? 'hover:shadow-md cursor-pointer' : 'shadow-sm dark:shadow-xl dark:shadow-slate-700/50',
       {
         'p-0': padding === 'none',
         'p-4': padding === 'sm',

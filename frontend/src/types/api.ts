@@ -248,6 +248,8 @@ export interface ClashAPI {
   external_ui_download_detour?: string
   secret?: string
   default_mode?: string
+  access_control_allow_origin?: string[]
+  access_control_allow_private_network?: boolean
 }
 
 export interface CacheFile {
@@ -259,11 +261,24 @@ export interface CacheFile {
   rdrc_timeout?: string
 }
 
+export interface V2RayAPI {
+  listen?: string
+  stats?: V2RayStatsService
+}
+
+export interface V2RayStatsService {
+  enabled?: boolean
+  inbounds?: string[]
+  outbounds?: string[]
+  users?: string[]
+}
+
 export interface SingBoxConfig {
   log?: LogConfig
   experimental?: {
     clash_api?: ClashAPI
     cache_file?: CacheFile
+    v2ray_api?: V2RayAPI
   }
   dns?: DNSOptions
   inbounds?: InboundType[]

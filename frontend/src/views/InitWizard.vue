@@ -158,7 +158,7 @@ const prevStep = () => {
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="bg-white dark:bg-bg-dark rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 p-8 text-center">
+      <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 p-8 text-center">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
         <p class="mt-4 text-gray-600">Loading initialization status...</p>
       </div>
@@ -170,7 +170,7 @@ const prevStep = () => {
       </div>
 
       <!-- Main Content -->
-      <div v-else class="bg-white dark:bg-bg-dark rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 mt-9 p-3">
+      <div v-else class="bg-white dark:bg-slate-800 rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 mt-9 p-3">
         <div class="mb-6">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {{ steps[currentStep]?.title }}

@@ -72,4 +72,24 @@ export class DNSService {
     const response = await this.api.delete<BasicResponse<{ message: string; index: number }>>(`/dns/rules/${index}`)
     return response.data
   }
+
+  async getDNSRuleSets(): Promise<BasicResponse<{ rule_sets: any[] }>> {
+    const response = await this.api.get<BasicResponse<{ rule_sets: any[] }>>('/dns/rule-sets')
+    return response.data
+  }
+
+  async addDNSRuleSet(ruleSet: any): Promise<BasicResponse<{ message: string; tag: string }>> {
+    const response = await this.api.post<BasicResponse<{ message: string; tag: string }>>('/dns/rule-sets', ruleSet)
+    return response.data
+  }
+
+  async updateDNSRuleSet(tag: string, ruleSet: any): Promise<BasicResponse<{ message: string; tag: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string; tag: string }>>(`/dns/rule-sets/${tag}`, ruleSet)
+    return response.data
+  }
+
+  async deleteDNSRuleSet(tag: string): Promise<BasicResponse<{ message: string; tag: string }>> {
+    const response = await this.api.delete<BasicResponse<{ message: string; tag: string }>>(`/dns/rule-sets/${tag}`)
+    return response.data
+  }
 }

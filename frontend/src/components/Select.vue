@@ -62,7 +62,6 @@ const handleChange = (option: Option | null) => {
       @update:model-value="handleChange"
       :class="[
         'vue-select-wrapper',
-        'z-50',
         error ? 'has-error' : '',
         disabled ? 'is-disabled' : '',
       ]"
@@ -88,6 +87,7 @@ const handleChange = (option: Option | null) => {
   --vs-dropdown-option--active-bg: #dbeafe;
   --vs-dropdown-option--active-color: #1e40af;
 }
+
 
 /* Dark mode variables */
 @media (prefers-color-scheme: dark) {

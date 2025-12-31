@@ -14,7 +14,9 @@ declare module 'vue' {
     Alert: typeof import('./src/components/Alert.vue')['default']
     Badge: typeof import('./src/components/Badge.vue')['default']
     Button: typeof import('./src/components/Button.vue')['default']
+    CacheFileSettings: typeof import('./src/components/CacheFileSettings.vue')['default']
     Card: typeof import('./src/components/Card.vue')['default']
+    ClashAPISettings: typeof import('./src/components/ClashAPISettings.vue')['default']
     DNSRules: typeof import('./src/components/DNSRules.vue')['default']
     DNSServers: typeof import('./src/components/DNSServers.vue')['default']
     DNSSettings: typeof import('./src/components/DNSSettings.vue')['default']
@@ -32,7 +34,8 @@ declare module 'vue' {
     RoutingRules: typeof import('./src/components/RoutingRules.vue')['default']
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     Select: typeof import('./src/components/Select.vue')['default']
+    Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
-    Toast: typeof import('primevue/toast')['default']
+    V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
   }
 }

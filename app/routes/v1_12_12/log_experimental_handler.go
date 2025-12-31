@@ -123,3 +123,43 @@ func (h *Handler) UpdateCacheFile(ctx context.Context, c *app.RequestContext) {
 
 	respOK(ctx, c, map[string]any{"message": "cache file configuration updated successfully"})
 }
+
+// GetV2RayAPI returns the V2Ray API configuration
+func (h *Handler) GetV2RayAPI(ctx context.Context, c *app.RequestContext) {
+	cfg, err := h.configManager.GetConfig()
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	if cfg.Experimental == nil || cfg.Experimental.V2RayAPI == nil {
+		respOK(ctx, c, &config.V2RayAPIOptions{})
+		return
+	}
+
+	respOK(ctx, c, cfg.Experimental.V2RayAPI)
+}
+
+// UpdateV2RayAPI updates the V2Ray API configuration
+func (h *Handler) UpdateV2RayAPI(ctx context.Context, c *app.RequestContext) {
+	var v2rayAPIConfig config.V2RayAPIOptions
+	if err := c.Bind(&v2rayAPIConfig); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+		if cfg.Experimental == nil {
+			cfg.Experimental = &config.ExperimentalConfig{}
+		}
+		cfg.Experimental.V2RayAPI = &v2rayAPIConfig
+		return nil
+	})
+
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{"message": "V2Ray API configuration updated successfully"})
+}

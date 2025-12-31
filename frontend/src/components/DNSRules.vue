@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   TransitionRoot,
   TransitionChild,
@@ -7,13 +7,15 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/vue'
-import type { DNSRule, DNSServer } from '../types/api'
+import type { DNSRule, DNSServer, RuleSet } from '../types/api'
 import Button from './Button.vue'
 import Input from './Input.vue'
+import Select from './Select.vue'
 import Badge from './Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { routeService } from '../services'
 
-defineProps<{
+const props = defineProps<{
   rules: DNSRule[]
   servers: DNSServer[]
   loading: boolean
@@ -32,18 +34,71 @@ const editingIndex = ref(-1)
 const currentRule = ref<any>({
   action: 'route',
   server: '',
-  domain: [],
-  domain_suffix: [],
+  method: 'default',
+  rule_set: '',
+  domain: '',
+  domain_suffix: '',
+  domain_keyword: '',
+  geosite: '',
 })
 
 // Delete confirmation
 const showDeleteConfirm = ref(false)
 const deletingIndex = ref(-1)
 
+// Rule sets from route service
+const ruleSets = ref<RuleSet[]>([])
+
+// Fetch rule sets on component mount
+const fetchRuleSets = async () => {
+  try {
+    const { data } = await routeService.getRuleSets()
+    ruleSets.value = data.rule_sets || []
+  } catch (err) {
+    console.error('Failed to fetch rule sets:', err)
+    ruleSets.value = []
+  }
+}
+
+onMounted(() => {
+  fetchRuleSets()
+})
+
 const actionTypes = [
-  { value: 'route', label: 'Route to Server' },
-  { value: 'return', label: 'Return' },
-  { value: 'reject', label: 'Reject' },
+  { value: 'route', label: 'Route - Forward to specified DNS server' },
+  { value: 'route-options', label: 'Route Options - Set route options without changing server' },
+  { value: 'reject', label: 'Reject - Reject DNS requests with specific method' },
+]
+
+const serverOptions = computed(() => {
+  const options = [
+    { value: '', label: 'Select a server' }
+  ]
+  if (props.servers) {
+    props.servers.forEach(server => {
+      options.push({ value: server.tag, label: server.tag })
+    })
+  }
+  return options
+})
+
+const ruleSetOptions = computed(() => {
+  const options: { value: string; label: string }[] = []
+  if (ruleSets.value) {
+    ruleSets.value.forEach(ruleSet => {
+      if (ruleSet.tag) {
+        options.push({ value: ruleSet.tag, label: ruleSet.tag })
+      }
+    })
+  }
+  return options
+})
+
+const rejectMethods = [
+  { value: 'default', label: 'Default - Return empty response' },
+  { value: 'success', label: 'Success - Return success response' },
+  { value: 'refused', label: 'Refused - Return refused response' },
+  { value: 'nxdomain', label: 'NXDOMAIN - Domain does not exist' },
 ]
 
 const openAddRuleModal = () => {
@@ -51,8 +106,12 @@ const openAddRuleModal = () => {
   currentRule.value = {
     action: 'route',
     server: '',
-    domain: [],
-    domain_suffix: [],
+    method: 'default',
+    rule_set: '',
+    domain: '',
+    domain_suffix: '',
+    domain_keyword: '',
+    geosite: '',
   }
   showRuleModal.value = true
 }
@@ -60,7 +119,25 @@ const openAddRuleModal = () => {
 const openEditRuleModal = (index: number, rule: DNSRule) => {
   isEditMode.value = true
   editingIndex.value = index
-  currentRule.value = { ...rule }
+
+  console.log('Original rule:', rule)
+
+  // Convert arrays to comma-separated strings for display in inputs
+  const editRule = {
+    action: (rule as any).action || 'route',
+    server: (rule as any).server || '',
+    method: (rule as any).method || 'default',
+    // For rule_set, if it's an array, take the first one for the Select component
+    rule_set: Array.isArray((rule as any).rule_set) ? ((rule as any).rule_set[0] || '') : ((rule as any).rule_set || ''),
+    domain: Array.isArray((rule as any).domain) ? (rule as any).domain.join(', ') : (rule as any).domain || '',
+    domain_suffix: Array.isArray((rule as any).domain_suffix) ? (rule as any).domain_suffix.join(', ') : (rule as any).domain_suffix || '',
+    domain_keyword: Array.isArray((rule as any).domain_keyword) ? (rule as any).domain_keyword.join(', ') : (rule as any).domain_keyword || '',
+    geosite: Array.isArray((rule as any).geosite) ? (rule as any).geosite.join(', ') : (rule as any).geosite || '',
+  }
+
+  console.log('Edit rule:', editRule)
+  currentRule.value = editRule
+
   showRuleModal.value = true
 }
 
@@ -69,16 +146,46 @@ const closeRuleModal = () => {
   currentRule.value = {
     action: 'route',
     server: '',
-    domain: [],
-    domain_suffix: [],
+    method: 'default',
+    rule_set: '',
+    domain: '',
+    domain_suffix: '',
+    domain_keyword: '',
+    geosite: '',
   }
 }
 
 const handleSaveRule = () => {
+  // Convert comma-separated strings back to arrays
+  const processedRule = {
+    ...currentRule.value,
+    // rule_set should be an array with single element from the select
+    rule_set: currentRule.value.rule_set ? [currentRule.value.rule_set] : undefined,
+    domain: currentRule.value.domain ?
+      currentRule.value.domain.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
+      undefined,
+    domain_suffix: currentRule.value.domain_suffix ?
+      currentRule.value.domain_suffix.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
+      undefined,
+    domain_keyword: currentRule.value.domain_keyword ?
+      currentRule.value.domain_keyword.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
+      undefined,
+    geosite: currentRule.value.geosite ?
+      currentRule.value.geosite.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
+      undefined,
+  }
+
+  // Remove undefined fields
+  Object.keys(processedRule).forEach(key => {
+    if (processedRule[key] === undefined || (Array.isArray(processedRule[key]) && processedRule[key].length === 0)) {
+      delete processedRule[key]
+    }
+  })
+
   if (isEditMode.value) {
-    emit('updateRule', editingIndex.value, currentRule.value)
+    emit('updateRule', editingIndex.value, processedRule)
   } else {
-    emit('addRule', currentRule.value)
+    emit('addRule', processedRule)
   }
   closeRuleModal()
 }
@@ -101,10 +208,30 @@ const handleDeleteRule = () => {
 
 const getRuleConditionsSummary = (rule: any) => {
   const conditions = []
-  if (rule.domain?.length) conditions.push(`Domain: ${rule.domain.join(', ')}`)
-  if (rule.domain_suffix?.length) conditions.push(`Suffix: ${rule.domain_suffix.join(', ')}`)
-  if (rule.domain_keyword?.length) conditions.push(`Keyword: ${rule.domain_keyword.join(', ')}`)
-  if (rule.geosite?.length) conditions.push(`GeoSite: ${rule.geosite.join(', ')}`)
+
+  // Handle rule_set - could be array, string, or undefined
+  if (rule.rule_set) {
+    if (Array.isArray(rule.rule_set) && rule.rule_set.length > 0) {
+      conditions.push(`Rule Set: ${rule.rule_set.join(', ')}`)
+    } else if (typeof rule.rule_set === 'string' && rule.rule_set.trim()) {
+      conditions.push(`Rule Set: ${rule.rule_set}`)
+    }
+  }
+
+  // Handle arrays for other fields
+  if (Array.isArray(rule.domain) && rule.domain.length) {
+    conditions.push(`Domain: ${rule.domain.join(', ')}`)
+  }
+  if (Array.isArray(rule.domain_suffix) && rule.domain_suffix.length) {
+    conditions.push(`Suffix: ${rule.domain_suffix.join(', ')}`)
+  }
+  if (Array.isArray(rule.domain_keyword) && rule.domain_keyword.length) {
+    conditions.push(`Keyword: ${rule.domain_keyword.join(', ')}`)
+  }
+  if (Array.isArray(rule.geosite) && rule.geosite.length) {
+    conditions.push(`GeoSite: ${rule.geosite.join(', ')}`)
+  }
+
   return conditions.length > 0 ? conditions.join(' | ') : 'No conditions'
 }
 </script>
@@ -119,7 +246,7 @@ const getRuleConditionsSummary = (rule: any) => {
     </div>
 
     <!-- DNS Rules Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Rules</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -228,28 +355,20 @@ const getRuleConditionsSummary = (rule: any) => {
                   <!-- Action -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Action *</label>
-                    <select
-                      v-model="currentRule.action"
-                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <option v-for="action in actionTypes" :key="action.value" :value="action.value">
-                        {{ action.label }}
-                      </option>
-                    </select>
+                    <Select v-model="currentRule.action" :options="actionTypes" />
                   </div>
 
                   <!-- Server (for route action) -->
                   <div v-if="currentRule.action === 'route'">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNS Server *</label>
-                    <select
-                      v-model="currentRule.server"
-                      class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="">Select a server</option>
-                      <option v-for="server in servers" :key="server.tag" :value="server.tag">
-                        {{ server.tag }}
-                      </option>
-                    </select>
+                    <Select v-model="currentRule.server" :options="serverOptions" />
+                  </div>
+
+                  <!-- Reject Method (for reject action) -->
+                  <div v-if="currentRule.action === 'reject'">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reject Method</label>
+                    <Select v-model="currentRule.method" :options="rejectMethods" />
+                    <p class="mt-1 text-xs text-gray-500">Method to reject DNS requests</p>
                   </div>
 
                   <!-- Rule Conditions -->
@@ -257,6 +376,17 @@ const getRuleConditionsSummary = (rule: any) => {
                     <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Conditions (at least one required)</h4>
 
                     <div class="space-y-3">
+                      <!-- Rule Set -->
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Set</label>
+                        <Select
+                          v-model="currentRule.rule_set"
+                          :options="[{ value: '', label: 'None' }, ...ruleSetOptions]"
+                          placeholder="Select a rule set"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">Use a predefined rule set for this DNS rule</p>
+                      </div>
+
                       <!-- Domain -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain</label>
