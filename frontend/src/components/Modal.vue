@@ -39,7 +39,7 @@ const sizeClasses: Record<string, string> = {
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-black opacity-25" />
+        <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
       </TransitionChild>
 
       <div class="fixed inset-0 overflow-y-auto">
@@ -55,25 +55,25 @@ const sizeClasses: Record<string, string> = {
           >
             <DialogPanel
               :class="[
-                'w-full transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all',
+                'w-full transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all',
                 sizeClasses[size],
               ]"
             >
               <div v-if="title || showClose" class="flex items-center justify-between mb-4">
-                <DialogTitle v-if="title" as="h3" class="text-lg font-semibold text-gray-900">
+                <DialogTitle v-if="title" as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {{ title }}
                 </DialogTitle>
                 <button
                   v-if="showClose"
                   type="button"
-                  class="text-gray-400 hover:text-gray-500 transition-colors"
+                  class="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
                   @click="close"
                 >
                   <XMarkIcon class="h-6 w-6" />
                 </button>
               </div>
 
-              <div>
+              <div class="text-gray-700 dark:text-gray-300">
                 <slot />
               </div>
 

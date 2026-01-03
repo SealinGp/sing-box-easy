@@ -13,13 +13,16 @@ import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Textarea from '../../components/Textarea.vue'
+import DialerOptions from '../../components/DialerOptions.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { nodesService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import { useOutboundsStore } from '../../stores/outbounds'
+import { storeToRefs } from 'pinia'
 
 const outboundsStore = useOutboundsStore()
-const { outbounds } = outboundsStore
+// Use storeToRefs to maintain reactivity when destructuring
+const { outbounds, loading } = storeToRefs(outboundsStore)
 
 const localLoading = ref(false)
 const toast = useToast()
@@ -119,6 +122,8 @@ const openEditModal = (outbound: Outbound) => {
 
 const closeModal = () => {
   showModal.value = false
+  isEditMode.value = false
+  editingTag.value = ''
   currentOutbound.value = {
     type: 'direct',
     tag: '',
@@ -402,6 +407,8 @@ const handleImport = async () => {
 watch(showModal, (newValue) => {
   if (!newValue) {
     setTimeout(() => {
+      isEditMode.value = false
+      editingTag.value = ''
       currentOutbound.value = {
         type: 'direct',
         tag: '',
@@ -418,11 +425,15 @@ watch(showDeleteConfirm, (newValue) => {
   }
 })
 
-// Reset fields when type changes
-watch(() => currentOutbound.value.type, () => {
-  const tag = currentOutbound.value.tag
-  const type = currentOutbound.value.type
-  currentOutbound.value = { type, tag }
+// Reset fields when type changes (only in add mode, not edit mode)
+watch(() => currentOutbound.value.type, (newType, oldType) => {
+  // Only reset if we're in add mode and the type actually changed
+  // Skip the initial undefined -> value change
+  if (!isEditMode.value && oldType !== undefined && newType !== oldType) {
+    const tag = currentOutbound.value.tag
+    const type = currentOutbound.value.type
+    currentOutbound.value = { type, tag }
+  }
 })
 
 onMounted(() => {
@@ -448,7 +459,7 @@ onMounted(() => {
 
 
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
-      <div v-if="outboundsStore.loading && outbounds.length === 0" class="flex items-center justify-center py-12">
+      <div v-if="loading && outbounds.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
@@ -533,8 +544,8 @@ onMounted(() => {
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
+              <DialogPanel class="w-full max-w-3xl transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left align-middle shadow-xl transition-all flex flex-col max-h-[90vh]">
+                <div class="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {{ isEditMode ? 'Edit Outbound' : 'Add Outbound' }}
                   </DialogTitle>
@@ -547,7 +558,7 @@ onMounted(() => {
                   </button>
                 </div>
 
-                <div class="space-y-4 pr-2">
+                <div class="space-y-4 overflow-y-auto flex-1 p-6 pt-4">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag *</label>
@@ -643,9 +654,17 @@ onMounted(() => {
                       />
                     </div>
                   </div>
+
+                  <!-- DialerOptions for all outbound types except block and dns -->
+                  <DialerOptions
+                    v-if="currentOutbound.type !== 'block' && currentOutbound.type !== 'dns'"
+                    v-model="currentOutbound"
+                    :current-tag="isEditMode ? editingTag : currentOutbound.tag"
+                    :show-advanced="true"
+                  />
                 </div>
 
-                <div class="mt-6 flex justify-end gap-3">
+                <div class="flex justify-end gap-3 p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button @click="closeModal" variant="secondary">Cancel</Button>
                   <Button @click="handleSave" variant="primary" :disabled="localLoading">
                     {{ isEditMode ? 'Update' : 'Add' }}

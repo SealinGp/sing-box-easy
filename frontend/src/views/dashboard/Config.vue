@@ -1,27 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, defineAsyncComponent } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { configService } from '../../services'
 import type { SingBoxConfig } from '../../types/api'
 import { useToast } from 'primevue'
-
-// Lazy load Monaco Editor only when this component is used
-const CodeEditor = defineAsyncComponent({
-  loader: async () => {
-    // Dynamically import Monaco configuration
-    await import('../../plugins/monaco')
-    // Then import the editor component
-    const { CodeEditor } = await import('monaco-editor-vue3')
-    return CodeEditor
-  },
-  loadingComponent: {
-    template: `
-      <div class="flex items-center justify-center h-full">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
-      </div>
-    `
-  },
-  delay: 200,
-})
+import MonacoEditor from '../../components/MonacoEditor.vue'
 
 const configContent = ref('')
 const originalContent = ref('')
@@ -30,7 +12,6 @@ const saving = ref(false)
 const validating = ref(false)
 const hasChanges = ref(false)
 const isFullscreen = ref(false)
-const editorReady = ref(false)
 const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
 const toast = useToast()
 
@@ -59,9 +40,6 @@ const editorOptions = computed(() => ({
 
 onMounted(async () => {
   await loadConfig()
-  // Wait for the next DOM update cycle
-  await nextTick()
-  editorReady.value = true
 })
 
 const loadConfig = async () => {
@@ -84,7 +62,7 @@ const loadConfig = async () => {
   }
 }
 
-const handleChange = (value: string) => {
+const handleContentChange = (value: string) => {
   configContent.value = value
   hasChanges.value = value !== originalContent.value
 }
@@ -219,6 +197,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
 onMounted(() => {
   document.addEventListener('keydown', handleKeyDown)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+})
 </script>
 
 <template>
@@ -308,11 +290,11 @@ onMounted(() => {
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
         </div>
         <div v-else class="h-full">
-          <CodeEditor
-            v-if="editorReady"
-            :value="configContent"
-            @change="handleChange"
+          <MonacoEditor
+            v-model="configContent"
+            @update:modelValue="handleContentChange"
             language="json"
+            :theme="editorTheme"
             :options="editorOptions"
             class="h-full"
           />

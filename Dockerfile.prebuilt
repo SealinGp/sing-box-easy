@@ -1,30 +1,8 @@
-# Stage 1: Build Frontend
-FROM node:22-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-# Copy frontend package files
-COPY frontend/package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy frontend source
-COPY frontend/ ./
-
-# Set NODE_OPTIONS to increase memory limit and disable certain optimizations
-# This helps prevent esbuild crashes in container environments
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-
-# Build frontend with increased memory and single-threaded mode to avoid concurrency issues
-RUN npm run build
-
-# Stage 2: Build Backend
+# Stage 1: Backend Builder
 FROM golang:1.25.5-alpine AS backend-builder
 
 WORKDIR /app
 
-# Install build dependencies including gcc for CGO
 # Install git for valid go mod download
 RUN apk add --no-cache git
 
@@ -37,15 +15,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Copy built frontend from previous stage
-COPY --from=frontend-builder /app/dist ./dist
-
-# Build the Go binary with CGO enabled for SQLite support
 # Build the Go binary with CGO disabled (using pure Go sqlite)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
 
-
-# Stage 3: Runtime
+# Stage 2: Runtime
 FROM alpine:latest
 
 WORKDIR /app
@@ -60,7 +33,7 @@ RUN mkdir -p /etc/sing-box
 # Copy the binary from builder
 COPY --from=backend-builder /app/sing-box-easy .
 
-# Copy the built frontend
+# Copy the pre-built frontend
 COPY --from=backend-builder /app/dist ./dist
 
 # Copy example config

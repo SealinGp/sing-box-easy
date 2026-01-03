@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import VueSelect from 'vue-select'
 import 'vue-select/dist/vue-select.css'
 
@@ -18,6 +18,13 @@ interface Props {
   required?: boolean
   disabled?: boolean
   fullWidth?: boolean
+  searchable?: boolean
+  loading?: boolean
+  searchPlaceholder?: string
+  noOptionsText?: string
+  serverSideSearch?: boolean
+  debounce?: number
+  clearable?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,11 +32,25 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   required: false,
   placeholder: 'Select an option',
+  searchable: false,
+  loading: false,
+  searchPlaceholder: 'Type to search...',
+  noOptionsText: 'No matching options',
+  serverSideSearch: false,
+  debounce: 250,
+  clearable: false,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | number]
+  'search': [query: string, loading: (isLoading: boolean) => void]
 }>()
+
+// Local state for search
+const searchQuery = ref('')
+const isSearching = ref(false)
+const filteredOptions = ref<Option[]>([])
+const searchDebounceTimer = ref<any>()
 
 // Find selected option object from value
 const selectedOption = computed(() => {
@@ -40,8 +61,74 @@ const selectedOption = computed(() => {
 const handleChange = (option: Option | null) => {
   if (option) {
     emit('update:modelValue', option.value)
+  } else {
+    emit('update:modelValue', '')
   }
 }
+
+// Options to display (filtered or original)
+const displayOptions = computed(() => {
+  // If not searchable or no search query, return all options
+  if (!props.searchable || !searchQuery.value) {
+    return props.options
+  }
+
+  // If server-side search, return filtered options from server
+  if (props.serverSideSearch) {
+    return filteredOptions.value
+  }
+
+  // Client-side filtering
+  const query = searchQuery.value.toLowerCase()
+  return props.options.filter(option =>
+    option.label.toLowerCase().includes(query)
+  )
+})
+
+// Handle search input
+const handleSearch = (query: string, loading: (isLoading: boolean) => void) => {
+  searchQuery.value = query
+
+  // Clear previous debounce timer
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+
+  if (!query) {
+    filteredOptions.value = []
+    return
+  }
+
+  if (props.serverSideSearch) {
+    // Debounce server-side search
+    loading(true)
+    isSearching.value = true
+
+    searchDebounceTimer.value = setTimeout(() => {
+      // Emit search event for parent to handle
+      emit('search', query, (isLoading: boolean) => {
+        loading(isLoading)
+        isSearching.value = isLoading
+      })
+    }, props.debounce)
+  }
+  // Client-side search is handled by computed property
+}
+
+// Watch for external options changes (for server-side search results)
+watch(() => props.options, (newOptions) => {
+  if (props.serverSideSearch && searchQuery.value) {
+    filteredOptions.value = newOptions
+  }
+})
+
+// Clean up on unmount
+watch(() => props.searchable, (newVal) => {
+  if (!newVal) {
+    searchQuery.value = ''
+    filteredOptions.value = []
+  }
+})
 </script>
 
 <template>
@@ -53,12 +140,15 @@ const handleChange = (option: Option | null) => {
 
     <VueSelect
       :model-value="selectedOption"
-      :options="options"
+      :options="displayOptions"
       :placeholder="placeholder"
       :disabled="disabled"
       label="label"
-      :clearable="false"
-      :searchable="false"
+      :clearable="clearable"
+      :searchable="searchable"
+      :loading="loading || isSearching"
+      :filterable="false"
+      @search="handleSearch"
       @update:model-value="handleChange"
       :class="[
         'vue-select-wrapper',
@@ -66,10 +156,45 @@ const handleChange = (option: Option | null) => {
         disabled ? 'is-disabled' : '',
       ]"
     >
+      <!-- Custom search input placeholder -->
+      <template v-if="searchable" #search="{ attributes, events }">
+        <input
+          class="vs__search"
+          :placeholder="searchPlaceholder"
+          v-bind="attributes"
+          v-on="events"
+        />
+      </template>
+
+      <!-- No options message -->
+      <template #no-options="{ search }">
+        <div class="text-center py-2 text-gray-500 dark:text-gray-400">
+          {{ search && searchable ? noOptionsText : 'No options available' }}
+        </div>
+      </template>
+
+      <!-- Loading indicator -->
+      <template v-if="searchable && serverSideSearch" #spinner="{ loading }">
+        <div v-if="loading" class="vs__spinner-container">
+          <svg class="vs__spinner animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </template>
+
+      <!-- Custom dropdown indicator -->
       <template #open-indicator="{ attributes }">
         <svg v-bind="attributes" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
         </svg>
+      </template>
+
+      <!-- Custom option template with disabled state -->
+      <template #option="{ label: optionLabel, disabled: optionDisabled }">
+        <div :class="['vs__option-content', optionDisabled ? 'opacity-50 cursor-not-allowed' : '']">
+          {{ optionLabel }}
+        </div>
       </template>
     </VueSelect>
 
@@ -275,5 +400,38 @@ const handleChange = (option: Option | null) => {
     border-color: #4b5563;
     border-top-color: #60a5fa;
   }
+}
+
+/* Search input styles when searchable */
+:deep(.vue-select-wrapper.vs--searchable .vs__search) {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+:deep(.vue-select-wrapper.vs--searchable .vs__search:focus) {
+  outline: none;
+}
+
+/* Loading spinner container */
+:deep(.vue-select-wrapper .vs__spinner-container) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+/* Adjust dropdown when loading */
+:deep(.vue-select-wrapper.vs--loading .vs__dropdown-menu) {
+  min-height: 60px;
+}
+
+/* Custom option content */
+:deep(.vue-select-wrapper .vs__option-content) {
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 </style>

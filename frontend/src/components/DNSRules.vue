@@ -90,7 +90,12 @@ const ruleSetOptions = computed(() => {
   if (ruleSets.value) {
     ruleSets.value.forEach(ruleSet => {
       if (ruleSet.tag) {
-        options.push({ value: ruleSet.tag, label: ruleSet.tag })
+        const type = (ruleSet as any).type || 'local'
+        const format = (ruleSet as any).format || 'source'
+        options.push({
+          value: ruleSet.tag,
+          label: `${ruleSet.tag} (${type} - ${format})`
+        })
       }
     })
   }
@@ -122,8 +127,6 @@ const openAddRuleModal = () => {
 const openEditRuleModal = (index: number, rule: DNSRule) => {
   isEditMode.value = true
   editingIndex.value = index
-
-  console.log('Original rule:', rule)
 
   // Convert arrays to comma-separated strings for display in inputs
   const editRule = {
@@ -435,8 +438,12 @@ onMounted(() => {
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Set</label>
                         <Select
                           v-model="currentRule.rule_set"
-                          :options="[{ value: '', label: 'None' }, ...ruleSetOptions]"
-                          placeholder="Select a rule set"
+                          :options="ruleSetOptions"
+                          :searchable="true"
+                          :clearable="true"
+                          placeholder="Select or search a rule set"
+                          search-placeholder="Type to filter rule sets..."
+                          no-options-text="No matching rule sets found"
                         />
                         <p class="mt-1 text-xs text-gray-500">Use a predefined rule set for this DNS rule</p>
                       </div>

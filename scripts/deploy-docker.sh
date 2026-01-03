@@ -92,8 +92,8 @@ FROM golang:1.25.5-alpine AS backend-builder
 
 WORKDIR /app
 
-# Install build dependencies including gcc for CGO
-RUN apk add --no-cache gcc musl-dev sqlite-dev git
+# Install git for valid go mod download
+RUN apk add --no-cache git
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -104,17 +104,17 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the Go binary with CGO enabled for SQLite support
-# Note: CGO_ENABLED=1 is required for go-sqlite3
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
+# Build the Go binary with CGO disabled (using pure Go sqlite)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
 
 # Stage 2: Runtime
 FROM alpine:latest
 
 WORKDIR /app
 
-# Install ca-certificates for HTTPS requests, tzdata for timezone support, and sqlite-libs for runtime
-RUN apk --no-cache add ca-certificates tzdata sqlite-libs
+# Install ca-certificates for HTTPS requests and tzdata for timezone support
+# sqlite-libs is not needed for pure Go sqlite
+RUN apk --no-cache add ca-certificates tzdata
 
 # Create necessary directories
 RUN mkdir -p /etc/sing-box
