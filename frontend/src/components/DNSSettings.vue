@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import type { DNS, DNSServer } from '../types/api'
+import { ref, watch, computed, onMounted } from 'vue'
+import type { DNS } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import Select from './Select.vue'
+import { dnsService } from '../services'
+import { useToast } from 'primevue'
+import { useDNSStore } from '../stores/dns'
+import { storeToRefs } from 'pinia'
 
-const props = defineProps<{
-  dnsConfig: DNS | null
-  servers: DNSServer[]
-  loading: boolean
-}>()
+const toast = useToast()
+const dnsStore = useDNSStore()
+const { dnsServers } = storeToRefs(dnsStore)
 
-const emit = defineEmits<{
-  update: [dns: DNS]
-}>()
+// Local state
+const loading = ref(false)
+const dnsConfig = ref<DNS | null>(null)
 
 const strategyOptions = [
   { value: 'prefer_ipv4', label: 'Prefer IPv4' },
@@ -26,8 +28,8 @@ const serverOptions = computed(() => {
   const options = [
     { value: '', label: 'Select default server' }
   ]
-  if (props.servers) {
-    props.servers.forEach(server => {
+  if (dnsServers.value) {
+    dnsServers.value.forEach(server => {
       options.push({ value: server.tag, label: server.tag })
     })
   }
@@ -41,8 +43,26 @@ const settings = ref({
   final: '',
 })
 
-// Watch for props changes
-watch(() => props.dnsConfig, (newConfig) => {
+// Fetch DNS config
+const fetchDNSConfig = async () => {
+  loading.value = true
+  try {
+    const { data } = await dnsService.getDNS()
+    dnsConfig.value = data
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch DNS config',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// Watch for config changes
+watch(() => dnsConfig.value, (newConfig) => {
   if (newConfig) {
     settings.value = {
       strategy: newConfig.strategy || 'prefer_ipv4',
@@ -53,13 +73,39 @@ watch(() => props.dnsConfig, (newConfig) => {
   }
 }, { immediate: true })
 
-const handleSave = () => {
+const handleSave = async () => {
   const updatedDNS = {
-    ...props.dnsConfig,
+    ...dnsConfig.value,
     ...settings.value,
   } as DNS
-  emit('update', updatedDNS)
+
+  loading.value = true
+  try {
+    await dnsService.updateDNS(updatedDNS)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'DNS settings updated successfully',
+      life: 3000
+    })
+    await fetchDNSConfig()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update DNS settings',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 }
+
+// Load data on mount
+onMounted(() => {
+  fetchDNSConfig()
+  dnsStore.fetchDNSServers() // Fetch shared DNS servers
+})
 </script>
 
 <template>

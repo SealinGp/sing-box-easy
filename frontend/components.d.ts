@@ -35,6 +35,7 @@ declare module 'vue' {
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     Select: typeof import('./src/components/Select.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
+    TabNav: typeof import('./src/components/TabNav.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
     V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
   }

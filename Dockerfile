@@ -12,17 +12,20 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ ./
 
-# Build frontend (output to /app/dist)
-RUN npm run build
+# Set NODE_OPTIONS to increase memory limit and disable certain optimizations
+# This helps prevent esbuild crashes in container environments
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
+# Build frontend with increased memory and single-threaded mode to avoid concurrency issues
+RUN npm run build
 
 # Stage 2: Build Backend
 FROM golang:1.25.5-alpine AS backend-builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git
+# Install build dependencies including gcc for CGO
+RUN apk add --no-cache gcc musl-dev sqlite-dev git
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -36,8 +39,9 @@ COPY . .
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/dist ./dist
 
-# Build the Go binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sing-box-easy ./main.go
+# Build the Go binary with CGO enabled for SQLite support
+# Note: CGO_ENABLED=1 is required for go-sqlite3
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
 
 
 # Stage 3: Runtime
@@ -45,8 +49,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Install ca-certificates for HTTPS requests and tzdata for timezone support
-RUN apk --no-cache add ca-certificates tzdata
+# Install ca-certificates for HTTPS requests, tzdata for timezone support, and sqlite-libs for runtime
+RUN apk --no-cache add ca-certificates tzdata sqlite-libs
 
 # Create necessary directories
 RUN mkdir -p /etc/sing-box

@@ -1,20 +1,18 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { ClashAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import Input from './Input.vue'
 import Select from './Select.vue'
+import { experimentalService } from '../services'
+import { useToast } from 'primevue'
+import { LinkIcon } from '@heroicons/vue/24/outline'
 
-const props = defineProps<{
-  clashApi: ClashAPI | null
-  loading: boolean
-}>()
+const toast = useToast()
 
-const emit = defineEmits<{
-  update: [clashAPI: ClashAPI]
-}>()
-
+// Local state
+const loading = ref(false)
 const settings = ref<ClashAPI>({
   external_controller: '',
   external_ui: '',
@@ -35,34 +33,34 @@ const modeOptions = [
   { value: 'direct', label: 'Direct Mode' },
 ]
 
-// Watch for props changes
-watch(() => props.clashApi, (newConfig) => {
-  if (newConfig) {
-    settings.value = { ...newConfig }
-    // Convert array to comma-separated string for display
-    if (newConfig.access_control_allow_origin && Array.isArray(newConfig.access_control_allow_origin)) {
-      allowOriginText.value = newConfig.access_control_allow_origin.join(', ')
-    } else {
-      allowOriginText.value = ''
+// Fetch Clash API config
+const fetchClashAPI = async () => {
+  loading.value = true
+  try {
+    const { data } = await experimentalService.getClashAPI()
+    if (data) {
+      settings.value = { ...data }
+      // Convert array to comma-separated string for display
+      if (data.access_control_allow_origin && Array.isArray(data.access_control_allow_origin)) {
+        allowOriginText.value = data.access_control_allow_origin.join(', ')
+      } else {
+        allowOriginText.value = ''
+      }
     }
-  } else {
-    // Reset to defaults when null
-    settings.value = {
-      external_controller: '',
-      external_ui: '',
-      external_ui_download_url: '',
-      external_ui_download_detour: '',
-      secret: '',
-      default_mode: 'rule',
-      access_control_allow_origin: [],
-      access_control_allow_private_network: false,
-    }
-    allowOriginText.value = ''
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch Clash API configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
-}, { immediate: true, deep: true })
+}
 
-// Convert comma-separated string to array before saving
-const handleSave = () => {
+// Update Clash API config
+const handleSave = async () => {
   const config = { ...settings.value }
 
   // Convert origins text to array
@@ -75,8 +73,32 @@ const handleSave = () => {
     config.access_control_allow_origin = []
   }
 
-  emit('update', config)
+  loading.value = true
+  try {
+    await experimentalService.updateClashAPI(config)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Clash API configuration updated successfully',
+      life: 3000
+    })
+    await fetchClashAPI()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update Clash API configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 }
+
+// Load data on mount
+onMounted(() => {
+  fetchClashAPI()
+})
 </script>
 
 <template>
@@ -91,8 +113,11 @@ const handleSave = () => {
       <div v-else class="space-y-6">
         <!-- External Controller -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex">
             External Controller
+            <a class="cursor-pointer hover:opacity-50" :href="`http://${settings.external_controller}`" target="_blank">
+              <LinkIcon class="h-5 w-5 mr-2" />
+            </a>
           </label>
           <Input
             v-model="settings.external_controller"

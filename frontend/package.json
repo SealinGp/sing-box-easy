@@ -17,6 +17,7 @@
     "dayjs": "^1.11.19",
     "monaco-editor": "^0.55.1",
     "monaco-editor-vue3": "^1.0.5",
+    "pinia": "^3.0.4",
     "primevue": "^4.5.3",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-primeui": "^0.6.1",

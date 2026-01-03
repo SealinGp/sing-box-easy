@@ -1,32 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Card from './Card.vue'
 import Input from './Input.vue'
 import { Dialog, Button, Select } from '../volt'
 import type { RuleSet } from '../types/api'
+import { useToast } from 'primevue'
+import { useRouteStore } from '../stores/route'
+import { storeToRefs } from 'pinia'
 
-interface Props {
-  ruleSets: RuleSet[]
-  loading: boolean
-}
-
-interface Emits {
-  (e: 'add-rule-set', ruleSet: RuleSet): void
-  (e: 'edit-rule-set', tag: string, ruleSet: RuleSet): void
-  (e: 'delete-rule-set', tag: string): void
-}
-
-defineProps<Props>()
-const emit = defineEmits<Emits>()
+const toast = useToast()
+const routeStore = useRouteStore()
+const { ruleSets, loading } = storeToRefs(routeStore)
 
 // State for dialog
-const showAddRuleSetDialog = defineModel<boolean>('showAddDialog')
-const editingRuleSet = defineModel<{ tag: string; ruleSet: RuleSet } | null>('editingRuleSet')
+const showAddRuleSetDialog = ref(false)
+const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
 
 // Form data
-const ruleSetForm = defineModel<RuleSet>('ruleSetForm', {
-  default: () => ({ tag: '', type: 'remote', format: 'source' })
-})
+const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
 
 const typeOptions = [
   { label: 'Remote', value: 'remote' },
@@ -113,21 +104,73 @@ function startEditRuleSet(ruleSet: RuleSet) {
   editingRuleSet.value = { tag: ruleSet.tag, ruleSet: { ...ruleSet } }
 }
 
-function handleAddRuleSet() {
-  emit('add-rule-set', ruleSetForm.value)
-  dialogVisible.value = false
-}
-
-function handleUpdateRuleSet() {
-  if (editingRuleSet.value) {
-    emit('edit-rule-set', editingRuleSet.value.tag, editingRuleSet.value.ruleSet)
+async function handleAddRuleSet() {
+  try {
+    await routeStore.addRuleSet(ruleSetForm.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Rule set added successfully',
+      life: 3000
+    })
     dialogVisible.value = false
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to add rule set',
+      life: 3000
+    })
   }
 }
 
-function handleDeleteRuleSet(tag: string) {
-  emit('delete-rule-set', tag)
+async function handleUpdateRuleSet() {
+  if (editingRuleSet.value) {
+    try {
+      await routeStore.updateRuleSet(editingRuleSet.value.tag, editingRuleSet.value.ruleSet)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Rule set updated successfully',
+        life: 3000
+      })
+      dialogVisible.value = false
+    } catch (err: any) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: err.response?.data?.error || 'Failed to update rule set',
+        life: 3000
+      })
+    }
+  }
 }
+
+async function handleDeleteRuleSet(tag: string) {
+  if (!confirm('Are you sure you want to delete this rule set?')) return
+
+  try {
+    await routeStore.deleteRuleSet(tag)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Rule set deleted successfully',
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete rule set',
+      life: 3000
+    })
+  }
+}
+
+// Load data on mount
+onMounted(() => {
+  routeStore.fetchRuleSets()
+})
 </script>
 
 <template>

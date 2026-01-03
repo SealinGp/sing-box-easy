@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Component } from 'vue'
 import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
@@ -16,7 +16,7 @@ interface Props {
   menuItems: MenuItem[]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const route = useRoute()
 
 // Track expanded states for menu items with children

@@ -30,4 +30,14 @@ export class ConfigService {
     const response = await this.api.post<BasicResponse<{ message: string }>>('/config/rollback')
     return response.data
   }
+
+  async updateConfig(config: SingBoxConfig): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/config', config)
+    return response.data
+  }
+
+  // Alias for updateConfig for backwards compatibility
+  async saveConfig(config: SingBoxConfig): Promise<BasicResponse<{ message: string }>> {
+    return this.updateConfig(config)
+  }
 }

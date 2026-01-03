@@ -1,19 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { V2RayAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import Input from './Input.vue'
+import { experimentalService } from '../services'
+import { useToast } from 'primevue'
 
-const props = defineProps<{
-  v2rayApi: V2RayAPI | null
-  loading: boolean
-}>()
+const toast = useToast()
 
-const emit = defineEmits<{
-  update: [v2rayAPI: V2RayAPI]
-}>()
-
+// Local state
+const loading = ref(false)
 const settings = ref<V2RayAPI>({
   listen: '',
   stats: {
@@ -28,50 +25,45 @@ const inboundsText = ref('')
 const outboundsText = ref('')
 const usersText = ref('')
 
-// Watch for props changes
-watch(() => props.v2rayApi, (newConfig) => {
-  if (newConfig) {
-    settings.value = { ...newConfig }
+// Fetch V2Ray API config
+const fetchV2RayAPI = async () => {
+  loading.value = true
+  try {
+    const { data } = await experimentalService.getV2RayAPI()
+    if (data) {
+      settings.value = { ...data }
 
-    // Initialize stats if not exists
-    if (!settings.value.stats) {
-      settings.value.stats = {
-        enabled: false,
-        inbounds: [],
-        outbounds: [],
-        users: [],
+      // Initialize stats if not exists
+      if (!settings.value.stats) {
+        settings.value.stats = {
+          enabled: false,
+          inbounds: [],
+          outbounds: [],
+          users: [],
+        }
+      }
+
+      // Convert arrays to comma-separated strings for display
+      if (data.stats) {
+        inboundsText.value = data.stats.inbounds?.join(', ') || ''
+        outboundsText.value = data.stats.outbounds?.join(', ') || ''
+        usersText.value = data.stats.users?.join(', ') || ''
       }
     }
-
-    // Convert arrays to comma-separated strings for display
-    if (newConfig.stats) {
-      inboundsText.value = newConfig.stats.inbounds?.join(', ') || ''
-      outboundsText.value = newConfig.stats.outbounds?.join(', ') || ''
-      usersText.value = newConfig.stats.users?.join(', ') || ''
-    } else {
-      inboundsText.value = ''
-      outboundsText.value = ''
-      usersText.value = ''
-    }
-  } else {
-    // Reset to defaults when null
-    settings.value = {
-      listen: '',
-      stats: {
-        enabled: false,
-        inbounds: [],
-        outbounds: [],
-        users: [],
-      }
-    }
-    inboundsText.value = ''
-    outboundsText.value = ''
-    usersText.value = ''
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch V2Ray API configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
-}, { immediate: true, deep: true })
+}
 
-// Convert comma-separated strings to arrays before saving
-const handleSave = () => {
+// Update V2Ray API config
+const handleSave = async () => {
   const config: V2RayAPI = {
     listen: settings.value.listen,
     stats: {
@@ -106,8 +98,32 @@ const handleSave = () => {
     }
   }
 
-  emit('update', config)
+  loading.value = true
+  try {
+    await experimentalService.updateV2RayAPI(config)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'V2Ray API configuration updated successfully',
+      life: 3000
+    })
+    await fetchV2RayAPI()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update V2Ray API configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 }
+
+// Load data on mount
+onMounted(() => {
+  fetchV2RayAPI()
+})
 </script>
 
 <template>

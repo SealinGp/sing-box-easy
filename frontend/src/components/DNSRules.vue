@@ -7,25 +7,27 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/vue'
-import type { DNSRule, DNSServer, RuleSet } from '../types/api'
+import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
 import Input from './Input.vue'
 import Select from './Select.vue'
 import Badge from './Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { routeService } from '../services'
+import {  dnsService } from '../services'
+import { useToast } from 'primevue'
+import { useDNSStore } from '../stores/dns'
+import { useRouteStore } from '../stores/route'
+import { storeToRefs } from 'pinia'
 
-const props = defineProps<{
-  rules: DNSRule[]
-  servers: DNSServer[]
-  loading: boolean
-}>()
+const toast = useToast()
+const dnsStore = useDNSStore()
+const routeStore = useRouteStore()
+const { dnsServers } = storeToRefs(dnsStore)
+const { ruleSets } = storeToRefs(routeStore)
 
-const emit = defineEmits<{
-  addRule: [rule: DNSRule]
-  updateRule: [index: number, rule: DNSRule]
-  deleteRule: [index: number]
-}>()
+// Local state for DNS rules
+const loading = ref(false)
+const dnsRules = ref<DNSRule[]>([])
 
 // Modal state
 const showRuleModal = ref(false)
@@ -46,23 +48,24 @@ const currentRule = ref<any>({
 const showDeleteConfirm = ref(false)
 const deletingIndex = ref(-1)
 
-// Rule sets from route service
-const ruleSets = ref<RuleSet[]>([])
-
-// Fetch rule sets on component mount
-const fetchRuleSets = async () => {
+// Fetch DNS rules
+const fetchDNSRules = async () => {
+  loading.value = true
   try {
-    const { data } = await routeService.getRuleSets()
-    ruleSets.value = data.rule_sets || []
-  } catch (err) {
-    console.error('Failed to fetch rule sets:', err)
-    ruleSets.value = []
+    const { data } = await dnsService.getDNSRules()
+    dnsRules.value = data.rules || []
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch DNS rules',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchRuleSets()
-})
 
 const actionTypes = [
   { value: 'route', label: 'Route - Forward to specified DNS server' },
@@ -74,8 +77,8 @@ const serverOptions = computed(() => {
   const options = [
     { value: '', label: 'Select a server' }
   ]
-  if (props.servers) {
-    props.servers.forEach(server => {
+  if (dnsServers.value) {
+    dnsServers.value.forEach(server => {
       options.push({ value: server.tag, label: server.tag })
     })
   }
@@ -155,7 +158,7 @@ const closeRuleModal = () => {
   }
 }
 
-const handleSaveRule = () => {
+const handleSaveRule = async () => {
   // Convert comma-separated strings back to arrays
   const processedRule = {
     ...currentRule.value,
@@ -182,12 +185,37 @@ const handleSaveRule = () => {
     }
   })
 
-  if (isEditMode.value) {
-    emit('updateRule', editingIndex.value, processedRule)
-  } else {
-    emit('addRule', processedRule)
+  loading.value = true
+  try {
+    if (isEditMode.value) {
+      await dnsService.updateDNSRule(editingIndex.value, processedRule)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS rule updated successfully',
+        life: 3000
+      })
+    } else {
+      await dnsService.addDNSRule(processedRule)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS rule added successfully',
+        life: 3000
+      })
+    }
+    await fetchDNSRules()
+    closeRuleModal()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to save DNS rule',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
-  closeRuleModal()
 }
 
 const openDeleteConfirm = (index: number) => {
@@ -200,10 +228,29 @@ const closeDeleteConfirm = () => {
   deletingIndex.value = -1
 }
 
-const handleDeleteRule = () => {
+const handleDeleteRule = async () => {
   if (deletingIndex.value === -1) return
-  emit('deleteRule', deletingIndex.value)
-  closeDeleteConfirm()
+  loading.value = true
+  try {
+    await dnsService.deleteDNSRule(deletingIndex.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'DNS rule deleted successfully',
+      life: 3000
+    })
+    await fetchDNSRules()
+    closeDeleteConfirm()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete DNS rule',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 }
 
 const getRuleConditionsSummary = (rule: any) => {
@@ -234,6 +281,13 @@ const getRuleConditionsSummary = (rule: any) => {
 
   return conditions.length > 0 ? conditions.join(' | ') : 'No conditions'
 }
+
+// Load data on mount
+onMounted(() => {
+  fetchDNSRules()
+  routeStore.fetchRuleSets() // Fetch shared rule sets
+  dnsStore.fetchDNSServers() // Fetch shared DNS servers
+})
 </script>
 
 <template>
@@ -254,11 +308,11 @@ const getRuleConditionsSummary = (rule: any) => {
         </p>
       </div>
 
-      <div v-if="loading && rules.length === 0" class="flex items-center justify-center py-12">
+      <div v-if="loading && dnsRules.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
-      <div v-else-if="rules.length === 0" class="text-center py-12">
+      <div v-else-if="dnsRules.length === 0" class="text-center py-12">
         <p class="text-gray-500 dark:text-gray-500 mb-4">No DNS rules configured</p>
         <Button @click="openAddRuleModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
@@ -278,7 +332,7 @@ const getRuleConditionsSummary = (rule: any) => {
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="(rule, index) in rules" :key="index" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <tr v-for="(rule, index) in dnsRules" :key="index" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900 dark:text-gray-100">{{ index + 1 }}</div>
               </td>

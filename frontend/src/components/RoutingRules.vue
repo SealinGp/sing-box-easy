@@ -1,35 +1,131 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Card from './Card.vue'
 import { Dialog, Button, Select, MultiSelect, Chips } from '../volt'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import type { RouteRule, Outbound } from '../types/api'
+import { routeService, outboundService } from '../services'
+import { useToast } from 'primevue'
 
-interface Props {
-  rules: RouteRule[]
-  outbounds: Outbound[]
-  loading: boolean
-}
+const toast = useToast()
 
-interface Emits {
-  (e: 'add-rule', rule: RouteRule): void
-  (e: 'edit-rule', index: number, rule: RouteRule): void
-  (e: 'delete-rule', index: number): void
-}
-
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+// Local state
+const loading = ref(false)
+const rules = ref<RouteRule[]>([])
+const outbounds = ref<Outbound[]>([])
 
 // State for dialog
-const showAddRuleDialog = defineModel<boolean>('showAddDialog')
-const editingRule = defineModel<{ index: number; rule: RouteRule } | null>('editingRule')
+const showAddRuleDialog = ref(false)
+const editingRule = ref<{ index: number; rule: RouteRule } | null>(null)
 
 // Form data
-const ruleForm = defineModel<RouteRule>('ruleForm', { default: () => ({ action: 'route', outbound: '' }) })
+const ruleForm = ref<RouteRule>({ action: 'route', outbound: '' })
+
+// Fetch data
+const fetchRouteRules = async () => {
+  loading.value = true
+  try {
+    const { data } = await routeService.getRouteRules()
+    rules.value = data.rules || []
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch route rules',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchOutbounds = async () => {
+  try {
+    const { data } = await outboundService.getOutbounds()
+    outbounds.value = data.outbounds || []
+  } catch (err: any) {
+    console.error('Failed to fetch outbounds:', err)
+  }
+}
+
+// Handlers
+const handleAddRule = async (rule: RouteRule) => {
+  loading.value = true
+  try {
+    await routeService.addRouteRule(rule)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Route rule added successfully',
+      life: 3000
+    })
+    await fetchRouteRules()
+    showAddRuleDialog.value = false
+    ruleForm.value = { action: 'route', outbound: '' }
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to add route rule',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleEditRule = async (index: number, rule: RouteRule) => {
+  loading.value = true
+  try {
+    await routeService.updateRouteRule(index, rule)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Route rule updated successfully',
+      life: 3000
+    })
+    await fetchRouteRules()
+    editingRule.value = null
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update route rule',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleDeleteRule = async (index: number) => {
+  if (!confirm('Are you sure you want to delete this rule?')) return
+
+  loading.value = true
+  try {
+    await routeService.deleteRouteRule(index)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Route rule deleted successfully',
+      life: 3000
+    })
+    await fetchRouteRules()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete route rule',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
 
 // Options
 const outboundOptions = computed(() =>
-  props.outbounds.map(o => ({ label: o.tag || '', value: o.tag || '' }))
+  outbounds.value.map(o => ({ label: o.tag || '', value: o.tag || '' }))
 )
 
 const networkOptions = [
@@ -359,21 +455,25 @@ function startEditRule(index: number, rule: RouteRule) {
   editingRule.value = { index, rule: ruleCopy }
 }
 
-function handleAddRule() {
-  emit('add-rule', ruleForm.value)
-  dialogVisible.value = false
+function submitAddRule() {
+  handleAddRule(ruleForm.value)
 }
 
-function handleUpdateRule() {
+function submitUpdateRule() {
   if (editingRule.value) {
-    emit('edit-rule', editingRule.value.index, editingRule.value.rule)
-    dialogVisible.value = false
+    handleEditRule(editingRule.value.index, editingRule.value.rule)
   }
 }
 
-function handleDeleteRule(index: number) {
-  emit('delete-rule', index)
+function submitDeleteRule(index: number) {
+  handleDeleteRule(index)
 }
+
+// Load data on mount
+onMounted(() => {
+  fetchRouteRules()
+  fetchOutbounds()
+})
 </script>
 
 <template>
@@ -406,7 +506,7 @@ function handleDeleteRule(index: number) {
           :rule="rule"
           :index="index"
           @edit="startEditRule"
-          @delete="handleDeleteRule"
+          @delete="submitDeleteRule"
         />
       </div>
     </Card>
@@ -642,7 +742,7 @@ function handleDeleteRule(index: number) {
         />
         <Button
           :label="editingRule ? 'Update' : 'Add'"
-          @click="editingRule ? handleUpdateRule() : handleAddRule()"
+          @click="editingRule ? submitUpdateRule() : submitAddRule()"
         />
       </template>
     </Dialog>

@@ -1,13 +1,9 @@
-version: "3.8"
-
 services:
   sing-box-easy:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: sealingp/sing-box-easy
     container_name: sing-box-easy
     ports:
-      - "8080:8080"
+      - "8001:8080"
     volumes:
       # Mount config directory
       - /etc/sing-box:/etc/sing-box

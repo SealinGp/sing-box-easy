@@ -1,19 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { CacheFile } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import Input from './Input.vue'
+import { experimentalService } from '../services'
+import { useToast } from 'primevue'
 
-const props = defineProps<{
-  cacheFile: CacheFile | null
-  loading: boolean
-}>()
+const toast = useToast()
 
-const emit = defineEmits<{
-  update: [cacheFile: CacheFile]
-}>()
-
+// Local state
+const loading = ref(false)
 const settings = ref<CacheFile>({
   enabled: false,
   path: '',
@@ -23,26 +20,54 @@ const settings = ref<CacheFile>({
   rdrc_timeout: '7d',
 })
 
-// Watch for props changes
-watch(() => props.cacheFile, (newConfig) => {
-  if (newConfig) {
-    settings.value = { ...newConfig }
-  } else {
-    // Reset to defaults when null
-    settings.value = {
-      enabled: false,
-      path: '',
-      cache_id: '',
-      store_fakeip: false,
-      store_rdrc: false,
-      rdrc_timeout: '7d',
+// Fetch cache file config
+const fetchCacheFile = async () => {
+  loading.value = true
+  try {
+    const { data } = await experimentalService.getCacheFile()
+    if (data) {
+      settings.value = { ...data }
     }
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to fetch cache file configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
-}, { immediate: true, deep: true })
-
-const handleSave = () => {
-  emit('update', settings.value)
 }
+
+// Update cache file config
+const handleSave = async () => {
+  loading.value = true
+  try {
+    await experimentalService.updateCacheFile(settings.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Cache file configuration updated successfully',
+      life: 3000
+    })
+    await fetchCacheFile()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to update cache file configuration',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load data on mount
+onMounted(() => {
+  fetchCacheFile()
+})
 </script>
 
 <template>

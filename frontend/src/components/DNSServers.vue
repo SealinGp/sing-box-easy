@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   TransitionRoot,
   TransitionChild,
@@ -12,17 +12,13 @@ import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { useToast } from 'primevue'
+import { useDNSStore } from '../stores/dns'
+import { storeToRefs } from 'pinia'
 
-defineProps<{
-  servers: DNSServer[]
-  loading: boolean
-}>()
-
-const emit = defineEmits<{
-  addServer: [server: DNSServer]
-  updateServer: [tag: string, server: DNSServer]
-  deleteServer: [tag: string]
-}>()
+const toast = useToast()
+const dnsStore = useDNSStore()
+const { dnsServers, loading } = storeToRefs(dnsStore)
 
 // Modal state
 const showServerModal = ref(false)
@@ -101,13 +97,34 @@ const closeServerModal = () => {
   }
 }
 
-const handleSaveServer = () => {
-  if (isEditMode.value) {
-    emit('updateServer', editingServerTag.value, currentServer.value)
-  } else {
-    emit('addServer', currentServer.value)
+const handleSaveServer = async () => {
+  try {
+    if (isEditMode.value) {
+      await dnsStore.updateDNSServer(editingServerTag.value, currentServer.value)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS server updated successfully',
+        life: 3000
+      })
+    } else {
+      await dnsStore.addDNSServer(currentServer.value)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'DNS server added successfully',
+        life: 3000
+      })
+    }
+    closeServerModal()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to save DNS server',
+      life: 3000
+    })
   }
-  closeServerModal()
 }
 
 const openDeleteConfirm = (server: DNSServer) => {
@@ -120,11 +137,31 @@ const closeDeleteConfirm = () => {
   deletingServer.value = null
 }
 
-const handleDeleteServer = () => {
+const handleDeleteServer = async () => {
   if (!deletingServer.value) return
-  emit('deleteServer', deletingServer.value.tag)
-  closeDeleteConfirm()
+  try {
+    await dnsStore.deleteDNSServer(deletingServer.value.tag)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'DNS server deleted successfully',
+      life: 3000
+    })
+    closeDeleteConfirm()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: err.response?.data?.error || 'Failed to delete DNS server',
+      life: 3000
+    })
+  }
 }
+
+// Load data on mount
+onMounted(() => {
+  dnsStore.fetchDNSServers()
+})
 </script>
 
 <template>
@@ -142,11 +179,11 @@ const handleDeleteServer = () => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Servers</h3>
       </div>
 
-      <div v-if="loading && servers.length === 0" class="flex items-center justify-center py-12">
+      <div v-if="loading && dnsServers.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
-      <div v-else-if="servers.length === 0" class="text-center py-12">
+      <div v-else-if="dnsServers.length === 0" class="text-center py-12">
         <p class="text-gray-500 dark:text-gray-500 mb-4">No DNS servers configured</p>
         <Button @click="openAddServerModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
@@ -166,7 +203,7 @@ const handleDeleteServer = () => {
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="server in servers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <tr v-for="server in dnsServers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ server.tag }}</div>
               </td>

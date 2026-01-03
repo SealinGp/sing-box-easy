@@ -14,11 +14,14 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Textarea from '../../components/Textarea.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
-import { nodesService, outboundService } from '../../services'
+import { nodesService } from '../../services'
 import { useToast } from 'primevue/usetoast'
+import { useOutboundsStore } from '../../stores/outbounds'
 
-const outbounds = ref<Outbound[]>([])
-const loading = ref(false)
+const outboundsStore = useOutboundsStore()
+const { outbounds } = outboundsStore
+
+const localLoading = ref(false)
 const toast = useToast()
 
 // Modal state
@@ -97,24 +100,6 @@ const needsUUID = computed(() => {
 })
 const needsMethod = computed(() => currentOutbound.value.type === 'shadowsocks')
 const needsOutbounds = computed(() => isGroupType(currentOutbound.value.type))
-
-const fetchOutbounds = async () => {
-  loading.value = true
-  try {
-    const {data} = await outboundService.getOutbounds()
-    outbounds.value = data.outbounds
-  } catch (err: any) {
-    console.error('Failed to fetch outbounds:', err)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch outbounds',
-      life: 3000
-    })
-  } finally {
-    loading.value = false
-  }
-}
 
 const openAddModal = () => {
   isEditMode.value = false
@@ -224,10 +209,10 @@ const handleSave = async () => {
     return
   }
 
-  loading.value = true
+  localLoading.value = true
   try {
     if (isEditMode.value) {
-      await outboundService.updateOutbound(editingTag.value, currentOutbound.value)
+      await outboundsStore.updateOutbound(editingTag.value, currentOutbound.value)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -235,7 +220,7 @@ const handleSave = async () => {
         life: 3000
       })
     } else {
-      await outboundService.addOutbound(currentOutbound.value)
+      await outboundsStore.addOutbound(currentOutbound.value)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -244,7 +229,6 @@ const handleSave = async () => {
       })
     }
     closeModal()
-    await fetchOutbounds()
   } catch (err: any) {
     console.error('Failed to save outbound:', err)
     toast.add({
@@ -254,7 +238,7 @@ const handleSave = async () => {
       life: 3000
     })
   } finally {
-    loading.value = false
+    localLoading.value = false
   }
 }
 
@@ -272,11 +256,11 @@ const closeDeleteConfirm = () => {
 const handleDelete = async () => {
   if (!deletingOutbound.value) return
 
-  loading.value = true
+  localLoading.value = true
 
   try {
-    const val = deletingOutboundIdx.value > -1 ? `${deletingOutboundIdx.value}` : deletingOutbound.value.tag
-    await outboundService.deleteOutbound(val)
+    const val = deletingOutboundIdx.value > -1 ? deletingOutboundIdx.value : deletingOutbound.value.tag
+    await outboundsStore.deleteOutbound(val)
     toast.add({
       severity: 'success',
       summary: 'Success',
@@ -284,7 +268,6 @@ const handleDelete = async () => {
       life: 3000
     })
     closeDeleteConfirm()
-    await fetchOutbounds()
   } catch (err: any) {
     console.error('Failed to delete outbound:', err)
     toast.add({
@@ -294,7 +277,7 @@ const handleDelete = async () => {
       life: 3000
     })
   } finally {
-    loading.value = false
+    localLoading.value = false
   }
 }
 
@@ -394,7 +377,7 @@ const handleImport = async () => {
     })
 
     if (outboundsToAdd.length > 0) {
-      const {data} = await outboundService.addOutboundsBatch(outboundsToAdd)
+      const {data} = await outboundsStore.addOutboundsBatch(outboundsToAdd)
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -402,7 +385,6 @@ const handleImport = async () => {
         life: 3000
       })
       closeImportModal()
-      await fetchOutbounds()
     }
   } catch (err: any) {
     toast.add({
@@ -443,7 +425,9 @@ watch(() => currentOutbound.value.type, () => {
   currentOutbound.value = { type, tag }
 })
 
-onMounted(fetchOutbounds)
+onMounted(() => {
+  outboundsStore.fetchOutbounds()
+})
 </script>
 
 <template>
@@ -464,7 +448,7 @@ onMounted(fetchOutbounds)
 
 
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
-      <div v-if="loading && outbounds.length === 0" class="flex items-center justify-center py-12">
+      <div v-if="outboundsStore.loading && outbounds.length === 0" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
 
@@ -663,7 +647,7 @@ onMounted(fetchOutbounds)
 
                 <div class="mt-6 flex justify-end gap-3">
                   <Button @click="closeModal" variant="secondary">Cancel</Button>
-                  <Button @click="handleSave" variant="primary" :disabled="loading">
+                  <Button @click="handleSave" variant="primary" :disabled="localLoading">
                     {{ isEditMode ? 'Update' : 'Add' }}
                   </Button>
                 </div>
@@ -869,7 +853,7 @@ onMounted(fetchOutbounds)
 
                 <div class="mt-6 flex justify-end gap-3">
                   <Button @click="closeDeleteConfirm" variant="secondary">Cancel</Button>
-                  <Button @click="handleDelete" variant="danger" :disabled="loading">
+                  <Button @click="handleDelete" variant="danger" :disabled="localLoading">
                     Delete
                   </Button>
                 </div>
