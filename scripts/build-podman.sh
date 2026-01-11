@@ -39,7 +39,11 @@ if [ "$BUILD_FRONTEND_LOCAL" = "true" ]; then
     # Create the alternate Dockerfile
     cat > $DOCKERFILE << 'EOF'
 # Stage 1: Backend Builder
-FROM golang:1.25.5-alpine AS backend-builder
+# Use --platform=$BUILDPLATFORM to run the builder natively on the host (e.g. Apple Silicon)
+# regardless of the target platform. This prevents slow QEMU emulation for Go builds.
+FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine AS backend-builder
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -56,7 +60,8 @@ RUN go mod download
 COPY . .
 
 # Build the Go binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sing-box-easy ./main.go
+# Build the Go binary
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -a -installsuffix cgo -o sing-box-easy ./main.go
 
 # Stage 2: Runtime
 FROM alpine:latest

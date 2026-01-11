@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -20,7 +20,9 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Stage 2: Build Backend
-FROM golang:1.25.5-alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine AS backend-builder
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -42,7 +44,7 @@ COPY --from=frontend-builder /app/dist ./dist
 
 # Build the Go binary with CGO enabled for SQLite support
 # Build the Go binary with CGO disabled (using pure Go sqlite)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -a -ldflags='-w -s -extldflags "-static"' -o sing-box-easy ./main.go
 
 
 # Stage 3: Runtime
