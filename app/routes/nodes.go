@@ -28,6 +28,8 @@ func NewRoute(hp string, config *appconfig.Config) *Route {
 	return &Route{
 		hz: server.New(
 			server.WithHostPorts(hp),
+			// Increase max request body size to 100MB for dashboard uploads
+			server.WithMaxRequestBodySize(100*1024*1024), // 100MB
 		),
 		sl:     new(sublink.SubLink),
 		config: config,
@@ -65,7 +67,12 @@ func (r *Route) initEndpoints() error {
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
 	// Serve frontend static files (should be registered last)
-	r.hz.StaticFS("/", &app.FS{Root: "./dist", PathRewrite: app.NewPathSlashesStripper(0)})
+	r.hz.StaticFS("/", &app.FS{
+		Root:               "./dist",
+		PathRewrite:        app.NewPathSlashesStripper(0),
+		GenerateIndexPages: true,
+		IndexNames:         []string{"index.html"},
+	})
 
 	return nil
 }

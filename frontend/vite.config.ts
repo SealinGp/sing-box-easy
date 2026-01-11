@@ -27,25 +27,10 @@ export default defineConfig({
       output: {
         // Manual chunking strategy
         manualChunks(id) {
-          // Monaco Editor chunks
+          // Monaco Editor chunks - simplified to avoid circular dependencies
           if (id.includes('monaco-editor')) {
-            // Split Monaco Editor by language/worker
-            if (id.includes('/esm/vs/language/typescript')) {
-              return 'monaco-typescript';
-            }
-            if (id.includes('/esm/vs/language/css')) {
-              return 'monaco-css';
-            }
-            if (id.includes('/esm/vs/language/html')) {
-              return 'monaco-html';
-            }
-            if (id.includes('/esm/vs/language/json')) {
-              return 'monaco-json';
-            }
-            if (id.includes('/esm/vs/editor')) {
-              return 'monaco-editor-core';
-            }
-            return 'monaco-vendor';
+            // Keep all Monaco editor code in a single chunk to avoid circular deps
+            return 'monaco-editor';
           }
 
           // Vue ecosystem

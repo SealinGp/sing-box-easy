@@ -78,7 +78,7 @@ RUN mkdir -p /etc/sing-box
 COPY --from=backend-builder /app/sing-box-easy .
 
 # Copy the pre-built frontend
-COPY --from=backend-builder /app/dist ./dist
+COPY dist ./dist
 
 # Copy example config
 COPY app.yml.example ./app.yml.example

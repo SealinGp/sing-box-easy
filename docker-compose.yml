@@ -1,20 +1,66 @@
+version: '3.8'
+
 services:
   sing-box-easy:
     image: sealingp/sing-box-easy
     container_name: sing-box-easy
-    ports:
-      - "8001:8080"
+    # Note: When using host network mode, port mapping is not needed
+    # The container will use the host's network directly
+    # ports:
+    #   - "8001:8080"  # Web UI
+    #   - "1080:1080"  # SOCKS5 proxy
+    #   - "7890:7890"  # HTTP proxy
+    #   - "9090:9090"  # Clash API
     volumes:
       # Mount config directory
       - /etc/sing-box:/etc/sing-box
       # Mount app config
       - ./app.yml:/app/app.yml:ro
     environment:
-      - HTTP_PORT=8080
+      - HTTP_PORT=8001
+      - ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true
     restart: unless-stopped
-    networks:
-      - sing-box-network
 
-networks:
-  sing-box-network:
-    driver: bridge
+    # SOLUTION 1: Use host network mode (best for external access)
+    # Uncomment this line to use host network mode (simplest solution)
+    network_mode: host
+
+    # SOLUTION 2: Enhanced bridge network with proper settings
+    # networks:
+    #   - sing-box-network
+
+    # Note: DNS settings are ignored in host network mode
+    # The container will use the host's DNS configuration
+    # dns:
+    #   - 8.8.8.8
+    #   - 8.8.4.4
+    #   - 1.1.1.1
+
+    # Add capabilities needed for networking
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+
+    # Note: sysctls cannot be used with host network mode
+    # These settings would need to be configured on the host system directly
+    # sysctls:
+    #   - net.ipv4.ip_forward=1
+    #   - net.ipv6.conf.all.forwarding=1
+    #   - net.ipv4.conf.all.rp_filter=0
+    #   - net.ipv4.conf.default.rp_filter=0
+
+    # Add device for TUN (if using TUN mode in sing-box)
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+# networks:
+#   sing-box-network:
+#     driver: bridge
+#     driver_opts:
+#       com.docker.network.bridge.enable_ip_masquerade: "true"
+#       com.docker.network.bridge.enable_icc: "true"
+#       com.docker.network.driver.mtu: "1500"
+#     ipam:
+#       config:
+#         - subnet: 172.20.0.0/16
+#           gateway: 172.20.0.1b

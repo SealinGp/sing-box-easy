@@ -1,12 +1,13 @@
 # Stage 1: Build Frontend
 FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 
-WORKDIR /app/frontend
+WORKDIR /app
 
 # Copy frontend package files
-COPY frontend/package*.json ./
+COPY frontend/package*.json ./frontend/
 
 # Install dependencies
+WORKDIR /app/frontend
 RUN npm ci
 
 # Copy frontend source
@@ -17,10 +18,11 @@ COPY frontend/ ./
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Build frontend with increased memory and single-threaded mode to avoid concurrency issues
+# This will output to /app/dist (../dist from /app/frontend)
 RUN npm run build
 
 # Stage 2: Build Backend
-FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:alpine AS backend-builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -73,6 +75,7 @@ EXPOSE 8080
 
 # Set environment variables with defaults
 ENV HTTP_PORT=8080
+ENV ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

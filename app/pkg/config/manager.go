@@ -108,7 +108,9 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 	}
 
 	// Validate using sing-box check command
+	// Set environment variable to support deprecated special outbounds
 	cmd := exec.Command(m.singBoxPath, "check", "-c", m.newConfigPath)
+	cmd.Env = append(os.Environ(), "ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Clean up temp file on validation error

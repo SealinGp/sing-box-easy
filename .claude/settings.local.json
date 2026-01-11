@@ -17,7 +17,10 @@
       "mcp__chrome-devtools__get_console_message",
       "Bash(docker build:*)",
       "mcp__chrome-devtools__click",
-      "mcp__chrome-devtools__evaluate_script"
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(docker run:*)",
+      "Bash(curl:*)",
+      "Bash(ssh root@192.168.31.200:*)"
     ],
     "deny": [],
     "ask": []
