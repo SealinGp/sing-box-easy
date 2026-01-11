@@ -124,7 +124,7 @@ const fallbackDelay = computed({
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Detour
-          <span class="text-xs text-gray-500 ml-1">(Outbound tag)</span>
+          <span class="text-xs text-gray-500 ml-1">(Prefix Outbound tag for chain proxy)</span>
         </label>
         <Select
           v-if="detourOptions.length > 0"

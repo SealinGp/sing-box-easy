@@ -1,0 +1,35 @@
+# Save this as sing-box-easy.yaml
+# Run with: podman play kube sing-box-easy.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sing-box-easy
+  labels:
+    app: sing-box-easy
+spec:
+  containers:
+    - name: sing-box-easy
+      image: sing-box-easy:latest
+      imagePullPolicy: Never # Use local image built by podman
+      ports:
+        - containerPort: 8080
+          hostPort: 8001
+      env:
+        - name: HTTP_PORT
+          value: "8080"
+      volumeMounts:
+        - mountPath: /etc/sing-box
+          name: config-volume
+        - mountPath: /app/app.yml
+          name: app-config
+          readOnly: true
+  volumes:
+    - name: config-volume
+      hostPath:
+        path: /etc/sing-box
+        type: Directory
+    - name: app-config
+      hostPath:
+        path: ./app.yml
+        type: File
