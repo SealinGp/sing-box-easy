@@ -18,6 +18,24 @@ func (h *Handler) GetConfig(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, cfg)
 }
 
+// UpdateConfig saves the provided configuration
+func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
+	var cfg config.SingBoxConfig
+	if err := c.Bind(&cfg); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if err := h.configManager.SaveConfig(&cfg); err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{
+		"message": "configuration saved successfully",
+	})
+}
+
 // ValidateConfig validates the provided configuration
 func (h *Handler) ValidateConfig(ctx context.Context, c *app.RequestContext) {
 	var cfg config.SingBoxConfig

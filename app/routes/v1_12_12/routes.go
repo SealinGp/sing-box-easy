@@ -10,6 +10,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Configuration Management APIs
 	v1.GET("/config", handler.GetConfig)
+	v1.PUT("/config", handler.UpdateConfig)
 	v1.POST("/config/validate", handler.ValidateConfig)
 	v1.GET("/config/backup", handler.GetBackupConfig)
 	v1.POST("/config/rollback", handler.RollbackConfig)

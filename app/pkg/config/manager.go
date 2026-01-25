@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/sagernet/sing/common/json"
@@ -109,7 +110,8 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 
 	// Validate using sing-box check command
 	// Set environment variable to support deprecated special outbounds
-	cmd := exec.Command(m.singBoxPath, "check", "-c", m.newConfigPath)
+	cmdParams := []string{"check", "-c", m.newConfigPath}
+	cmd := exec.Command(m.singBoxPath, cmdParams...)
 	cmd.Env = append(os.Environ(), "ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -118,6 +120,10 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 		return fmt.Errorf("config validation failed: %s", string(output))
 	}
 
+	logger.Infof("%s %s output:%s", m.singBoxPath, strings.Join(cmdParams, " "), output)
+	if bytes.Contains(output, []byte("ERROR")) || bytes.Contains(output, []byte("FATAL")) {
+		return fmt.Errorf("config validation failed: %s", string(output))
+	}
 	return nil
 }
 
