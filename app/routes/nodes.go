@@ -2,6 +2,8 @@ package routes
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -66,12 +68,20 @@ func (r *Route) initEndpoints() error {
 
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
-	// Serve frontend static files (should be registered last)
-	r.hz.StaticFS("/", &app.FS{
-		Root:               "./dist",
-		PathRewrite:        app.NewPathSlashesStripper(0),
-		GenerateIndexPages: true,
-		IndexNames:         []string{"index.html"},
+	// PWA/SPA fallback handler: serve static files if they exist, otherwise index.html
+	// This allows client-side routing to work properly
+	r.hz.NoRoute(func(ctx context.Context, c *app.RequestContext) {
+		requestPath := string(c.Request.URI().Path())
+		filePath := filepath.Join("./dist", requestPath)
+
+		// Check if the requested file exists
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			c.File(filePath)
+			return
+		}
+
+		// For directories or non-existent files, serve index.html for client-side routing
+		c.File("./dist/index.html")
 	})
 
 	return nil
