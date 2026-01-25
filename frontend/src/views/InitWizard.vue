@@ -76,7 +76,6 @@ onMounted(async () => {
 
   try {
     loading.value = true
-    serviceControlService.getServiceStatus()
     const {data} = await serviceControlService.getInitStatus()
     initState.value = data
 

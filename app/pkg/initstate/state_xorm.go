@@ -119,7 +119,7 @@ func (m *ManagerXORM) SetSingBoxInstalled(version string) error {
 		SingBoxVersion:   version,
 	}
 
-	_, err := session.ID(1).Update(updates)
+	_, err := session.ID(1).Cols("sing_box_installed", "sing_box_version").Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to update sing_box_installed: %w", err)
 	}
@@ -137,7 +137,7 @@ func (m *ManagerXORM) SetDashboardInstalled() error {
 		DashboardInstalled: true,
 	}
 
-	_, err := session.ID(1).Update(updates)
+	_, err := session.ID(1).Cols("dashboard_installed").Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to update dashboard_installed: %w", err)
 	}
@@ -158,7 +158,7 @@ func (m *ManagerXORM) CompleteInitialization() error {
 		InitTime:        now,
 	}
 
-	_, err := session.ID(1).Update(updates)
+	_, err := session.ID(1).Cols("initialized", "config_generated", "init_time").Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to complete initialization: %w", err)
 	}
@@ -181,7 +181,7 @@ func (m *ManagerXORM) Reset() error {
 		InitTime:           time.Time{},
 	}
 
-	_, err := session.ID(1).Update(updates)
+	_, err := session.ID(1).Cols("initialized", "sing_box_installed", "config_generated", "dashboard_installed", "sing_box_version", "init_time").Update(updates)
 	if err != nil {
 		return fmt.Errorf("failed to reset initialization: %w", err)
 	}
