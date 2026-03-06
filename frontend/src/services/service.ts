@@ -13,12 +13,12 @@ export class ServiceControlService {
     return response.data
   }
 
-  async startService(): Promise<BasicResponse<{ message: string }>> {
+  async startService(): Promise<BasicResponse<any>> {
     const response = await this.api.post<BasicResponse<{ message: string }>>('/service/start')
     return response.data
   }
 
-  async stopService(): Promise<BasicResponse<{ message: string }>> {
+  async stopService(): Promise<BasicResponse<any>> {
     const response = await this.api.post<BasicResponse<{ message: string }>>('/service/stop')
     return response.data
   }

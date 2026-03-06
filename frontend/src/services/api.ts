@@ -25,8 +25,8 @@ export class ApiService {
     return this.client.put<T>(url, data)
   }
 
-  delete<T>(url: string): Promise<{ data: T }> {
-    return this.client.delete<T>(url)
+  delete<T>(url: string, data?: unknown): Promise<{ data: T }> {
+    return this.client.delete<T>(url, data ? { data } : undefined)
   }
 }
 

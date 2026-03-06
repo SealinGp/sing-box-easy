@@ -53,6 +53,17 @@ export class OutboundService {
     return response.data
   }
 
+  async deleteOutboundsBatch(tags: string[]): Promise<BasicResponse<{
+    message: string
+    deleted_count: number
+  }>> {
+    const response = await this.api.delete<BasicResponse<{
+      message: string
+      deleted_count: number
+    }>>('/outbounds/batch', { tags })
+    return response.data
+  }
+
   async updateOutboundMembers(tag: string, members: string[]): Promise<BasicResponse<{ message: string; tag: string }>> {
     const response = await this.api.put<BasicResponse<{ message: string; tag: string }>>(`/outbounds/${tag}/members`, { members })
     return response.data

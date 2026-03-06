@@ -1,15 +1,18 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
+	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/process"
 	"go.uber.org/zap"
 )
 
@@ -27,6 +30,7 @@ type Controller struct {
 	configManager *config.Manager
 	singBoxPath   string
 	systemType    SystemType
+	pm            *process.ProcessManager
 }
 
 // NewController creates a new service controller
@@ -162,14 +166,47 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
 
-	// Start sing-box service
-	cmd := exec.Command(c.singBoxPath, "run", "-c", c.configManager.GetConfigPath())
-	if err := cmd.Start(); err != nil {
+	return c.serveSingBox()
+}
+
+func (c *Controller) serveSingBox() error {
+	// Initialize a new ProcessManager for this run
+	c.pm = process.NewProcessManager()
+
+	// Start sing-box service using ProcessManager
+	err := c.pm.Start(c.singBoxPath, "run", "-c", c.configManager.GetConfigPath())
+	if err != nil {
 		return fmt.Errorf("failed to start service: %w", err)
 	}
 
-	logger.Info("Service started successfully", zap.Int("pid", cmd.Process.Pid))
-	return nil
+	logChan := c.pm.GetLogChanel()
+	errCh := make(chan error, 1)
+
+	// Monitor logs and catch FATAL errors
+	go func() {
+		for msg := range logChan {
+			logger.Info("sing-box: " + msg)
+			if strings.Contains(msg, "FATAL") {
+				select {
+				case errCh <- errors.New(msg):
+				default:
+				}
+			}
+		}
+	}()
+
+	// Wait for 2 seconds to check if process fails immediately
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		// Process seems to be running fine after 2 seconds
+		logger.Info("Service started successfully")
+		return nil
+	}
 }
 
 // Stop stops the sing-box service
@@ -180,25 +217,14 @@ func (c *Controller) Stop() error {
 		return err
 	}
 	if !running {
-		return fmt.Errorf("service is not running")
+		// return fmt.Errorf("service is not running")
+		return nil
 	}
 
-	// Get PID
-	pid, err := c.getPID()
-	if err != nil {
-		return fmt.Errorf("failed to get service PID: %w", err)
+	if c.pm != nil {
+		c.pm.Stop()
 	}
-	if pid == "" {
-		return fmt.Errorf("service is not running")
-	}
-
-	// Send SIGTERM to gracefully stop
-	stopCmd := exec.Command("kill", "-TERM", pid)
-	if err := stopCmd.Run(); err != nil {
-		return fmt.Errorf("failed to stop service: %w", err)
-	}
-
-	logger.Info("Service stopped", zap.String("pid", pid))
+	logger.Info("Service stopped")
 	return nil
 }
 
@@ -275,29 +301,9 @@ func (c *Controller) Reload() error {
 
 // ForceStop force stops the sing-box service using SIGKILL
 func (c *Controller) ForceStop() error {
-	// Get PID
-	pid, err := c.getPID()
-	if err != nil {
-		// Log error but don't fail
-		logger.Warn("Error getting PID during force stop", zap.Error(err))
-		return nil
+	if c.pm != nil {
+		c.pm.Stop()
 	}
-	if pid == "" {
-		// Process not running
-		return nil
-	}
-
-	// Send SIGKILL
-	stopCmd := exec.Command("kill", "-9", pid)
-	if err := stopCmd.Run(); err != nil {
-		// Try using syscall directly
-		var pidInt int
-		fmt.Sscanf(pid, "%d", &pidInt)
-		if pidInt > 0 {
-			syscall.Kill(pidInt, syscall.SIGKILL)
-		}
-	}
-
-	logger.Info("Service force stopped", zap.String("pid", pid))
+	logger.Info("Service force stopped")
 	return nil
 }

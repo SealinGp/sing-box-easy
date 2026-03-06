@@ -13,8 +13,8 @@ export class ConfigService {
     return response.data
   }
 
-  async validateConfig(config: SingBoxConfig): Promise<BasicResponse<{ valid: boolean; error?: string }>> {
-    const response = await this.api.post<BasicResponse<{ valid: boolean; error?: string }>>(
+  async validateConfig(config: SingBoxConfig): Promise<BasicResponse<any>> {
+    const response = await this.api.post<BasicResponse<any>>(
       '/config/validate',
       config
     )

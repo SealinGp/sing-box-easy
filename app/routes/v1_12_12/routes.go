@@ -22,6 +22,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.GET("/outbounds", handler.GetOutbounds)
 	v1.POST("/outbounds", handler.AddOutbound)
 	v1.POST("/outbounds/batch", handler.AddOutboundsBatch)
+	v1.DELETE("/outbounds/batch", handler.DeleteOutboundsBatch)
 	v1.GET("/outbounds/groups", handler.GetOutboundGroups)
 	v1.GET("/outbounds/:tag", handler.GetOutboundByTag)
 	v1.PUT("/outbounds/:tag", handler.UpdateOutbound)

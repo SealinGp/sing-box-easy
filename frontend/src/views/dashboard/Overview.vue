@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import type { ServiceStatus } from '../../types/api'
+import { Code, type ServiceStatus } from '../../types/api'
 import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
 import { useToast } from 'primevue/usetoast'
@@ -55,7 +55,16 @@ const fetchStatus = async () => {
 const handleStart = async () => {
   actionLoading.value = true
   try {
-    await serviceControlService.startService()
+    const resp = await serviceControlService.startService()
+    if(resp.code != Code.Success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: resp.msg,
+      })
+      return
+    }
+
     toast.add({
       severity: 'success',
       summary: 'Success',

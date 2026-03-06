@@ -79,6 +79,21 @@ export const useOutboundsStore = defineStore('outbounds', () => {
     }
   }
 
+  // Delete outbounds in batch
+  const deleteOutboundsBatch = async (tags: string[]) => {
+    loading.value = true
+    try {
+      const result = await outboundService.deleteOutboundsBatch(tags)
+      await fetchOutbounds()
+      return result
+    } catch (err: any) {
+      console.error('Failed to delete outbounds batch:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     outbounds,
     loading,
@@ -86,6 +101,7 @@ export const useOutboundsStore = defineStore('outbounds', () => {
     addOutbound,
     updateOutbound,
     deleteOutbound,
+    deleteOutboundsBatch,
     addOutboundsBatch,
   }
 })

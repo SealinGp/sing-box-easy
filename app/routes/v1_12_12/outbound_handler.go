@@ -112,7 +112,6 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 		return
 	}
 
-	// Validate all outbounds first
 	tagMap := make(map[string]bool)
 	for i, outbound := range req.Outbounds {
 		if outbound.Tag == "" {
@@ -120,7 +119,6 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 			return
 		}
 
-		// Check for duplicate tags in request
 		if tagMap[outbound.Tag] {
 			respErr(ctx, c, CodeBadRequest, fmt.Sprintf("duplicate tag '%s' in request", outbound.Tag))
 			return
@@ -128,38 +126,7 @@ func (h *Handler) AddOutboundsBatch(ctx context.Context, c *app.RequestContext) 
 		tagMap[outbound.Tag] = true
 	}
 
-	var addedTags []string
-	var skippedTags []string
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		// Build existing tags map
-		existingTags := make(map[string]bool)
-		for _, existing := range cfg.Outbounds {
-			existingTags[existing.Tag] = true
-		}
-
-		// Add outbounds that don't exist
-		for _, outbound := range req.Outbounds {
-			// Generate unique tag to avoid conflicts between different subscriptions
-			originalTag := outbound.Tag
-			outbound.Tag = config.GenerateUniqueTag(originalTag, outbound)
-
-			if existingTags[outbound.Tag] {
-				skippedTags = append(skippedTags, outbound.Tag)
-				continue
-			}
-
-			cfg.Outbounds = append(cfg.Outbounds, outbound)
-			addedTags = append(addedTags, outbound.Tag)
-		}
-
-		if len(addedTags) == 0 {
-			logger.Warn("all outbounds already exist")
-		}
-
-		return nil
-	})
-
+	addedTags, skippedTags, err := h.configManager.UpdateOutbounds(req.Outbounds)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -270,6 +237,74 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, map[string]any{
 		"message": "outbound deleted successfully",
 		"tag":     tag,
+	})
+}
+
+// DeleteOutboundsBatch deletes multiple outbounds at once
+func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContext) {
+	type Request struct {
+		Tags []string `json:"tags"`
+	}
+
+	var req Request
+	data := c.Request.Body()
+	jsonCtx := config.CreateContext(ctx)
+	if err := json.UnmarshalContext(jsonCtx, data, &req); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if len(req.Tags) == 0 {
+		respErr(ctx, c, CodeBadRequest, "tags array is required and cannot be empty")
+		return
+	}
+
+	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+		tagSet := make(map[string]bool)
+		for _, tag := range req.Tags {
+			tagSet[tag] = true
+		}
+
+		newOutbounds := make([]config.Outbound, 0)
+		deletedTags := make([]string, 0)
+		notFoundTags := make([]string, 0)
+
+		for _, outbound := range cfg.Outbounds {
+			if tagSet[outbound.Tag] {
+				deletedTags = append(deletedTags, outbound.Tag)
+				continue
+			}
+			newOutbounds = append(newOutbounds, outbound)
+		}
+
+		// Check for tags that weren't found
+		for _, tag := range req.Tags {
+			found := false
+			for _, outbound := range cfg.Outbounds {
+				if outbound.Tag == tag {
+					found = true
+					break
+				}
+			}
+			if !found {
+				notFoundTags = append(notFoundTags, tag)
+			}
+		}
+
+		cfg.Outbounds = newOutbounds
+
+		logger.Info(fmt.Sprintf("deleted %d outbounds: %v", len(deletedTags), deletedTags))
+		return nil
+	})
+
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{
+		"message":       "outbounds deleted successfully",
+		"deleted_count": len(req.Tags),
 	})
 }
 

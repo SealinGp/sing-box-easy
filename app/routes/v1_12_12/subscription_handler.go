@@ -2,9 +2,6 @@ package v1_13_0
 
 import (
 	"context"
-	"io"
-	"net/http"
-	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -111,29 +108,8 @@ func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestC
 		return
 	}
 
-	// Fetch subscription content
-	resp, err := http.Get(sub.URL)
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, "failed to fetch subscription: "+err.Error())
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respErr(ctx, c, CodeInternalError, "subscription server returned error: "+resp.Status)
-		return
-	}
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, "failed to read subscription response: "+err.Error())
-		return
-	}
-
 	// Parse nodes using the existing sublink package
-	lines := strings.Split(string(body), "\n")
-	subNodes, err := h.sublink.ListNodes(lines)
+	subNodes, err := h.sublink.ListNodes([]string{sub.URL})
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, "failed to parse subscription nodes: "+err.Error())
 		return
@@ -156,10 +132,17 @@ func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestC
 		outbounds = append(outbounds, outbound)
 	}
 
+	addedTags, skippedTags, err := h.configManager.UpdateOutbounds(outbounds)
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, "failed to update outbounds: "+err.Error())
+		return
+	}
+
 	respOK(ctx, c, map[string]any{
-		"message":    "subscription updated successfully",
-		"id":         id,
-		"node_count": len(outbounds),
-		"nodes":      outbounds,
+		"message":      "subscription updated successfully",
+		"id":           id,
+		"node_count":   len(addedTags),
+		"added_tags":   addedTags,
+		"skipped_tags": skippedTags,
 	})
 }

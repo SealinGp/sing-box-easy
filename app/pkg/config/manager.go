@@ -89,8 +89,7 @@ func (m *Manager) GetBackupConfig() (*SingBoxConfig, error) {
 	return &config, nil
 }
 
-// ValidateConfig validates the configuration using sing-box binary
-func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
+func (m *Manager) createNewConfig(config *SingBoxConfig) error {
 	// Save to temporary file with pretty printing
 	jsonCtx := CreateContext(context.Background())
 	data, err := json.MarshalContext(jsonCtx, config)
@@ -106,6 +105,14 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 
 	if err := os.WriteFile(m.newConfigPath, prettyBuf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("failed to write temp config file: %w", err)
+	}
+	return nil
+}
+
+// ValidateConfig validates the configuration using sing-box binary
+func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
+	if err := m.createNewConfig(config); err != nil {
+		return err
 	}
 
 	// Validate using sing-box check command
@@ -131,14 +138,16 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 // It creates a backup of the current config before saving
 func (m *Manager) SaveConfig(config *SingBoxConfig) error {
 	// Validate first
-	if err := m.ValidateConfig(config); err != nil {
+	// if err := m.ValidateConfig(config); err != nil {
+	// 	return err
+	// }
+	if err := m.createNewConfig(config); err != nil {
 		return err
 	}
 
 	// Backup current config if it exists
 	if _, err := os.Stat(m.configPath); err == nil {
 		if err := m.copyFile(m.configPath, m.backupPath); err != nil {
-			os.Remove(m.newConfigPath)
 			return fmt.Errorf("failed to backup config: %w", err)
 		}
 	}
@@ -191,6 +200,36 @@ func (m *Manager) UpdateConfig(updateFn func(*SingBoxConfig) error) error {
 	}
 
 	return m.SaveConfig(config)
+}
+
+// UpdateOutbounds adds multiple outbounds, skipping duplicates based on existing tags
+func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, skippedTags []string, err error) {
+	err = m.UpdateConfig(func(cfg *SingBoxConfig) error {
+		existingTags := make(map[string]bool)
+		for _, existing := range cfg.Outbounds {
+			existingTags[existing.Tag] = true
+		}
+
+		for _, outbound := range outbounds {
+			originalTag := outbound.Tag
+			outbound.Tag = GenerateUniqueTag(originalTag, outbound)
+
+			if existingTags[outbound.Tag] {
+				skippedTags = append(skippedTags, outbound.Tag)
+				continue
+			}
+
+			cfg.Outbounds = append(cfg.Outbounds, outbound)
+			addedTags = append(addedTags, outbound.Tag)
+		}
+
+		if len(addedTags) == 0 {
+			logger.Warn("all outbounds already exist")
+		}
+
+		return nil
+	})
+	return
 }
 
 // copyFile copies a file from src to dst

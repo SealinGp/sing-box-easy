@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { configService } from '../../services'
-import type { SingBoxConfig } from '../../types/api'
+import { Code, type SingBoxConfig } from '../../types/api'
 import { useToast } from 'primevue'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 
@@ -105,7 +105,17 @@ const validateConfig = async () => {
   validating.value = true
   try {
     const config = JSON.parse(configContent.value) as SingBoxConfig
-    await configService.validateConfig(config)
+    const resp = await configService.validateConfig(config)
+    if(resp.code != Code.Success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: resp.msg,
+      })
+      return
+    }
+
+
     toast.add({
       severity: 'success',
       summary: 'Valid Configuration',

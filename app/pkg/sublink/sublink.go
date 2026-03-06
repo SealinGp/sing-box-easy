@@ -39,7 +39,11 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 }
 
 func (l *SubLink) fetchNodes(sub_url string) ([]*node.SubNode, error) {
-	resp := req.MustGet(sub_url)
+	resp, err := req.Get(sub_url)
+	if err != nil {
+		return nil, err
+	}
+
 	var sub_nodes []*node.SubNode
 	respStr, err := resp.ToString()
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	v1_12_12 "github.com/SealinGp/sing-box-easy/app/routes/v1_12_12"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
@@ -88,6 +89,8 @@ func (r *Route) initEndpoints() error {
 }
 
 func (r *Route) Start() error {
+	r.hz.Use(recovery.Recovery())
+
 	if err := r.initEndpoints(); err != nil {
 		return err
 	}
