@@ -14,13 +14,12 @@
 
 <script setup lang="ts">
 import Select, { type SelectPassThroughOptions, type SelectProps } from 'primevue/select';
-import { ref } from 'vue';
 import { ptViewMerge } from './utils';
 
 interface Props extends /* @vue-ignore */ SelectProps {}
 defineProps<Props>();
 
-const theme = ref<SelectPassThroughOptions>({
+const theme: SelectPassThroughOptions = {
     root: ({ props }) => ({
         class: `relative inline-flex cursor-pointer select-none
             ${props.disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -93,5 +92,5 @@ const theme = ref<SelectPassThroughOptions>({
         leaveActiveClass: 'transition-all duration-75 ease-in',
         leaveToClass: 'opacity-0 scale-95'
     }
-});
+};
 </script>

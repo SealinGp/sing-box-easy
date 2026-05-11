@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import type { RouteRule, Outbound } from '../../types/api'
-import { Button, Alert, Card, Badge } from '../../components'
+import { Button, Alert, Card, Badge, Select } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { outboundService, routeService } from '../../services';
 
@@ -148,41 +148,74 @@ const proxyOutboundOptions = computed(() => {
     }))
 })
 
+// Best-effort restore of the route table to a snapshot. Used when a multi-op
+// batch fails partway through and we want to leave the user where they
+// started. Returns true on full restore, false on partial.
+const restoreRouteSnapshot = async (
+  rulesSnapshot: RouteRule[],
+  finalSnapshot: string,
+): Promise<boolean> => {
+  try {
+    const { data: cur } = await routeService.getRouteRules()
+    for (let i = (cur.rules || []).length - 1; i >= 0; i--) {
+      await routeService.deleteRouteRule(i)
+    }
+    for (const rule of rulesSnapshot) {
+      await routeService.addRouteRule(rule)
+    }
+    if (finalSnapshot) await routeService.updateRouteFinal(finalSnapshot)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const saveRouteConfig = async () => {
   saving.value = true
   error.value = ''
   success.value = false
 
-  try {
-    const preset = routePresets.value.find(p => p.id === selectedPreset.value)
-    if (!preset) {
-      error.value = 'Invalid route preset selected'
-      return
-    }
+  const preset = routePresets.value.find(p => p.id === selectedPreset.value)
+  if (!preset) {
+    error.value = 'Invalid route preset selected'
+    saving.value = false
+    return
+  }
 
-    // 删除所有现有规则
-    const {data} = await routeService.getRouteRules()
-    const existingRules = data.rules    
-    for (let i = existingRules.length - 1; i >= 0; i--) {
+  // Snapshot the existing config so we can restore on partial failure. The
+  // server's /config/rollback only undoes one step, which is not enough for a
+  // multi-rule batch — keep the snapshot in JS and restore explicitly.
+  let rulesSnapshot: RouteRule[] = []
+  let finalSnapshot = ''
+  try {
+    const [rulesResp, finalResp] = await Promise.all([
+      routeService.getRouteRules(),
+      routeService.getRouteFinal(),
+    ])
+    rulesSnapshot = rulesResp.data.rules || []
+    finalSnapshot = finalResp.data.final || ''
+  } catch (err: any) {
+    error.value = err.message || 'Failed to snapshot existing route config'
+    saving.value = false
+    return
+  }
+
+  try {
+    for (let i = rulesSnapshot.length - 1; i >= 0; i--) {
       await routeService.deleteRouteRule(i)
     }
-
-    // 添加新规则
     for (const rule of preset.rules) {
       await routeService.addRouteRule(rule as RouteRule)
     }
-
-    // 设置最终出站
     await routeService.updateRouteFinal(preset.final)
 
     success.value = true
-
-    // 2秒后自动进入下一步
-    setTimeout(() => {
-      emit('next')
-    }, 2000)
+    setTimeout(() => emit('next'), 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save route configuration'
+    const restored = await restoreRouteSnapshot(rulesSnapshot, finalSnapshot)
+    error.value = restored
+      ? `${err.message || 'Failed to save route configuration'} (previous rules restored)`
+      : `${err.message || 'Failed to save route configuration'} (restore also failed — use /config/rollback to recover)`
   } finally {
     saving.value = false
   }

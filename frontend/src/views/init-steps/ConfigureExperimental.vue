@@ -207,7 +207,7 @@ const saveConfigs = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save experimental configuration'
+    error.value = err.message || 'Failed to save experimental configuration'
   } finally {
     saving.value = false
   }

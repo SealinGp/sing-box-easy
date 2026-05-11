@@ -22,17 +22,10 @@ const statusColor = computed(() => {
   }
 })
 
-const statusIcon = computed(() => {
-  if (!status.value) return '●'
-  switch (status.value.status) {
-    case 'running':
-      return '●'
-    case 'stopped':
-      return '●'
-    default:
-      return '●'
-  }
-})
+// Status icon was a dead switch returning the same bullet for every case;
+// keep one constant. If we want distinct glyphs per state later, restore
+// per-case logic here.
+const statusIcon = '●'
 
 const fetchStatus = async () => {
   loading.value = true
@@ -40,11 +33,10 @@ const fetchStatus = async () => {
     const {data} = await serviceControlService.getServiceStatus()
     status.value = data
   } catch (err: any) {
-    console.error('Failed to get service status:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch service status',
+      detail: err.message || 'Failed to fetch service status',
       life: 3000
     })
   } finally {
@@ -73,11 +65,10 @@ const handleStart = async () => {
     })
     await fetchStatus()
   } catch (err: any) {
-    console.error('Failed to start service:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to start service',
+      detail: err.message || 'Failed to start service',
       life: 3000
     })
   } finally {
@@ -97,11 +88,10 @@ const handleStop = async () => {
     })
     await fetchStatus()
   } catch (err: any) {
-    console.error('Failed to stop service:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to stop service',
+      detail: err.message || 'Failed to stop service',
       life: 3000
     })
   } finally {
@@ -121,11 +111,10 @@ const handleRestart = async () => {
     })
     await fetchStatus()
   } catch (err: any) {
-    console.error('Failed to restart service:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to restart service',
+      detail: err.message || 'Failed to restart service',
       life: 3000
     })
   } finally {

@@ -121,7 +121,7 @@ const handleSaveServer = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to save DNS server',
+      detail: err.message || 'Failed to save DNS server',
       life: 3000
     })
   }
@@ -152,7 +152,7 @@ const handleDeleteServer = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to delete DNS server',
+      detail: err.message || 'Failed to delete DNS server',
       life: 3000
     })
   }

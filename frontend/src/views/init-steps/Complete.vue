@@ -21,7 +21,7 @@ const completeSetup = async () => {
     // 跳转到管理面板
     router.push('/dashboard')
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to complete initialization'
+    error.value = err.message || 'Failed to complete initialization'
   } finally {
     completing.value = false
   }

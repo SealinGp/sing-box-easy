@@ -138,19 +138,20 @@ const loadInbounds = async () => {
 }
 
 const toggleInbound = (presetId: string) => {
-  if (selectedInbounds.value.has(presetId)) {
-    selectedInbounds.value.delete(presetId)
-  } else {
-    selectedInbounds.value.add(presetId)
-  }
+  const next = new Set(selectedInbounds.value)
+  if (next.has(presetId)) next.delete(presetId); else next.add(presetId)
+  selectedInbounds.value = next
 }
 
 const selectRecommended = () => {
   // 推荐选择 mixed
-  selectedInbounds.value.clear()
-  selectedInbounds.value.add('mixed')
+  selectedInbounds.value = new Set(['mixed'])
 }
 
+// Track inbounds we have created so far in this batch. If a later op fails,
+// we undo by deleting them. Pre-existing inbounds that we deleted are
+// re-added from the snapshot. Best-effort: if any restore call fails we
+// surface a clear message pointing the user at /config/rollback.
 const saveInbounds = async () => {
   if (selectedInbounds.value.size === 0) {
     error.value = 'Please select at least one inbound'
@@ -161,39 +162,48 @@ const saveInbounds = async () => {
   error.value = ''
   success.value = false
 
+  let inboundsSnapshot: Inbound[] = []
   try {
-    // 获取当前已存在的入站
-    let {data} = await inboundService.getInbounds()
-    let inbounds = data.inbounds
-    if (!inbounds) {
-      inbounds = []
-    }
+    const { data } = await inboundService.getInbounds()
+    inboundsSnapshot = data.inbounds || []
+  } catch (err: any) {
+    error.value = err.message || 'Failed to snapshot existing inbounds'
+    saving.value = false
+    return
+  }
 
-    const existingTags = new Set(inbounds.map(ib => ib.tag))
+  const existingByTag = new Map(inboundsSnapshot.map((ib) => [ib.tag, ib]))
+  const addedTags: string[] = []
+  const removedSnapshots: Inbound[] = []
 
-    // 添加选中的入站
+  try {
     for (const preset of inboundPresets) {
-      if (selectedInbounds.value.has(preset.id) && !existingTags.has(preset.tag)) {
-        // 如果不存在，则添加
-        if (!existingTags.has(preset.tag)) {
-          await inboundService.addInbound(preset.config as Inbound)
-        }
-      } else {
-        // 如果已存在但未选中，则删除
-        if (existingTags.has(preset.tag)) {
-          await inboundService.deleteInbound(preset.tag)
-        }
+      const wanted = selectedInbounds.value.has(preset.id)
+      const present = existingByTag.has(preset.tag)
+      if (wanted && !present) {
+        await inboundService.addInbound(preset.config as Inbound)
+        addedTags.push(preset.tag)
+      } else if (!wanted && present) {
+        removedSnapshots.push(existingByTag.get(preset.tag)!)
+        await inboundService.deleteInbound(preset.tag)
       }
     }
 
     success.value = true
-
-    // 2秒后自动进入下一步
-    setTimeout(() => {
-      emit('next')
-    }, 2000)
+    setTimeout(() => emit('next'), 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save inbounds'
+    let restoreOk = true
+    // Undo additions
+    for (const tag of addedTags) {
+      try { await inboundService.deleteInbound(tag) } catch { restoreOk = false }
+    }
+    // Re-add deletions
+    for (const ib of removedSnapshots) {
+      try { await inboundService.addInbound(ib) } catch { restoreOk = false }
+    }
+    error.value = restoreOk
+      ? `${err.message || 'Failed to save inbounds'} (previous inbounds restored)`
+      : `${err.message || 'Failed to save inbounds'} (restore also failed — use /config/rollback to recover)`
   } finally {
     saving.value = false
   }

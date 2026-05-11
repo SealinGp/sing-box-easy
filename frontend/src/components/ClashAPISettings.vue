@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { ClashAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -26,6 +26,14 @@ const settings = ref<ClashAPI>({
 
 const allowOriginText = ref('')
 
+// External controller link. If the field is empty, the icon must be inert
+// rather than producing a `http://` (no host) link that opens the browser
+// address bar. Only show the link for plausibly-valid host:port values.
+const externalControllerHref = computed(() => {
+  const v = settings.value.external_controller?.trim()
+  return v ? `http://${v}` : ''
+})
+
 // Mode options
 const modeOptions = [
   { value: 'rule', label: 'Rule Mode' },
@@ -51,7 +59,7 @@ const fetchClashAPI = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch Clash API configuration',
+      detail: err.message || 'Failed to fetch Clash API configuration',
       life: 3000
     })
   } finally {
@@ -87,7 +95,7 @@ const handleSave = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update Clash API configuration',
+      detail: err.message || 'Failed to update Clash API configuration',
       life: 3000
     })
   } finally {
@@ -115,7 +123,13 @@ onMounted(() => {
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex">
             External Controller
-            <a class="cursor-pointer hover:opacity-50" :href="`http://${settings.external_controller}`" target="_blank">
+            <a
+              v-if="externalControllerHref"
+              class="cursor-pointer hover:opacity-50"
+              :href="externalControllerHref"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <LinkIcon class="h-5 w-5 mr-2" />
             </a>
           </label>

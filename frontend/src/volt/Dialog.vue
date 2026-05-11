@@ -14,17 +14,19 @@
 
 <script setup lang="ts">
 import Dialog, { type DialogPassThroughOptions, type DialogProps } from 'primevue/dialog';
-import { ref } from 'vue';
 import { ptViewMerge } from './utils';
 
 interface Props extends /* @vue-ignore */ DialogProps {}
 defineProps<Props>();
 
-const theme = ref<DialogPassThroughOptions>({
+// Static PT theme — plain const so we don't pay for unnecessary reactivity.
+// `w-full max-w-lg` is the default panel width; callers can override via
+// `class` and the ptViewMerge merger will reconcile.
+const theme: DialogPassThroughOptions = {
     mask: `fixed top-0 left-0 w-full h-full flex items-center justify-center
         bg-black/40 backdrop-blur-sm
         transition-all duration-200`,
-    root: `flex flex-col max-h-[90vh] rounded-lg shadow-xl
+    root: `flex flex-col w-full max-w-lg max-h-[90vh] rounded-lg shadow-xl
         bg-white dark:bg-gray-800
         border border-gray-200 dark:border-gray-700
         transform transition-all duration-200`,
@@ -34,13 +36,16 @@ const theme = ref<DialogPassThroughOptions>({
     title: `text-lg font-semibold text-gray-900 dark:text-gray-100`,
     headerActions: `flex items-center gap-2`,
     pcCloseButton: {
-        root: `flex items-center justify-center w-8 h-8 rounded-md
-            text-gray-500 dark:text-gray-400
-            hover:bg-gray-100 dark:hover:bg-gray-700
-            hover:text-gray-700 dark:hover:text-gray-200
-            transition-colors duration-200
-            focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`,
-        icon: `w-5 h-5`
+        root: {
+            'aria-label': 'Close',
+            class: `flex items-center justify-center w-8 h-8 rounded-md
+                text-gray-500 dark:text-gray-400
+                hover:bg-gray-100 dark:hover:bg-gray-700
+                hover:text-gray-700 dark:hover:text-gray-200
+                transition-colors duration-200
+                focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`,
+        },
+        icon: `w-5 h-5`,
     },
     content: `px-6 py-4 overflow-y-auto flex-1
         text-gray-900 dark:text-gray-100`,
@@ -55,5 +60,5 @@ const theme = ref<DialogPassThroughOptions>({
         leaveActiveClass: 'transition-all duration-150 ease-in',
         leaveToClass: 'opacity-0 scale-95'
     }
-});
+};
 </script>

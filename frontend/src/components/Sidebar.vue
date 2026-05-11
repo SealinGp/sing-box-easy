@@ -23,11 +23,9 @@ const route = useRoute()
 const expandedItems = ref<Set<string>>(new Set())
 
 const toggleExpanded = (itemName: string) => {
-  if (expandedItems.value.has(itemName)) {
-    expandedItems.value.delete(itemName)
-  } else {
-    expandedItems.value.add(itemName)
-  }
+  const next = new Set(expandedItems.value)
+  if (next.has(itemName)) next.delete(itemName); else next.add(itemName)
+  expandedItems.value = next
 }
 
 const isExpanded = (itemName: string) => {

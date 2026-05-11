@@ -104,7 +104,28 @@ function startEditRuleSet(ruleSet: RuleSet) {
   editingRuleSet.value = { tag: ruleSet.tag, ruleSet: { ...ruleSet } }
 }
 
+// Remote rule sets are fetched server-side by sing-box. Restrict to http(s)
+// so the URL field can't be coerced into a file:// / gopher:// scheme.
+function validateRuleSetUrl(form: RuleSet): string | null {
+  if (form.type !== 'remote') return null
+  if (!form.url || !form.url.trim()) return 'URL is required for remote rule sets'
+  try {
+    const parsed = new URL(form.url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return 'URL must use http or https'
+    }
+  } catch {
+    return 'Invalid URL format'
+  }
+  return null
+}
+
 async function handleAddRuleSet() {
+  const urlError = validateRuleSetUrl(ruleSetForm.value)
+  if (urlError) {
+    toast.add({ severity: 'error', summary: 'Validation Error', detail: urlError, life: 3000 })
+    return
+  }
   try {
     await routeStore.addRuleSet(ruleSetForm.value)
     toast.add({
@@ -118,7 +139,7 @@ async function handleAddRuleSet() {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to add rule set',
+      detail: err.message || 'Failed to add rule set',
       life: 3000
     })
   }
@@ -126,6 +147,11 @@ async function handleAddRuleSet() {
 
 async function handleUpdateRuleSet() {
   if (editingRuleSet.value) {
+    const urlError = validateRuleSetUrl(editingRuleSet.value.ruleSet)
+    if (urlError) {
+      toast.add({ severity: 'error', summary: 'Validation Error', detail: urlError, life: 3000 })
+      return
+    }
     try {
       await routeStore.updateRuleSet(editingRuleSet.value.tag, editingRuleSet.value.ruleSet)
       toast.add({
@@ -139,7 +165,7 @@ async function handleUpdateRuleSet() {
       toast.add({
         severity: 'error',
         summary: 'Error',
-        detail: err.response?.data?.error || 'Failed to update rule set',
+        detail: err.message || 'Failed to update rule set',
         life: 3000
       })
     }
@@ -161,7 +187,7 @@ async function handleDeleteRuleSet(tag: string) {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to delete rule set',
+      detail: err.message || 'Failed to delete rule set',
       life: 3000
     })
   }

@@ -14,13 +14,12 @@
 
 <script setup lang="ts">
 import MultiSelect, { type MultiSelectPassThroughOptions, type MultiSelectProps } from 'primevue/multiselect';
-import { ref } from 'vue';
 import { ptViewMerge } from './utils';
 
 interface Props extends /* @vue-ignore */ MultiSelectProps {}
 defineProps<Props>();
 
-const theme = ref<MultiSelectPassThroughOptions>({
+const theme: MultiSelectPassThroughOptions = {
     root: ({ props }) => ({
         class: `relative inline-flex cursor-pointer select-none
             ${props.disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -135,5 +134,5 @@ const theme = ref<MultiSelectPassThroughOptions>({
         leaveActiveClass: 'transition-all duration-75 ease-in',
         leaveToClass: 'opacity-0 scale-95'
     }
-});
+};
 </script>

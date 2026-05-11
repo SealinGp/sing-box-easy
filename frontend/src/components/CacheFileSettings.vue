@@ -32,7 +32,7 @@ const fetchCacheFile = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch cache file configuration',
+      detail: err.message || 'Failed to fetch cache file configuration',
       life: 3000
     })
   } finally {
@@ -56,7 +56,7 @@ const handleSave = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update cache file configuration',
+      detail: err.message || 'Failed to update cache file configuration',
       life: 3000
     })
   } finally {

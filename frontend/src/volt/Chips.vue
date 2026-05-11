@@ -1,5 +1,5 @@
 <template>
-    <Chips
+    <InputChips
         unstyled
         :pt="theme"
         :ptOptions="{
@@ -9,18 +9,26 @@
         <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
             <slot :name="slotName" v-bind="slotProps ?? {}" />
         </template>
-    </Chips>
+    </InputChips>
 </template>
 
 <script setup lang="ts">
-import Chips, { type ChipsPassThroughOptions, type ChipsProps } from 'primevue/chips';
-import { ref } from 'vue';
+// PrimeVue v4 deprecated `Chips` in favour of `InputChips`. The PT
+// contract is mostly identical; only the token slot keys changed:
+//   inputItem      → inputToken
+//   inputItemField → inputTokenField
+// We keep the wrapper's exported name as `Chips` (via index.ts) so existing
+// call sites do not need to change.
+import InputChips, {
+    type InputChipsPassThroughOptions,
+    type InputChipsProps,
+} from 'primevue/inputchips';
 import { ptViewMerge } from './utils';
 
-interface Props extends /* @vue-ignore */ ChipsProps {}
+interface Props extends /* @vue-ignore */ InputChipsProps {}
 defineProps<Props>();
 
-const theme = ref<ChipsPassThroughOptions>({
+const theme: InputChipsPassThroughOptions = {
     root: ({ props }) => ({
         class: `w-full p-2
             bg-white dark:bg-gray-700
@@ -28,15 +36,15 @@ const theme = ref<ChipsPassThroughOptions>({
             rounded-md
             transition-colors duration-200
             ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : ''}
-            focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`
+            focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`,
     }),
     input: `flex items-center flex-wrap gap-2 list-none m-0 p-0`,
-    inputItem: `flex-1 inline-flex`,
-    inputItemField: ({ props }: { props: any }) => ({
+    inputToken: `flex-1 inline-flex`,
+    inputTokenField: ({ props }: { props: any }) => ({
         class: `w-full border-0 outline-none bg-transparent p-1 m-0
             text-gray-900 dark:text-gray-100
             placeholder:text-gray-400 dark:placeholder:text-gray-500
-            ${props.disabled ? 'cursor-not-allowed' : ''}`
+            ${props.disabled ? 'cursor-not-allowed' : ''}`,
     }),
     chipItem: `mr-2`,
     pcChip: {
@@ -45,7 +53,7 @@ const theme = ref<ChipsPassThroughOptions>({
             text-violet-700 dark:text-violet-300
             text-sm border-0`,
         label: `text-sm font-medium`,
-        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-violet-900 dark:hover:text-violet-100 transition-colors`
-    }
-});
+        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-violet-900 dark:hover:text-violet-100 transition-colors`,
+    },
+};
 </script>

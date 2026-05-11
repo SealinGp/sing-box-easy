@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { DNS } from '../../types/api'
-import { Button, Alert, Card, Badge } from '../../components'
+import { Button, Alert, Card, Badge, Select } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import type { DNSServerOptions, HostsDNSServerOptions, DomainStrategy } from '../../types/dns'
 import { dnsService } from '../../services'
@@ -111,20 +111,19 @@ const addHostEntry = () => {
     return
   }
 
-  // Check if IP contains comma (multiple IPs)
-  if (newHostIP.value.includes(',')) {
-    const ips = newHostIP.value.split(',').map(ip => ip.trim()).filter(ip => ip)
-    hostEntries.value[newHostDomain.value] = ips
-  } else {
-    hostEntries.value[newHostDomain.value] = newHostIP.value.trim()
-  }
+  // Immutable host-entries update — never mutate the existing object.
+  const value: string | string[] = newHostIP.value.includes(',')
+    ? newHostIP.value.split(',').map(ip => ip.trim()).filter(ip => ip)
+    : newHostIP.value.trim()
+  hostEntries.value = { ...hostEntries.value, [newHostDomain.value]: value }
 
   newHostDomain.value = ''
   newHostIP.value = ''
 }
 
 const removeHostEntry = (domain: string) => {
-  delete hostEntries.value[domain]
+  const { [domain]: _removed, ...rest } = hostEntries.value
+  hostEntries.value = rest
 }
 
 const getHostIPDisplay = (value: string | string[]): string => {
@@ -279,7 +278,7 @@ const saveDNSConfig = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save DNS configuration'
+    error.value = err.message || 'Failed to save DNS configuration'
   } finally {
     saving.value = false
   }

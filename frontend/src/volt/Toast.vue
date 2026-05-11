@@ -18,13 +18,14 @@
 <script setup lang="ts">
 import TimesIcon from '@primevue/icons/times';
 import Toast, { type ToastPassThroughOptions, type ToastProps } from 'primevue/toast';
-import { ref } from 'vue';
 import { ptViewMerge } from './utils';
 
 interface Props extends /* @vue-ignore */ ToastProps {}
 defineProps<Props>();
 
-const theme = ref<ToastPassThroughOptions>({
+// Static PT theme — plain const, not a ref. `aria-label` on `closeButton`
+// is explicit because `unstyled` mode strips PrimeVue's default.
+const theme: ToastPassThroughOptions = {
     root: `w-96 rounded-md whitespace-pre-line break-words
         p-top-center:-translate-x-1/2 p-bottom-center:-translate-x-1/2
         p-center:min-w-[20vw] p-center:-translate-x-1/2 p-center:-translate-y-1/2`,
@@ -42,7 +43,9 @@ const theme = ref<ToastPassThroughOptions>({
     detail: `font-medium text-sm text-surface-700 dark:text-surface-0
         p-contrast:text-surface-0 dark:p-contrast:text-surface-950`,
     buttonContainer: ``,
-    closeButton: `flex items-center justify-center overflow-hidden relative cursor-pointer bg-transparent select-none
+    closeButton: {
+        'aria-label': 'Close',
+        class: `flex items-center justify-center overflow-hidden relative cursor-pointer bg-transparent select-none
         transition-colors duration-200 text-inherit w-7 h-7 rounded-full -mt-[25%] -end-1/4 p-0 border-none
         focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
         p-info:hover:bg-violet-100 p-info:focus-visible:outline-violet-600 dark:p-info:hover:bg-white/5 dark:p-info:focus-visible:outline-violet-500
@@ -51,6 +54,7 @@ const theme = ref<ToastPassThroughOptions>({
         p-error:hover:bg-red-100 p-error:focus-visible:outline-red-600 dark:p-error:hover:bg-white/5 dark:p-error:focus-visible:outline-red-500
         p-secondary:hover:bg-surface-200 p-secondary:focus-visible:outline-surface-600 dark:p-secondary:hover:bg-surface-700 dark:p-secondary:focus-visible:outline-surface-300
         p-contrast:hover:bg-surface-800 p-contrast:focus-visible:outline-surface-50 dark:p-contrast:hover:bg-surface-100 dark:p-contrast:focus-visible:outline-surface-950`,
+    },
     closeIcon: `text-base w-4 h-4`,
     transition: {
         enterFromClass: 'opacity-0 translate-y-1/2',
@@ -59,5 +63,5 @@ const theme = ref<ToastPassThroughOptions>({
         leaveActiveClass: 'transition-all duration-500',
         leaveToClass: 'max-h-0 opacity-0 mb-0 overflow-hidden'
     }
-});
+};
 </script>

@@ -54,7 +54,7 @@ const loadConfig = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to load configuration',
+      detail: err.message || 'Failed to load configuration',
       life: 3000
     })
   } finally {
@@ -92,7 +92,7 @@ const saveConfig = async () => {
       toast.add({
         severity: 'error',
         summary: 'Error',
-        detail: err.response?.data?.error || 'Failed to save configuration',
+        detail: err.message || 'Failed to save configuration',
         life: 3000
       })
     }
@@ -134,7 +134,7 @@ const validateConfig = async () => {
       toast.add({
         severity: 'error',
         summary: 'Validation Failed',
-        detail: err.response?.data?.error || 'Configuration validation failed',
+        detail: err.message || 'Configuration validation failed',
         life: 3000
       })
     }
@@ -158,7 +158,7 @@ const rollbackConfig = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to rollback configuration',
+      detail: err.message || 'Failed to rollback configuration',
       life: 3000
     })
   } finally {

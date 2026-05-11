@@ -69,11 +69,10 @@ const fetchInbounds = async () => {
     const { data } = await inboundService.getInbounds()
     inbounds.value = data.inbounds || []
   } catch (err: any) {
-    console.error('Failed to fetch inbounds:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch inbounds',
+      detail: err.message || 'Failed to fetch inbounds',
       life: 3000
     })
   } finally {
@@ -164,11 +163,10 @@ const handleSave = async () => {
     closeModal()
     await fetchInbounds()
   } catch (err: any) {
-    console.error('Failed to save inbound:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to save inbound',
+      detail: err.message || 'Failed to save inbound',
       life: 3000
     })
   } finally {
@@ -202,11 +200,10 @@ const handleDelete = async () => {
     closeDeleteConfirm()
     await fetchInbounds()
   } catch (err: any) {
-    console.error('Failed to delete inbound:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to delete inbound',
+      detail: err.message || 'Failed to delete inbound',
       life: 3000
     })
   } finally {

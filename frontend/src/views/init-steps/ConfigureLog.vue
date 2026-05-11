@@ -73,7 +73,7 @@ const saveLogConfig = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save log configuration'
+    error.value = err.message || 'Failed to save log configuration'
   } finally {
     saving.value = false
   }

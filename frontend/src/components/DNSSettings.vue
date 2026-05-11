@@ -53,7 +53,7 @@ const fetchDNSConfig = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch DNS config',
+      detail: err.message || 'Failed to fetch DNS config',
       life: 3000
     })
   } finally {
@@ -61,7 +61,9 @@ const fetchDNSConfig = async () => {
   }
 }
 
-// Watch for config changes
+// Watch for config changes. `immediate: true` is unnecessary because the
+// initial value is always null (fetched after mount), so the guarded body
+// would not run.
 watch(() => dnsConfig.value, (newConfig) => {
   if (newConfig) {
     settings.value = {
@@ -71,7 +73,7 @@ watch(() => dnsConfig.value, (newConfig) => {
       final: newConfig.final || '',
     }
   }
-}, { immediate: true })
+})
 
 const handleSave = async () => {
   const updatedDNS = {
@@ -93,7 +95,7 @@ const handleSave = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update DNS settings',
+      detail: err.message || 'Failed to update DNS settings',
       life: 3000
     })
   } finally {

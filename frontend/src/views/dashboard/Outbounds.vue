@@ -14,6 +14,7 @@ import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
 import Textarea from "../../components/Textarea.vue";
 import DialerOptions from "../../components/DialerOptions.vue";
+import { Chips } from "../../volt";
 import {
   PlusIcon,
   PencilIcon,
@@ -42,10 +43,11 @@ const currentOutbound = ref<any>({
   tag: "",
 });
 
-// Delete confirmation
+// Delete confirmation. deleteOutbound() prefers the array index when
+// supplied, falling back to the tag — the confirm-modal path uses the tag
+// and skips the index entirely.
 const showDeleteConfirm = ref(false);
 const deletingOutbound = ref<Outbound | null>(null);
-const deletingOutboundIdx = ref<number>(-1);
 
 // Import modal state
 const showImportModal = ref(false);
@@ -58,21 +60,20 @@ const importing = ref(false);
 // Batch selection state
 const selectedOutbounds = ref<Set<string>>(new Set());
 
+// Immutable Set updates: replace the ref's value with a new Set rather than
+// mutating the existing one. Vue tracks Set mutations, but the project style
+// guide requires immutable patterns.
 const toggleOutboundSelection = (tag: string) => {
-  if (selectedOutbounds.value.has(tag)) {
-    selectedOutbounds.value.delete(tag);
-  } else {
-    selectedOutbounds.value.add(tag);
-  }
+  const next = new Set(selectedOutbounds.value);
+  if (next.has(tag)) next.delete(tag); else next.add(tag);
+  selectedOutbounds.value = next;
 };
 
 const toggleSelectAllOutbounds = () => {
   if (selectedOutbounds.value.size === outbounds.value.length) {
-    selectedOutbounds.value.clear();
+    selectedOutbounds.value = new Set();
   } else {
-    outbounds.value.forEach((outbound) => {
-      selectedOutbounds.value.add(outbound.tag);
-    });
+    selectedOutbounds.value = new Set(outbounds.value.map((o) => o.tag));
   }
 };
 
@@ -83,7 +84,7 @@ const handleBatchDelete = async () => {
   try {
     const tags = Array.from(selectedOutbounds.value);
     await outboundsStore.deleteOutboundsBatch(tags);
-    selectedOutbounds.value.clear();
+    selectedOutbounds.value = new Set();
     toast.add({
       severity: "success",
       summary: "Success",
@@ -91,11 +92,10 @@ const handleBatchDelete = async () => {
       life: 3000,
     });
   } catch (err: any) {
-    console.error("Failed to delete outbounds:", err);
     toast.add({
       severity: "error",
       summary: "Error",
-      detail: err.response?.data?.error || "Failed to delete outbounds",
+      detail: err.message || "Failed to delete outbounds",
       life: 3000,
     });
   } finally {
@@ -172,7 +172,19 @@ const openAddModal = () => {
 const openEditModal = (outbound: Outbound) => {
   isEditMode.value = true;
   editingTag.value = outbound.tag;
-  currentOutbound.value = { ...outbound };
+  // sing-box accepts scalar OR array for `outbounds` on the wire; coerce to
+  // array so the Chips v-model sees the shape it expects and the save path
+  // round-trips correctly.
+  const raw = outbound as Outbound & { outbounds?: string | string[] };
+  currentOutbound.value = {
+    ...outbound,
+    outbounds:
+      raw.outbounds === undefined || raw.outbounds === null
+        ? undefined
+        : Array.isArray(raw.outbounds)
+          ? [...raw.outbounds]
+          : [raw.outbounds],
+  };
   showModal.value = true;
 };
 
@@ -298,11 +310,10 @@ const handleSave = async () => {
     }
     closeModal();
   } catch (err: any) {
-    console.error("Failed to save outbound:", err);
     toast.add({
       severity: "error",
       summary: "Error",
-      detail: err.response?.data?.error || "Failed to save outbound",
+      detail: err.message || "Failed to save outbound",
       life: 3000,
     });
   } finally {
@@ -324,21 +335,16 @@ const deleteOutbound = async (outboundIndex: number, outbound: Outbound) => {
     });
     closeDeleteConfirm();
   } catch (err: any) {
-    console.error("Failed to delete outbound:", err);
     toast.add({
       severity: "error",
       summary: "Error",
-      detail: err.response?.data?.error || "Failed to delete outbound",
+      detail: err.message || "Failed to delete outbound",
       life: 3000,
     });
   } finally {
     localLoading.value = false;
   }
 };
-const deleteOutboundNow = (outbound: Outbound, i: number) => {
-  deleteOutbound(i, outbound);
-};
-
 const closeDeleteConfirm = () => {
   showDeleteConfirm.value = false;
   deletingOutbound.value = null;
@@ -347,23 +353,27 @@ const closeDeleteConfirm = () => {
 const handleDelete = async () => {
   if (!deletingOutbound.value) return;
   localLoading.value = true;
-  await deleteOutbound(deletingOutboundIdx.value, deletingOutbound.value);
+  // -1 forces deleteOutbound to use outbound.tag — the confirm modal does
+  // not know the array index of the row that opened it.
+  await deleteOutbound(-1, deletingOutbound.value);
   closeDeleteConfirm();
 };
 
-// Import functions
-const openImportModal = () => {
+// Import functions. Reset state immutably (new Set + empty array).
+const resetImportFlow = () => {
   importInput.value = "";
   parsedNodes.value = [];
-  selectedNodes.value.clear();
+  selectedNodes.value = new Set();
+};
+
+const openImportModal = () => {
+  resetImportFlow();
   showImportModal.value = true;
 };
 
 const closeImportModal = () => {
   showImportModal.value = false;
-  importInput.value = "";
-  parsedNodes.value = [];
-  selectedNodes.value.clear();
+  resetImportFlow();
 };
 
 const parseSubscription = async () => {
@@ -379,7 +389,7 @@ const parseSubscription = async () => {
 
   parsing.value = true;
   parsedNodes.value = [];
-  selectedNodes.value.clear();
+  selectedNodes.value = new Set();
 
   try {
     const lines = importInput.value
@@ -392,9 +402,7 @@ const parseSubscription = async () => {
     parsedNodes.value = data.nodes;
 
     // Select all by default
-    data.nodes.forEach((node) => {
-      selectedNodes.value.add(node.tag);
-    });
+    selectedNodes.value = new Set(data.nodes.map((n) => n.tag));
 
     if (data.nodes.length === 0) {
       toast.add({
@@ -408,10 +416,7 @@ const parseSubscription = async () => {
     toast.add({
       severity: "error",
       summary: "Parse Error",
-      detail:
-        err.response?.data?.error ||
-        err.message ||
-        "Failed to parse subscription/nodes",
+      detail: err.message || "Failed to parse subscription/nodes",
       life: 3000,
     });
   } finally {
@@ -420,20 +425,16 @@ const parseSubscription = async () => {
 };
 
 const toggleNode = (tag: string) => {
-  if (selectedNodes.value.has(tag)) {
-    selectedNodes.value.delete(tag);
-  } else {
-    selectedNodes.value.add(tag);
-  }
+  const next = new Set(selectedNodes.value);
+  if (next.has(tag)) next.delete(tag); else next.add(tag);
+  selectedNodes.value = next;
 };
 
 const toggleSelectAll = () => {
   if (selectedNodes.value.size === parsedNodes.value.length) {
-    selectedNodes.value.clear();
+    selectedNodes.value = new Set();
   } else {
-    parsedNodes.value.forEach((node) => {
-      selectedNodes.value.add(node.tag);
-    });
+    selectedNodes.value = new Set(parsedNodes.value.map((n) => n.tag));
   }
 };
 
@@ -463,10 +464,7 @@ const handleImport = async () => {
     toast.add({
       severity: "error",
       summary: "Import Error",
-      detail:
-        err.response?.data?.error ||
-        err.message ||
-        "Failed to import outbounds",
+      detail: err.message || "Failed to import outbounds",
       life: 3000,
     });
   } finally {
@@ -667,8 +665,7 @@ onMounted(() => {
                     <PencilIcon class="h-4 w-4" />
                   </Button>
                   <Button
-                    handleDelete
-                    @click="deleteOutboundNow(outbound, i)"
+                    @click="deleteOutbound(i, outbound)"
                     variant="ghost"
                     size="sm"
                     class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
@@ -834,14 +831,18 @@ onMounted(() => {
                   </div>
 
                   <!-- Group Outbounds (Selector, URLTest) -->
+                  <!-- Uses Chips (string[]) so the v-model shape matches the
+                       Selector/URLTest schema. sing-box also accepts a scalar
+                       string on the wire; openEditModal() coerces to array. -->
                   <div v-if="needsOutbounds">
                     <label
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                       >Outbounds *</label
                     >
-                    <Input
+                    <Chips
                       v-model="currentOutbound.outbounds"
-                      placeholder="Comma-separated tags: proxy-us, proxy-uk"
+                      placeholder="Add outbound tags (press Enter after each)"
+                      class="w-full"
                     />
                     <p class="mt-1 text-xs text-gray-500">
                       List of outbound tags to include in this group
@@ -1054,15 +1055,7 @@ onMounted(() => {
                     <div
                       class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
                     >
-                      <Button
-                        variant="ghost"
-                        @click="
-                          () => {
-                            parsedNodes = [];
-                            selectedNodes.clear();
-                          }
-                        "
-                      >
+                      <Button variant="ghost" @click="resetImportFlow">
                         Back to Input
                       </Button>
                       <div class="flex gap-3">

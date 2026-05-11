@@ -172,6 +172,13 @@ export type {
 
 export interface RouteRule {
   // Common fields (matching criteria)
+  // NOTE: sing-box accepts scalar OR array on the wire for every list-like
+  // matcher (e.g. `"inbound": "dns-in"` is equivalent to
+  // `"inbound": ["dns-in"]`). The backend round-trips whatever shape lives in
+  // config.json. To keep the UI simple, this interface represents the
+  // *post-normalization* shape — always coerce raw responses with
+  // `normalizeRouteRule()` in RoutingRules.vue before assigning into typed
+  // state. Direct consumers of the wire payload must accept scalar | array.
   action?: 'route' | 'reject' | 'route-options' | 'sniff' | 'resolve' | 'hijack-dns'
   inbound?: string[]
   protocol?: string[]

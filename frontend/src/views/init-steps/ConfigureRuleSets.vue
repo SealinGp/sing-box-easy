@@ -115,21 +115,17 @@ const loadRuleSets = async () => {
 }
 
 const togglePreset = (presetId: string) => {
-  if (selectedPresets.value.has(presetId)) {
-    selectedPresets.value.delete(presetId)
-  } else {
-    selectedPresets.value.add(presetId)
-  }
+  const next = new Set(selectedPresets.value)
+  if (next.has(presetId)) next.delete(presetId); else next.add(presetId)
+  selectedPresets.value = next
 }
 
 const selectAll = () => {
-  presetRuleSets.forEach(preset => {
-    selectedPresets.value.add(preset.id)
-  })
+  selectedPresets.value = new Set(presetRuleSets.map(p => p.id))
 }
 
 const deselectAll = () => {
-  selectedPresets.value.clear()
+  selectedPresets.value = new Set()
 }
 
 const saveRuleSets = async () => {
@@ -138,7 +134,6 @@ const saveRuleSets = async () => {
   success.value = false
 
   try {
-    console.log('Processing preset:', existingRuleSets.value)
     // 获取当前已存在的规则集标签
     const existingTags = new Set(existingRuleSets.value.map(rs => rs.tag))
 
@@ -171,7 +166,7 @@ const saveRuleSets = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save rule sets'
+    error.value = err.message || 'Failed to save rule sets'
   } finally {
     saving.value = false
   }

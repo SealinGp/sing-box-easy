@@ -59,7 +59,7 @@ const parseSubscription = async () => {
       parseError.value = 'No nodes found'
     }
   } catch (err: any) {
-    parseError.value = err.response?.data?.error || err.message || 'Failed to parse subscription/nodes'
+    parseError.value = err.message || 'Failed to parse subscription/nodes'
   } finally {
     parsing.value = false
   }
@@ -128,7 +128,7 @@ const saveOutbounds = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to save outbounds'
+    error.value = err.message || 'Failed to save outbounds'
   } finally {
     saving.value = false
   }

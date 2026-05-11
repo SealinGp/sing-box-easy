@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { logService } from '../../services'
-import type { LogConfig } from '../../types/api'
+import { Code, type LogConfig } from '../../types/api'
 import { useToast } from 'primevue'
 
 const logConfig = ref<LogConfig>({
@@ -24,7 +24,7 @@ const loadLog = async () => {
   loading.value = true
   try {
     const response = await logService.getLog()
-    if (response.code === 0 && response.data) {
+    if (response.code === Code.Success && response.data) {
       logConfig.value = response.data
     } else {
       toast.add({
@@ -51,7 +51,7 @@ const saveLog = async () => {
 
   try {
     const response = await logService.updateLog(logConfig.value)
-    if (response.code === 0) {
+    if (response.code === Code.Success) {
       toast.add({
         severity: 'success',
         summary: 'Success',

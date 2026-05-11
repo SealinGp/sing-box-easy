@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { InstallTask } from '../../types/api'
 import { Button, Input, Alert, Card, Loading } from '../../components'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { serviceControlService } from '../../services'
 
 const emit = defineEmits<{
   next: []
@@ -59,7 +60,7 @@ const startInstall = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id)
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to start installation'
+    error.value = err.message || 'Failed to start installation'
     installing.value = false
   }
 }
@@ -107,8 +108,6 @@ const handleSkip = () => {
 }
 
 // 组件卸载时清理定时器
-import { onUnmounted } from 'vue'
-import { serviceControlService } from '../../services'
 onUnmounted(() => {
   stopPolling()
 })

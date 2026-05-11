@@ -93,7 +93,6 @@ const loadSubscriptions = async () => {
       showNotification('error', response.msg || 'Failed to load subscriptions')
     }
   } catch (error) {
-    console.error('Error loading subscriptions:', error)
     showNotification('error', 'Error loading subscriptions')
   } finally {
     isLoading.value = false
@@ -137,8 +136,13 @@ const validateForm = () => {
   if (!formData.value.url.trim()) {
     errors.url = 'URL is required'
   } else {
+    // The backend fetches this URL server-side. Reject non-http(s) schemes
+    // (file://, gopher://, etc.) to avoid SSRF / local-file disclosure.
     try {
-      new URL(formData.value.url)
+      const parsed = new URL(formData.value.url)
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        errors.url = 'URL must use http or https'
+      }
     } catch {
       errors.url = 'Invalid URL format'
     }
@@ -191,7 +195,6 @@ const saveSubscription = async () => {
       showNotification('error', response.msg || 'Failed to save subscription')
     }
   } catch (error) {
-    console.error('Error saving subscription:', error)
     showNotification('error', 'Error saving subscription')
   }
 }
@@ -216,7 +219,6 @@ const deleteSubscription = async () => {
       showNotification('error', response.msg || 'Failed to delete subscription')
     }
   } catch (error) {
-    console.error('Error deleting subscription:', error)
     showNotification('error', 'Error deleting subscription')
   }
 }
@@ -235,7 +237,6 @@ const updateSubscription = async (subscription: Subscription) => {
       showNotification('error', response.msg || 'Failed to update subscription')
     }
   } catch (error) {
-    console.error('Error updating subscription:', error)
     showNotification('error', 'Error updating subscription')
   } finally {
     const index = isUpdating.value.indexOf(subscription.id)

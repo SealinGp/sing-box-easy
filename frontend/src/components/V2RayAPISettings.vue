@@ -54,7 +54,7 @@ const fetchV2RayAPI = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch V2Ray API configuration',
+      detail: err.message || 'Failed to fetch V2Ray API configuration',
       life: 3000
     })
   } finally {
@@ -112,7 +112,7 @@ const handleSave = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update V2Ray API configuration',
+      detail: err.message || 'Failed to update V2Ray API configuration',
       life: 3000
     })
   } finally {

@@ -7,6 +7,42 @@ import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
 
+// sing-box accepts scalar OR array on the wire for every list-like matcher
+// (e.g. "inbound": "dns-in" is equivalent to ["dns-in"]). The backend
+// round-trips whatever shape lives in config.json, so coerce to arrays at the
+// boundary. Without this: `.join()` crashes on strings, and `[...str]`
+// silently splits "dns-in" into characters in startEditRule.
+function toArray<T>(v: T | T[] | undefined | null): T[] | undefined {
+  if (v === undefined || v === null) return undefined
+  return Array.isArray(v) ? v : [v]
+}
+
+// Input is the raw wire payload (scalar-or-array), output matches RouteRule
+// (post-normalization, arrays only). Cast on entry because the wire shape is
+// intentionally not captured in the TS contract — see the note on RouteRule.
+function normalizeRouteRule(rule: RouteRule): RouteRule {
+  const raw = rule as Record<string, unknown>
+  return {
+    ...rule,
+    inbound: toArray(raw.inbound as string | string[] | undefined),
+    protocol: toArray(raw.protocol as string | string[] | undefined),
+    network: toArray(raw.network as string | string[] | undefined),
+    domain: toArray(raw.domain as string | string[] | undefined),
+    domain_suffix: toArray(raw.domain_suffix as string | string[] | undefined),
+    domain_keyword: toArray(raw.domain_keyword as string | string[] | undefined),
+    domain_regex: toArray(raw.domain_regex as string | string[] | undefined),
+    geosite: toArray(raw.geosite as string | string[] | undefined),
+    source_geoip: toArray(raw.source_geoip as string | string[] | undefined),
+    geoip: toArray(raw.geoip as string | string[] | undefined),
+    ip_cidr: toArray(raw.ip_cidr as string | string[] | undefined),
+    source_ip_cidr: toArray(raw.source_ip_cidr as string | string[] | undefined),
+    source_port: toArray(raw.source_port as number | number[] | undefined),
+    port: toArray(raw.port as number | number[] | undefined),
+    rule_set: toArray(raw.rule_set as string | string[] | undefined),
+    sniffer: toArray(raw.sniffer as string | string[] | undefined),
+  }
+}
+
 const toast = useToast()
 
 // Local state
@@ -26,12 +62,12 @@ const fetchRouteRules = async () => {
   loading.value = true
   try {
     const { data } = await routeService.getRouteRules()
-    rules.value = data.rules || []
+    rules.value = (data.rules || []).map(normalizeRouteRule)
   } catch (err: any) {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch route rules',
+      detail: err.message || 'Failed to fetch route rules',
       life: 3000
     })
   } finally {
@@ -66,7 +102,7 @@ const handleAddRule = async (rule: RouteRule) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to add route rule',
+      detail: err.message || 'Failed to add route rule',
       life: 3000
     })
   } finally {
@@ -90,7 +126,7 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update route rule',
+      detail: err.message || 'Failed to update route rule',
       life: 3000
     })
   } finally {
@@ -115,7 +151,7 @@ const handleDeleteRule = async (index: number) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to delete route rule',
+      detail: err.message || 'Failed to delete route rule',
       life: 3000
     })
   } finally {

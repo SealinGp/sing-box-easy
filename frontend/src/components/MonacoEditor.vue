@@ -22,38 +22,9 @@ const emit = defineEmits<{
 const editorContainer = ref<HTMLDivElement>()
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 
-// Configure Monaco Environment for web workers
-self.MonacoEnvironment = {
-  getWorker: function (_workerId: string, label: string) {
-    const getWorkerModule = (moduleUrl: string, label: string) => {
-      return new Worker(self.MonacoEnvironment!.getWorkerUrl!(moduleUrl, label), {
-        name: label,
-        type: 'module'
-      })
-    }
-
-    switch (label) {
-      case 'json':
-        return getWorkerModule('/monaco-editor/esm/vs/language/json/json.worker?worker', label)
-      case 'css':
-      case 'scss':
-      case 'less':
-        return getWorkerModule('/monaco-editor/esm/vs/language/css/css.worker?worker', label)
-      case 'html':
-      case 'handlebars':
-      case 'razor':
-        return getWorkerModule('/monaco-editor/esm/vs/language/html/html.worker?worker', label)
-      case 'typescript':
-      case 'javascript':
-        return getWorkerModule('/monaco-editor/esm/vs/language/typescript/ts.worker?worker', label)
-      default:
-        return getWorkerModule('/monaco-editor/esm/vs/editor/editor.worker?worker', label)
-    }
-  },
-  getWorkerUrl: function (_moduleId: string, _label: string) {
-    return _moduleId
-  }
-}
+// Monaco worker bootstrap lives in `src/plugins/monaco.ts` and runs once at
+// application startup. Do NOT re-assign `self.MonacoEnvironment` here — that
+// would clobber the global config every time a MonacoEditor instance mounts.
 
 onMounted(() => {
   if (editorContainer.value) {
@@ -112,6 +83,14 @@ watch(() => props.options, (newOptions) => {
     editor.updateOptions(newOptions)
   }
 }, { deep: true })
+
+// Watch for language changes so a parent can flip e.g. json -> yaml at runtime.
+watch(() => props.language, (lang) => {
+  const model = editor?.getModel()
+  if (model && lang) {
+    monaco.editor.setModelLanguage(model, lang)
+  }
+})
 
 onBeforeUnmount(() => {
   editor?.dispose()

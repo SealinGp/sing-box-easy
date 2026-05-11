@@ -9,9 +9,9 @@ import {
 } from '@headlessui/vue'
 import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
-import Input from './Input.vue'
 import Select from './Select.vue'
 import Badge from './Badge.vue'
+import { Chips } from '../volt'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
 import { useToast } from 'primevue'
@@ -33,16 +33,24 @@ const dnsRules = ref<DNSRule[]>([])
 const showRuleModal = ref(false)
 const isEditMode = ref(false)
 const editingIndex = ref(-1)
+// Form model uses arrays for list fields to match the Chips v-model shape and
+// the sing-box wire format. sing-box also accepts a scalar — openEditRuleModal
+// coerces scalar → [value] on load, and handleSaveRule strips empties.
 const currentRule = ref<any>({
   action: 'route',
   server: '',
   method: 'default',
   rule_set: '',
-  domain: '',
-  domain_suffix: '',
-  domain_keyword: '',
-  geosite: '',
+  domain: [] as string[],
+  domain_suffix: [] as string[],
+  domain_keyword: [] as string[],
+  geosite: [] as string[],
 })
+
+function toArrayField(v: unknown): string[] {
+  if (v === undefined || v === null) return []
+  return Array.isArray(v) ? (v as string[]) : [String(v)]
+}
 
 // Delete confirmation
 const showDeleteConfirm = ref(false)
@@ -58,7 +66,7 @@ const fetchDNSRules = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch DNS rules',
+      detail: err.message || 'Failed to fetch DNS rules',
       life: 3000
     })
   } finally {
@@ -109,18 +117,22 @@ const rejectMethods = [
   { value: 'nxdomain', label: 'NXDOMAIN - Domain does not exist' },
 ]
 
-const openAddRuleModal = () => {
-  isEditMode.value = false
-  currentRule.value = {
+function emptyRuleForm() {
+  return {
     action: 'route',
     server: '',
     method: 'default',
     rule_set: '',
-    domain: '',
-    domain_suffix: '',
-    domain_keyword: '',
-    geosite: '',
+    domain: [] as string[],
+    domain_suffix: [] as string[],
+    domain_keyword: [] as string[],
+    geosite: [] as string[],
   }
+}
+
+const openAddRuleModal = () => {
+  isEditMode.value = false
+  currentRule.value = emptyRuleForm()
   showRuleModal.value = true
 }
 
@@ -128,62 +140,43 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
   isEditMode.value = true
   editingIndex.value = index
 
-  // Convert arrays to comma-separated strings for display in inputs
-  const editRule = {
-    action: (rule as any).action || 'route',
-    server: (rule as any).server || '',
-    method: (rule as any).method || 'default',
-    // For rule_set, if it's an array, take the first one for the Select component
-    rule_set: Array.isArray((rule as any).rule_set) ? ((rule as any).rule_set[0] || '') : ((rule as any).rule_set || ''),
-    domain: Array.isArray((rule as any).domain) ? (rule as any).domain.join(', ') : (rule as any).domain || '',
-    domain_suffix: Array.isArray((rule as any).domain_suffix) ? (rule as any).domain_suffix.join(', ') : (rule as any).domain_suffix || '',
-    domain_keyword: Array.isArray((rule as any).domain_keyword) ? (rule as any).domain_keyword.join(', ') : (rule as any).domain_keyword || '',
-    geosite: Array.isArray((rule as any).geosite) ? (rule as any).geosite.join(', ') : (rule as any).geosite || '',
+  const raw = rule as Record<string, unknown>
+  currentRule.value = {
+    action: (raw.action as string) || 'route',
+    server: (raw.server as string) || '',
+    method: (raw.method as string) || 'default',
+    // rule_set is a single-select in the UI; the backend allows array — pick the first.
+    rule_set: Array.isArray(raw.rule_set)
+      ? ((raw.rule_set as string[])[0] || '')
+      : ((raw.rule_set as string) || ''),
+    domain: toArrayField(raw.domain),
+    domain_suffix: toArrayField(raw.domain_suffix),
+    domain_keyword: toArrayField(raw.domain_keyword),
+    geosite: toArrayField(raw.geosite),
   }
-
-  console.log('Edit rule:', editRule)
-  currentRule.value = editRule
-
   showRuleModal.value = true
 }
 
 const closeRuleModal = () => {
   showRuleModal.value = false
-  currentRule.value = {
-    action: 'route',
-    server: '',
-    method: 'default',
-    rule_set: '',
-    domain: '',
-    domain_suffix: '',
-    domain_keyword: '',
-    geosite: '',
-  }
+  currentRule.value = emptyRuleForm()
 }
 
 const handleSaveRule = async () => {
-  // Convert comma-separated strings back to arrays
-  const processedRule = {
+  // currentRule.* list fields are already string[] from Chips.
+  // Strip empty arrays so we don't send `{ domain: [] }` to the backend.
+  const processedRule: Record<string, unknown> = {
     ...currentRule.value,
-    // rule_set should be an array with single element from the select
     rule_set: currentRule.value.rule_set ? [currentRule.value.rule_set] : undefined,
-    domain: currentRule.value.domain ?
-      currentRule.value.domain.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
-      undefined,
-    domain_suffix: currentRule.value.domain_suffix ?
-      currentRule.value.domain_suffix.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
-      undefined,
-    domain_keyword: currentRule.value.domain_keyword ?
-      currentRule.value.domain_keyword.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
-      undefined,
-    geosite: currentRule.value.geosite ?
-      currentRule.value.geosite.split(',').map((s: string) => s.trim()).filter((s: string) => s) :
-      undefined,
+    domain: currentRule.value.domain.length ? currentRule.value.domain : undefined,
+    domain_suffix: currentRule.value.domain_suffix.length ? currentRule.value.domain_suffix : undefined,
+    domain_keyword: currentRule.value.domain_keyword.length ? currentRule.value.domain_keyword : undefined,
+    geosite: currentRule.value.geosite.length ? currentRule.value.geosite : undefined,
   }
 
-  // Remove undefined fields
-  Object.keys(processedRule).forEach(key => {
-    if (processedRule[key] === undefined || (Array.isArray(processedRule[key]) && processedRule[key].length === 0)) {
+  Object.keys(processedRule).forEach((key) => {
+    const v = processedRule[key]
+    if (v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) {
       delete processedRule[key]
     }
   })
@@ -213,7 +206,7 @@ const handleSaveRule = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to save DNS rule',
+      detail: err.message || 'Failed to save DNS rule',
       life: 3000
     })
   } finally {
@@ -248,7 +241,7 @@ const handleDeleteRule = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to delete DNS rule',
+      detail: err.message || 'Failed to delete DNS rule',
       life: 3000
     })
   } finally {
@@ -451,9 +444,10 @@ onMounted(() => {
                       <!-- Domain -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain</label>
-                        <Input
+                        <Chips
                           v-model="currentRule.domain"
-                          placeholder="example.com, google.com (comma separated)"
+                          placeholder="Add domains (press Enter after each)"
+                          class="w-full"
                         />
                         <p class="mt-1 text-xs text-gray-500">Exact domain match</p>
                       </div>
@@ -461,9 +455,10 @@ onMounted(() => {
                       <!-- Domain Suffix -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Suffix</label>
-                        <Input
+                        <Chips
                           v-model="currentRule.domain_suffix"
-                          placeholder=".example.com, .google.com (comma separated)"
+                          placeholder="Add suffixes (.example.com)"
+                          class="w-full"
                         />
                         <p class="mt-1 text-xs text-gray-500">Matches domain and all subdomains</p>
                       </div>
@@ -471,9 +466,10 @@ onMounted(() => {
                       <!-- Domain Keyword -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Keyword</label>
-                        <Input
+                        <Chips
                           v-model="currentRule.domain_keyword"
-                          placeholder="google, facebook (comma separated)"
+                          placeholder="Add keywords"
+                          class="w-full"
                         />
                         <p class="mt-1 text-xs text-gray-500">Domain contains keyword</p>
                       </div>
@@ -481,9 +477,10 @@ onMounted(() => {
                       <!-- GeoSite -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GeoSite</label>
-                        <Input
+                        <Chips
                           v-model="currentRule.geosite"
-                          placeholder="google, netflix, cn (comma separated)"
+                          placeholder="Add geosite tags (e.g. google, netflix, cn)"
+                          class="w-full"
                         />
                         <p class="mt-1 text-xs text-gray-500">Use geosite database</p>
                       </div>

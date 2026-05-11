@@ -112,7 +112,7 @@ const startDownload = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id, 'download')
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to start download'
+    error.value = err.message || 'Failed to start download'
     downloading.value = false
   }
 }
@@ -144,7 +144,7 @@ const startUpload = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id, 'upload')
   } catch (err: any) {
-    error.value = err.response?.data?.error || err.message || 'Failed to start upload'
+    error.value = err.message || 'Failed to start upload'
     uploading.value = false
   }
 }

@@ -28,7 +28,7 @@ const fetchFinalRoute = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to fetch final route',
+      detail: err.message || 'Failed to fetch final route',
       life: 3000
     })
   } finally {
@@ -51,7 +51,7 @@ const handleUpdate = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.error || 'Failed to update final route',
+      detail: err.message || 'Failed to update final route',
       life: 3000
     })
   } finally {

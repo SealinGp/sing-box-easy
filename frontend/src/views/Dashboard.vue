@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import type { Component } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
 import {
@@ -24,8 +23,9 @@ interface MenuItem {
   children?: MenuItem[]
 }
 
-// Example with grouped menu items for better organization
-const menuItems = ref<MenuItem[]>([
+// Static menu definition — never mutated. Plain const avoids unnecessary
+// reactive tracking that `ref()` would impose.
+const menuItems: MenuItem[] = [
   {
     name: 'Overview',
     icon: ChartBarIcon,
@@ -61,7 +61,7 @@ const menuItems = ref<MenuItem[]>([
     path: '/dashboard/subscriptions',
     badge: 'New'
   },
-])
+]
 </script>
 
 <template>
