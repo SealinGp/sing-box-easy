@@ -103,7 +103,7 @@ func (m *Manager) createNewConfig(config *SingBoxConfig) error {
 		return fmt.Errorf("failed to indent config: %w", err)
 	}
 
-	if err := os.WriteFile(m.newConfigPath, prettyBuf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(m.newConfigPath, prettyBuf.Bytes(), 0600); err != nil {
 		return fmt.Errorf("failed to write temp config file: %w", err)
 	}
 	return nil
@@ -129,19 +129,20 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 
 	logger.Infof("%s %s output:%s", m.singBoxPath, strings.Join(cmdParams, " "), output)
 	if bytes.Contains(output, []byte("ERROR")) || bytes.Contains(output, []byte("FATAL")) {
+		// Clean up temp file on validation error so it doesn't linger
+		// and confuse the next save.
+		os.Remove(m.newConfigPath)
 		return fmt.Errorf("config validation failed: %s", string(output))
 	}
 	return nil
 }
 
-// SaveConfig saves the configuration after validation
-// It creates a backup of the current config before saving
+// SaveConfig saves the configuration after validation.
+// It creates a backup of the current config before saving.
+// ValidateConfig already writes the new-config tempfile, so we reuse it
+// rather than calling createNewConfig again.
 func (m *Manager) SaveConfig(config *SingBoxConfig) error {
-	// Validate first
-	// if err := m.ValidateConfig(config); err != nil {
-	// 	return err
-	// }
-	if err := m.createNewConfig(config); err != nil {
+	if err := m.ValidateConfig(config); err != nil {
 		return err
 	}
 
@@ -152,7 +153,7 @@ func (m *Manager) SaveConfig(config *SingBoxConfig) error {
 		}
 	}
 
-	// Move new config to main config
+	// Move validated config to main config
 	if err := os.Rename(m.newConfigPath, m.configPath); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
@@ -195,50 +196,70 @@ func (m *Manager) UpdateConfig(updateFn func(*SingBoxConfig) error) error {
 	}
 
 	if err := updateFn(config); err != nil {
-		logger.Error("failed to update config: %v", zap.Error(err))
+		logger.Error("failed to update config", zap.Error(err))
 		return err
 	}
 
 	return m.SaveConfig(config)
 }
 
-// UpdateOutbounds adds multiple outbounds, skipping duplicates based on existing tags
+// UpdateOutbounds adds multiple outbounds, skipping duplicates based on existing tags.
+//
+// If every input outbound is already present (or the input slice is empty),
+// the function returns without touching disk — there is no point running the
+// write-then-validate cycle on a config that has not changed, and doing so
+// would surface unrelated pre-existing validation failures.
 func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, skippedTags []string, err error) {
+	if len(outbounds) == 0 {
+		return nil, nil, nil
+	}
+
+	// Pre-flight: compute the diff against the current on-disk config so we
+	// can decide whether a save is necessary before we touch anything.
+	current, err := m.GetConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	existingTags := make(map[string]bool, len(current.Outbounds))
+	for _, existing := range current.Outbounds {
+		existingTags[existing.Tag] = true
+	}
+
+	toAdd := make([]Outbound, 0, len(outbounds))
+	for _, outbound := range outbounds {
+		originalTag := outbound.Tag
+		outbound.Tag = GenerateUniqueTag(originalTag, outbound)
+
+		if existingTags[outbound.Tag] {
+			skippedTags = append(skippedTags, outbound.Tag)
+			continue
+		}
+		toAdd = append(toAdd, outbound)
+		addedTags = append(addedTags, outbound.Tag)
+	}
+
+	if len(toAdd) == 0 {
+		logger.Warn("all outbounds already exist; skipping save",
+			zap.Int("input", len(outbounds)),
+			zap.Int("skipped", len(skippedTags)))
+		return addedTags, skippedTags, nil
+	}
+
 	err = m.UpdateConfig(func(cfg *SingBoxConfig) error {
-		existingTags := make(map[string]bool)
-		for _, existing := range cfg.Outbounds {
-			existingTags[existing.Tag] = true
-		}
-
-		for _, outbound := range outbounds {
-			originalTag := outbound.Tag
-			outbound.Tag = GenerateUniqueTag(originalTag, outbound)
-
-			if existingTags[outbound.Tag] {
-				skippedTags = append(skippedTags, outbound.Tag)
-				continue
-			}
-
-			cfg.Outbounds = append(cfg.Outbounds, outbound)
-			addedTags = append(addedTags, outbound.Tag)
-		}
-
-		if len(addedTags) == 0 {
-			logger.Warn("all outbounds already exist")
-		}
-
+		cfg.Outbounds = append(cfg.Outbounds, toAdd...)
 		return nil
 	})
 	return
 }
 
-// copyFile copies a file from src to dst
+// copyFile copies a file from src to dst.
+// Uses 0600 — proxy configs may contain credentials.
 func (m *Manager) copyFile(src, dst string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0644)
+	return os.WriteFile(dst, data, 0600)
 }
 
 // InitializeConfig initializes the configuration from template
@@ -267,8 +288,8 @@ func (m *Manager) InitializeConfig() error {
 		return fmt.Errorf("invalid template config: %w", err)
 	}
 
-	// Write to config path
-	if err := os.WriteFile(m.configPath, templateData, 0644); err != nil {
+	// Write to config path with restrictive perms (proxy creds inside)
+	if err := os.WriteFile(m.configPath, templateData, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

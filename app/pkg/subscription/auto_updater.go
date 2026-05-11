@@ -3,6 +3,7 @@ package subscription
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,10 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) error {
 
 // diffNodes compares current outbounds with new nodes and returns differences
 func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
+	// Initialize named return values (Go does not zero-init maps from named returns)
+	toDelete = make(map[string]struct{})
+	toUpdate = make(map[string]config.Outbound)
+
 	// Create a map of new nodes by server key (server:port) for quick lookup
 	newNodeMap := make(map[string]config.Outbound)
 	sub_servers := make(map[string]struct{})
@@ -437,44 +442,48 @@ func outboundsEqual(a, b config.Outbound) bool {
 		a.Type == b.Type
 }
 
-// parseDuration parses duration string like "24h", "7d", etc.
+// parseDuration parses duration string like "24h", "7d", "2w", "1mo".
+// Falls back to 24h on any parse failure.
 func parseDuration(s string) time.Duration {
+	const defaultInterval = 24 * time.Hour
+
 	s = strings.TrimSpace(strings.ToLower(s))
 	if s == "" {
-		return 24 * time.Hour
+		return defaultInterval
 	}
 
-	// Try standard duration parsing first
+	// Try standard duration parsing first (handles ns, us, ms, s, m, h)
 	if d, err := time.ParseDuration(s); err == nil {
 		return d
 	}
 
-	// Handle custom formats
-	var multiplier time.Duration
-	var unit string
-
-	// Extract number and unit
-	for i := len(s) - 1; i >= 0; i-- {
-		if s[i] >= '0' && s[i] <= '9' {
-			unit = s[i+1:]
-			if i+1 > 0 {
-				if d, err := time.ParseDuration(s[:i+1] + "h"); err == nil {
-					multiplier = d / time.Hour
-				}
-			}
+	// Extract leading numeric prefix and trailing unit suffix
+	splitIdx := -1
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			splitIdx = i
 			break
 		}
 	}
+	if splitIdx <= 0 {
+		return defaultInterval
+	}
+
+	n, err := strconv.Atoi(s[:splitIdx])
+	if err != nil || n <= 0 {
+		return defaultInterval
+	}
+	unit := s[splitIdx:]
 
 	switch unit {
 	case "d", "day", "days":
-		return multiplier * 24
+		return time.Duration(n) * 24 * time.Hour
 	case "w", "week", "weeks":
-		return multiplier * 24 * 7
+		return time.Duration(n) * 24 * 7 * time.Hour
 	case "mo", "month", "months":
-		return multiplier * 24 * 30
+		return time.Duration(n) * 24 * 30 * time.Hour
 	default:
-		return 24 * time.Hour // Default
+		return defaultInterval
 	}
 }
 

@@ -2,10 +2,50 @@ package v1_13_0
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 )
+
+// sanitizeFolderName ensures a user-supplied folder name is a single,
+// non-traversing path component. Returns the cleaned name or an error.
+func sanitizeFolderName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	if strings.ContainsAny(name, `/\`) || name == ".." || name == "." {
+		return "", fmt.Errorf("folder_name must be a single path component, got %q", name)
+	}
+	// Defence in depth: ensure filepath.Base agrees.
+	if filepath.Base(name) != name {
+		return "", fmt.Errorf("folder_name must be a single path component, got %q", name)
+	}
+	return name, nil
+}
+
+// sanitizeTargetDir validates a user-supplied target directory.
+// Requires an absolute path with no ".." segments after cleaning.
+func sanitizeTargetDir(dir string) (string, error) {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return "", nil
+	}
+	cleaned := filepath.Clean(dir)
+	if !filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("target_dir must be an absolute path, got %q", dir)
+	}
+	// filepath.Clean strips redundant ".." pairs, but a path like
+	// "/foo/../etc" cleans to "/etc" — still legal absolute. We reject
+	// any path whose pre-clean form differs in a way that suggests escape.
+	if strings.Contains(dir, "..") {
+		return "", fmt.Errorf("target_dir must not contain '..' segments, got %q", dir)
+	}
+	return cleaned, nil
+}
 
 // InstallSingBox installs sing-box
 func (h *Handler) InstallSingBox(ctx context.Context, c *app.RequestContext) {
@@ -206,9 +246,22 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 
 	uploadedFile := files[0]
 
-	// Get optional parameters
-	targetDir := c.PostForm("target_dir")
-	folderName := c.PostForm("folder_name")
+	// Get optional parameters. Both are user-supplied and flow into
+	// filesystem operations (extraction root + final folder rename),
+	// so they must be validated before use.
+	rawTargetDir := c.PostForm("target_dir")
+	rawFolderName := c.PostForm("folder_name")
+
+	targetDir, err := sanitizeTargetDir(rawTargetDir)
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+	folderName, err := sanitizeFolderName(rawFolderName)
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
 
 	// Get target dir from config if not specified
 	if targetDir == "" {

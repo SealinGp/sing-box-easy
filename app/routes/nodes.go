@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -17,6 +18,21 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"go.uber.org/zap"
 )
+
+// staticRoot is the resolved absolute path to the frontend dist directory.
+// It is computed once at startup and used as the containment boundary for
+// every static-file request, preventing path traversal via "../" segments.
+var staticRoot = mustResolve("./dist")
+
+func mustResolve(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		// Fall back to the cleaned relative path; static serving still works,
+		// but containment checks are slightly weaker.
+		return filepath.Clean(p)
+	}
+	return abs
+}
 
 type Route struct {
 	hz     *server.Hertz
@@ -70,19 +86,29 @@ func (r *Route) initEndpoints() error {
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
 	// PWA/SPA fallback handler: serve static files if they exist, otherwise index.html
-	// This allows client-side routing to work properly
+	// This allows client-side routing to work properly.
+	//
+	// Path traversal hardening: resolve the requested path against staticRoot
+	// and reject anything that escapes the root (e.g. "/../etc/passwd").
+	indexPath := filepath.Join(staticRoot, "index.html")
 	r.hz.NoRoute(func(ctx context.Context, c *app.RequestContext) {
 		requestPath := string(c.Request.URI().Path())
-		filePath := filepath.Join("./dist", requestPath)
+		candidate := filepath.Join(staticRoot, requestPath)
 
-		// Check if the requested file exists
-		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
-			c.File(filePath)
+		// Containment check: candidate must live under staticRoot.
+		// filepath.Join already calls Clean, which normalises "../" segments.
+		if candidate != staticRoot && !strings.HasPrefix(candidate, staticRoot+string(os.PathSeparator)) {
+			c.File(indexPath)
+			return
+		}
+
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			c.File(candidate)
 			return
 		}
 
 		// For directories or non-existent files, serve index.html for client-side routing
-		c.File("./dist/index.html")
+		c.File(indexPath)
 	})
 
 	return nil

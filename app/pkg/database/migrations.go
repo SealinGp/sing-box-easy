@@ -27,9 +27,18 @@ func (Migration) TableName() string {
 // MigrationFunc represents a migration function
 type MigrationFunc func(*xorm.Session) error
 
-// migrations contains all available migrations
-var migrations = map[string]MigrationFunc{
-	"001_add_enabled_to_subscriptions": migrate001AddEnabledToSubscriptions,
+// migrationEntry pairs an ID with its function. We use a slice rather than
+// a map so migrations always run in declared order — Go map iteration is
+// randomised, which would silently break ordering-dependent migrations.
+type migrationEntry struct {
+	ID string
+	Fn MigrationFunc
+}
+
+// migrations contains all available migrations, in execution order.
+// Append new migrations to the END; never reorder existing entries.
+var migrations = []migrationEntry{
+	{"001_add_enabled_to_subscriptions", migrate001AddEnabledToSubscriptions},
 }
 
 // runMigrations executes pending migrations
@@ -54,47 +63,61 @@ func runMigrations() error {
 		executedMap[m.ID] = true
 	}
 
-	// Run pending migrations in order
-	for id, migrationFunc := range migrations {
-		if !executedMap[id] {
-			logger.Info("Running migration", zap.String("id", id))
-
-			migration := &Migration{
-				ID:        id,
-				Name:      getMigrationName(id),
-				Executed:  true,
-				ExecutedAt: time.Now(),
-			}
-
-			// Start transaction
-			session := engine.NewSession()
-			defer session.Close()
-
-			if err := session.Begin(); err != nil {
-				return fmt.Errorf("failed to begin transaction for migration %s: %w", id, err)
-			}
-
-			// Run migration
-			if err := migrationFunc(session); err != nil {
-				session.Rollback()
-				return fmt.Errorf("migration %s failed: %w", id, err)
-			}
-
-			// Record migration
-			if _, err := session.Insert(migration); err != nil {
-				session.Rollback()
-				return fmt.Errorf("failed to record migration %s: %w", id, err)
-			}
-
-			// Commit transaction
-			if err := session.Commit(); err != nil {
-				return fmt.Errorf("failed to commit migration %s: %w", id, err)
-			}
-
-			logger.Info("Migration completed successfully", zap.String("id", id))
+	// Run pending migrations in declared order. Each migration is wrapped in
+	// its own function so `defer session.Close()` fires per iteration rather
+	// than accumulating to the end of runMigrations.
+	for _, entry := range migrations {
+		if executedMap[entry.ID] {
+			continue
+		}
+		if err := runOneMigration(entry); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// runOneMigration executes a single migration in its own transaction.
+// Isolating the body lets defer session.Close() fire when this function
+// returns, freeing the database connection between migrations.
+func runOneMigration(entry migrationEntry) error {
+	logger.Info("Running migration", zap.String("id", entry.ID))
+
+	session := engine.NewSession()
+	defer session.Close()
+
+	if err := session.Begin(); err != nil {
+		return fmt.Errorf("failed to begin transaction for migration %s: %w", entry.ID, err)
+	}
+
+	if err := entry.Fn(session); err != nil {
+		if rbErr := session.Rollback(); rbErr != nil {
+			logger.Error("rollback failed after migration error",
+				zap.String("id", entry.ID), zap.Error(rbErr))
+		}
+		return fmt.Errorf("migration %s failed: %w", entry.ID, err)
+	}
+
+	record := &Migration{
+		ID:         entry.ID,
+		Name:       getMigrationName(entry.ID),
+		Executed:   true,
+		ExecutedAt: time.Now(),
+	}
+	if _, err := session.Insert(record); err != nil {
+		if rbErr := session.Rollback(); rbErr != nil {
+			logger.Error("rollback failed after insert error",
+				zap.String("id", entry.ID), zap.Error(rbErr))
+		}
+		return fmt.Errorf("failed to record migration %s: %w", entry.ID, err)
+	}
+
+	if err := session.Commit(); err != nil {
+		return fmt.Errorf("failed to commit migration %s: %w", entry.ID, err)
+	}
+
+	logger.Info("Migration completed successfully", zap.String("id", entry.ID))
 	return nil
 }
 
@@ -127,15 +150,16 @@ func migrate001AddEnabledToSubscriptions(session *xorm.Session) error {
 	return nil
 }
 
-// isDuplicateColumnError checks if the error indicates a duplicate column name
+// isDuplicateColumnError checks if the error indicates a duplicate column name.
+// Note: "no such table" is intentionally NOT matched here — that indicates the
+// migration is being run against a database without the expected base schema,
+// which is a genuine failure, not an idempotent no-op.
 func isDuplicateColumnError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	errStr := err.Error()
-	// SQLite error patterns for duplicate column name
-	return strings.Contains(strings.ToLower(errStr), "duplicate column name") ||
-		   strings.Contains(strings.ToLower(errStr), "column exists") ||
-		   strings.Contains(strings.ToLower(errStr), "no such table")
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "duplicate column name") ||
+		strings.Contains(errStr, "column exists")
 }

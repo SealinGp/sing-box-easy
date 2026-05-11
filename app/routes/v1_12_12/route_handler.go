@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
@@ -171,11 +170,12 @@ func (h *Handler) AddRuleSet(ctx context.Context, c *app.RequestContext) {
 			cfg.Route = &config.RouteConfig{}
 		}
 
-		// Check if tag already exists
+		// Reject duplicate tag. The previous form used `continue` inside the
+		// loop, which only skipped the check itself and still appended the
+		// duplicate after the loop completed.
 		for _, existing := range cfg.Route.RuleSet {
 			if existing.Tag == ruleSet.Tag {
-				logger.Warnf("rule set with tag '%s' already exists, skip it", ruleSet.Tag)
-				continue
+				return fmt.Errorf("rule set with tag %q already exists", ruleSet.Tag)
 			}
 		}
 

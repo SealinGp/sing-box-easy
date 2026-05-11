@@ -259,16 +259,30 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 		return
 	}
 
+	// Track results across the UpdateConfig closure so the response can
+	// reflect what was actually deleted vs. what didn't exist.
+	var (
+		deletedTags  []string
+		notFoundTags []string
+	)
+
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		tagSet := make(map[string]bool)
-		for _, tag := range req.Tags {
-			tagSet[tag] = true
+		// Build a set of existing tags once so the not-found check is O(n+m)
+		// rather than the previous O(n*m).
+		existing := make(map[string]bool, len(cfg.Outbounds))
+		for _, outbound := range cfg.Outbounds {
+			existing[outbound.Tag] = true
 		}
 
-		newOutbounds := make([]config.Outbound, 0)
-		deletedTags := make([]string, 0)
-		notFoundTags := make([]string, 0)
+		tagSet := make(map[string]bool, len(req.Tags))
+		for _, tag := range req.Tags {
+			tagSet[tag] = true
+			if !existing[tag] {
+				notFoundTags = append(notFoundTags, tag)
+			}
+		}
 
+		newOutbounds := make([]config.Outbound, 0, len(cfg.Outbounds))
 		for _, outbound := range cfg.Outbounds {
 			if tagSet[outbound.Tag] {
 				deletedTags = append(deletedTags, outbound.Tag)
@@ -277,22 +291,7 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 			newOutbounds = append(newOutbounds, outbound)
 		}
 
-		// Check for tags that weren't found
-		for _, tag := range req.Tags {
-			found := false
-			for _, outbound := range cfg.Outbounds {
-				if outbound.Tag == tag {
-					found = true
-					break
-				}
-			}
-			if !found {
-				notFoundTags = append(notFoundTags, tag)
-			}
-		}
-
 		cfg.Outbounds = newOutbounds
-
 		logger.Info(fmt.Sprintf("deleted %d outbounds: %v", len(deletedTags), deletedTags))
 		return nil
 	})
@@ -303,8 +302,10 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 	}
 
 	respOK(ctx, c, map[string]any{
-		"message":       "outbounds deleted successfully",
-		"deleted_count": len(req.Tags),
+		"message":        "outbounds deleted successfully",
+		"deleted_count":  len(deletedTags),
+		"deleted_tags":   deletedTags,
+		"not_found_tags": notFoundTags,
 	})
 }
 

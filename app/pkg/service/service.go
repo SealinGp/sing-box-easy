@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
@@ -25,12 +27,17 @@ const (
 	SystemUnknown SystemType = "unknown"
 )
 
-// Controller manages sing-box service lifecycle
+// Controller manages sing-box service lifecycle.
+//
+// HTTP endpoints can call Start/Stop/Restart/ForceStop concurrently, so all
+// access to pm (the live process handle) is serialized via mu.
 type Controller struct {
 	configManager *config.Manager
 	singBoxPath   string
 	systemType    SystemType
-	pm            *process.ProcessManager
+
+	mu sync.Mutex
+	pm *process.ProcessManager
 }
 
 // NewController creates a new service controller
@@ -171,15 +178,18 @@ func (c *Controller) Start() error {
 
 func (c *Controller) serveSingBox() error {
 	// Initialize a new ProcessManager for this run
-	c.pm = process.NewProcessManager()
+	pm := process.NewProcessManager()
 
 	// Start sing-box service using ProcessManager
-	err := c.pm.Start(c.singBoxPath, "run", "-c", c.configManager.GetConfigPath())
-	if err != nil {
+	if err := pm.Start(c.singBoxPath, "run", "-c", c.configManager.GetConfigPath()); err != nil {
 		return fmt.Errorf("failed to start service: %w", err)
 	}
 
-	logChan := c.pm.GetLogChanel()
+	c.mu.Lock()
+	c.pm = pm
+	c.mu.Unlock()
+
+	logChan := pm.GetLogChanel()
 	errCh := make(chan error, 1)
 
 	// Monitor logs and catch FATAL errors
@@ -221,8 +231,13 @@ func (c *Controller) Stop() error {
 		return nil
 	}
 
-	if c.pm != nil {
-		c.pm.Stop()
+	c.mu.Lock()
+	pm := c.pm
+	c.pm = nil
+	c.mu.Unlock()
+
+	if pm != nil {
+		pm.Stop()
 	}
 	logger.Info("Service stopped")
 	return nil
@@ -287,8 +302,16 @@ func (c *Controller) Reload() error {
 		return fmt.Errorf("service is not running")
 	}
 
+	// Validate pid is a positive integer before passing it to exec.
+	// pid originates from `pgrep`/`pidof`/`ps` output, which is normally safe,
+	// but never trust an external string flowing into an exec argument list.
+	pidNum, err := strconv.Atoi(pid)
+	if err != nil || pidNum <= 0 {
+		return fmt.Errorf("invalid pid from process lookup: %q", pid)
+	}
+
 	// Send SIGHUP to reload
-	reloadCmd := exec.Command("kill", "-HUP", pid)
+	reloadCmd := exec.Command("kill", "-HUP", strconv.Itoa(pidNum))
 	if err := reloadCmd.Run(); err != nil {
 		// If SIGHUP doesn't work, try restart
 		logger.Warn("SIGHUP reload failed, falling back to restart", zap.Error(err))
@@ -301,8 +324,13 @@ func (c *Controller) Reload() error {
 
 // ForceStop force stops the sing-box service using SIGKILL
 func (c *Controller) ForceStop() error {
-	if c.pm != nil {
-		c.pm.Stop()
+	c.mu.Lock()
+	pm := c.pm
+	c.pm = nil
+	c.mu.Unlock()
+
+	if pm != nil {
+		pm.Stop()
 	}
 	logger.Info("Service force stopped")
 	return nil

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,11 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"go.uber.org/zap"
 )
+
+// versionPattern restricts the user-supplied version string to a strict
+// semver-ish shape before it is interpolated into a shell command.
+// Allows: 1.2.3, 1.12.12, 1.2.3-rc1, 1.2.3-beta.1
+var versionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$`)
 
 // InstallTask represents an installation task
 type InstallTask struct {
@@ -54,8 +60,14 @@ func (m *Manager) Init() error {
 	return nil
 }
 
-// InstallSingBox installs sing-box
+// InstallSingBox installs sing-box.
+// version, when non-empty, must match versionPattern — it is interpolated
+// into a shell command run as root, so any non-matching input is rejected.
 func (m *Manager) InstallSingBox(version string, beta bool) (*InstallTask, error) {
+	if version != "" && !versionPattern.MatchString(version) {
+		return nil, fmt.Errorf("invalid version format: %q (expected semver like 1.12.12)", version)
+	}
+
 	taskID := fmt.Sprintf("install_%d", getCurrentTimestamp())
 
 	task := &InstallTask{
