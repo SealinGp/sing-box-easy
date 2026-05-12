@@ -19,3 +19,8 @@ sing_box:
   # SQLite 数据库文件路径
   # 用于存储订阅信息和初始化状态
   database_path: "/etc/sing-box/sing-box-easy.db"
+
+log:
+  # 日志级别: debug | info | warn | error
+  # 默认 info。也可通过环境变量 DEBUG=true 强制开启 debug。
+  level: "info"

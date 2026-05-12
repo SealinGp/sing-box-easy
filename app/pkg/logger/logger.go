@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -11,11 +13,35 @@ var Logger *zap.Logger
 var Sugar *zap.SugaredLogger
 var L *zap.Logger // Alias for Logger for convenience
 
-// Init initializes the global logger
-func Init(debug bool) error {
-	var config zap.Config
+// ParseLevel converts a string level to zapcore.Level.
+// Accepted values (case-insensitive): debug, info, warn, warning, error.
+// Returns an error for unknown levels.
+func ParseLevel(level string) (zapcore.Level, error) {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "debug":
+		return zapcore.DebugLevel, nil
+	case "", "info":
+		return zapcore.InfoLevel, nil
+	case "warn", "warning":
+		return zapcore.WarnLevel, nil
+	case "error":
+		return zapcore.ErrorLevel, nil
+	default:
+		return zapcore.InfoLevel, fmt.Errorf("unknown log level: %q (expected debug|info|warn|error)", level)
+	}
+}
 
-	if debug {
+// Init initializes the global logger with the given level string.
+// Debug level uses the development encoder (colorized, human-readable);
+// info/warn/error use the production encoder (JSON, ISO8601 timestamps).
+func Init(level string) error {
+	lvl, err := ParseLevel(level)
+	if err != nil {
+		return err
+	}
+
+	var config zap.Config
+	if lvl == zapcore.DebugLevel {
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	} else {
@@ -23,30 +49,36 @@ func Init(debug bool) error {
 		config.EncoderConfig.TimeKey = "timestamp"
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
+	config.Level = zap.NewAtomicLevelAt(lvl)
 
 	// Always output to stdout
 	config.OutputPaths = []string{"stdout"}
 	config.ErrorOutputPaths = []string{"stderr"}
 
-	var err error
-	Logger, err = config.Build(zap.AddCallerSkip(1))
+	built, err := config.Build(zap.AddCallerSkip(1))
 	if err != nil {
 		return err
 	}
 
+	Logger = built
 	L = Logger // Set alias
 	Sugar = Logger.Sugar()
 	return nil
 }
 
-// InitDefault initializes with default settings
+// InitDefault initializes with default settings.
+// Reads DEBUG=true for debug level, otherwise defaults to info.
+// Falls back to a basic example logger on failure so the app can still start.
 func InitDefault() {
-	// Check if running in production
-	debug := os.Getenv("DEBUG") == "true"
+	level := "info"
+	if os.Getenv("DEBUG") == "true" {
+		level = "debug"
+	}
 
-	if err := Init(debug); err != nil {
+	if err := Init(level); err != nil {
 		// Fallback to a basic logger
 		Logger = zap.NewExample()
+		L = Logger
 		Sugar = Logger.Sugar()
 	}
 }

@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { BasicResponse, Subscription, Outbound } from '../types/api'
+import type { BasicResponse, Subscription, SubscriptionUpdateResult } from '../types/api'
 
 export class SubscriptionService {
   private api: ApiService
@@ -33,8 +33,8 @@ export class SubscriptionService {
     return response.data
   }
 
-  async updateSubscriptionContent(id: string): Promise<BasicResponse<{ message: string; id: string; node_count: number; nodes: Outbound[] }>> {
-    const response = await this.api.post<BasicResponse<{ message: string; id: string; node_count: number; nodes: Outbound[] }>>(`/subscriptions/${id}/update`)
+  async updateSubscriptionContent(id: string): Promise<BasicResponse<SubscriptionUpdateResult>> {
+    const response = await this.api.post<BasicResponse<SubscriptionUpdateResult>>(`/subscriptions/${id}/update`)
     return response.data
   }
 }

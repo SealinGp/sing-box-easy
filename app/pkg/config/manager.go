@@ -109,41 +109,74 @@ func (m *Manager) createNewConfig(config *SingBoxConfig) error {
 	return nil
 }
 
-// ValidateConfig validates the configuration using sing-box binary
-func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
-	if err := m.createNewConfig(config); err != nil {
-		return err
-	}
-
-	// Validate using sing-box check command
-	// Set environment variable to support deprecated special outbounds
-	cmdParams := []string{"check", "-c", m.newConfigPath}
+// runSingBoxCheck shells out to `sing-box check -c <path>` and returns a
+// validation error if sing-box reports one. This is a pure read of the given
+// file — it does not modify or remove it.
+func (m *Manager) runSingBoxCheck(path string) error {
+	cmdParams := []string{"check", "-c", path}
 	cmd := exec.Command(m.singBoxPath, cmdParams...)
 	cmd.Env = append(os.Environ(), "ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		// Clean up temp file on validation error
-		os.Remove(m.newConfigPath)
 		return fmt.Errorf("config validation failed: %s", string(output))
 	}
 
 	logger.Infof("%s %s output:%s", m.singBoxPath, strings.Join(cmdParams, " "), output)
 	if bytes.Contains(output, []byte("ERROR")) || bytes.Contains(output, []byte("FATAL")) {
-		// Clean up temp file on validation error so it doesn't linger
-		// and confuse the next save.
-		os.Remove(m.newConfigPath)
 		return fmt.Errorf("config validation failed: %s", string(output))
 	}
 	return nil
 }
 
-// SaveConfig saves the configuration after validation.
-// It creates a backup of the current config before saving.
-// ValidateConfig already writes the new-config tempfile, so we reuse it
-// rather than calling createNewConfig again.
-func (m *Manager) SaveConfig(config *SingBoxConfig) error {
-	if err := m.ValidateConfig(config); err != nil {
+// ValidateConfig validates the configuration using sing-box binary.
+// On success, the validated config remains on disk at newConfigPath so callers
+// can reuse it (e.g. SaveConfig's rename). On failure, the temp file is removed
+// so it doesn't linger and confuse the next save.
+func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
+	if err := m.createNewConfig(config); err != nil {
 		return err
+	}
+	if err := m.runSingBoxCheck(m.newConfigPath); err != nil {
+		os.Remove(m.newConfigPath)
+		return err
+	}
+	return nil
+}
+
+// SaveConfig saves the configuration after validation.
+//
+// Tolerance for pre-existing baseline errors:
+// Configs in this app are often authored for a Linux target but edited from a
+// macOS dev machine. Features like TUN's auto_redirect / auto_route /
+// strict_route only initialize on Linux, so `sing-box check` rejects them on
+// Darwin. If we strictly required a clean check on every save, the user could
+// never edit their config from the dev machine — every change, including
+// subscription refreshes, would be blocked by an inbound the user didn't even
+// touch.
+//
+// Rule: if the on-disk baseline ALREADY fails validation, the user is editing
+// a config that was broken before this call. Our change isn't to blame — log a
+// warning and let the save proceed. If the baseline was clean and our change
+// introduces a failure, keep blocking (the common production case).
+func (m *Manager) SaveConfig(config *SingBoxConfig) error {
+	// Capture the baseline state once, before we write the proposed config.
+	// A baseline error is informational only — it controls how we react to a
+	// post-change error below.
+	baselineErr := m.runSingBoxCheck(m.configPath)
+
+	if err := m.ValidateConfig(config); err != nil {
+		if baselineErr != nil {
+			// Baseline was already broken. Recreate the temp file (ValidateConfig
+			// removed it on error) and proceed with the save.
+			logger.Warn("config save tolerated despite validation failure: baseline config also fails validation, so this change is not the cause",
+				zap.String("baseline_error", baselineErr.Error()),
+				zap.String("post_change_error", err.Error()))
+			if cerr := m.createNewConfig(config); cerr != nil {
+				return cerr
+			}
+		} else {
+			return err
+		}
 	}
 
 	// Backup current config if it exists

@@ -231,7 +231,16 @@ const updateSubscription = async (subscription: Subscription) => {
     const response = await subscriptionService.updateSubscriptionContent(subscription.id)
 
     if (response.code === Code.Success) {
-      showNotification('success', `Updated: ${response.data.node_count} nodes found`)
+      const { added, updated, deleted } = response.data
+      // Backend now returns a 3-way diff. Build a human-readable summary
+      // and fall back to "no changes" when the subscription was already
+      // in sync with the upstream feed.
+      const parts: string[] = []
+      if (added > 0) parts.push(`+${added} added`)
+      if (updated > 0) parts.push(`~${updated} updated`)
+      if (deleted > 0) parts.push(`-${deleted} removed`)
+      const summary = parts.length > 0 ? parts.join(', ') : 'no changes'
+      showNotification('success', `Subscription "${subscription.name}" synced: ${summary}`)
       await loadSubscriptions()
     } else {
       showNotification('error', response.msg || 'Failed to update subscription')

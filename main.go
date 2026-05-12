@@ -10,7 +10,8 @@ import (
 )
 
 func main() {
-	// Initialize logger first
+	// Bootstrap logger so we can report config-load errors before
+	// the configured level has been applied.
 	logger.InitDefault()
 	defer logger.Sync()
 
@@ -25,6 +26,18 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	// Re-initialize logger with the configured level now that we have it.
+	// DEBUG=true env var still wins so devs can crank up verbosity without
+	// editing the config file.
+	logLevel := config.Log.Level
+	if os.Getenv("DEBUG") == "true" {
+		logLevel = "debug"
+	}
+	if err := logger.Init(logLevel); err != nil {
+		logger.Fatalf("Failed to initialize logger with level %q: %v", logLevel, err)
+	}
+	logger.Infof("Logger initialized at level: %s", logLevel)
 
 	// Override port from environment variable if set
 	if port := os.Getenv("HTTP_PORT"); port != "" {

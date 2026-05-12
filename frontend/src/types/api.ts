@@ -124,6 +124,20 @@ export interface Subscription {
   node_count?: number
 }
 
+// Response payload for POST /subscriptions/:id/update.
+// Backend computes a 3-way diff (add/update/delete) and returns both the
+// raw tags/keys and pre-computed counts.
+export interface SubscriptionUpdateResult {
+  message: string
+  id: string
+  added_tags: string[] | null
+  updated_tags: string[] | null
+  deleted_keys: string[] | null
+  added: number
+  updated: number
+  deleted: number
+}
+
 // Re-export DNS types from dns.ts
 export type {
   DNSServerOptions as DNSServer,

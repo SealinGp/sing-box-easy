@@ -5,7 +5,6 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/sagernet/sing-box/option"
 )
 
 // GetSubscriptions returns all subscriptions
@@ -97,52 +96,27 @@ func (h *Handler) DeleteSubscription(ctx context.Context, c *app.RequestContext)
 	})
 }
 
-// UpdateSubscriptionContent fetches and updates nodes from a subscription
+// UpdateSubscriptionContent fetches and updates nodes from a subscription.
+// All business logic (fetch → diff → apply → stats) lives in the subscription
+// package; this handler only translates the HTTP request/response envelope.
 func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestContext) {
 	id := c.Param("id")
 
-	// Get subscription
-	sub, err := h.subscriptionManager.Get(id)
+	result, err := h.autoUpdater.RefreshByID(id)
 	if err != nil {
-		respErr(ctx, c, CodeNotFound, err.Error())
+		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	// Parse nodes using the existing sublink package
-	subNodes, err := h.sublink.ListNodes([]string{sub.URL})
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, "failed to parse subscription nodes: "+err.Error())
-		return
-	}
-
-	// Update last_update timestamp
-	if err := h.subscriptionManager.UpdateLastUpdate(id); err != nil {
-		respErr(ctx, c, CodeInternalError, "failed to update subscription timestamp: "+err.Error())
-		return
-	}
-
-	// Convert SubNodes to option.Outbound for proper serialization
-	outbounds := make([]option.Outbound, 0, len(subNodes))
-	for _, subNode := range subNodes {
-		outbound := option.Outbound{
-			Tag:     subNode.Tag,
-			Type:    subNode.Type,
-			Options: subNode.Options,
-		}
-		outbounds = append(outbounds, outbound)
-	}
-
-	addedTags, skippedTags, err := h.configManager.UpdateOutbounds(outbounds)
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, "failed to update outbounds: "+err.Error())
-		return
-	}
-
+	added, updated, deleted := result.Counts()
 	respOK(ctx, c, map[string]any{
 		"message":      "subscription updated successfully",
 		"id":           id,
-		"node_count":   len(addedTags),
-		"added_tags":   addedTags,
-		"skipped_tags": skippedTags,
+		"added_tags":   result.AddedTags,
+		"updated_tags": result.UpdatedTags,
+		"deleted_keys": result.DeletedKeys,
+		"added":        added,
+		"updated":      updated,
+		"deleted":      deleted,
 	})
 }

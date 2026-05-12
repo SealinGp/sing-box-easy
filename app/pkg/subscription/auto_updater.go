@@ -37,6 +37,22 @@ type UpdateStats struct {
 	LastError         string
 }
 
+// UpdateResult is the structured outcome of a single subscription refresh,
+// shared by the cron-driven path and the manual-trigger HTTP route.
+type UpdateResult struct {
+	AddedTags   []string `json:"added_tags"`   // outbound tags that were newly inserted
+	UpdatedTags []string `json:"updated_tags"` // outbound tags that were replaced in-place
+	DeletedKeys []string `json:"deleted_keys"` // server keys removed (no longer present in subscription)
+}
+
+// Counts returns convenient totals for logging/response payloads.
+func (r *UpdateResult) Counts() (added, updated, deleted int) {
+	if r == nil {
+		return 0, 0, 0
+	}
+	return len(r.AddedTags), len(r.UpdatedTags), len(r.DeletedKeys)
+}
+
 // NewAutoUpdater creates a new auto-updater instance
 func NewAutoUpdater(configManager *config.Manager, subscriptionManager SubscriptionManager, sublinkManager *sublink.SubLink) *AutoUpdater {
 	return &AutoUpdater{
@@ -106,6 +122,7 @@ func (au *AutoUpdater) CheckSubscriptions() {
 
 	// List all subscriptions
 	subscriptions, err := au.subscriptionManager.List()
+	logger.Info("subscriptions list", zap.Any("subscriptions", subscriptions))
 	if err != nil {
 		logger.Error("Failed to list subscriptions", zap.Error(err))
 		return
@@ -123,26 +140,32 @@ func (au *AutoUpdater) CheckSubscriptions() {
 
 		// Check if it's time to update
 		if !au.shouldUpdate(sub) {
+			logger.Debug("it's not time to update")
 			continue
 		}
 
 		logger.Info("Updating subscription", zap.String("id", sub.ID), zap.String("name", sub.Name))
 
-		// Update subscription sequentially to ensure config integrity
-		if err := au.UpdateSubscription(sub); err != nil {
-			au.recordFailure(sub.ID, err)
+		// Update subscription sequentially to ensure config integrity.
+		// UpdateSubscription records success/failure stats internally so both
+		// the cron path and the manual route path stay consistent.
+		result, err := au.UpdateSubscription(sub)
+		if err != nil {
 			failedCount++
 			logger.Error("Failed to update subscription",
 				zap.String("id", sub.ID),
 				zap.String("name", sub.Name),
 				zap.Error(err))
-		} else {
-			au.recordSuccess(sub.ID)
-			updatedCount++
-			logger.Info("Successfully updated subscription",
-				zap.String("id", sub.ID),
-				zap.String("name", sub.Name))
+			continue
 		}
+		updatedCount++
+		added, updated, deleted := result.Counts()
+		logger.Info("Successfully updated subscription",
+			zap.String("id", sub.ID),
+			zap.String("name", sub.Name),
+			zap.Int("added", added),
+			zap.Int("updated", updated),
+			zap.Int("deleted", deleted))
 	}
 
 	logger.Info("Subscription check completed",
@@ -162,43 +185,111 @@ func (au *AutoUpdater) shouldUpdate(sub *Subscription) bool {
 	return time.Since(sub.LastUpdate) >= intervalDuration
 }
 
-// UpdateSubscription updates a single subscription
-func (au *AutoUpdater) UpdateSubscription(sub *Subscription) error {
+// RefreshByID is the canonical entry point for refreshing a single subscription
+// regardless of trigger source (HTTP route, cron, or other callers).
+// It fetches the subscription record, runs the same diff/apply path as the cron
+// loop, and records success/failure stats. The manual route handler should call
+// this instead of touching configManager.UpdateOutbounds directly.
+func (au *AutoUpdater) RefreshByID(id string) (*UpdateResult, error) {
+	sub, err := au.subscriptionManager.Get(id)
+	if err != nil {
+		return nil, fmt.Errorf("subscription not found: %w", err)
+	}
+	return au.UpdateSubscription(sub)
+}
+
+// UpdateSubscription updates a single subscription: fetch → diff → apply.
+// Records success/failure stats internally so the cron loop and the manual
+// route both produce identical bookkeeping.
+func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResult, err error) {
+	defer func() {
+		if err != nil {
+			au.recordFailure(sub.ID, err)
+		} else {
+			au.recordSuccess(sub.ID)
+		}
+	}()
+
 	// Step 1: Fetch new nodes from subscription URL
 	lines := []string{sub.URL}
 	newNodes, err := au.sublinkManager.ListNodes(lines)
 	if err != nil {
-		return fmt.Errorf("failed to fetch nodes: %w", err)
+		return nil, fmt.Errorf("failed to fetch nodes: %w", err)
 	}
 
 	if len(newNodes) == 0 {
-		return fmt.Errorf("no nodes returned from subscription")
+		return nil, fmt.Errorf("no nodes returned from subscription")
 	}
 
 	// Step 2: Get current configuration
 	cfg, err := au.configManager.GetConfig()
 	if err != nil {
-		return fmt.Errorf("failed to get config: %w", err)
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
 	// Step 3: Compare and diff nodes
 	toDelete, toAdd, toUpdate := au.diffNodes(cfg, newNodes)
 
-	// Step 4: Apply changes
+	// Build the result up-front from the diff so callers (route handler,
+	// cron logger) get the same shape regardless of whether any change was
+	// applied this round.
+	result = &UpdateResult{
+		AddedTags:   collectTags(toAdd),
+		UpdatedTags: collectTagsFromMap(toUpdate),
+		DeletedKeys: collectKeys(toDelete),
+	}
+
+	// Step 4: Apply changes (skip the write if the diff is empty)
 	if len(toDelete) > 0 || len(toAdd) > 0 || len(toUpdate) > 0 {
-		err = au.applyChanges(cfg, toDelete, toAdd, toUpdate, sub.ID)
-		if err != nil {
-			return fmt.Errorf("failed to apply changes: %w", err)
+		if applyErr := au.applyChanges(cfg, toDelete, toAdd, toUpdate, sub.ID); applyErr != nil {
+			err = fmt.Errorf("failed to apply changes: %w", applyErr)
+			return nil, err
 		}
 	}
 
-	// Step 5: Update subscription's last update time
-	err = au.subscriptionManager.UpdateLastUpdate(sub.ID)
-	if err != nil {
-		logger.Warn("Failed to update last update time", zap.String("id", sub.ID), zap.Error(err))
+	// Step 5: Update subscription's last update time. A failure here doesn't
+	// roll back the config — we just log it.
+	if uerr := au.subscriptionManager.UpdateLastUpdate(sub.ID); uerr != nil {
+		logger.Warn("Failed to update last update time", zap.String("id", sub.ID), zap.Error(uerr))
 	}
 
-	return nil
+	return result, nil
+}
+
+// collectTags returns the Tag of every outbound in the slice.
+func collectTags(outbounds []config.Outbound) []string {
+	if len(outbounds) == 0 {
+		return nil
+	}
+	tags := make([]string, 0, len(outbounds))
+	for _, o := range outbounds {
+		tags = append(tags, o.Tag)
+	}
+	return tags
+}
+
+// collectTagsFromMap returns the Tag of every outbound in the map.
+func collectTagsFromMap(m map[string]config.Outbound) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	tags := make([]string, 0, len(m))
+	for _, o := range m {
+		tags = append(tags, o.Tag)
+	}
+	return tags
+}
+
+// collectKeys returns the keys of a set-style map (struct{} values).
+func collectKeys(m map[string]struct{}) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // diffNodes compares current outbounds with new nodes and returns differences
@@ -317,129 +408,20 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 	})
 }
 
-// getServerFromOutbound extracts the server address from an outbound configuration
-func getServerFromOutbound(outbound config.Outbound) string {
-	// Handle different outbound types using type assertion on the Options field
-	if outbound.Options == nil {
-		return ""
-	}
-
-	// All standard outbound types have ServerOptions embedded
-	// We need to check the specific types for the correct field access
-	switch outbound.Type {
-	case "shadowsocks":
-		// ShadowsocksOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "vmess":
-		// VMessOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "trojan":
-		// TrojanOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "hysteria":
-		// HysteriaOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "hysteria2":
-		// Hysteria2OutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "vless":
-		// VLESSOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "wireguard":
-		// WireGuard has a different structure - server is in peers or direct server field
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			// Check if it's using the new structure with direct server field
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-			// Check if it's using peers structure
-			if peers, ok := opts["peers"].([]interface{}); ok && len(peers) > 0 {
-				if peer, ok := peers[0].(map[string]interface{}); ok {
-					// Try address field first
-					if address, ok := peer["address"].(string); ok {
-						return address
-					}
-					// Try server field for LegacyWireGuardPeer
-					if server, ok := peer["server"].(string); ok {
-						return server
-					}
-				}
-			}
-		}
-	case "ssh":
-		// SSHOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "shadowtls":
-		// ShadowTLSOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	case "tuic":
-		// TUICOutboundOptions has ServerOptions embedded
-		if opts, ok := outbound.Options.(map[string]interface{}); ok {
-			if server, ok := opts["server"].(string); ok {
-				return server
-			}
-		}
-	}
-	return ""
-}
-
-// outboundsDeepEqual performs deep comparison of two outbounds
+// outboundsDeepEqual performs deep comparison of two outbounds via JSON.
+// The same options struct may be a typed sing-box option type on one side and
+// a map on the other (e.g. existing outbound from typed registry vs. new node
+// from parser); marshalling both to JSON normalizes them before compare.
 func outboundsDeepEqual(a, b config.Outbound) bool {
-	// Compare type
 	if a.Type != b.Type {
 		return false
 	}
-
-	// For now, do a simple JSON comparison of Options
-	// This ensures all fields are compared
 	aJSON, err1 := json.Marshal(a.Options)
 	bJSON, err2 := json.Marshal(b.Options)
-
 	if err1 != nil || err2 != nil {
 		return false
 	}
-
 	return string(aJSON) == string(bJSON)
-}
-
-// outboundsEqual compares two outbounds for equality (simplified)
-func outboundsEqual(a, b config.Outbound) bool {
-	// This is a simplified comparison
-	// You might want to implement a more thorough comparison
-	return getServerFromOutbound(a) == getServerFromOutbound(b) &&
-		a.Type == b.Type
 }
 
 // parseDuration parses duration string like "24h", "7d", "2w", "1mo".

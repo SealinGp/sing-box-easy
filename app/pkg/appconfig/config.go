@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Server  ServerConfig  `yaml:"server"`
 	SingBox SingBoxConfig `yaml:"sing_box"`
+	Log     LogConfig     `yaml:"log"`
 }
 
 // ServerConfig represents server configuration
@@ -23,6 +24,12 @@ type SingBoxConfig struct {
 	ConfigPath   string `yaml:"config_path"`
 	BinaryPath   string `yaml:"binary_path"`
 	DatabasePath string `yaml:"database_path"`
+}
+
+// LogConfig represents logger configuration.
+// Level accepts: debug, info (default), warn/warning, error.
+type LogConfig struct {
+	Level string `yaml:"level"`
 }
 
 // LoadConfig loads configuration from YAML file
@@ -56,6 +63,10 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	if config.SingBox.DatabasePath == "" {
 		config.SingBox.DatabasePath = "/etc/sing-box/sing-box-easy.db"
+	}
+
+	if config.Log.Level == "" {
+		config.Log.Level = "info"
 	}
 
 	return &config, nil
