@@ -194,27 +194,38 @@ func (m *Manager) SaveConfig(config *SingBoxConfig) error {
 	return nil
 }
 
-// Rollback restores the backup configuration
+// Rollback restores the backup configuration.
+//
+// Deliberately skips `sing-box check` on the backup. Rationale:
+//
+//  1. The backup was already validated when it was first written — SaveConfig
+//     never promotes a config to config.old.json unless it passed validation
+//     (or baseline-was-broken tolerance, see SaveConfig comments).
+//  2. Rollback is a recovery escape hatch. The user only reaches for it when
+//     the live config is broken; forcing the backup to revalidate against the
+//     *current* sing-box binary can strand them — e.g. when the binary was
+//     upgraded and deprecated a field, the backup that worked yesterday will
+//     "fail validation" today, and the user has no way out.
+//
+// We still parse the backup with the typed registry so a totally corrupt /
+// truncated file fails fast rather than producing a broken live config; this
+// is structural sanity, not semantic validation.
 func (m *Manager) Rollback() error {
 	if _, err := os.Stat(m.backupPath); os.IsNotExist(err) {
 		return fmt.Errorf("no backup config found")
 	}
 
-	// Read backup config first to validate it exists
-	backupConfig, err := m.GetBackupConfig()
-	if err != nil {
+	// Structural sanity check: parse the backup. A parse failure means the
+	// backup file is unusable — refuse to overwrite the live config with it.
+	if _, err := m.GetBackupConfig(); err != nil {
 		return fmt.Errorf("failed to read backup config: %w", err)
 	}
 
-	// Validate backup config
-	if err := m.ValidateConfig(backupConfig); err != nil {
-		os.Remove(m.newConfigPath)
-		return fmt.Errorf("backup config validation failed: %w", err)
-	}
-
-	// Move validated backup to main config
-	if err := os.Rename(m.newConfigPath, m.configPath); err != nil {
-		return fmt.Errorf("failed to rollback config: %w", err)
+	// Restore by copying the backup over the live config. We do NOT touch the
+	// backup file itself, so rollback is idempotent: re-running it produces
+	// the same result.
+	if err := m.copyFile(m.backupPath, m.configPath); err != nil {
+		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 
 	return nil
