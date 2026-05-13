@@ -5,3 +5,4 @@ dev.sh
 init_state.json
 .claude
 dist/
+.DS_Store
