@@ -205,16 +205,19 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 	}
 
 	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		newOutbounds := make([]config.Outbound, 0)
+		newOutbounds := make([]config.Outbound, 0, len(cfg.Outbounds))
+		deletedTags := make(map[string]struct{})
 		found := false
 
 		for i, outbound := range cfg.Outbounds {
 			if idx > -1 && int(idx) == i {
 				found = true
+				deletedTags[outbound.Tag] = struct{}{}
 				continue
 			}
 			if outbound.Tag == tag {
 				found = true
+				deletedTags[outbound.Tag] = struct{}{}
 				continue
 			}
 
@@ -224,6 +227,10 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 		if !found {
 			return fmt.Errorf("outbound not found")
 		}
+
+		// Strip the deleted tag from selector/urltest group references so the
+		// config doesn't silently keep dangling pointers.
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, nil)
 
 		cfg.Outbounds = newOutbounds
 		return nil
@@ -283,13 +290,19 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 		}
 
 		newOutbounds := make([]config.Outbound, 0, len(cfg.Outbounds))
+		deletedSet := make(map[string]struct{}, len(req.Tags))
 		for _, outbound := range cfg.Outbounds {
 			if tagSet[outbound.Tag] {
 				deletedTags = append(deletedTags, outbound.Tag)
+				deletedSet[outbound.Tag] = struct{}{}
 				continue
 			}
 			newOutbounds = append(newOutbounds, outbound)
 		}
+
+		// Strip every deleted tag from selector/urltest group references so the
+		// resulting config doesn't silently keep dangling pointers.
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedSet, nil)
 
 		cfg.Outbounds = newOutbounds
 		logger.Info(fmt.Sprintf("deleted %d outbounds: %v", len(deletedTags), deletedTags))

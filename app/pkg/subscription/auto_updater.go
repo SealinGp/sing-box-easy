@@ -293,6 +293,9 @@ func collectKeys(m map[string]struct{}) []string {
 }
 
 // diffNodes compares current outbounds with new nodes and returns differences
+// keyed by server endpoint ("server:port"). The three return maps/slices are
+// independent: toDelete and toUpdate partition the existing subscription's
+// outbounds; toAdd is everything new in the fetched feed.
 func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
 	// Initialize named return values (Go does not zero-init maps from named returns)
 	toDelete = make(map[string]struct{})
@@ -321,9 +324,6 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.Sub
 		}
 	}
 
-	// Track which indices to update instead of delete+add
-	updateIndices := make(map[string]config.Outbound)
-
 	// Track which server keys from new nodes have been processed
 	processedKeys := make(map[string]bool)
 
@@ -343,12 +343,11 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.Sub
 		if newOutbound, exists := newNodeMap[serverKey]; exists {
 			// Node with same server key exists in new nodes
 			processedKeys[serverKey] = true
-			// Check if the outbound has changed
+			// Check if the outbound has changed; if so replace in-place.
 			if !outboundsDeepEqual(outbound, newOutbound) {
-				// Mark for update (replace at same index)
-				updateIndices[serverKey] = newOutbound
+				toUpdate[serverKey] = newOutbound
 			}
-			// If they're equal, keep the existing one (no action needed)
+			// If equal, keep the existing one (no action needed).
 			continue
 		}
 
@@ -362,14 +361,34 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.Sub
 		}
 	}
 
-	return toDelete, toAdd, updateIndices
+	return toDelete, toAdd, toUpdate
 }
 
-// applyChanges applies the calculated changes to the configuration
+// applyChanges applies the calculated changes to the configuration.
+//
+// In addition to the outbound list itself, this also rewrites every
+// selector/urltest group outbound so it no longer references tags that were
+// deleted, and picks up the new tag for any outbound that was renamed by an
+// update (the server endpoint survives but the human-facing tag changed).
+// Without this pass, `sing-box check` would still pass but selector groups
+// would silently keep dangling tags pointing at gone nodes.
+//
+// NOTE on concurrency: the diff (toDelete/toAdd/toUpdate) is computed against
+// a snapshot read by an earlier GetConfig call, while UpdateConfig re-reads the
+// config from disk. The deletedTags/renameMap built below are derived from the
+// *fresh* snapshot inside the closure, so the group-reference rewrite is always
+// internally consistent. The remaining TOCTOU window between the outer diff and
+// the inner write is a pre-existing concern in this codebase (Manager has no
+// lock); fixing it would require pushing diffNodes into the closure too.
 func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound, subID string) error {
 	return au.configManager.UpdateConfig(func(c *config.SingBoxConfig) error {
 		// Create new outbounds slice
 		newOutbounds := make([]config.Outbound, 0, len(c.Outbounds)-len(toDelete)+len(toAdd))
+
+		// Tags collected while filtering — needed to scrub stale references
+		// from selector/urltest groups after the rebuild.
+		deletedTags := make(map[string]struct{})
+		renameMap := make(map[string]string)
 
 		// First pass: keep non-deleted outbounds and apply updates
 		for _, outbound := range c.Outbounds {
@@ -380,10 +399,14 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 			}
 
 			if _, ok := toDelete[svr_key]; ok {
+				deletedTags[outbound.Tag] = struct{}{}
 				continue // Skip deleted
 			}
 
 			if updatedOutbound, ok := toUpdate[svr_key]; ok {
+				if outbound.Tag != updatedOutbound.Tag {
+					renameMap[outbound.Tag] = updatedOutbound.Tag
+				}
 				newOutbounds = append(newOutbounds, updatedOutbound)
 				continue // Skip updated
 			}
@@ -395,6 +418,10 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 		// Add new outbounds
 		newOutbounds = append(newOutbounds, toAdd...)
 
+		// Strip references to deleted tags and rewrite renamed tags inside
+		// selector/urltest group outbounds.
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap)
+
 		// Update the configuration
 		c.Outbounds = newOutbounds
 
@@ -402,7 +429,8 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 			zap.String("subscription", subID),
 			zap.Int("deleted", len(toDelete)),
 			zap.Int("added", len(toAdd)),
-			zap.Int("updated", len(toUpdate)))
+			zap.Int("updated", len(toUpdate)),
+			zap.Int("group_refs_renamed", len(renameMap)))
 
 		return nil
 	})
