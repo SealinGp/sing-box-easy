@@ -69,6 +69,75 @@ const needsPath = computed(() => {
   return types.indexOf(currentServer.value.type) !== -1
 })
 
+// ─── hosts-type specific helpers ─────────────────────────────────────────────
+// Render a short summary of the row data when type=hosts, so the table cell
+// isn't blank ("-"). Server/port aren't meaningful for hosts entries; what
+// matters is how many predefined hostnames and/or hosts-file paths it has.
+const formatHostsSummary = (server: any): string => {
+  const parts: string[] = []
+  const predefined = server?.predefined as Record<string, string | string[]> | undefined
+  if (predefined) {
+    const n = Object.keys(predefined).length
+    if (n > 0) parts.push(`${n} predefined`)
+  }
+  const path = server?.path
+  if (Array.isArray(path) && path.length > 0) parts.push(`${path.length} file${path.length === 1 ? '' : 's'}`)
+  else if (typeof path === 'string' && path) parts.push('1 file')
+  return parts.length > 0 ? parts.join(', ') : '(empty)'
+}
+
+// Two-way bridge between the `predefined` object and a textarea where each
+// line is `hostname IP[,IP2,...]`. We keep the format simple and forgiving:
+//   - blank lines and #-comments are skipped
+//   - whitespace between hostname and IPs collapses to a single delimiter
+//   - multiple IPs may be separated by commas or spaces
+// Round-trips cleanly for the common single-IP case in config.json.
+const predefinedHostsText = computed<string>({
+  get(): string {
+    const map = currentServer.value?.predefined as Record<string, string | string[]> | undefined
+    if (!map) return ''
+    return Object.entries(map)
+      .map(([host, val]) => `${host} ${Array.isArray(val) ? val.join(',') : val}`)
+      .join('\n')
+  },
+  set(text: string) {
+    const map: Record<string, string | string[]> = {}
+    for (const raw of text.split('\n')) {
+      const line = raw.trim()
+      if (!line || line.startsWith('#')) continue
+      // First token is the hostname; remainder (split on whitespace OR comma)
+      // is the IP list.
+      const m = line.match(/^(\S+)\s+(.+)$/)
+      if (!m) continue
+      const host = m[1]
+      const ips = m[2].split(/[\s,]+/).filter(Boolean)
+      if (ips.length === 0) continue
+      map[host] = ips.length === 1 ? ips[0] : ips
+    }
+    // Drop the field entirely when no entries remain, matching the
+    // `omitempty` behaviour on the backend's HostsDNSServerOptions.
+    if (Object.keys(map).length === 0) delete currentServer.value.predefined
+    else currentServer.value.predefined = map
+  },
+})
+
+// Similar bridge for the optional `path` field (list of hosts-file paths).
+const hostsFilePathsText = computed<string>({
+  get(): string {
+    const p = currentServer.value?.path
+    if (!p) return ''
+    return Array.isArray(p) ? p.join('\n') : String(p)
+  },
+  set(text: string) {
+    const paths = text
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean)
+    if (paths.length === 0) delete currentServer.value.path
+    else currentServer.value.path = paths.length === 1 ? paths[0] : paths
+  },
+})
+
 const openAddServerModal = () => {
   isEditMode.value = false
   currentServer.value = {
@@ -213,10 +282,21 @@ onMounted(() => {
                 </Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server || '-' }}</div>
+                <!-- For type=hosts, server/port aren't meaningful; show a
+                     summary of predefined hosts + file paths instead. -->
+                <div
+                  v-if="(server as any).type === 'hosts'"
+                  class="text-sm text-gray-600 dark:text-gray-400 italic"
+                  :title="(server as any).predefined ? Object.keys((server as any).predefined).join(', ') : ''"
+                >
+                  {{ formatHostsSummary(server) }}
+                </div>
+                <div v-else class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server_port || '-' }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">
+                  {{ (server as any).type === 'hosts' ? '—' : ((server as any).server_port || '-') }}
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
@@ -346,6 +426,45 @@ onMounted(() => {
                         v-model="currentServer.inet6_range"
                         placeholder="fc00::/18"
                       />
+                    </div>
+                  </div>
+
+                  <!--
+                    Editor for type=hosts. Two-way bridged through computed
+                    refs (predefinedHostsText, hostsFilePathsText). Format is
+                    intentionally /etc/hosts-like: one entry per line,
+                    `hostname IP[,IP2,...]`. Multiple IPs per host stay an
+                    array on the wire, matching badoption.Listable on the
+                    backend.
+                  -->
+                  <div v-if="currentServer.type === 'hosts'" class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Predefined Hosts
+                      </label>
+                      <textarea
+                        v-model="predefinedHostsText"
+                        rows="6"
+                        class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        placeholder="home.example.com 192.168.1.10
+nas.example.com 192.168.1.20,192.168.1.21"
+                      />
+                      <p class="mt-1 text-xs text-gray-500">
+                        One mapping per line: <code>hostname IP[,IP2,...]</code>. Lines starting with <code>#</code> and blank lines are ignored.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Hosts File Paths <span class="font-normal text-gray-500">(optional)</span>
+                      </label>
+                      <textarea
+                        v-model="hostsFilePathsText"
+                        rows="2"
+                        class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        placeholder="/etc/hosts"
+                      />
+                      <p class="mt-1 text-xs text-gray-500">One path per line. Loaded in addition to the predefined mappings above.</p>
                     </div>
                   </div>
                 </div>
