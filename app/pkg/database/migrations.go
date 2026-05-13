@@ -131,35 +131,58 @@ func getMigrationName(id string) string {
 	}
 }
 
-// migrate001AddEnabledToSubscriptions adds the enabled field to the subscriptions table
+// migrate001AddEnabledToSubscriptions adds the enabled field to the subscriptions
+// table. Three cases this handles, all of which are valid no-ops or successes:
+//
+//  1. Table exists, column missing  → ALTER TABLE succeeds (real migration).
+//  2. Table exists, column present  → ALTER TABLE fails with "duplicate column";
+//     the model already has it, treat as success.
+//  3. Table does not exist yet      → migrations run before manager Sync2 on a
+//     fresh DB. The table will be created by Sync2 *with* the enabled column
+//     already in the struct, so there is nothing for this migration to do —
+//     treat as success.
 func migrate001AddEnabledToSubscriptions(session *xorm.Session) error {
-	// Try to add the column directly - if it exists, this will fail and we can ignore it
 	sql := `ALTER TABLE subscriptions ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT 1`
 	_, err := session.Exec(sql)
-
-	if err != nil {
-		// Check if the error is because the column already exists (SQLite error: duplicate column name)
-		if isDuplicateColumnError(err) {
-			logger.Info("Enabled column already exists in subscriptions table")
-			return nil
-		}
-		return fmt.Errorf("failed to add enabled column: %w", err)
+	if err == nil {
+		logger.Info("Added enabled column to subscriptions table")
+		return nil
 	}
 
-	logger.Info("Added enabled column to subscriptions table")
-	return nil
+	if isDuplicateColumnError(err) {
+		logger.Info("Enabled column already exists in subscriptions table")
+		return nil
+	}
+
+	if isNoSuchTableError(err) {
+		// Fresh database: subscriptions table will be created by the
+		// subscription manager's Sync2 later, with the enabled column already
+		// declared on the model. Nothing to migrate.
+		logger.Info("subscriptions table does not exist yet — fresh DB, will be created with enabled column by Sync2")
+		return nil
+	}
+
+	return fmt.Errorf("failed to add enabled column: %w", err)
 }
 
 // isDuplicateColumnError checks if the error indicates a duplicate column name.
-// Note: "no such table" is intentionally NOT matched here — that indicates the
-// migration is being run against a database without the expected base schema,
-// which is a genuine failure, not an idempotent no-op.
 func isDuplicateColumnError(err error) bool {
 	if err == nil {
 		return false
 	}
-
 	errStr := strings.ToLower(err.Error())
 	return strings.Contains(errStr, "duplicate column name") ||
 		strings.Contains(errStr, "column exists")
+}
+
+// isNoSuchTableError matches SQLite's "no such table: X" error. This indicates
+// the migration is running against a fresh database where the base schema has
+// not been created yet — managers do their Sync2 lazily after database.Init()
+// returns. For migrations that are merely adding columns the manager's model
+// already declares, this is a no-op rather than a failure.
+func isNoSuchTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "no such table")
 }
