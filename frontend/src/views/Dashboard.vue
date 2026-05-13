@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import Sidebar from '../components/Sidebar.vue'
+import type { Component } from "vue";
+import Sidebar from "../components/Sidebar.vue";
 import {
   ChartBarIcon,
   ArrowDownTrayIcon,
@@ -13,59 +13,72 @@ import {
   ShieldCheckIcon,
   CloudArrowDownIcon,
   CogIcon,
-} from '@heroicons/vue/24/outline'
+} from "@heroicons/vue/24/outline";
 
 interface MenuItem {
-  name: string
-  icon: Component
-  path?: string
-  badge?: number | string
-  children?: MenuItem[]
+  name: string;
+  icon: Component;
+  path?: string;
+  badge?: number | string;
+  children?: MenuItem[];
 }
 
 // Static menu definition — never mutated. Plain const avoids unnecessary
 // reactive tracking that `ref()` would impose.
 const menuItems: MenuItem[] = [
   {
-    name: 'Overview',
+    name: "Overview",
     icon: ChartBarIcon,
-    path: '/dashboard/overview',
+    path: "/dashboard/overview",
   },
   {
-    name: 'Proxy',
+    name: "Proxy",
     icon: ServerIcon,
     children: [
-      { name: 'Inbounds', icon: ArrowDownTrayIcon, path: '/dashboard/inbounds' },
-      { name: 'Outbounds', icon: ArrowUpTrayIcon, path: '/dashboard/outbounds' },
-    ]
+      {
+        name: "Inbounds",
+        icon: ArrowDownTrayIcon,
+        path: "/dashboard/inbounds",
+      },
+      {
+        name: "Outbounds",
+        icon: ArrowUpTrayIcon,
+        path: "/dashboard/outbounds",
+      },
+    ],
   },
   {
-    name: 'Network',
+    name: "Network",
     icon: ShieldCheckIcon,
     children: [
-      { name: 'DNS', icon: GlobeAltIcon, path: '/dashboard/dns' },
-      { name: 'Route', icon: MapIcon, path: '/dashboard/route' },
-    ]
+      { name: "DNS", icon: GlobeAltIcon, path: "/dashboard/dns" },
+      { name: "Route", icon: MapIcon, path: "/dashboard/route" },
+    ],
   },
   {
-    name: 'Advanced',
+    name: "Advanced",
     icon: CogIcon,
     children: [
-      { name: 'Experimental', icon: BeakerIcon, path: '/dashboard/experimental' },
-      { name: 'Config', icon: DocumentTextIcon, path: '/dashboard/config' },
-    ]
+      {
+        name: "Experimental",
+        icon: BeakerIcon,
+        path: "/dashboard/experimental",
+      },
+      { name: "Config", icon: DocumentTextIcon, path: "/dashboard/config" },
+    ],
   },
   {
-    name: 'Subscriptions',
+    name: "Subscriptions",
     icon: CloudArrowDownIcon,
-    path: '/dashboard/subscriptions',
-    badge: 'New'
+    path: "/dashboard/subscriptions",
   },
-]
+];
 </script>
 
 <template>
-  <div class="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-slate-900">
+  <div
+    class="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-slate-900"
+  >
     <!-- Beautiful Sidebar Component with backdrop -->
     <div class="relative">
       <Sidebar :menu-items="menuItems" />
