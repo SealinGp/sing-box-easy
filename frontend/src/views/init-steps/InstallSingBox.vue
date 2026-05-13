@@ -27,6 +27,12 @@ onMounted(async () => {
     const initStatus = data
     if (initStatus.steps.sing_box_installed) {
       alreadyInstalled.value = true
+      // Show the actually-detected version instead of the hardcoded default.
+      // Only override when the backend has a non-empty value — otherwise the
+      // input would blank out and break the "reinstall" form.
+      if (initStatus.sing_box_version) {
+        version.value = initStatus.sing_box_version
+      }
     }
   } catch (err: any) {
     console.error('Failed to check install status:', err)

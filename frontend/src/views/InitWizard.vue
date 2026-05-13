@@ -79,8 +79,16 @@ onMounted(async () => {
     const {data} = await serviceControlService.getInitStatus()
     initState.value = data
 
-    // If already initialized, go to dashboard
-    if (initState.value && initState.value.initialized) {
+    // Skip the wizard entirely when:
+    //   - the user explicitly completed it (initialized=true), OR
+    //   - the backend's live detection found a meaningful config.json
+    //     (config_generated=true). The latter handles "deployed
+    //     sing-box-easy over an existing sing-box" — the operator never
+    //     needs to walk the wizard.
+    const skipWizard =
+      initState.value?.initialized ||
+      initState.value?.steps?.config_generated
+    if (skipWizard) {
       router.push('/dashboard')
     }
   } catch (err: any) {
