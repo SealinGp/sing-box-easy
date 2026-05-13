@@ -214,10 +214,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="p-8" :class="{ 'fixed inset-0 z-50 bg-gray-50 dark:bg-gray-900': isFullscreen }">
-    <div class="flex flex-col h-full">
+  <!--
+    Outer wrapper is pinned to 100vh and laid out as a single flex column so
+    the editor child can claim all the leftover viewport height instead of
+    waiting for a parent `h-full` chain that may or may not resolve. The
+    fullscreen toggle still wins via `fixed inset-0 z-50` when active.
+  -->
+  <div
+    class="p-4 h-screen flex flex-col overflow-hidden"
+    :class="{ 'fixed inset-0 z-50 bg-gray-50 dark:bg-gray-900': isFullscreen }"
+  >
       <!-- Header -->
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex justify-between items-center mb-4 shrink-0">
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Configuration Editor</h2>
         <div class="flex items-center gap-3">
           <!-- Theme Toggle -->
@@ -294,8 +302,15 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Editor Container -->
-      <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+      <!--
+        Editor Container.
+        `min-h-0` is critical: inside a flex column, `flex-1` children
+        default to min-height:auto and refuse to shrink past their
+        intrinsic content height, which breaks the "fill remaining
+        space" behaviour. Setting min-h-0 lets the editor expand AND
+        shrink to fit whatever viewport is left after header + status.
+      -->
+      <div class="flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
         </div>
@@ -312,7 +327,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Status Bar -->
-      <div class="mt-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-between text-sm">
+      <div class="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-between text-sm shrink-0">
         <div class="flex items-center gap-4">
           <span class="text-gray-600 dark:text-gray-400">
             JSON Configuration
@@ -330,6 +345,5 @@ onUnmounted(() => {
           Lines: {{ configContent.split('\n').length }}
         </div>
       </div>
-    </div>
   </div>
 </template>
