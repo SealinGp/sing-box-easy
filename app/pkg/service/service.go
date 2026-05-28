@@ -27,6 +27,23 @@ const (
 	SystemUnknown SystemType = "unknown"
 )
 
+// Signal flags passed to the `kill` command when terminating a sing-box process
+// that this controller does not own (c.pm == nil).
+const (
+	signalTerm = "-TERM" // graceful shutdown
+	signalKill = "-KILL" // force kill
+)
+
+// Timing for waiting on a process to actually exit after a stop signal.
+const (
+	stopGracePeriod  = 5 * time.Second
+	stopPollInterval = 100 * time.Millisecond
+)
+
+// singBoxServiceName is the systemd unit name used by the official sing-box
+// Debian/Linux installation.
+const singBoxServiceName = "sing-box.service"
+
 // Controller manages sing-box service lifecycle.
 //
 // HTTP endpoints can call Start/Stop/Restart/ForceStop concurrently, so all
@@ -35,6 +52,11 @@ type Controller struct {
 	configManager *config.Manager
 	singBoxPath   string
 	systemType    SystemType
+
+	// useSystemd is true when sing-box is installed as a systemd unit (e.g. the
+	// official Debian install). In that case lifecycle operations are delegated
+	// to systemctl instead of being managed directly via ProcessManager.
+	useSystemd bool
 
 	mu sync.Mutex
 	pm *process.ProcessManager
@@ -50,14 +72,53 @@ func NewController(configManager *config.Manager, singBoxPath string) *Controlle
 		configManager: configManager,
 		singBoxPath:   singBoxPath,
 		systemType:    detectSystemType(),
+		useSystemd:    detectSystemd(),
 	}
 
 	logger.Info("Service controller initialized",
 		zap.String("system", string(controller.systemType)),
+		zap.Bool("systemd_managed", controller.useSystemd),
 		zap.String("os", runtime.GOOS),
 		zap.String("arch", runtime.GOARCH))
 
 	return controller
+}
+
+// detectSystemd reports whether sing-box is managed by a systemd unit on this
+// host. It is true only when `systemctl` is available AND a sing-box unit file
+// exists, which is the case for the official Debian/Linux installation. OpenWRT
+// (procd-based) and hosts without systemd return false and fall back to direct
+// process management.
+func detectSystemd() bool {
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		return false
+	}
+	// `systemctl cat <unit>` exits 0 only when the unit file exists; output is
+	// irrelevant, we only care about the exit status.
+	if err := exec.Command("systemctl", "cat", singBoxServiceName).Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// systemctl runs `systemctl <args...> sing-box.service` and wraps failures with
+// the captured output for easier diagnosis.
+func (c *Controller) systemctl(args ...string) error {
+	full := append(append([]string{}, args...), singBoxServiceName)
+	out, err := exec.Command("systemctl", full...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("systemctl %s failed: %w: %s",
+			strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// systemctlIsActive reports whether the sing-box systemd unit is currently
+// active. `systemctl is-active` exits non-zero for inactive/failed/unknown
+// states, which is expected and not treated as an operational error.
+func (c *Controller) systemctlIsActive() (bool, error) {
+	out, _ := exec.Command("systemctl", "is-active", singBoxServiceName).Output()
+	return strings.TrimSpace(string(out)) == "active", nil
 }
 
 // detectSystemType detects whether the system is OpenWRT, Debian, or other
@@ -139,6 +200,10 @@ func (c *Controller) getPID() (string, error) {
 
 // Status returns the current status of sing-box service
 func (c *Controller) Status() (bool, error) {
+	if c.useSystemd {
+		return c.systemctlIsActive()
+	}
+
 	pid, err := c.getPID()
 	if err != nil {
 		return false, fmt.Errorf("failed to check service status: %w", err)
@@ -171,6 +236,15 @@ func (c *Controller) Start() error {
 
 	if err := c.configManager.ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
+	}
+
+	// Delegate to systemd when sing-box is managed by a systemd unit.
+	if c.useSystemd {
+		if err := c.systemctl("start"); err != nil {
+			return err
+		}
+		logger.Info("Service started via systemd")
+		return nil
 	}
 
 	return c.serveSingBox()
@@ -219,8 +293,24 @@ func (c *Controller) serveSingBox() error {
 	}
 }
 
-// Stop stops the sing-box service
+// Stop stops the sing-box service.
+//
+// If the running process was started by this controller, it is stopped via the
+// ProcessManager (context cancellation). If sing-box was started outside of
+// sing-box-easy (c.pm == nil), it is terminated by PID with SIGTERM. In both
+// cases we wait for the process to actually exit so callers such as Restart can
+// safely start a new instance, escalating to SIGKILL if it lingers.
 func (c *Controller) Stop() error {
+	// Delegate to systemd when sing-box is managed by a systemd unit.
+	// `systemctl stop` is idempotent and blocks until the unit has stopped.
+	if c.useSystemd {
+		if err := c.systemctl("stop"); err != nil {
+			return err
+		}
+		logger.Info("Service stopped via systemd")
+		return nil
+	}
+
 	// Check if running
 	running, err := c.Status()
 	if err != nil {
@@ -238,9 +328,72 @@ func (c *Controller) Stop() error {
 
 	if pm != nil {
 		pm.Stop()
+	} else {
+		// Process was started outside of sing-box-easy; terminate it by PID.
+		if err := c.signalPID(signalTerm); err != nil {
+			return err
+		}
 	}
+
+	// Wait for the process to actually exit. Escalate to SIGKILL if it does not
+	// stop within the grace period (covers both the pm and external cases).
+	if err := c.waitForStop(stopGracePeriod); err != nil {
+		logger.Warn("Service did not stop gracefully, sending SIGKILL", zap.Error(err))
+		if killErr := c.signalPID(signalKill); killErr != nil {
+			return killErr
+		}
+		if err := c.waitForStop(stopGracePeriod); err != nil {
+			return err
+		}
+	}
+
 	logger.Info("Service stopped")
 	return nil
+}
+
+// signalPID looks up the running sing-box PID and sends it the given signal via
+// the `kill` command. It is used to control processes this controller does not
+// own. A nil error is returned when no process is running.
+func (c *Controller) signalPID(sig string) error {
+	pid, err := c.getPID()
+	if err != nil {
+		return fmt.Errorf("failed to get service PID: %w", err)
+	}
+	if pid == "" {
+		return nil
+	}
+
+	// Validate pid is a positive integer before passing it to exec.
+	// pid originates from `pgrep`/`pidof`/`ps` output, which is normally safe,
+	// but never trust an external string flowing into an exec argument list.
+	pidNum, err := strconv.Atoi(pid)
+	if err != nil || pidNum <= 0 {
+		return fmt.Errorf("invalid pid from process lookup: %q", pid)
+	}
+
+	if err := exec.Command("kill", sig, strconv.Itoa(pidNum)).Run(); err != nil {
+		return fmt.Errorf("failed to send %s to pid %d: %w", sig, pidNum, err)
+	}
+	return nil
+}
+
+// waitForStop polls process status until the service has stopped or the timeout
+// elapses.
+func (c *Controller) waitForStop(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		running, err := c.Status()
+		if err != nil {
+			return err
+		}
+		if !running {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("process still running after %s", timeout)
+		}
+		time.Sleep(stopPollInterval)
+	}
 }
 
 // Restart restarts the sing-box service
@@ -253,6 +406,16 @@ func (c *Controller) Restart() error {
 
 	if err := c.configManager.ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
+	}
+
+	// Delegate to systemd when sing-box is managed by a systemd unit.
+	// `systemctl restart` starts the unit even if it was stopped.
+	if c.useSystemd {
+		if err := c.systemctl("restart"); err != nil {
+			return err
+		}
+		logger.Info("Service restarted via systemd")
+		return nil
 	}
 
 	// Check if running
@@ -282,6 +445,17 @@ func (c *Controller) Reload() error {
 
 	if err := c.configManager.ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
+	}
+
+	// Delegate to systemd when sing-box is managed by a systemd unit.
+	// `reload-or-restart` reloads if the unit defines ExecReload, otherwise it
+	// performs a full restart — mirroring the SIGHUP-with-restart-fallback below.
+	if c.useSystemd {
+		if err := c.systemctl("reload-or-restart"); err != nil {
+			return err
+		}
+		logger.Info("Service reloaded via systemd")
+		return nil
 	}
 
 	// Check if running
@@ -322,8 +496,20 @@ func (c *Controller) Reload() error {
 	return nil
 }
 
-// ForceStop force stops the sing-box service using SIGKILL
+// ForceStop force stops the sing-box service using SIGKILL.
+//
+// As with Stop, if the process was started outside of sing-box-easy
+// (c.pm == nil) it is killed by PID.
 func (c *Controller) ForceStop() error {
+	// Delegate to systemd when sing-box is managed by a systemd unit.
+	if c.useSystemd {
+		if err := c.systemctl("kill", "--signal=SIGKILL"); err != nil {
+			return err
+		}
+		logger.Info("Service force stopped via systemd")
+		return nil
+	}
+
 	c.mu.Lock()
 	pm := c.pm
 	c.pm = nil
@@ -331,6 +517,11 @@ func (c *Controller) ForceStop() error {
 
 	if pm != nil {
 		pm.Stop()
+	} else {
+		// Process was started outside of sing-box-easy; kill it by PID.
+		if err := c.signalPID(signalKill); err != nil {
+			return err
+		}
 	}
 	logger.Info("Service force stopped")
 	return nil
