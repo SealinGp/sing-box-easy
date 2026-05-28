@@ -93,9 +93,24 @@ command -v tar  >/dev/null 2>&1 || die "tar is required but not installed"
 
 if [ -z "$VERSION" ]; then
     info "Resolving latest release from GitHub..."
-    VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep -m1 '"tag_name"' \
-        | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+    # Prefer the web "latest" redirect: it does not count against the low
+    # unauthenticated API rate limit, which often returns HTTP 403 from shared
+    # egress IPs (e.g. a proxy host). The final URL looks like
+    # https://github.com/<repo>/releases/tag/<tag>.
+    LATEST_URL="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+        "https://github.com/${REPO}/releases/latest" 2>/dev/null || true)"
+    case "$LATEST_URL" in
+        */releases/tag/*)
+            VERSION="${LATEST_URL##*/tag/}"
+            VERSION="${VERSION%%/*}"
+            ;;
+    esac
+    # Fall back to the API only if the redirect could not be parsed.
+    if [ -z "$VERSION" ]; then
+        VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+            | grep -m1 '"tag_name"' \
+            | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+    fi
     [ -n "$VERSION" ] || die "could not determine the latest release tag (set VERSION=<tag> to override)"
 fi
 ok "Target version: $VERSION"
