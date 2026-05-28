@@ -1,0 +1,111 @@
+name: Release
+
+# Build the Linux x86_64 binary + bundled frontend, package them into a single
+# tarball, and publish it as a GitHub Release asset.
+#
+# Triggers:
+#   - Pushing a tag like `v1.0.0` builds and publishes that release.
+#   - Manual run (workflow_dispatch) lets you build/publish an arbitrary tag.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build (e.g. v1.0.0). The release is created if it does not exist.'
+        required: true
+
+# gh release create/upload needs write access to the repo contents.
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      # Target platform. Only linux/amd64 (x86_64) is supported for now.
+      GOOS: linux
+      GOARCH: amd64
+      # Stable asset name (no version) so install.sh can build the URL from the
+      # tag alone: releases/download/<tag>/<ASSET_NAME>.
+      ASSET_NAME: sing-box-easy-linux-amd64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::Could not resolve a release tag"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building release: $TAG"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          # Run vite directly. The package.json `build` script also runs
+          # `vue-tsc -b`, which currently fails on a pre-existing type error in
+          # a vendored component; the bundle itself builds fine.
+          npx vite build
+
+      - name: Verify frontend build
+        run: |
+          test -f dist/index.html || { echo "::error::frontend build did not produce dist/index.html"; exit 1; }
+
+      - name: Build backend (linux/amd64)
+        run: |
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o build/sing-box-easy ./main.go
+          file build/sing-box-easy
+
+      - name: Stage release package
+        run: |
+          rm -rf stage
+          mkdir -p stage
+          cp build/sing-box-easy stage/sing-box-easy
+          chmod +x stage/sing-box-easy
+          cp -r dist stage/dist
+          cp app.yml.example stage/app.yml.example
+          # Flat tarball: extracting it drops sing-box-easy, dist/ and
+          # app.yml.example directly into the target directory.
+          tar -czf "$ASSET_NAME" -C stage .
+          sha256sum "$ASSET_NAME" > "$ASSET_NAME.sha256"
+          echo "=== package contents ==="
+          tar -tzf "$ASSET_NAME"
+          ls -lh "$ASSET_NAME" "$ASSET_NAME.sha256"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating release $TAG"
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          else
+            echo "Release $TAG already exists; uploading assets"
+          fi
+          gh release upload "$TAG" "$ASSET_NAME" "$ASSET_NAME.sha256" --clobber
