@@ -64,26 +64,28 @@ case "$ARCH" in
     *) die "unsupported architecture: $ARCH (only x86_64 is supported for now)" ;;
 esac
 
-if [ -r /etc/os-release ]; then
-    # shellcheck disable=SC1091
-    . /etc/os-release
-else
-    die "/etc/os-release not found; cannot determine the distribution"
-fi
+[ -r /etc/os-release ] || die "/etc/os-release not found; cannot determine the distribution"
+
+# Read distro identity in subshells so /etc/os-release cannot clobber this
+# script's own variables — notably VERSION, which os-release also defines
+# (e.g. VERSION="12 (bookworm)").
+OS_ID="$( . /etc/os-release 2>/dev/null; printf '%s' "${ID:-}" )"
+OS_ID_LIKE="$( . /etc/os-release 2>/dev/null; printf '%s' "${ID_LIKE:-}" )"
+OS_PRETTY="$( . /etc/os-release 2>/dev/null; printf '%s' "${PRETTY_NAME:-}" )"
 
 # Accept Debian and Debian-family distros (e.g. Ubuntu). Anything else is
 # unsupported for now.
 is_debian_family=false
-case "${ID:-}" in
+case "$OS_ID" in
     debian|ubuntu) is_debian_family=true ;;
 esac
-case " ${ID_LIKE:-} " in
+case " $OS_ID_LIKE " in
     *" debian "*) is_debian_family=true ;;
 esac
 [ "$is_debian_family" = "true" ] || \
-    die "unsupported distribution: ${PRETTY_NAME:-${ID:-unknown}} (only Debian is supported for now)"
+    die "unsupported distribution: ${OS_PRETTY:-${OS_ID:-unknown}} (only Debian is supported for now)"
 
-ok "Debian-family Linux on x86_64: ${PRETTY_NAME:-${ID:-debian}}"
+ok "Debian-family Linux on x86_64: ${OS_PRETTY:-${OS_ID:-debian}}"
 
 # ── 2. Resolve version + download ──────────────────────────────────────────────
 command -v curl >/dev/null 2>&1 || die "curl is required but not installed"
