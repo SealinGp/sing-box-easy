@@ -56,9 +56,14 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 	var lastFetchErr error
 	fetchAttempts := 0
 
-	for _, line := range lines {
-		// 订阅链接
-		if strings.Contains(line, "http") {
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+
+		// 订阅链接 (http/https subscription URL): fetch + base64-decode.
+		if strings.HasPrefix(line, "http://") || strings.HasPrefix(line, "https://") {
 			fetchAttempts++
 			modeNodes, err := l.fetchNodes(line)
 			if err != nil {
@@ -72,12 +77,22 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 			continue
 		}
 
-		//单个节点
-		sub_node, err := l.parseNode(line)
-		if err != nil {
+		// 单个节点 (direct proxy URI, e.g. vless:// vmess:// trojan://).
+		if sub_node, err := l.parseNode(line); err == nil {
+			nodes = append(nodes, sub_node)
 			continue
 		}
-		nodes = append(nodes, sub_node)
+
+		// 粘贴的订阅内容: a base64-encoded subscription body pasted directly
+		// (not a URL, not a single URI). Decode it and parse each URI line —
+		// the same handling fetchNodes applies after downloading.
+		if decoded, err := decodeSubscriptionBody(line); err == nil &&
+			strings.Contains(string(decoded), "://") {
+			nodes = append(nodes, l.parseBody(decoded)...)
+			continue
+		}
+		// Unrecognized line: skip silently (a 200-node paste shouldn't fail
+		// because one entry is malformed).
 	}
 
 	// If every fetch failed and produced no nodes, surface the last fetch
@@ -159,22 +174,30 @@ func (l *SubLink) fetchNodes(sub_url string) ([]*node.SubNode, error) {
 		return nil, fmt.Errorf("base64 decode failed (body preview: %q): %w", preview, err)
 	}
 
+	return l.parseBody(nodes), nil
+}
+
+// parseBody scans a decoded subscription body (newline-separated proxy URIs)
+// and parses each into a SubNode. Per-line parse errors are swallowed so one
+// malformed entry doesn't drop the whole subscription.
+func (l *SubLink) parseBody(body []byte) []*node.SubNode {
 	var sub_nodes []*node.SubNode
-	scanner := bufio.NewScanner(bytes.NewReader(nodes))
+	scanner := bufio.NewScanner(bytes.NewReader(body))
 	// Subscription bodies can be larger than bufio's default 64KB line buffer
 	// once decoded — give the scanner a generous ceiling.
 	scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
-		line := scanner.Text()
-
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
 		sub_node, err := l.parseNode(line)
 		if err != nil {
 			continue
 		}
-
 		sub_nodes = append(sub_nodes, sub_node)
 	}
-	return sub_nodes, nil
+	return sub_nodes
 }
 
 // decodeSubscriptionBody decodes a subscription server's response body.
