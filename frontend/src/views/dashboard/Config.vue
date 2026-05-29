@@ -12,6 +12,7 @@ const saving = ref(false)
 const validating = ref(false)
 const hasChanges = ref(false)
 const isFullscreen = ref(false)
+const isSplit = ref(false)
 const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
 const toast = useToast()
 
@@ -179,6 +180,10 @@ const toggleTheme = () => {
   editorTheme.value = editorTheme.value === 'vs-dark' ? 'vs-light' : 'vs-dark'
 }
 
+const toggleSplit = () => {
+  isSplit.value = !isSplit.value
+}
+
 const formatDocument = () => {
   try {
     const parsed = JSON.parse(configContent.value)
@@ -239,6 +244,20 @@ onUnmounted(() => {
             </svg>
             <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
+
+          <!-- Split View Toggle -->
+          <button
+            @click="toggleSplit"
+            class="p-2 rounded-lg transition-colors"
+            :class="isSplit
+              ? 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+            :title="isSplit ? 'Disable split view' : 'Enable split view (side-by-side)'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM12 4v16" />
             </svg>
           </button>
 
@@ -321,6 +340,7 @@ onUnmounted(() => {
             language="json"
             :theme="editorTheme"
             :options="editorOptions"
+            :split="isSplit"
             class="h-full"
           />
         </div>
