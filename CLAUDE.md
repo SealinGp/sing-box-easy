@@ -90,13 +90,18 @@ npm run preview
 ### Configuration Safety Mechanism
 
 All config modifications follow a safe workflow (implemented in `config.Manager`):
-1. Write to temporary file `config_new.json`
+1. Write to a staging file `.config_new.tmp` (same directory as `config.json`, so
+   the final `os.Rename` is atomic on one filesystem). The name intentionally
+   does NOT end in `.json` so a sing-box running in directory mode
+   (`sing-box -C <dir>`) never merges it and aborts on duplicate tags.
 2. Validate using `sing-box check` command
 3. On success:
-   - Backup current config to `config.old.json`
-   - Move validated config to `config.json`
-4. On failure: Keep original config, remove temp file
-5. Rollback available via `/api/1.12.12/config/rollback`
+   - Snapshot the current `config.json` into the DB-backed version history
+     (see "Config version history" — there is no more `config.old.json` file)
+   - Atomically rename the staging file over `config.json`
+4. On failure: Keep original config, remove the staging file
+5. Rollback available via `/api/1.12.12/config/rollback` (or to a specific
+   version via `/api/1.12.12/config/versions/:id/rollback`)
 
 ### Service Control Architecture
 

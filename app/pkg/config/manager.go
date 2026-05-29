@@ -16,10 +16,21 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	DefaultConfigPath    = "/etc/sing-box/config.json"
-	DefaultNewConfigPath = "/etc/sing-box/config_new.json"
-)
+const DefaultConfigPath = "/etc/sing-box/config.json"
+
+// stagingFileName is the temp file used during the atomic validate→rename save.
+// It lives in the same directory as config.json (so os.Rename stays on one
+// filesystem) but is deliberately NOT named "*.json": a sing-box instance run
+// in config-directory mode (`sing-box -C <dir>`) merges every "*.json" file in
+// the directory, so a ".json" staging file — especially one left behind by a
+// validate-without-save — would collide with config.json and abort sing-box
+// with a "duplicate tag" error. A non-".json" suffix is ignored by that scan.
+const stagingFileName = ".config_new.tmp"
+
+// legacyStagingFileName is the old staging filename (pre-".config_new.tmp").
+// Removed on startup so upgraded hosts don't keep a stale "*.json" sibling that
+// directory-mode sing-box would still merge.
+const legacyStagingFileName = "config_new.json"
 
 // Version retention bounds. The active count is configurable via settings;
 // these clamp it to a sane range. Kept here (not imported from the settings
@@ -35,7 +46,8 @@ const (
 //
 // Historical configs are kept in a database via the VersionStore, so the
 // sing-box config directory only ever holds the live config.json (plus the
-// transient config_new.json used during the atomic validate→rename save).
+// transient .config_new.tmp staging file used during the atomic
+// validate→rename save — see stagingFileName for why it isn't a *.json file).
 type Manager struct {
 	configPath    string
 	newConfigPath string
@@ -65,10 +77,14 @@ func NewManager(configPath, singBoxPath, templatePath string) *Manager {
 	dir := filepath.Dir(configPath)
 	m := &Manager{
 		configPath:    configPath,
-		newConfigPath: filepath.Join(dir, "config_new.json"),
+		newConfigPath: filepath.Join(dir, stagingFileName),
 		singBoxPath:   singBoxPath,
 		templatePath:  templatePath,
 	}
+	// Best-effort cleanup of a stale legacy staging file from older versions.
+	// It is never the authoritative config, and leaving a "config_new.json"
+	// behind breaks sing-box when it runs in directory mode.
+	_ = os.Remove(filepath.Join(dir, legacyStagingFileName))
 	m.keepVersions.Store(defaultKeepVersions)
 	return m
 }
