@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/configversion"
 	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installer"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/service"
+	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -28,6 +30,8 @@ type Handler struct {
 	initStateManager    initstate.InitStateManager
 	autoUpdater         *subscription.AutoUpdater
 	schedulerHandler    *schedulerHandler
+	versionStore        *configversion.StoreXORM
+	settingsManager     *settings.ManagerXORM
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers
@@ -41,6 +45,11 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 		logger.Fatal("Failed to initialize subscription manager", zap.Error(err))
 	}
 	initStateManager := initstate.NewManagerXORM()
+
+	// Config version history (DB-backed) + application settings.
+	versionStore := configversion.NewStoreXORM()
+	settingsManager := settings.NewManagerXORM()
+	configManager.SetVersionStore(versionStore)
 
 	// Pass initStateManager and configManager to installer
 	installerManager := installer.NewManager(initStateManager, configManager)
@@ -60,6 +69,8 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 		initStateManager:    initStateManager,
 		autoUpdater:         autoUpdater,
 		schedulerHandler:    schedulerHandler,
+		versionStore:        versionStore,
+		settingsManager:     settingsManager,
 	}
 }
 
@@ -74,6 +85,16 @@ func (h *Handler) Init() error {
 	if err := h.installer.Init(); err != nil {
 		return err
 	}
+
+	// Initialize config version store + settings, then apply the configured
+	// retention count to the config manager.
+	if err := h.versionStore.Init(); err != nil {
+		return err
+	}
+	if err := h.settingsManager.Init(); err != nil {
+		return err
+	}
+	h.configManager.SetKeepVersions(h.settingsManager.GetConfigVersionsKeep())
 
 	return nil
 }

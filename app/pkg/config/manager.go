@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/sagernet/sing/common/json"
@@ -17,17 +18,36 @@ import (
 
 const (
 	DefaultConfigPath    = "/etc/sing-box/config.json"
-	DefaultBackupPath    = "/etc/sing-box/config.old.json"
 	DefaultNewConfigPath = "/etc/sing-box/config_new.json"
 )
 
-// Manager handles sing-box configuration management
+// Version retention bounds. The active count is configurable via settings;
+// these clamp it to a sane range. Kept here (not imported from the settings
+// package) so config stays free of the database dependency — they intentionally
+// mirror settings.{Default,Min,Max}ConfigVersionsKeep and must stay in sync.
+const (
+	defaultKeepVersions = 10
+	minKeepVersions     = 1
+	maxKeepVersions     = 100
+)
+
+// Manager handles sing-box configuration management.
+//
+// Historical configs are kept in a database via the VersionStore, so the
+// sing-box config directory only ever holds the live config.json (plus the
+// transient config_new.json used during the atomic validate→rename save).
 type Manager struct {
 	configPath    string
-	backupPath    string
 	newConfigPath string
 	singBoxPath   string // Path to sing-box binary
 	templatePath  string // Path to template config file
+
+	store VersionStore // historical config snapshots (nil => disabled), set once at startup
+
+	// keepVersions (how many historical versions to retain) is read by
+	// snapshotCurrent on config-save goroutines and written by SetKeepVersions
+	// on the settings-update goroutine, so it is accessed atomically.
+	keepVersions atomic.Int64
 }
 
 // NewManager creates a new configuration manager
@@ -43,13 +63,14 @@ func NewManager(configPath, singBoxPath, templatePath string) *Manager {
 	}
 
 	dir := filepath.Dir(configPath)
-	return &Manager{
+	m := &Manager{
 		configPath:    configPath,
-		backupPath:    filepath.Join(dir, "config.old.json"),
 		newConfigPath: filepath.Join(dir, "config_new.json"),
 		singBoxPath:   singBoxPath,
 		templatePath:  templatePath,
 	}
+	m.keepVersions.Store(defaultKeepVersions)
+	return m
 }
 
 // GetConfigPath returns the configuration file path
@@ -73,20 +94,20 @@ func (m *Manager) GetConfig() (*SingBoxConfig, error) {
 	return &config, nil
 }
 
-// GetBackupConfig reads and returns the backup configuration
+// GetBackupConfig returns the most recent historical config (the "backup").
+// Backed by the version store; kept for API back-compat with /config/backup.
 func (m *Manager) GetBackupConfig() (*SingBoxConfig, error) {
-	data, err := os.ReadFile(m.backupPath)
+	if m.store == nil {
+		return nil, fmt.Errorf("no backup available")
+	}
+	versions, err := m.store.List()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read backup config file: %w", err)
+		return nil, fmt.Errorf("failed to list versions: %w", err)
 	}
-
-	var config SingBoxConfig
-	jsonCtx := CreateContext(context.Background())
-	if err := json.UnmarshalContext(jsonCtx, data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse backup config file: %w", err)
+	if len(versions) == 0 {
+		return nil, fmt.Errorf("no backup config found")
 	}
-
-	return &config, nil
+	return m.GetVersion(versions[0].ID)
 }
 
 func (m *Manager) createNewConfig(config *SingBoxConfig) error {
@@ -179,12 +200,9 @@ func (m *Manager) SaveConfig(config *SingBoxConfig) error {
 		}
 	}
 
-	// Backup current config if it exists
-	if _, err := os.Stat(m.configPath); err == nil {
-		if err := m.copyFile(m.configPath, m.backupPath); err != nil {
-			return fmt.Errorf("failed to backup config: %w", err)
-		}
-	}
+	// Snapshot the current (about-to-be-replaced) config into history before
+	// promoting the new one. Best-effort: never block a save on bookkeeping.
+	m.snapshotCurrent()
 
 	// Move validated config to main config
 	if err := os.Rename(m.newConfigPath, m.configPath); err != nil {
@@ -194,41 +212,21 @@ func (m *Manager) SaveConfig(config *SingBoxConfig) error {
 	return nil
 }
 
-// Rollback restores the backup configuration.
-//
-// Deliberately skips `sing-box check` on the backup. Rationale:
-//
-//  1. The backup was already validated when it was first written — SaveConfig
-//     never promotes a config to config.old.json unless it passed validation
-//     (or baseline-was-broken tolerance, see SaveConfig comments).
-//  2. Rollback is a recovery escape hatch. The user only reaches for it when
-//     the live config is broken; forcing the backup to revalidate against the
-//     *current* sing-box binary can strand them — e.g. when the binary was
-//     upgraded and deprecated a field, the backup that worked yesterday will
-//     "fail validation" today, and the user has no way out.
-//
-// We still parse the backup with the typed registry so a totally corrupt /
-// truncated file fails fast rather than producing a broken live config; this
-// is structural sanity, not semantic validation.
+// Rollback restores the most recent historical config (the newest version).
+// It is a thin wrapper over RollbackToVersion; see that method for the rationale
+// behind skipping `sing-box check` on restore.
 func (m *Manager) Rollback() error {
-	if _, err := os.Stat(m.backupPath); os.IsNotExist(err) {
+	if m.store == nil {
+		return fmt.Errorf("no backup available")
+	}
+	versions, err := m.store.List()
+	if err != nil {
+		return fmt.Errorf("failed to list versions: %w", err)
+	}
+	if len(versions) == 0 {
 		return fmt.Errorf("no backup config found")
 	}
-
-	// Structural sanity check: parse the backup. A parse failure means the
-	// backup file is unusable — refuse to overwrite the live config with it.
-	if _, err := m.GetBackupConfig(); err != nil {
-		return fmt.Errorf("failed to read backup config: %w", err)
-	}
-
-	// Restore by copying the backup over the live config. We do NOT touch the
-	// backup file itself, so rollback is idempotent: re-running it produces
-	// the same result.
-	if err := m.copyFile(m.backupPath, m.configPath); err != nil {
-		return fmt.Errorf("failed to restore backup: %w", err)
-	}
-
-	return nil
+	return m.RollbackToVersion(versions[0].ID)
 }
 
 // UpdateConfig updates the configuration with a function
@@ -294,16 +292,6 @@ func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, ski
 		return nil
 	})
 	return
-}
-
-// copyFile copies a file from src to dst.
-// Uses 0600 — proxy configs may contain credentials.
-func (m *Manager) copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, 0600)
 }
 
 // InitializeConfig initializes the configuration from template

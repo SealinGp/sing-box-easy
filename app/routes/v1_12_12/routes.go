@@ -15,6 +15,15 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.GET("/config/backup", handler.GetBackupConfig)
 	v1.POST("/config/rollback", handler.RollbackConfig)
 
+	// Config version history
+	v1.GET("/config/versions", handler.ListConfigVersions)
+	v1.GET("/config/versions/:id", handler.GetConfigVersion)
+	v1.POST("/config/versions/:id/rollback", handler.RollbackToConfigVersion)
+
+	// Application settings
+	v1.GET("/settings", handler.GetSettings)
+	v1.PUT("/settings", handler.UpdateSettings)
+
 	// Node Parsing API
 	v1.POST("/nodes/parse", handler.ParseNodes)
 
