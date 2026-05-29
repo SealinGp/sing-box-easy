@@ -15,6 +15,11 @@ export default defineConfig({
       ]
     })
   ],
+  define: {
+    // App version: set by CI from the release tag (VITE_APP_VERSION), and
+    // falls back to 'dev' for local builds. (package.json version is unused.)
+    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || 'dev'),
+  },
   build: {
     outDir: '../dist',
     emptyOutDir: true,

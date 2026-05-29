@@ -19,6 +19,9 @@ interface Props {
 defineProps<Props>()
 const route = useRoute()
 
+// App version, injected at build time (see vite.config.ts `define`).
+const version = __APP_VERSION__
+
 // Track expanded states for menu items with children
 const expandedItems = ref<Set<string>>(new Set())
 
@@ -52,6 +55,7 @@ const isParentActive = (item: MenuItem) => {
     <div class="p-6 pb-4">
       <div class="flex items-center gap-2 mb-4">
         <span class="text-sm font-semibold text-gray-900 dark:text-white">Sing Box Easy</span>
+        <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">{{ version }}</span>
       </div>
     </div>
 

@@ -65,6 +65,9 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        env:
+          # Stamps the displayed app version (sidebar) with the release tag.
+          VITE_APP_VERSION: ${{ steps.meta.outputs.tag }}
         run: |
           npm ci
           # Run vite directly. The package.json `build` script also runs
