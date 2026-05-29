@@ -38,8 +38,11 @@ const theme: InputChipsPassThroughOptions = {
             ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : ''}
             focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`,
     }),
-    input: `flex items-center flex-wrap gap-2 list-none m-0 p-0`,
-    inputToken: `flex-1 inline-flex`,
+    input: `flex items-center flex-wrap gap-2 list-none m-0 p-0 w-full`,
+    // `flex-1 min-w-0` lets the typing area grow to fill the row (and the full
+    // root width when empty); `inline-flex` alone shrank to the input's
+    // intrinsic size, leaving a gap to the right of the box.
+    inputToken: `flex-1 flex min-w-0 basis-32`,
     inputTokenField: ({ props }: { props: any }) => ({
         class: `w-full border-0 outline-none bg-transparent p-1 m-0
             text-gray-900 dark:text-gray-100

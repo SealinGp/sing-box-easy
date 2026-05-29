@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Inbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -29,12 +32,14 @@ interface InboundPreset {
   config: Partial<Inbound>
 }
 
-const inboundPresets: InboundPreset[] = [
+// Display name/description re-translate on locale switch; config/type/listen
+// values sent to the backend stay unchanged.
+const inboundPresets = computed<InboundPreset[]>(() => [
   {
     id: 'mixed',
     tag: 'mixed-in',
-    name: 'Mixed Proxy (HTTP + SOCKS5)',
-    description: 'Best for most use cases, supports both HTTP and SOCKS5',
+    name: t('setup.inbounds.presets.mixed.name'),
+    description: t('setup.inbounds.presets.mixed.description'),
     type: 'mixed',
     listen: '127.0.0.1',
     listen_port: 7890,
@@ -51,8 +56,8 @@ const inboundPresets: InboundPreset[] = [
   {
     id: 'http',
     tag: 'http-in',
-    name: 'HTTP Proxy',
-    description: 'HTTP proxy protocol only',
+    name: t('setup.inbounds.presets.http.name'),
+    description: t('setup.inbounds.presets.http.description'),
     type: 'http',
     listen: '127.0.0.1',
     listen_port: 7891,
@@ -68,8 +73,8 @@ const inboundPresets: InboundPreset[] = [
   {
     id: 'socks',
     tag: 'socks-in',
-    name: 'SOCKS5 Proxy',
-    description: 'SOCKS5 proxy protocol only',
+    name: t('setup.inbounds.presets.socks.name'),
+    description: t('setup.inbounds.presets.socks.description'),
     type: 'socks',
     listen: '127.0.0.1',
     listen_port: 7892,
@@ -85,8 +90,8 @@ const inboundPresets: InboundPreset[] = [
   {
     id: 'tun',
     tag: 'tun-in',
-    name: 'TUN (Virtual Network)',
-    description: 'System-wide proxy via virtual network interface (requires root/admin)',
+    name: t('setup.inbounds.presets.tun.name'),
+    description: t('setup.inbounds.presets.tun.description'),
     type: 'tun',
     listen: '',
     listen_port: 0,
@@ -105,7 +110,7 @@ const inboundPresets: InboundPreset[] = [
       sniff_override_destination: true,
     },
   },
-]
+])
 
 onMounted(async () => {
   await loadInbounds()
@@ -125,7 +130,7 @@ const loadInbounds = async () => {
 
     // 预选已存在的入站
     inbounds?.forEach((inbound) => {
-      const preset = inboundPresets.find(p => p.tag === inbound.tag)
+      const preset = inboundPresets.value.find(p => p.tag === inbound.tag)
       if (preset) {
         selectedInbounds.value.add(preset.id)
       }
@@ -154,7 +159,7 @@ const selectRecommended = () => {
 // surface a clear message pointing the user at /config/rollback.
 const saveInbounds = async () => {
   if (selectedInbounds.value.size === 0) {
-    error.value = 'Please select at least one inbound'
+    error.value = t('setup.inbounds.selectAtLeastOneError')
     return
   }
 
@@ -167,7 +172,7 @@ const saveInbounds = async () => {
     const { data } = await inboundService.getInbounds()
     inboundsSnapshot = data.inbounds || []
   } catch (err: any) {
-    error.value = err.message || 'Failed to snapshot existing inbounds'
+    error.value = err.message || t('setup.inbounds.snapshotFailed')
     saving.value = false
     return
   }
@@ -177,7 +182,7 @@ const saveInbounds = async () => {
   const removedSnapshots: Inbound[] = []
 
   try {
-    for (const preset of inboundPresets) {
+    for (const preset of inboundPresets.value) {
       const wanted = selectedInbounds.value.has(preset.id)
       const present = existingByTag.has(preset.tag)
       if (wanted && !present) {
@@ -201,9 +206,10 @@ const saveInbounds = async () => {
     for (const ib of removedSnapshots) {
       try { await inboundService.addInbound(ib) } catch { restoreOk = false }
     }
+    const baseMsg = err.message || t('setup.inbounds.saveFailed')
     error.value = restoreOk
-      ? `${err.message || 'Failed to save inbounds'} (previous inbounds restored)`
-      : `${err.message || 'Failed to save inbounds'} (restore also failed — use /config/rollback to recover)`
+      ? t('setup.inbounds.restored', { message: baseMsg })
+      : t('setup.inbounds.restoreFailed', { message: baseMsg })
   } finally {
     saving.value = false
   }
@@ -225,8 +231,8 @@ const handleSkip = () => {
 <template>
   <div class="space-y-6">
     <!-- 成功提示 -->
-    <Alert v-if="success" type="success" title="Inbounds Configured">
-      Inbound configurations have been saved successfully. Proceeding to next step...
+    <Alert v-if="success" type="success" :title="$t('setup.inbounds.successTitle')">
+      {{ $t('setup.inbounds.successDesc') }}
     </Alert>
 
     <!-- 错误提示 -->
@@ -239,9 +245,9 @@ const handleSkip = () => {
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Select Inbound Protocols</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.inbounds.selectHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Choose which proxy protocols to accept incoming connections.
+              {{ $t('setup.inbounds.selectDesc') }}
             </p>
           </div>
           <Button
@@ -250,7 +256,7 @@ const handleSkip = () => {
             :disabled="loading || saving || success"
             @click="selectRecommended"
           >
-            Use Recommended
+            {{ $t('setup.inbounds.useRecommended') }}
           </Button>
         </div>
 
@@ -273,13 +279,13 @@ const handleSkip = () => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
-                <Badge v-if="preset.id === 'mixed'" variant="primary" size="sm">Recommended</Badge>
+                <Badge v-if="preset.id === 'mixed'" variant="primary" size="sm">{{ $t('setup.inbounds.recommended') }}</Badge>
                 <Badge variant="gray" size="sm">{{ preset.type }}</Badge>
               </div>
               <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
               <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                <span v-if="preset.listen">Listen: {{ preset.listen }}:{{ preset.listen_port }}</span>
-                <span v-if="preset.type === 'tun'">Interface: {{ (preset.config as any).interface_name }}</span>
+                <span v-if="preset.listen">{{ $t('setup.inbounds.listen', { address: preset.listen, port: preset.listen_port }) }}</span>
+                <span v-if="preset.type === 'tun'">{{ $t('setup.inbounds.interface', { name: (preset.config as any).interface_name }) }}</span>
               </div>
             </div>
           </div>
@@ -288,7 +294,7 @@ const handleSkip = () => {
         <!-- 选择统计 -->
         <div class="bg-gray-50 rounded-lg p-3 text-center">
           <p class="text-sm text-gray-600">
-            <span class="font-semibold text-gray-900">{{ selectedInbounds.size }}</span> inbound(s) selected
+            <span class="font-semibold text-gray-900">{{ selectedInbounds.size }}</span> {{ $t('setup.inbounds.selectedCount') }}
           </p>
         </div>
       </div>
@@ -302,7 +308,7 @@ const handleSkip = () => {
         :disabled="saving || success || selectedInbounds.size === 0"
         @click="handleNext"
       >
-        {{ success ? 'Saved' : saving ? 'Saving...' : selectedInbounds.size > 0 ? `Add ${selectedInbounds.size} Inbound(s)` : 'Select at least one' }}
+        {{ success ? $t('setup.inbounds.saved') : saving ? $t('common.saving') : selectedInbounds.size > 0 ? $t('setup.inbounds.addInbounds', { count: selectedInbounds.size }) : $t('setup.inbounds.selectAtLeastOne') }}
       </Button>
 
       <Button
@@ -310,7 +316,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleSkip"
       >
-        Skip this step
+        {{ $t('setup.inbounds.skip') }}
       </Button>
     </div>
 
@@ -319,16 +325,16 @@ const handleSkip = () => {
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
         <div class="text-sm text-violet-900 space-y-2">
-          <p class="font-medium">About Inbound Protocols:</p>
+          <p class="font-medium">{{ $t('setup.inbounds.aboutHeading') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-            <li><strong>Mixed:</strong> Accepts both HTTP and SOCKS5 connections (most versatile)</li>
-            <li><strong>HTTP:</strong> Standard HTTP proxy protocol (widely supported)</li>
-            <li><strong>SOCKS5:</strong> SOCKS5 proxy protocol (supports UDP)</li>
-            <li><strong>TUN:</strong> Virtual network interface for system-wide proxy (requires elevated privileges)</li>
-            <li>All inbounds enable traffic sniffing for better routing</li>
+            <li><strong>{{ $t('setup.inbounds.aboutMixedLabel') }}</strong> {{ $t('setup.inbounds.aboutMixed') }}</li>
+            <li><strong>{{ $t('setup.inbounds.aboutHttpLabel') }}</strong> {{ $t('setup.inbounds.aboutHttp') }}</li>
+            <li><strong>{{ $t('setup.inbounds.aboutSocksLabel') }}</strong> {{ $t('setup.inbounds.aboutSocks') }}</li>
+            <li><strong>{{ $t('setup.inbounds.aboutTunLabel') }}</strong> {{ $t('setup.inbounds.aboutTun') }}</li>
+            <li>{{ $t('setup.inbounds.aboutSniff') }}</li>
           </ul>
           <p class="mt-2 text-xs text-violet-700">
-            💡 Tip: Start with "Mixed" for the best compatibility. You can add more later.
+            {{ $t('setup.inbounds.tip') }}
           </p>
         </div>
       </div>
@@ -337,15 +343,15 @@ const handleSkip = () => {
     <!-- 端口说明 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Default Ports:</p>
+        <p class="font-medium text-gray-900">{{ $t('setup.inbounds.portsHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
-          <li><strong>Mixed:</strong> 127.0.0.1:7890 (HTTP + SOCKS5)</li>
-          <li><strong>HTTP:</strong> 127.0.0.1:7891</li>
-          <li><strong>SOCKS5:</strong> 127.0.0.1:7892</li>
-          <li><strong>TUN:</strong> Virtual interface tun0 (no port)</li>
+          <li><strong>{{ $t('setup.inbounds.portMixedLabel') }}</strong> {{ $t('setup.inbounds.portMixed') }}</li>
+          <li><strong>{{ $t('setup.inbounds.portHttpLabel') }}</strong> {{ $t('setup.inbounds.portHttp') }}</li>
+          <li><strong>{{ $t('setup.inbounds.portSocksLabel') }}</strong> {{ $t('setup.inbounds.portSocks') }}</li>
+          <li><strong>{{ $t('setup.inbounds.portTunLabel') }}</strong> {{ $t('setup.inbounds.portTun') }}</li>
         </ul>
         <p class="text-xs text-gray-500 mt-2">
-          Configure your applications to use these addresses as proxy settings.
+          {{ $t('setup.inbounds.portsHint') }}
         </p>
       </div>
     </Card>

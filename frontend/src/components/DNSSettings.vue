@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DNS } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -10,6 +11,7 @@ import { useDNSStore } from '../stores/dns'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
+const { t } = useI18n()
 const dnsStore = useDNSStore()
 const { dnsServers } = storeToRefs(dnsStore)
 
@@ -17,16 +19,16 @@ const { dnsServers } = storeToRefs(dnsStore)
 const loading = ref(false)
 const dnsConfig = ref<DNS | null>(null)
 
-const strategyOptions = [
-  { value: 'prefer_ipv4', label: 'Prefer IPv4' },
-  { value: 'prefer_ipv6', label: 'Prefer IPv6' },
-  { value: 'ipv4_only', label: 'IPv4 Only' },
-  { value: 'ipv6_only', label: 'IPv6 Only' },
-]
+const strategyOptions = computed(() => [
+  { value: 'prefer_ipv4', label: t('dns.settings.strategyOptions.preferIpv4') },
+  { value: 'prefer_ipv6', label: t('dns.settings.strategyOptions.preferIpv6') },
+  { value: 'ipv4_only', label: t('dns.settings.strategyOptions.ipv4Only') },
+  { value: 'ipv6_only', label: t('dns.settings.strategyOptions.ipv6Only') },
+])
 
 const serverOptions = computed(() => {
   const options = [
-    { value: '', label: 'Select default server' }
+    { value: '', label: t('dns.settings.finalServerSelect') }
   ]
   if (dnsServers.value) {
     dnsServers.value.forEach(server => {
@@ -52,8 +54,8 @@ const fetchDNSConfig = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch DNS config',
+      summary: t('common.error'),
+      detail: err.message || t('dns.settings.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -86,16 +88,16 @@ const handleSave = async () => {
     await dnsService.updateDNS(updatedDNS)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'DNS settings updated successfully',
+      summary: t('common.success'),
+      detail: t('dns.settings.toast.updatedOk'),
       life: 3000
     })
     await fetchDNSConfig()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to update DNS settings',
+      summary: t('common.error'),
+      detail: err.message || t('dns.settings.toast.updateFailed'),
       life: 3000
     })
   } finally {
@@ -113,7 +115,7 @@ onMounted(() => {
 <template>
   <div>
     <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Global DNS Settings</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('dns.settings.heading') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
@@ -123,28 +125,28 @@ onMounted(() => {
         <!-- Domain Strategy -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Domain Strategy
+            {{ $t('dns.settings.strategy') }}
           </label>
           <Select v-model="settings.strategy" :options="strategyOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            IP version preference for DNS queries
+            {{ $t('dns.settings.strategyHelp') }}
           </p>
         </div>
 
         <!-- Final DNS Server -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Final DNS Server
+            {{ $t('dns.settings.finalServer') }}
           </label>
           <Select v-model="settings.final" :options="serverOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Fallback server when no rules match
+            {{ $t('dns.settings.finalServerHelp') }}
           </p>
         </div>
 
         <!-- Cache Settings -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Cache Settings</h4>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('dns.settings.cacheHeading') }}</h4>
 
           <div class="space-y-4">
             <div class="flex items-start">
@@ -158,10 +160,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="disable_cache" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Disable DNS Cache
+                  {{ $t('dns.settings.disableCache') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Turn off caching of DNS responses
+                  {{ $t('dns.settings.disableCacheHelp') }}
                 </p>
               </div>
             </div>
@@ -177,10 +179,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="disable_expire" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Disable Cache Expiration
+                  {{ $t('dns.settings.disableExpire') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Keep cached DNS records indefinitely
+                  {{ $t('dns.settings.disableExpireHelp') }}
                 </p>
               </div>
             </div>
@@ -190,7 +192,7 @@ onMounted(() => {
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button @click="handleSave" variant="primary" :disabled="loading">
-            Save Settings
+            {{ $t('dns.settings.save') }}
           </Button>
         </div>
       </div>

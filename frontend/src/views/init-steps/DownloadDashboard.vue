@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DashboardTask } from '../../types/api'
 import { Button, Alert, Card, Loading, Input } from '../../components'
 import { CheckCircleIcon, XCircleIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import { dashboardService, experimentalService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -112,14 +115,14 @@ const startDownload = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id, 'download')
   } catch (err: any) {
-    error.value = err.message || 'Failed to start download'
+    error.value = err.message || t('init.dashboard.startDownloadFailed')
     downloading.value = false
   }
 }
 
 const startUpload = async () => {
   if (!uploadFile.value) {
-    error.value = 'Please select a file to upload'
+    error.value = t('init.dashboard.selectFileError')
     return
   }
 
@@ -144,7 +147,7 @@ const startUpload = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id, 'upload')
   } catch (err: any) {
-    error.value = err.message || 'Failed to start upload'
+    error.value = err.message || t('init.dashboard.startUploadFailed')
     uploading.value = false
   }
 }
@@ -171,14 +174,21 @@ const pollTaskStatus = (taskId: string, type: 'download' | 'upload') => {
         stopPolling()
         downloading.value = false
         uploading.value = false
-        error.value = task.error || `${type === 'download' ? 'Download' : 'Upload'} failed`
+        error.value =
+          task.error ||
+          (type === 'download'
+            ? t('init.dashboard.downloadGenericFailed')
+            : t('init.dashboard.uploadGenericFailed'))
       }
     } catch (err: any) {
       console.error('Failed to poll task status:', err)
       stopPolling()
       downloading.value = false
       uploading.value = false
-      error.value = `Failed to check ${type} status`
+      error.value =
+        type === 'download'
+          ? t('init.dashboard.checkDownloadStatusFailed')
+          : t('init.dashboard.checkUploadStatusFailed')
     }
   }, 2000) // 每2秒轮询一次
 }
@@ -214,27 +224,27 @@ onUnmounted(() => {
   <div class="space-y-6">
     <!-- 检查配置状态 -->
     <div v-if="checkingConfig" class="flex justify-center py-8">
-      <Loading size="lg" text="Checking Clash API configuration..." />
+      <Loading size="lg" :text="$t('init.dashboard.checking')" />
     </div>
 
     <!-- 未配置 External UI -->
     <div v-else-if="!clashAPIConfigured" class="space-y-6">
-      <Alert type="warning" title="External UI Not Configured">
-        You haven't configured an External UI path in the Clash API settings. Please go back to the previous step and configure it.
+      <Alert type="warning" :title="$t('init.dashboard.notConfiguredTitle')">
+        {{ $t('init.dashboard.notConfiguredDesc') }}
       </Alert>
 
       <Card>
         <div class="text-center py-8">
           <p class="text-gray-600 mb-6">
-            The dashboard requires an External UI path to be configured in Clash API settings.
+            {{ $t('init.dashboard.notConfiguredHint') }}
           </p>
           <div class="flex justify-center gap-3">
             <Button variant="secondary" @click="handlePrev">
               <ArrowLeftIcon class="h-4 w-4 mr-2 inline-block" />
-              Go Back to Configure
+              {{ $t('init.dashboard.goBackBtn') }}
             </Button>
             <Button variant="ghost" @click="handleSkip">
-              Skip Dashboard Download
+              {{ $t('init.dashboard.skipDownloadBtn') }}
             </Button>
           </div>
         </div>
@@ -244,8 +254,8 @@ onUnmounted(() => {
     <!-- 已配置 External UI -->
     <div v-else class="space-y-6">
       <!-- 已安装提示 -->
-      <Alert v-if="alreadyInstalled && !downloading" type="success" title="Dashboard Already Installed">
-        Dashboard is already installed at: <code class="font-mono">{{ externalUIPath }}</code>
+      <Alert v-if="alreadyInstalled && !downloading" type="success" :title="$t('init.dashboard.alreadyTitle')">
+        {{ $t('init.dashboard.alreadyDesc') }} <code class="font-mono">{{ externalUIPath }}</code>
       </Alert>
 
       <!-- 错误提示 -->
@@ -257,9 +267,9 @@ onUnmounted(() => {
       <Card>
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Download Dashboard</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.dashboard.heading') }}</h3>
             <p class="text-sm text-gray-600">
-              Download and install the zashboard web UI for managing sing-box through your browser.
+              {{ $t('init.dashboard.intro') }}
             </p>
           </div>
 
@@ -267,7 +277,7 @@ onUnmounted(() => {
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="text-sm">
               <div class="flex justify-between mb-2">
-                <span class="text-gray-600">Install Path:</span>
+                <span class="text-gray-600">{{ $t('init.dashboard.installPathLabel') }}</span>
                 <code class="font-mono text-sm text-gray-900">{{ externalUIPath }}</code>
               </div>
             </div>
@@ -285,7 +295,7 @@ onUnmounted(() => {
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
               >
-                Download from URL
+                {{ $t('init.dashboard.tabDownload') }}
               </button>
               <button
                 @click="activeTab = 'upload'"
@@ -296,7 +306,7 @@ onUnmounted(() => {
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
               >
-                Upload ZIP File
+                {{ $t('init.dashboard.tabUpload') }}
               </button>
             </nav>
           </div>
@@ -306,24 +316,24 @@ onUnmounted(() => {
             <div>
               <Input
                 v-model="downloadURL"
-                label="Download URL (Optional)"
-                placeholder="Leave empty to use configured URL from Clash API"
+                :label="$t('init.dashboard.downloadUrlLabel')"
+                :placeholder="$t('init.dashboard.downloadUrlPlaceholder')"
                 :disabled="downloading || uploading"
               />
               <p class="mt-1 text-xs text-gray-500">
-                Override the download URL if needed. Defaults to URL configured in Clash API settings.
+                {{ $t('init.dashboard.downloadUrlHint') }}
               </p>
             </div>
 
             <div>
               <Input
                 v-model="proxy"
-                label="Proxy (Optional)"
-                placeholder="e.g., http://127.0.0.1:7890 or socks5://127.0.0.1:1080"
+                :label="$t('init.dashboard.proxyLabel')"
+                :placeholder="$t('init.dashboard.proxyPlaceholder')"
                 :disabled="downloading || uploading"
               />
               <p class="mt-1 text-xs text-gray-500">
-                Use a proxy server if GitHub is not accessible in your region. Supports HTTP and SOCKS5 proxies.
+                {{ $t('init.dashboard.proxyHint') }}
               </p>
             </div>
           </div>
@@ -332,7 +342,7 @@ onUnmounted(() => {
           <div v-if="activeTab === 'upload'" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Dashboard ZIP File
+                {{ $t('init.dashboard.zipFileLabel') }}
               </label>
               <input
                 type="file"
@@ -342,11 +352,11 @@ onUnmounted(() => {
                 class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
               />
               <p class="mt-1 text-xs text-gray-500">
-                Select a dashboard ZIP file (e.g., zashboard-gh-pages.zip, yacd-gh-pages.zip)
+                {{ $t('init.dashboard.zipFileHint') }}
               </p>
               <div v-if="uploadFile" class="mt-2 p-2 bg-violet-50 border border-violet-200 rounded">
                 <p class="text-sm text-violet-900">
-                  Selected: <span class="font-medium">{{ uploadFile.name }}</span> ({{ (uploadFile.size / 1024 / 1024).toFixed(2) }} MB)
+                  {{ $t('init.dashboard.selectedFile') }} <span class="font-medium">{{ uploadFile.name }}</span> ({{ (uploadFile.size / 1024 / 1024).toFixed(2) }} MB)
                 </p>
               </div>
             </div>
@@ -354,12 +364,12 @@ onUnmounted(() => {
             <div>
               <Input
                 v-model="folderName"
-                label="Folder Name (Optional)"
-                placeholder="Leave empty to use folder name from ZIP"
+                :label="$t('init.dashboard.folderNameLabel')"
+                :placeholder="$t('init.dashboard.folderNamePlaceholder')"
                 :disabled="downloading || uploading"
               />
               <p class="mt-1 text-xs text-gray-500">
-                Specify a custom folder name if the ZIP contains a different folder structure
+                {{ $t('init.dashboard.folderNameHint') }}
               </p>
             </div>
           </div>
@@ -369,12 +379,12 @@ onUnmounted(() => {
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-violet-900">Downloading Dashboard...</p>
+                <p class="text-sm font-semibold text-violet-900">{{ $t('init.dashboard.downloadingTitle') }}</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
-                <pre class="whitespace-pre-wrap break-words">{{ downloadTask.message || 'Preparing download...' }}</pre>
+                <pre class="whitespace-pre-wrap break-words">{{ downloadTask.message || $t('init.dashboard.downloadingPrep') }}</pre>
               </div>
-              <p class="text-xs text-violet-600">This may take a few minutes. Please wait...</p>
+              <p class="text-xs text-violet-600">{{ $t('init.dashboard.downloadingWait') }}</p>
             </div>
           </Card>
 
@@ -383,12 +393,12 @@ onUnmounted(() => {
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-violet-900">Uploading Dashboard...</p>
+                <p class="text-sm font-semibold text-violet-900">{{ $t('init.dashboard.uploadingTitle') }}</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
-                <pre class="whitespace-pre-wrap break-words">{{ uploadTask.message || 'Preparing upload...' }}</pre>
+                <pre class="whitespace-pre-wrap break-words">{{ uploadTask.message || $t('init.dashboard.uploadingPrep') }}</pre>
               </div>
-              <p class="text-xs text-violet-600">Extracting and installing dashboard...</p>
+              <p class="text-xs text-violet-600">{{ $t('init.dashboard.uploadingWait') }}</p>
             </div>
           </Card>
 
@@ -401,7 +411,7 @@ onUnmounted(() => {
             <div class="flex items-start space-x-3">
               <CheckCircleIcon class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div class="flex-1">
-                <p class="text-sm font-medium text-green-900">Download completed successfully!</p>
+                <p class="text-sm font-medium text-green-900">{{ $t('init.dashboard.downloadSuccessTitle') }}</p>
                 <p class="text-xs text-green-600 mt-1">{{ downloadTask.message }}</p>
               </div>
             </div>
@@ -416,7 +426,7 @@ onUnmounted(() => {
             <div class="flex items-start space-x-3">
               <XCircleIcon class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div class="flex-1">
-                <p class="text-sm font-medium text-red-900">Download failed</p>
+                <p class="text-sm font-medium text-red-900">{{ $t('init.dashboard.downloadFailedTitle') }}</p>
                 <p class="text-xs text-red-600 mt-1">{{ downloadTask.error || downloadTask.message }}</p>
               </div>
             </div>
@@ -431,7 +441,7 @@ onUnmounted(() => {
             <div class="flex items-start space-x-3">
               <CheckCircleIcon class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div class="flex-1">
-                <p class="text-sm font-medium text-green-900">Upload completed successfully!</p>
+                <p class="text-sm font-medium text-green-900">{{ $t('init.dashboard.uploadSuccessTitle') }}</p>
                 <p class="text-xs text-green-600 mt-1">{{ uploadTask.message }}</p>
               </div>
             </div>
@@ -446,7 +456,7 @@ onUnmounted(() => {
             <div class="flex items-start space-x-3">
               <XCircleIcon class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div class="flex-1">
-                <p class="text-sm font-medium text-red-900">Upload failed</p>
+                <p class="text-sm font-medium text-red-900">{{ $t('init.dashboard.uploadFailedTitle') }}</p>
                 <p class="text-xs text-red-600 mt-1">{{ uploadTask.error || uploadTask.message }}</p>
               </div>
             </div>
@@ -462,7 +472,7 @@ onUnmounted(() => {
               :disabled="downloading || uploading"
               @click="startDownload"
             >
-              {{ downloading ? 'Downloading...' : 'Download Dashboard' }}
+              {{ downloading ? $t('init.dashboard.downloadingBtn') : $t('init.dashboard.downloadBtn') }}
             </Button>
 
             <!-- Upload button -->
@@ -473,7 +483,7 @@ onUnmounted(() => {
               :disabled="downloading || uploading || !uploadFile"
               @click="startUpload"
             >
-              {{ uploading ? 'Uploading...' : 'Upload Dashboard' }}
+              {{ uploading ? $t('init.dashboard.uploadingBtn') : $t('init.dashboard.uploadBtn') }}
             </Button>
 
             <!-- Re-download/Re-upload button -->
@@ -483,7 +493,7 @@ onUnmounted(() => {
               :disabled="downloading || uploading"
               @click="activeTab === 'upload' ? startUpload : startDownload"
             >
-              {{ activeTab === 'upload' ? 'Re-upload' : 'Re-download' }}
+              {{ activeTab === 'upload' ? $t('init.dashboard.reuploadBtn') : $t('init.dashboard.redownloadBtn') }}
             </Button>
 
             <!-- Continue button -->
@@ -492,7 +502,7 @@ onUnmounted(() => {
               variant="primary"
               @click="handleNext"
             >
-              Continue to Next Step
+              {{ $t('init.dashboard.continueBtn') }}
             </Button>
 
             <!-- Skip button -->
@@ -501,7 +511,7 @@ onUnmounted(() => {
               variant="ghost"
               @click="handleSkip"
             >
-              Skip this step
+              {{ $t('init.dashboard.skipBtn') }}
             </Button>
           </div>
         </div>
@@ -510,13 +520,13 @@ onUnmounted(() => {
       <!-- 说明信息 -->
       <Card padding="sm" class="bg-gray-50">
         <div class="text-sm text-gray-600 space-y-2">
-          <p class="font-medium text-gray-900">About Dashboard:</p>
+          <p class="font-medium text-gray-900">{{ $t('init.dashboard.aboutTitle') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2">
-            <li>Modern web-based dashboard for sing-box</li>
-            <li>Supports Clash API for real-time control</li>
-            <li>View connections, switch proxies, update rules</li>
-            <li>Access via http://127.0.0.1:9090/ui after installation (adjust port if you changed it)</li>
-            <li>Download URL is configured in the previous step (Experimental Features)</li>
+            <li>{{ $t('init.dashboard.about.modern') }}</li>
+            <li>{{ $t('init.dashboard.about.clashApi') }}</li>
+            <li>{{ $t('init.dashboard.about.manage') }}</li>
+            <li>{{ $t('init.dashboard.about.access') }}</li>
+            <li>{{ $t('init.dashboard.about.configured') }}</li>
           </ul>
         </div>
       </Card>

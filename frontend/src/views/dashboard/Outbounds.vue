@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   TransitionRoot,
   TransitionChild,
@@ -33,6 +34,7 @@ const { outbounds, loading } = storeToRefs(outboundsStore);
 
 const localLoading = ref(false);
 const toast = useToast();
+const { t } = useI18n();
 
 // Modal state
 const showModal = ref(false);
@@ -87,15 +89,15 @@ const handleBatchDelete = async () => {
     selectedOutbounds.value = new Set();
     toast.add({
       severity: "success",
-      summary: "Success",
-      detail: `Successfully deleted ${tags.length} outbounds`,
+      summary: t('common.success'),
+      detail: t('outbounds.toast.batchDeletedOk', { count: tags.length }),
       life: 3000,
     });
   } catch (err: any) {
     toast.add({
       severity: "error",
-      summary: "Error",
-      detail: err.message || "Failed to delete outbounds",
+      summary: t('common.error'),
+      detail: err.message || t('outbounds.toast.batchDeleteFailed'),
       life: 3000,
     });
   } finally {
@@ -103,28 +105,28 @@ const handleBatchDelete = async () => {
   }
 };
 
-const outboundTypes = [
-  { value: "direct", label: "Direct" },
-  { value: "block", label: "Block" },
-  { value: "socks", label: "SOCKS" },
-  { value: "http", label: "HTTP" },
-  { value: "shadowsocks", label: "Shadowsocks" },
-  { value: "vmess", label: "VMess" },
-  { value: "trojan", label: "Trojan" },
-  { value: "vless", label: "VLESS" },
-  { value: "hysteria", label: "Hysteria" },
-  { value: "hysteria2", label: "Hysteria2" },
-  { value: "tuic", label: "TUIC" },
-  { value: "wireguard", label: "WireGuard" },
-  { value: "ssh", label: "SSH" },
-  { value: "tor", label: "Tor" },
-  { value: "shadowtls", label: "ShadowTLS" },
-  { value: "selector", label: "Selector (Group)" },
-  { value: "urltest", label: "URLTest (Group)" },
-];
+const outboundTypes = computed(() => [
+  { value: "direct", label: t('outbounds.types.direct') },
+  { value: "block", label: t('outbounds.types.block') },
+  { value: "socks", label: t('outbounds.types.socks') },
+  { value: "http", label: t('outbounds.types.http') },
+  { value: "shadowsocks", label: t('outbounds.types.shadowsocks') },
+  { value: "vmess", label: t('outbounds.types.vmess') },
+  { value: "trojan", label: t('outbounds.types.trojan') },
+  { value: "vless", label: t('outbounds.types.vless') },
+  { value: "hysteria", label: t('outbounds.types.hysteria') },
+  { value: "hysteria2", label: t('outbounds.types.hysteria2') },
+  { value: "tuic", label: t('outbounds.types.tuic') },
+  { value: "wireguard", label: t('outbounds.types.wireguard') },
+  { value: "ssh", label: t('outbounds.types.ssh') },
+  { value: "tor", label: t('outbounds.types.tor') },
+  { value: "shadowtls", label: t('outbounds.types.shadowtls') },
+  { value: "selector", label: t('outbounds.types.selector') },
+  { value: "urltest", label: t('outbounds.types.urltest') },
+]);
 
 const getOutboundTypeLabel = (type: string) => {
-  return outboundTypes.find((t) => t.value === type)?.label || type;
+  return outboundTypes.value.find((ot) => ot.value === type)?.label || type;
 };
 
 const getOutboundBadgeVariant = (
@@ -203,8 +205,8 @@ const handleSave = async () => {
   if (!currentOutbound.value.tag?.trim()) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "Tag is required",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.tagRequired'),
       life: 3000,
     });
     return;
@@ -213,8 +215,8 @@ const handleSave = async () => {
   if (!currentOutbound.value.type) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "Type is required",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.typeRequired'),
       life: 3000,
     });
     return;
@@ -225,8 +227,8 @@ const handleSave = async () => {
     if (!currentOutbound.value.server?.trim()) {
       toast.add({
         severity: "error",
-        summary: "Validation Error",
-        detail: "Server address is required",
+        summary: t('outbounds.validation.title'),
+        detail: t('outbounds.validation.serverRequired'),
         life: 3000,
       });
       return;
@@ -234,8 +236,8 @@ const handleSave = async () => {
     if (!currentOutbound.value.server_port) {
       toast.add({
         severity: "error",
-        summary: "Validation Error",
-        detail: "Server port is required",
+        summary: t('outbounds.validation.title'),
+        detail: t('outbounds.validation.portRequired'),
         life: 3000,
       });
       return;
@@ -245,8 +247,8 @@ const handleSave = async () => {
   if (needsPassword.value && !currentOutbound.value.password?.trim()) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "Password is required",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.passwordRequired'),
       life: 3000,
     });
     return;
@@ -255,8 +257,8 @@ const handleSave = async () => {
   if (needsUUID.value && !currentOutbound.value.uuid?.trim()) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "UUID is required",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.uuidRequired'),
       life: 3000,
     });
     return;
@@ -265,8 +267,8 @@ const handleSave = async () => {
   if (needsMethod.value && !currentOutbound.value.method?.trim()) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "Encryption method is required",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.methodRequired'),
       life: 3000,
     });
     return;
@@ -279,8 +281,8 @@ const handleSave = async () => {
   ) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "At least one outbound is required for groups",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.validation.outboundsRequired'),
       life: 3000,
     });
     return;
@@ -295,16 +297,16 @@ const handleSave = async () => {
       );
       toast.add({
         severity: "success",
-        summary: "Success",
-        detail: "Outbound updated successfully",
+        summary: t('common.success'),
+        detail: t('outbounds.toast.updatedOk'),
         life: 3000,
       });
     } else {
       await outboundsStore.addOutbound(currentOutbound.value);
       toast.add({
         severity: "success",
-        summary: "Success",
-        detail: "Outbound added successfully",
+        summary: t('common.success'),
+        detail: t('outbounds.toast.addedOk'),
         life: 3000,
       });
     }
@@ -312,8 +314,8 @@ const handleSave = async () => {
   } catch (err: any) {
     toast.add({
       severity: "error",
-      summary: "Error",
-      detail: err.message || "Failed to save outbound",
+      summary: t('common.error'),
+      detail: err.message || t('outbounds.toast.saveFailed'),
       life: 3000,
     });
   } finally {
@@ -329,16 +331,16 @@ const deleteOutbound = async (outboundIndex: number, outbound: Outbound) => {
     await outboundsStore.deleteOutbound(val);
     toast.add({
       severity: "success",
-      summary: "Success",
-      detail: "Outbound deleted successfully",
+      summary: t('common.success'),
+      detail: t('outbounds.toast.deletedOk'),
       life: 3000,
     });
     closeDeleteConfirm();
   } catch (err: any) {
     toast.add({
       severity: "error",
-      summary: "Error",
-      detail: err.message || "Failed to delete outbound",
+      summary: t('common.error'),
+      detail: err.message || t('outbounds.toast.deleteFailed'),
       life: 3000,
     });
   } finally {
@@ -380,8 +382,8 @@ const parseSubscription = async () => {
   if (!importInput.value.trim()) {
     toast.add({
       severity: "error",
-      summary: "Validation Error",
-      detail: "Please enter subscription URL(s) or node link(s)",
+      summary: t('outbounds.validation.title'),
+      detail: t('outbounds.toast.inputRequired'),
       life: 3000,
     });
     return;
@@ -407,16 +409,16 @@ const parseSubscription = async () => {
     if (data.nodes.length === 0) {
       toast.add({
         severity: "warn",
-        summary: "No Nodes Found",
-        detail: "No valid nodes were found in the input",
+        summary: t('outbounds.toast.noNodesTitle'),
+        detail: t('outbounds.toast.noNodesDetail'),
         life: 3000,
       });
     }
   } catch (err: any) {
     toast.add({
       severity: "error",
-      summary: "Parse Error",
-      detail: err.message || "Failed to parse subscription/nodes",
+      summary: t('outbounds.errorTitle.parse'),
+      detail: err.message || t('outbounds.toast.parseFailed'),
       life: 3000,
     });
   } finally {
@@ -454,8 +456,8 @@ const handleImport = async () => {
       const { data } = await outboundsStore.addOutboundsBatch(outboundsToAdd);
       toast.add({
         severity: "success",
-        summary: "Success",
-        detail: `Successfully imported ${data.added} outbounds (${data.skipped} skipped)`,
+        summary: t('common.success'),
+        detail: t('outbounds.toast.importedOk', { added: data.added, skipped: data.skipped }),
         life: 3000,
       });
       closeImportModal();
@@ -463,8 +465,8 @@ const handleImport = async () => {
   } catch (err: any) {
     toast.add({
       severity: "error",
-      summary: "Import Error",
-      detail: err.message || "Failed to import outbounds",
+      summary: t('outbounds.errorTitle.import'),
+      detail: err.message || t('outbounds.toast.importFailed'),
       life: 3000,
     });
   } finally {
@@ -517,24 +519,24 @@ onMounted(() => {
   <div class="p-8">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-        Outbounds Management
+        {{ $t('outbounds.title') }}
       </h2>
       <div class="flex gap-3">
-        <Button 
-          v-if="selectedOutbounds.size > 0" 
-          @click="handleBatchDelete" 
+        <Button
+          v-if="selectedOutbounds.size > 0"
+          @click="handleBatchDelete"
           variant="danger"
         >
           <TrashIcon class="h-5 w-5 mr-2" />
-          Delete ({{ selectedOutbounds.size }})
+          {{ $t('outbounds.deleteSelected', { count: selectedOutbounds.size }) }}
         </Button>
         <Button @click="openImportModal" variant="secondary">
           <ArrowDownTrayIcon class="h-5 w-5 mr-2" />
-          Import
+          {{ $t('outbounds.import') }}
         </Button>
         <Button @click="openAddModal" variant="primary">
           <PlusIcon class="h-5 w-5 mr-2" />
-          Add Outbound
+          {{ $t('outbounds.add') }}
         </Button>
       </div>
     </div>
@@ -553,11 +555,11 @@ onMounted(() => {
 
       <div v-else-if="outbounds.length === 0" class="text-center py-12">
         <p class="text-gray-500 dark:text-gray-500 mb-4">
-          No outbounds configured
+          {{ $t('outbounds.empty') }}
         </p>
         <Button @click="openAddModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
-          Add Your First Outbound
+          {{ $t('outbounds.addFirst') }}
         </Button>
       </div>
 
@@ -584,27 +586,27 @@ onMounted(() => {
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                Tag
+                {{ $t('outbounds.table.tag') }}
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                Type
+                {{ $t('outbounds.table.type') }}
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                Server
+                {{ $t('outbounds.table.server') }}
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                Port
+                {{ $t('outbounds.table.port') }}
               </th>
               <th
                 class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                Actions
+                {{ $t('outbounds.table.actions') }}
               </th>
             </tr>
           </thead>
@@ -718,7 +720,7 @@ onMounted(() => {
                     as="h3"
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    {{ isEditMode ? "Edit Outbound" : "Add Outbound" }}
+                    {{ isEditMode ? $t('outbounds.modal.edit') : $t('outbounds.modal.add') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -734,29 +736,29 @@ onMounted(() => {
                     <div>
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Tag *</label
+                        >{{ $t('outbounds.form.tag') }}</label
                       >
                       <Input
                         v-model="currentOutbound.tag"
-                        placeholder="e.g., proxy-us"
+                        :placeholder="$t('outbounds.form.tagPlaceholder')"
                         :disabled="isEditMode"
                       />
                       <p class="mt-1 text-xs text-gray-500">
-                        Unique identifier
+                        {{ $t('outbounds.form.tagHelp') }}
                       </p>
                     </div>
 
                     <div>
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Type *</label
+                        >{{ $t('outbounds.form.type') }}</label
                       >
                       <select
                         class="select"
                         v-model="currentOutbound.type"
                         :disabled="isEditMode"
                       >
-                        <option disabled selected>Pick outbound type</option>
+                        <option disabled selected>{{ $t('outbounds.form.typePlaceholder') }}</option>
                         <option
                           v-for="outboundType in outboundTypes"
                           :value="outboundType.value"
@@ -772,23 +774,23 @@ onMounted(() => {
                     <div class="col-span-1">
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Server *</label
+                        >{{ $t('outbounds.form.server') }}</label
                       >
                       <Input
                         v-model="currentOutbound.server"
-                        placeholder="example.com or 1.2.3.4"
+                        :placeholder="$t('outbounds.form.serverPlaceholder')"
                       />
                     </div>
 
                     <div class="col-span-1">
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Port *</label
+                        >{{ $t('outbounds.form.port') }}</label
                       >
                       <Input
                         v-model.number="currentOutbound.server_port"
                         type="number"
-                        placeholder="443"
+                        :placeholder="$t('outbounds.form.portPlaceholder')"
                       />
                     </div>
                   </div>
@@ -797,11 +799,11 @@ onMounted(() => {
                   <div v-if="needsMethod">
                     <label
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Encryption Method *</label
+                      >{{ $t('outbounds.form.method') }}</label
                     >
                     <Input
                       v-model="currentOutbound.method"
-                      placeholder="e.g., aes-256-gcm, chacha20-ietf-poly1305"
+                      :placeholder="$t('outbounds.form.methodPlaceholder')"
                     />
                   </div>
 
@@ -809,12 +811,12 @@ onMounted(() => {
                   <div v-if="needsPassword">
                     <label
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Password *</label
+                      >{{ $t('outbounds.form.password') }}</label
                     >
                     <Input
                       v-model="currentOutbound.password"
                       type="password"
-                      placeholder="Enter password"
+                      :placeholder="$t('outbounds.form.passwordPlaceholder')"
                     />
                   </div>
 
@@ -822,11 +824,11 @@ onMounted(() => {
                   <div v-if="needsUUID">
                     <label
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >UUID *</label
+                      >{{ $t('outbounds.form.uuid') }}</label
                     >
                     <Input
                       v-model="currentOutbound.uuid"
-                      placeholder="e.g., 12345678-1234-1234-1234-123456789012"
+                      :placeholder="$t('outbounds.form.uuidPlaceholder')"
                     />
                   </div>
 
@@ -837,15 +839,15 @@ onMounted(() => {
                   <div v-if="needsOutbounds">
                     <label
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Outbounds *</label
+                      >{{ $t('outbounds.form.outbounds') }}</label
                     >
                     <Chips
                       v-model="currentOutbound.outbounds"
-                      placeholder="Add outbound tags (press Enter after each)"
+                      :placeholder="$t('outbounds.form.outboundsPlaceholder')"
                       class="w-full"
                     />
                     <p class="mt-1 text-xs text-gray-500">
-                      List of outbound tags to include in this group
+                      {{ $t('outbounds.form.outboundsHelp') }}
                     </p>
                   </div>
 
@@ -857,21 +859,21 @@ onMounted(() => {
                     <div>
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Test URL</label
+                        >{{ $t('outbounds.form.testUrl') }}</label
                       >
                       <Input
                         v-model="currentOutbound.url"
-                        placeholder="https://www.gstatic.com/generate_204"
+                        :placeholder="$t('outbounds.form.testUrlPlaceholder')"
                       />
                     </div>
                     <div>
                       <label
                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Interval</label
+                        >{{ $t('outbounds.form.interval') }}</label
                       >
                       <Input
                         v-model="currentOutbound.interval"
-                        placeholder="3m"
+                        :placeholder="$t('outbounds.form.intervalPlaceholder')"
                       />
                     </div>
                   </div>
@@ -892,14 +894,14 @@ onMounted(() => {
                   class="flex justify-end gap-3 p-6 pt-4 border-t border-gray-200 dark:border-gray-700"
                 >
                   <Button @click="closeModal" variant="secondary"
-                    >Cancel</Button
+                    >{{ $t('common.cancel') }}</Button
                   >
                   <Button
                     @click="handleSave"
                     variant="primary"
                     :disabled="localLoading"
                   >
-                    {{ isEditMode ? "Update" : "Add" }}
+                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
                   </Button>
                 </div>
               </DialogPanel>
@@ -945,7 +947,7 @@ onMounted(() => {
                     as="h3"
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    Import Outbounds
+                    {{ $t('outbounds.importModal.title') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -960,13 +962,11 @@ onMounted(() => {
                   <!-- Input Section -->
                   <div v-if="parsedNodes.length === 0">
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Enter subscription URL(s) or direct node links (vmess://,
-                      ss://, trojan://, etc.). One per line for multiple
-                      entries.
+                      {{ $t('outbounds.importModal.instructions') }}
                     </p>
                     <Textarea
                       v-model="importInput"
-                      placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
+                      :placeholder="$t('outbounds.importModal.inputPlaceholder')"
                       :disabled="parsing"
                       :rows="6"
                       full-width
@@ -978,7 +978,7 @@ onMounted(() => {
                         :disabled="parsing"
                         @click="parseSubscription"
                       >
-                        {{ parsing ? "Parsing..." : "Parse" }}
+                        {{ parsing ? $t('outbounds.importModal.parsing') : $t('outbounds.importModal.parse') }}
                       </Button>
                     </div>
                   </div>
@@ -990,7 +990,7 @@ onMounted(() => {
                         <h4
                           class="text-sm font-semibold text-gray-900 dark:text-gray-100"
                         >
-                          Parsed Nodes
+                          {{ $t('outbounds.importModal.parsedNodes') }}
                           <Badge variant="primary" class="ml-2" size="sm">{{
                             parsedNodes.length
                           }}</Badge>
@@ -998,7 +998,7 @@ onMounted(() => {
                         <p
                           class="text-xs text-gray-600 dark:text-gray-400 mt-1"
                         >
-                          {{ selectedNodes.size }} selected
+                          {{ $t('outbounds.importModal.selected', { count: selectedNodes.size }) }}
                         </p>
                       </div>
                       <Button
@@ -1008,8 +1008,8 @@ onMounted(() => {
                       >
                         {{
                           selectedNodes.size === parsedNodes.length
-                            ? "Deselect All"
-                            : "Select All"
+                            ? $t('outbounds.importModal.deselectAll')
+                            : $t('outbounds.importModal.selectAll')
                         }}
                       </Button>
                     </div>
@@ -1056,11 +1056,11 @@ onMounted(() => {
                       class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
                     >
                       <Button variant="ghost" @click="resetImportFlow">
-                        Back to Input
+                        {{ $t('outbounds.importModal.backToInput') }}
                       </Button>
                       <div class="flex gap-3">
                         <Button variant="secondary" @click="closeImportModal">
-                          Cancel
+                          {{ $t('common.cancel') }}
                         </Button>
                         <Button
                           variant="primary"
@@ -1070,8 +1070,8 @@ onMounted(() => {
                         >
                           {{
                             importing
-                              ? "Importing..."
-                              : `Import ${selectedNodes.size} Nodes`
+                              ? $t('outbounds.importModal.importing')
+                              : $t('outbounds.importModal.importNodes', { count: selectedNodes.size })
                           }}
                         </Button>
                       </div>
@@ -1121,7 +1121,7 @@ onMounted(() => {
                     as="h3"
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    Delete Outbound
+                    {{ $t('outbounds.del.title') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -1133,21 +1133,19 @@ onMounted(() => {
                 </div>
 
                 <p class="text-gray-700 dark:text-gray-300">
-                  Are you sure you want to delete the outbound
-                  <strong>{{ deletingOutbound?.tag }}</strong
-                  >? This action cannot be undone.
+                  {{ $t('outbounds.del.confirm', { tag: deletingOutbound?.tag }) }}
                 </p>
 
                 <div class="mt-6 flex justify-end gap-3">
                   <Button @click="closeDeleteConfirm" variant="secondary"
-                    >Cancel</Button
+                    >{{ $t('common.cancel') }}</Button
                   >
                   <Button
                     @click="handleDelete"
                     variant="danger"
                     :disabled="localLoading"
                   >
-                    Delete
+                    {{ $t('common.delete') }}
                   </Button>
                 </div>
               </DialogPanel>

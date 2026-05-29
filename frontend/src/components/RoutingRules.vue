@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
-import { Dialog, Button, Select, MultiSelect, Chips } from '../volt'
+import { Dialog, Button, Select, Chips } from '../volt'
 import RoutingRuleItem from './RoutingRuleItem.vue'
+import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
@@ -44,6 +46,7 @@ function normalizeRouteRule(rule: RouteRule): RouteRule {
 }
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
@@ -66,8 +69,8 @@ const fetchRouteRules = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch route rules',
+      summary: t('common.error'),
+      detail: err.message || t('route.rules.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -91,8 +94,8 @@ const handleAddRule = async (rule: RouteRule) => {
     await routeService.addRouteRule(rule)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Route rule added successfully',
+      summary: t('common.success'),
+      detail: t('route.rules.toast.added'),
       life: 3000
     })
     await fetchRouteRules()
@@ -101,8 +104,8 @@ const handleAddRule = async (rule: RouteRule) => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to add route rule',
+      summary: t('common.error'),
+      detail: err.message || t('route.rules.toast.addFailed'),
       life: 3000
     })
   } finally {
@@ -116,8 +119,8 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
     await routeService.updateRouteRule(index, rule)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Route rule updated successfully',
+      summary: t('common.success'),
+      detail: t('route.rules.toast.updated'),
       life: 3000
     })
     await fetchRouteRules()
@@ -125,8 +128,8 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to update route rule',
+      summary: t('common.error'),
+      detail: err.message || t('route.rules.toast.updateFailed'),
       life: 3000
     })
   } finally {
@@ -135,23 +138,23 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
 }
 
 const handleDeleteRule = async (index: number) => {
-  if (!confirm('Are you sure you want to delete this rule?')) return
+  if (!confirm(t('route.rules.confirm.delete'))) return
 
   loading.value = true
   try {
     await routeService.deleteRouteRule(index)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Route rule deleted successfully',
+      summary: t('common.success'),
+      detail: t('route.rules.toast.deleted'),
       life: 3000
     })
     await fetchRouteRules()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to delete route rule',
+      summary: t('common.error'),
+      detail: err.message || t('route.rules.toast.deleteFailed'),
       life: 3000
     })
   } finally {
@@ -164,69 +167,33 @@ const outboundOptions = computed(() =>
   outbounds.value.map(o => ({ label: o.tag || '', value: o.tag || '' }))
 )
 
-const networkOptions = [
-  { label: 'TCP', value: 'tcp' },
-  { label: 'UDP', value: 'udp' },
-]
+const actionOptions = computed(() => [
+  { label: t('route.rules.actions.route'), value: 'route' },
+  { label: t('route.rules.actions.reject'), value: 'reject' },
+  { label: t('route.rules.actions.routeOptions'), value: 'route-options' },
+  { label: t('route.rules.actions.sniff'), value: 'sniff' },
+  { label: t('route.rules.actions.resolve'), value: 'resolve' },
+  { label: t('route.rules.actions.hijackDns'), value: 'hijack-dns' },
+])
 
-const actionOptions = [
-  { label: 'Route', value: 'route' },
-  { label: 'Reject', value: 'reject' },
-  { label: 'Route Options', value: 'route-options' },
-  { label: 'Sniff', value: 'sniff' },
-  { label: 'Resolve', value: 'resolve' },
-  { label: 'Hijack DNS', value: 'hijack-dns' },
-]
+const rejectMethodOptions = computed(() => [
+  { label: t('route.rules.rejectMethods.default'), value: 'default' },
+  { label: t('route.rules.rejectMethods.drop'), value: 'drop' },
+])
 
-const rejectMethodOptions = [
-  { label: 'Default', value: 'default' },
-  { label: 'Drop', value: 'drop' },
-]
+const networkStrategyOptions = computed(() => [
+  { label: t('route.rules.networkStrategies.preferIpv4'), value: 'prefer_ipv4' },
+  { label: t('route.rules.networkStrategies.preferIpv6'), value: 'prefer_ipv6' },
+  { label: t('route.rules.networkStrategies.ipv4Only'), value: 'ipv4_only' },
+  { label: t('route.rules.networkStrategies.ipv6Only'), value: 'ipv6_only' },
+])
 
-const networkStrategyOptions = [
-  { label: 'Prefer IPv4', value: 'prefer_ipv4' },
-  { label: 'Prefer IPv6', value: 'prefer_ipv6' },
-  { label: 'IPv4 Only', value: 'ipv4_only' },
-  { label: 'IPv6 Only', value: 'ipv6_only' },
-]
-
-const dnsStrategyOptions = [
-  { label: 'Prefer IPv4', value: 'prefer_ipv4' },
-  { label: 'Prefer IPv6', value: 'prefer_ipv6' },
-  { label: 'IPv4 Only', value: 'ipv4_only' },
-  { label: 'IPv6 Only', value: 'ipv6_only' },
-]
-
-const protocolOptions = [
-  { label: 'HTTP', value: 'http' },
-  { label: 'HTTPS', value: 'tls' },
-  { label: 'QUIC', value: 'quic' },
-]
-
-const geositeOptions = [
-  { label: 'Google', value: 'google' },
-  { label: 'Netflix', value: 'netflix' },
-  { label: 'YouTube', value: 'youtube' },
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Microsoft', value: 'microsoft' },
-  { label: 'Apple', value: 'apple' },
-  { label: 'Telegram', value: 'telegram' },
-  { label: 'Geolocation- CN', value: 'geolocation-cn' },
-  { label: 'Geolocation- !CN', value: 'geolocation-!cn' },
-  { label: 'CN', value: 'cn' },
-  { label: 'Private', value: 'private' },
-  { label: 'Category-Ads', value: 'category-ads' },
-]
-
-const geoipOptions = [
-  { label: 'Private', value: 'private' },
-  { label: 'CN', value: 'cn' },
-  { label: 'US', value: 'us' },
-  { label: 'JP', value: 'jp' },
-  { label: 'HK', value: 'hk' },
-  { label: 'TW', value: 'tw' },
-  { label: 'SG', value: 'sg' },
-]
+const dnsStrategyOptions = computed(() => [
+  { label: t('route.rules.networkStrategies.preferIpv4'), value: 'prefer_ipv4' },
+  { label: t('route.rules.networkStrategies.preferIpv6'), value: 'prefer_ipv6' },
+  { label: t('route.rules.networkStrategies.ipv4Only'), value: 'ipv4_only' },
+  { label: t('route.rules.networkStrategies.ipv6Only'), value: 'ipv6_only' },
+])
 
 // Computed properties for v-model
 const currentRuleOutbound = computed({
@@ -240,106 +207,29 @@ const currentRuleOutbound = computed({
   }
 })
 
-const currentRuleInbound = computed({
-  get: () => editingRule.value ? editingRule.value.rule.inbound : ruleForm.value.inbound,
+// The rule currently being edited (existing rule) or composed (add form). The
+// common-matcher fields are delegated to <RouteRuleMatchers v-model="activeRule">,
+// which updates immutably; the setter reassigns the underlying object so the
+// parent's action-specific computeds keep reading fresh state.
+const activeRule = computed<RouteRule>({
+  get: () => editingRule.value ? editingRule.value.rule : ruleForm.value,
   set: (val) => {
     if (editingRule.value) {
-      editingRule.value.rule.inbound = val
+      editingRule.value.rule = val
     } else {
-      ruleForm.value.inbound = val
+      ruleForm.value = val
     }
   }
 })
 
-const currentRuleProtocol = computed({
-  get: () => editingRule.value ? editingRule.value.rule.protocol : ruleForm.value.protocol,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.protocol = val
-    } else {
-      ruleForm.value.protocol = val
-    }
-  }
-})
-
-const currentRuleNetwork = computed({
-  get: () => editingRule.value ? editingRule.value.rule.network : ruleForm.value.network,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.network = val
-    } else {
-      ruleForm.value.network = val
-    }
-  }
-})
-
-const currentRuleDomain = computed({
-  get: () => editingRule.value ? editingRule.value.rule.domain : ruleForm.value.domain,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.domain = val
-    } else {
-      ruleForm.value.domain = val
-    }
-  }
-})
-
-const currentRuleDomainSuffix = computed({
-  get: () => editingRule.value ? editingRule.value.rule.domain_suffix : ruleForm.value.domain_suffix,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.domain_suffix = val
-    } else {
-      ruleForm.value.domain_suffix = val
-    }
-  }
-})
-
-const currentRuleGeosite = computed({
-  get: () => editingRule.value ? editingRule.value.rule.geosite : ruleForm.value.geosite,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.geosite = val
-    } else {
-      ruleForm.value.geosite = val
-    }
-  }
-})
-
-const currentRuleGeoip = computed({
-  get: () => editingRule.value ? editingRule.value.rule.geoip : ruleForm.value.geoip,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.geoip = val
-    } else {
-      ruleForm.value.geoip = val
-    }
-  }
-})
-
-const currentRulePort = computed({
-  get: () => {
-    const ports = editingRule.value ? editingRule.value.rule.port : ruleForm.value.port
-    // Convert number[] to string[] for Chips component
-    return ports?.map(p => String(p))
-  },
-  set: (val) => {
-    // Convert string[] back to number[] if needed, or keep as is for port ranges
-    const ports = val?.map(p => {
-      // If it's a range like "8080-8090", keep as string
-      // Otherwise convert to number
-      return /^\d+$/.test(p) ? Number(p) : p
-    }) as any
-    if (editingRule.value) {
-      editingRule.value.rule.port = ports
-    } else {
-      ruleForm.value.port = ports
-    }
-  }
-})
+// Per the sing-box docs, `action` defaults to "route" when omitted. We surface
+// that default in the UI (the Select shows "Route" and the route/outbound field
+// renders) but DO NOT write it back into the rule: a rule that omitted `action`
+// keeps omitting it on save, and `actionIsDefaulted` stays true so the hint shows.
+const ACTION_DEFAULT = 'route'
 
 const currentRuleAction = computed({
-  get: () => editingRule.value ? editingRule.value.rule.action : ruleForm.value.action,
+  get: () => (editingRule.value ? editingRule.value.rule.action : ruleForm.value.action) || ACTION_DEFAULT,
   set: (val) => {
     if (editingRule.value) {
       editingRule.value.rule.action = val
@@ -349,7 +239,16 @@ const currentRuleAction = computed({
   }
 })
 
-const currentAction = computed(() => editingRule.value ? editingRule.value.rule.action : ruleForm.value.action)
+// Effective action — drives which action-specific fields are shown. Falls back
+// to the "route" default so an action-less rule still renders its outbound field.
+const currentAction = computed(() => (editingRule.value ? editingRule.value.rule.action : ruleForm.value.action) || ACTION_DEFAULT)
+
+// True when the rule has no explicit `action` (i.e. it relies on the "route"
+// default). Clears once the user picks an action, which hides the hint.
+const actionIsDefaulted = computed(() => {
+  const raw = editingRule.value ? editingRule.value.rule.action : ruleForm.value.action
+  return !raw
+})
 
 // Action-specific computed properties
 
@@ -517,13 +416,13 @@ onMounted(() => {
     <Card>
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Routing Rules
+          {{ $t('route.rules.title') }}
         </h3>
         <button
           @click="showAddRuleDialog = true"
           class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
         >
-          Add Rule
+          {{ $t('route.rules.add') }}
         </button>
       </div>
 
@@ -532,7 +431,7 @@ onMounted(() => {
       </div>
 
       <div v-else-if="rules.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-        No routing rules configured
+        {{ $t('route.rules.empty') }}
       </div>
 
       <div v-else class="space-y-4">
@@ -551,35 +450,38 @@ onMounted(() => {
     <Dialog
       v-model:visible="dialogVisible"
       modal
-      :header="editingRule ? 'Edit Rule' : 'Add Routing Rule'"
+      :header="editingRule ? $t('route.rules.modal.edit') : $t('route.rules.modal.add')"
       class="w-full max-w-2xl"
     >
       <div :key="editingRule ? `edit-${editingRule.index}` : 'add'" class="space-y-4">
         <!-- Action Selection -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Action *</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.action') }}</label>
           <Select
             v-model="currentRuleAction"
             :options="actionOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select action"
+            :placeholder="$t('route.rules.placeholders.action')"
             class="w-full"
           />
+          <p v-if="actionIsDefaulted" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('route.rules.actionDefaultHint') }}
+          </p>
         </div>
 
         <!-- Action-specific fields -->
 
         <!-- Route Action -->
         <div v-if="currentAction === 'route'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outbound *</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.outbound') }}</label>
           <Select
             editable
             v-model="currentRuleOutbound"
             :options="outboundOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select outbound"
+            :placeholder="$t('route.rules.placeholders.outbound')"
             class="w-full"
           />
         </div>
@@ -587,13 +489,13 @@ onMounted(() => {
         <!-- Reject Action -->
         <template v-if="currentAction === 'reject'">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Method</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.method') }}</label>
             <Select
               v-model="currentRuleMethod"
               :options="rejectMethodOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select method"
+              :placeholder="$t('route.rules.placeholders.method')"
               class="w-full"
             />
           </div>
@@ -602,31 +504,31 @@ onMounted(() => {
         <!-- Route Options Action -->
         <template v-if="currentAction === 'route-options'">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Override Address</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.overrideAddress') }}</label>
             <input
               v-model="currentRuleOverrideAddress"
               type="text"
-              placeholder="Override address"
+              :placeholder="$t('route.rules.placeholders.overrideAddress')"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Override Port</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.overridePort') }}</label>
             <input
               v-model.number="currentRuleOverridePort"
               type="number"
-              placeholder="Override port"
+              :placeholder="$t('route.rules.placeholders.overridePort')"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network Strategy</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.networkStrategy') }}</label>
             <Select
               v-model="currentRuleNetworkStrategy"
               :options="networkStrategyOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select network strategy"
+              :placeholder="$t('route.rules.placeholders.networkStrategy')"
               class="w-full"
             />
           </div>
@@ -635,19 +537,19 @@ onMounted(() => {
         <!-- Sniff Action -->
         <template v-if="currentAction === 'sniff'">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sniffer</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.sniffer') }}</label>
             <Chips
               v-model="currentRuleSniffer"
-              placeholder="Add sniffer protocols (e.g., tls, http)"
+              :placeholder="$t('route.rules.placeholders.sniffer')"
               class="w-full"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.timeout') }}</label>
             <input
               v-model="currentRuleTimeout"
               type="text"
-              placeholder="e.g., 300ms"
+              :placeholder="$t('route.rules.placeholders.timeout')"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
@@ -656,128 +558,39 @@ onMounted(() => {
         <!-- Resolve Action -->
         <template v-if="currentAction === 'resolve'">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNS Server</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.dnsServer') }}</label>
             <input
               v-model="currentRuleServer"
               type="text"
-              placeholder="DNS server tag"
+              :placeholder="$t('route.rules.placeholders.dnsServer')"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strategy</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.strategy') }}</label>
             <Select
               v-model="currentRuleStrategy"
               :options="dnsStrategyOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select DNS strategy"
+              :placeholder="$t('route.rules.placeholders.strategy')"
               class="w-full"
             />
           </div>
         </template>
 
-        <!-- Common matching criteria fields -->
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inbound</label>
-          <Chips
-            v-model="currentRuleInbound"
-            placeholder="Add inbound tags"
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Protocol</label>
-          <MultiSelect
-            v-model="currentRuleProtocol"
-            :options="protocolOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select protocols"
-            display="chip"
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network</label>
-          <MultiSelect
-            v-model="currentRuleNetwork"
-            :options="networkOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select network types"
-            display="chip"
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain</label>
-          <Chips
-            v-model="currentRuleDomain"
-            placeholder="Add domains (e.g., google.com, youtube.com)"
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Suffix</label>
-          <Chips
-            v-model="currentRuleDomainSuffix"
-            placeholder="Add domain suffixes (e.g., .com, .org)"
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GeoSite</label>
-          <MultiSelect
-            v-model="currentRuleGeosite"
-            :options="geositeOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select geosite categories"
-            display="chip"
-            filter
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GeoIP</label>
-          <MultiSelect
-            v-model="currentRuleGeoip"
-            :options="geoipOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select geoip categories"
-            display="chip"
-            filter
-            class="w-full"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
-          <Chips
-            v-model="currentRulePort"
-            placeholder="Add ports (e.g., 80, 443, 8080-8090)"
-            class="w-full"
-          />
-        </div>
+        <!-- Common matching criteria fields (reusable, renders anywhere) -->
+        <RouteRuleMatchers v-model="activeRule" />
       </div>
 
       <template #footer>
         <Button
-          label="Cancel"
+          :label="$t('common.cancel')"
           severity="secondary"
           @click="dialogVisible = false"
         />
         <Button
-          :label="editingRule ? 'Update' : 'Add'"
+          :label="editingRule ? $t('common.update') : $t('common.add')"
           @click="editingRule ? submitUpdateRule() : submitAddRule()"
         />
       </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   TransitionRoot,
   TransitionChild,
@@ -20,6 +21,7 @@ import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
+const { t } = useI18n()
 const dnsStore = useDNSStore()
 const routeStore = useRouteStore()
 const { dnsServers } = storeToRefs(dnsStore)
@@ -65,8 +67,8 @@ const fetchDNSRules = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch DNS rules',
+      summary: t('common.error'),
+      detail: err.message || t('dns.rules.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -75,15 +77,15 @@ const fetchDNSRules = async () => {
 }
 
 
-const actionTypes = [
-  { value: 'route', label: 'Route - Forward to specified DNS server' },
-  { value: 'route-options', label: 'Route Options - Set route options without changing server' },
-  { value: 'reject', label: 'Reject - Reject DNS requests with specific method' },
-]
+const actionTypes = computed(() => [
+  { value: 'route', label: t('dns.rules.actionTypes.route') },
+  { value: 'route-options', label: t('dns.rules.actionTypes.routeOptions') },
+  { value: 'reject', label: t('dns.rules.actionTypes.reject') },
+])
 
 const serverOptions = computed(() => {
   const options = [
-    { value: '', label: 'Select a server' }
+    { value: '', label: t('dns.rules.serverSelect') }
   ]
   if (dnsServers.value) {
     dnsServers.value.forEach(server => {
@@ -102,7 +104,7 @@ const ruleSetOptions = computed(() => {
         const format = (ruleSet as any).format || 'source'
         options.push({
           value: ruleSet.tag,
-          label: `${ruleSet.tag} (${type} - ${format})`
+          label: t('dns.rules.ruleSetLabel', { tag: ruleSet.tag, type, format })
         })
       }
     })
@@ -110,12 +112,12 @@ const ruleSetOptions = computed(() => {
   return options
 })
 
-const rejectMethods = [
-  { value: 'default', label: 'Default - Return empty response' },
-  { value: 'success', label: 'Success - Return success response' },
-  { value: 'refused', label: 'Refused - Return refused response' },
-  { value: 'nxdomain', label: 'NXDOMAIN - Domain does not exist' },
-]
+const rejectMethods = computed(() => [
+  { value: 'default', label: t('dns.rules.rejectMethods.default') },
+  { value: 'success', label: t('dns.rules.rejectMethods.success') },
+  { value: 'refused', label: t('dns.rules.rejectMethods.refused') },
+  { value: 'nxdomain', label: t('dns.rules.rejectMethods.nxdomain') },
+])
 
 function emptyRuleForm() {
   return {
@@ -187,16 +189,16 @@ const handleSaveRule = async () => {
       await dnsService.updateDNSRule(editingIndex.value, processedRule)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'DNS rule updated successfully',
+        summary: t('common.success'),
+        detail: t('dns.rules.toast.updatedOk'),
         life: 3000
       })
     } else {
       await dnsService.addDNSRule(processedRule)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'DNS rule added successfully',
+        summary: t('common.success'),
+        detail: t('dns.rules.toast.addedOk'),
         life: 3000
       })
     }
@@ -205,8 +207,8 @@ const handleSaveRule = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to save DNS rule',
+      summary: t('common.error'),
+      detail: err.message || t('dns.rules.toast.saveFailed'),
       life: 3000
     })
   } finally {
@@ -231,8 +233,8 @@ const handleDeleteRule = async () => {
     await dnsService.deleteDNSRule(deletingIndex.value)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'DNS rule deleted successfully',
+      summary: t('common.success'),
+      detail: t('dns.rules.toast.deletedOk'),
       life: 3000
     })
     await fetchDNSRules()
@@ -240,8 +242,8 @@ const handleDeleteRule = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to delete DNS rule',
+      summary: t('common.error'),
+      detail: err.message || t('dns.rules.toast.deleteFailed'),
       life: 3000
     })
   } finally {
@@ -255,27 +257,27 @@ const getRuleConditionsSummary = (rule: any) => {
   // Handle rule_set - could be array, string, or undefined
   if (rule.rule_set) {
     if (Array.isArray(rule.rule_set) && rule.rule_set.length > 0) {
-      conditions.push(`Rule Set: ${rule.rule_set.join(', ')}`)
+      conditions.push(t('dns.rules.summary.ruleSet', { value: rule.rule_set.join(', ') }))
     } else if (typeof rule.rule_set === 'string' && rule.rule_set.trim()) {
-      conditions.push(`Rule Set: ${rule.rule_set}`)
+      conditions.push(t('dns.rules.summary.ruleSet', { value: rule.rule_set }))
     }
   }
 
   // Handle arrays for other fields
   if (Array.isArray(rule.domain) && rule.domain.length) {
-    conditions.push(`Domain: ${rule.domain.join(', ')}`)
+    conditions.push(t('dns.rules.summary.domain', { value: rule.domain.join(', ') }))
   }
   if (Array.isArray(rule.domain_suffix) && rule.domain_suffix.length) {
-    conditions.push(`Suffix: ${rule.domain_suffix.join(', ')}`)
+    conditions.push(t('dns.rules.summary.suffix', { value: rule.domain_suffix.join(', ') }))
   }
   if (Array.isArray(rule.domain_keyword) && rule.domain_keyword.length) {
-    conditions.push(`Keyword: ${rule.domain_keyword.join(', ')}`)
+    conditions.push(t('dns.rules.summary.keyword', { value: rule.domain_keyword.join(', ') }))
   }
   if (Array.isArray(rule.geosite) && rule.geosite.length) {
-    conditions.push(`GeoSite: ${rule.geosite.join(', ')}`)
+    conditions.push(t('dns.rules.summary.geosite', { value: rule.geosite.join(', ') }))
   }
 
-  return conditions.length > 0 ? conditions.join(' | ') : 'No conditions'
+  return conditions.length > 0 ? conditions.join(' | ') : t('dns.rules.summary.none')
 }
 
 // Load data on mount
@@ -291,16 +293,16 @@ onMounted(() => {
     <div class="flex justify-end mb-2">
       <Button @click="openAddRuleModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
-        Add DNS Rule
+        {{ $t('dns.rules.add') }}
       </Button>
     </div>
 
     <!-- DNS Rules Table -->
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Rules</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.rules.heading') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Rules are processed in order. First match wins.
+          {{ $t('dns.rules.subheading') }}
         </p>
       </div>
 
@@ -309,10 +311,10 @@ onMounted(() => {
       </div>
 
       <div v-else-if="dnsRules.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">No DNS rules configured</p>
+        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('dns.rules.empty') }}</p>
         <Button @click="openAddRuleModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
-          Add Your First DNS Rule
+          {{ $t('dns.rules.addFirst') }}
         </Button>
       </div>
 
@@ -320,11 +322,11 @@ onMounted(() => {
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Action</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Conditions</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.index') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.action') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.server') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.conditions') }}</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.actions') }}</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -390,7 +392,7 @@ onMounted(() => {
               <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? 'Edit DNS Rule' : 'Add DNS Rule' }}
+                    {{ isEditMode ? $t('dns.rules.modal.edit') : $t('dns.rules.modal.add') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -404,94 +406,94 @@ onMounted(() => {
                 <div class="space-y-4">
                   <!-- Action -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Action *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.action') }}</label>
                     <Select v-model="currentRule.action" :options="actionTypes" />
                   </div>
 
                   <!-- Server (for route action) -->
                   <div v-if="currentRule.action === 'route'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNS Server *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.server') }}</label>
                     <Select v-model="currentRule.server" :options="serverOptions" />
                   </div>
 
                   <!-- Reject Method (for reject action) -->
                   <div v-if="currentRule.action === 'reject'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reject Method</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.rejectMethod') }}</label>
                     <Select v-model="currentRule.method" :options="rejectMethods" />
-                    <p class="mt-1 text-xs text-gray-500">Method to reject DNS requests</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.rejectMethodHelp') }}</p>
                   </div>
 
                   <!-- Rule Conditions -->
                   <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Conditions (at least one required)</h4>
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">{{ $t('dns.rules.form.conditionsHeading') }}</h4>
 
                     <div class="space-y-3">
                       <!-- Rule Set -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Set</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.ruleSet') }}</label>
                         <Select
                           v-model="currentRule.rule_set"
                           :options="ruleSetOptions"
                           :searchable="true"
                           :clearable="true"
-                          placeholder="Select or search a rule set"
-                          search-placeholder="Type to filter rule sets..."
-                          no-options-text="No matching rule sets found"
+                          :placeholder="$t('dns.rules.form.ruleSetSelect')"
+                          :search-placeholder="$t('dns.rules.form.ruleSetSearch')"
+                          :no-options-text="$t('dns.rules.form.ruleSetNoOptions')"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Use a predefined rule set for this DNS rule</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.ruleSetHelp') }}</p>
                       </div>
 
                       <!-- Domain -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domain') }}</label>
                         <Chips
                           v-model="currentRule.domain"
-                          placeholder="Add domains (press Enter after each)"
+                          :placeholder="$t('dns.rules.form.domainPlaceholder')"
                           class="w-full"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Exact domain match</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainHelp') }}</p>
                       </div>
 
                       <!-- Domain Suffix -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Suffix</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domainSuffix') }}</label>
                         <Chips
                           v-model="currentRule.domain_suffix"
-                          placeholder="Add suffixes (.example.com)"
+                          :placeholder="$t('dns.rules.form.domainSuffixPlaceholder')"
                           class="w-full"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Matches domain and all subdomains</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainSuffixHelp') }}</p>
                       </div>
 
                       <!-- Domain Keyword -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Keyword</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domainKeyword') }}</label>
                         <Chips
                           v-model="currentRule.domain_keyword"
-                          placeholder="Add keywords"
+                          :placeholder="$t('dns.rules.form.domainKeywordPlaceholder')"
                           class="w-full"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Domain contains keyword</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainKeywordHelp') }}</p>
                       </div>
 
                       <!-- GeoSite -->
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GeoSite</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.geosite') }}</label>
                         <Chips
                           v-model="currentRule.geosite"
-                          placeholder="Add geosite tags (e.g. google, netflix, cn)"
+                          :placeholder="$t('dns.rules.form.geositePlaceholder')"
                           class="w-full"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Use geosite database</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.geositeHelp') }}</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeRuleModal" variant="secondary">Cancel</Button>
+                  <Button @click="closeRuleModal" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleSaveRule" variant="primary" :disabled="loading">
-                    {{ isEditMode ? 'Update' : 'Add' }}
+                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
                   </Button>
                 </div>
               </DialogPanel>
@@ -530,7 +532,7 @@ onMounted(() => {
               <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Delete DNS Rule
+                    {{ $t('dns.rules.del.title') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -542,14 +544,13 @@ onMounted(() => {
                 </div>
 
                 <p class="text-gray-700 dark:text-gray-300">
-                  Are you sure you want to delete rule #{{ deletingIndex + 1 }}?
-                  This action cannot be undone.
+                  {{ $t('dns.rules.del.confirm', { index: deletingIndex + 1 }) }}
                 </p>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">Cancel</Button>
+                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleDeleteRule" variant="danger" :disabled="loading">
-                    Delete
+                    {{ $t('common.delete') }}
                   </Button>
                 </div>
               </DialogPanel>

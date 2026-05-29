@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { LogConfig } from '../../types/api'
 import { Button, Input, Select, Alert, Card, Loading } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { logService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -24,13 +27,13 @@ const logConfig = ref<LogConfig>({
 })
 
 // 日志级别选项
-const logLevelOptions = [
-  { label: 'Trace (Most Verbose)', value: 'trace' },
-  { label: 'Debug', value: 'debug' },
-  { label: 'Info (Recommended)', value: 'info' },
-  { label: 'Warn', value: 'warn' },
-  { label: 'Error (Least Verbose)', value: 'error' },
-]
+const logLevelOptions = computed(() => [
+  { label: t('init.log.levelOptions.trace'), value: 'trace' },
+  { label: t('init.log.levelOptions.debug'), value: 'debug' },
+  { label: t('init.log.levelOptions.info'), value: 'info' },
+  { label: t('init.log.levelOptions.warn'), value: 'warn' },
+  { label: t('init.log.levelOptions.error'), value: 'error' },
+])
 
 onMounted(async () => {
   await loadLogConfig()
@@ -73,7 +76,7 @@ const saveLogConfig = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.message || 'Failed to save log configuration'
+    error.value = err.message || t('init.log.saveFailed')
   } finally {
     saving.value = false
   }
@@ -96,14 +99,14 @@ const handleSkip = () => {
   <div class="space-y-6">
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-8">
-      <Loading size="lg" text="Loading log configuration..." />
+      <Loading size="lg" :text="$t('init.log.loading')" />
     </div>
 
     <!-- 配置表单 -->
     <div v-else class="space-y-6">
       <!-- 成功提示 -->
-      <Alert v-if="success" type="success" title="Configuration Saved">
-        Log configuration has been saved successfully. Proceeding to next step...
+      <Alert v-if="success" type="success" :title="$t('init.log.savedTitle')">
+        {{ $t('init.log.savedDesc') }}
       </Alert>
 
       <!-- 错误提示 -->
@@ -114,9 +117,9 @@ const handleSkip = () => {
       <Card>
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Log Configuration</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.log.heading') }}</h3>
             <p class="text-sm text-gray-600">
-              Configure logging behavior for sing-box. Logs help troubleshoot issues and monitor system activity.
+              {{ $t('init.log.intro') }}
             </p>
           </div>
 
@@ -129,9 +132,9 @@ const handleSkip = () => {
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="disable-log" class="flex-1 cursor-pointer">
-              <span class="text-sm font-medium text-gray-900">Disable Logging</span>
+              <span class="text-sm font-medium text-gray-900">{{ $t('init.log.disableLabel') }}</span>
               <p class="text-xs text-gray-500 mt-0.5">
-                Turn off all logging (not recommended for initial setup)
+                {{ $t('init.log.disableDesc') }}
               </p>
             </label>
           </div>
@@ -140,16 +143,16 @@ const handleSkip = () => {
           <Select
             v-model="logConfig.level"
             :options="logLevelOptions"
-            label="Log Level"
+            :label="$t('init.log.levelLabel')"
             :disabled="logConfig.disabled"
-            placeholder="Select log level"
+            :placeholder="$t('init.log.levelPlaceholder')"
           />
 
           <!-- 日志输出路径 -->
           <Input
             v-model="logConfig.output"
-            label="Log Output Path"
-            placeholder="e.g., /var/log/sing-box/sing-box.log (leave empty for stdout), Will not write log to console after enable."
+            :label="$t('init.log.outputLabel')"
+            :placeholder="$t('init.log.outputPlaceholder')"
             :disabled="logConfig.disabled"
           />
 
@@ -163,9 +166,9 @@ const handleSkip = () => {
               :disabled="logConfig.disabled"
             />
             <label for="enable-timestamp" class="flex-1 cursor-pointer">
-              <span class="text-sm font-medium text-gray-900">Include Timestamps</span>
+              <span class="text-sm font-medium text-gray-900">{{ $t('init.log.timestampLabel') }}</span>
               <p class="text-xs text-gray-500 mt-0.5">
-                Add timestamp to each log entry
+                {{ $t('init.log.timestampDesc') }}
               </p>
             </label>
           </div>
@@ -178,7 +181,7 @@ const handleSkip = () => {
               :disabled="saving || success"
               @click="handleNext"
             >
-              {{ success ? 'Saved' : saving ? 'Saving...' : 'Save & Continue' }}
+              {{ success ? $t('init.log.savedBtn') : saving ? $t('common.saving') : $t('init.log.saveContinueBtn') }}
             </Button>
 
             <Button
@@ -186,7 +189,7 @@ const handleSkip = () => {
               :disabled="saving || success"
               @click="handleSkip"
             >
-              Skip this step
+              {{ $t('init.log.skipBtn') }}
             </Button>
           </div>
         </div>
@@ -197,16 +200,16 @@ const handleSkip = () => {
         <div class="flex items-start space-x-3">
           <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
           <div class="text-sm text-violet-900 space-y-2">
-            <p class="font-medium">Log Level Guide:</p>
+            <p class="font-medium">{{ $t('init.log.guideTitle') }}</p>
             <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-              <li><strong>Trace:</strong> Most detailed, includes all debug info (high disk usage)</li>
-              <li><strong>Debug:</strong> Detailed information for debugging</li>
-              <li><strong>Info:</strong> General operational messages (recommended for production)</li>
-              <li><strong>Warn:</strong> Warning messages for potential issues</li>
-              <li><strong>Error:</strong> Only error messages (minimal logging)</li>
+              <li><strong>Trace:</strong> {{ $t('init.log.guide.trace') }}</li>
+              <li><strong>Debug:</strong> {{ $t('init.log.guide.debug') }}</li>
+              <li><strong>Info:</strong> {{ $t('init.log.guide.info') }}</li>
+              <li><strong>Warn:</strong> {{ $t('init.log.guide.warn') }}</li>
+              <li><strong>Error:</strong> {{ $t('init.log.guide.error') }}</li>
             </ul>
             <p class="mt-2 text-xs text-violet-700">
-              💡 Tip: Use "Info" level for normal operation and "Debug" for troubleshooting.
+              💡 {{ $t('init.log.guideTip') }}
             </p>
           </div>
         </div>
@@ -215,11 +218,11 @@ const handleSkip = () => {
       <!-- 输出路径说明 -->
       <Card padding="sm" class="bg-gray-50">
         <div class="text-sm text-gray-600 space-y-2">
-          <p class="font-medium text-gray-900">Log Output Options:</p>
+          <p class="font-medium text-gray-900">{{ $t('init.log.outputTitle') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2">
-            <li><strong>Empty (stdout):</strong> Logs output to standard output (console)</li>
-            <li><strong>File path:</strong> Logs written to specified file (e.g., /var/log/sing-box.log)</li>
-            <li>Make sure the directory exists and sing-box has write permissions</li>
+            <li><strong>Empty (stdout):</strong> {{ $t('init.log.output.stdout') }}</li>
+            <li><strong>File path:</strong> {{ $t('init.log.output.file') }}</li>
+            <li>{{ $t('init.log.output.perms') }}</li>
           </ul>
         </div>
       </Card>

@@ -6,8 +6,10 @@ import Card from './Card.vue'
 import Input from './Input.vue'
 import { experimentalService } from '../services'
 import { useToast } from 'primevue'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
@@ -31,8 +33,8 @@ const fetchCacheFile = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch cache file configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.cache.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -47,16 +49,16 @@ const handleSave = async () => {
     await experimentalService.updateCacheFile(settings.value)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Cache file configuration updated successfully',
+      summary: t('common.success'),
+      detail: t('experimental.cache.toast.updatedOk'),
       life: 3000
     })
     await fetchCacheFile()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to update cache file configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.cache.toast.updateFailed'),
       life: 3000
     })
   } finally {
@@ -73,7 +75,7 @@ onMounted(() => {
 <template>
   <div>
     <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Cache File Settings</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('experimental.cache.title') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
@@ -92,10 +94,10 @@ onMounted(() => {
           </div>
           <div class="ml-3">
             <label for="cache_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Enable Cache File
+              {{ $t('experimental.cache.enable') }}
             </label>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Store cache data to improve performance
+              {{ $t('experimental.cache.enableHelp') }}
             </p>
           </div>
         </div>
@@ -103,7 +105,7 @@ onMounted(() => {
         <!-- Cache Path -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Cache Path
+            {{ $t('experimental.cache.path') }}
           </label>
           <Input
             v-model="settings.path"
@@ -111,28 +113,28 @@ onMounted(() => {
             :disabled="!settings.enabled"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Path to the cache file
+            {{ $t('experimental.cache.pathHelp') }}
           </p>
         </div>
 
         <!-- Cache ID -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Cache ID
+            {{ $t('experimental.cache.cacheId') }}
           </label>
           <Input
             v-model="settings.cache_id"
-            placeholder="unique-cache-id"
+            :placeholder="$t('experimental.cache.cacheIdPlaceholder')"
             :disabled="!settings.enabled"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Unique identifier for cache entries
+            {{ $t('experimental.cache.cacheIdHelp') }}
           </p>
         </div>
 
         <!-- Advanced Settings -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Advanced Settings</h4>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('experimental.cache.advanced.title') }}</h4>
 
           <div class="space-y-4">
             <!-- Store FakeIP -->
@@ -148,10 +150,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="store_fakeip" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Store FakeIP
+                  {{ $t('experimental.cache.advanced.storeFakeip') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Cache FakeIP mappings
+                  {{ $t('experimental.cache.advanced.storeFakeipHelp') }}
                 </p>
               </div>
             </div>
@@ -169,10 +171,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="store_rdrc" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Store RDRC
+                  {{ $t('experimental.cache.advanced.storeRdrc') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Cache rule-based DNS routing
+                  {{ $t('experimental.cache.advanced.storeRdrcHelp') }}
                 </p>
               </div>
             </div>
@@ -180,7 +182,7 @@ onMounted(() => {
             <!-- RDRC Timeout -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                RDRC Timeout
+                {{ $t('experimental.cache.advanced.rdrcTimeout') }}
               </label>
               <Input
                 v-model="settings.rdrc_timeout"
@@ -188,7 +190,7 @@ onMounted(() => {
                 :disabled="!settings.enabled || !settings.store_rdrc"
               />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                How long to cache RDRC entries (e.g., 7d, 24h, 30m)
+                {{ $t('experimental.cache.advanced.rdrcTimeoutHelp') }}
               </p>
             </div>
           </div>
@@ -197,7 +199,7 @@ onMounted(() => {
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button @click="handleSave" variant="primary" :disabled="loading">
-            Save Settings
+            {{ $t('experimental.cache.save') }}
           </Button>
         </div>
       </div>

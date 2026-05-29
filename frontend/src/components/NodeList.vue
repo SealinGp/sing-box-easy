@@ -68,7 +68,7 @@ const handleClick = (tag: string) => {
       </div>
     </div>
     <div v-if="nodes.length === 0" class="p-4 text-center text-sm text-gray-500">
-      No nodes available
+      {{ $t('outbounds.nodeList.empty') }}
     </div>
   </div>
 </template>

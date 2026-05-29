@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { RouteRule, Outbound } from '../../types/api'
 import { Button, Alert, Card, Badge, Select } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { outboundService, routeService } from '../../services';
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -34,8 +37,8 @@ const routePresets = computed<RoutePreset[]>(() => {
   return [
     {
       id: 'smart',
-      name: 'Smart Routing (Recommended)',
-      description: 'Route traffic based on rules: Block ads, direct CN traffic, proxy others',
+      name: t('setup.routes.presets.smart.name'),
+      description: t('setup.routes.presets.smart.description'),
       rules: [
         {
           rule_set: ['geosite-category-ads-all'],
@@ -50,8 +53,8 @@ const routePresets = computed<RoutePreset[]>(() => {
     },
     {
       id: 'proxy-all',
-      name: 'Global Proxy',
-      description: 'Route all traffic through proxy (except private IPs)',
+      name: t('setup.routes.presets.proxyAll.name'),
+      description: t('setup.routes.presets.proxyAll.description'),
       rules: [
         {
           ip_cidr: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8'],
@@ -62,15 +65,15 @@ const routePresets = computed<RoutePreset[]>(() => {
     },
     {
       id: 'direct-all',
-      name: 'Direct Connection',
-      description: 'Route all traffic directly without proxy',
+      name: t('setup.routes.presets.directAll.name'),
+      description: t('setup.routes.presets.directAll.description'),
       rules: [],
       final: 'direct',
     },
     {
       id: 'gfwlist',
-      name: 'GFWList Mode',
-      description: 'Proxy non-CN domains, direct CN traffic',
+      name: t('setup.routes.presets.gfwlist.name'),
+      description: t('setup.routes.presets.gfwlist.description'),
       rules: [
         {
           rule_set: ['geosite-category-ads-all'],
@@ -177,7 +180,7 @@ const saveRouteConfig = async () => {
 
   const preset = routePresets.value.find(p => p.id === selectedPreset.value)
   if (!preset) {
-    error.value = 'Invalid route preset selected'
+    error.value = t('setup.routes.invalidPreset')
     saving.value = false
     return
   }
@@ -195,7 +198,7 @@ const saveRouteConfig = async () => {
     rulesSnapshot = rulesResp.data.rules || []
     finalSnapshot = finalResp.data.final || ''
   } catch (err: any) {
-    error.value = err.message || 'Failed to snapshot existing route config'
+    error.value = err.message || t('setup.routes.snapshotFailed')
     saving.value = false
     return
   }
@@ -213,9 +216,10 @@ const saveRouteConfig = async () => {
     setTimeout(() => emit('next'), 2000)
   } catch (err: any) {
     const restored = await restoreRouteSnapshot(rulesSnapshot, finalSnapshot)
+    const baseMsg = err.message || t('setup.routes.saveFailed')
     error.value = restored
-      ? `${err.message || 'Failed to save route configuration'} (previous rules restored)`
-      : `${err.message || 'Failed to save route configuration'} (restore also failed — use /config/rollback to recover)`
+      ? t('setup.routes.restored', { message: baseMsg })
+      : t('setup.routes.restoreFailed', { message: baseMsg })
   } finally {
     saving.value = false
   }
@@ -237,8 +241,8 @@ const handleSkip = () => {
 <template>
   <div class="space-y-6">
     <!-- 成功提示 -->
-    <Alert v-if="success" type="success" title="Routes Configured">
-      Route configuration has been saved successfully. Proceeding to next step...
+    <Alert v-if="success" type="success" :title="$t('setup.routes.successTitle')">
+      {{ $t('setup.routes.successDesc') }}
     </Alert>
 
     <!-- 错误提示 -->
@@ -250,16 +254,16 @@ const handleSkip = () => {
     <Card v-if="proxyOutboundOptions.length > 0">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Select Proxy Outbound</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.routes.proxyHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Choose which outbound to use for proxied traffic.
+            {{ $t('setup.routes.proxyDesc') }}
           </p>
         </div>
 
         <Select
           v-model="selectedProxyOutbound"
           :options="proxyOutboundOptions"
-          label="Proxy Outbound"
+          :label="$t('setup.routes.proxyOutbound')"
           :disabled="loading || saving || success"
         />
       </div>
@@ -269,9 +273,9 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Select Routing Strategy</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.routes.strategyHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Choose how traffic should be routed through different outbounds.
+            {{ $t('setup.routes.strategyDesc') }}
           </p>
         </div>
 
@@ -294,12 +298,12 @@ const handleSkip = () => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
-                <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">Recommended</Badge>
+                <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">{{ $t('setup.routes.recommended') }}</Badge>
               </div>
               <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
               <div class="flex items-center gap-2 mt-2">
-                <Badge variant="gray" size="sm">{{ preset.rules.length }} rules</Badge>
-                <Badge variant="gray" size="sm">Final: {{ preset.final }}</Badge>
+                <Badge variant="gray" size="sm">{{ $t('setup.routes.rulesCount', { count: preset.rules.length }) }}</Badge>
+                <Badge variant="gray" size="sm">{{ $t('setup.routes.final', { outbound: preset.final }) }}</Badge>
               </div>
             </div>
           </div>
@@ -315,7 +319,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleNext"
       >
-        {{ success ? 'Saved' : saving ? 'Saving...' : 'Save & Continue' }}
+        {{ success ? $t('setup.routes.saved') : saving ? $t('common.saving') : $t('setup.routes.saveContinue') }}
       </Button>
 
       <Button
@@ -323,7 +327,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleSkip"
       >
-        Skip this step
+        {{ $t('setup.routes.skip') }}
       </Button>
     </div>
 
@@ -332,17 +336,17 @@ const handleSkip = () => {
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
         <div class="text-sm text-violet-900 space-y-2">
-          <p class="font-medium">About Routing Strategies:</p>
+          <p class="font-medium">{{ $t('setup.routes.aboutHeading') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-            <li><strong>Smart Routing:</strong> Blocks ads, directs CN traffic, proxies everything else (best for China users)</li>
-            <li><strong>Global Proxy:</strong> Routes all traffic through proxy except private IPs</li>
-            <li><strong>Direct Connection:</strong> No proxy, all traffic goes directly</li>
-            <li><strong>GFWList Mode:</strong> Only proxy non-CN domains, direct for CN traffic</li>
-            <li>Rules are evaluated in order, first match wins</li>
-            <li>Final outbound is used when no rules match</li>
+            <li><strong>{{ $t('setup.routes.aboutSmartLabel') }}</strong> {{ $t('setup.routes.aboutSmart') }}</li>
+            <li><strong>{{ $t('setup.routes.aboutGlobalLabel') }}</strong> {{ $t('setup.routes.aboutGlobal') }}</li>
+            <li><strong>{{ $t('setup.routes.aboutDirectLabel') }}</strong> {{ $t('setup.routes.aboutDirect') }}</li>
+            <li><strong>{{ $t('setup.routes.aboutGfwlistLabel') }}</strong> {{ $t('setup.routes.aboutGfwlist') }}</li>
+            <li>{{ $t('setup.routes.aboutOrder') }}</li>
+            <li>{{ $t('setup.routes.aboutFinal') }}</li>
           </ul>
           <p class="mt-2 text-xs text-violet-700">
-            💡 Tip: Use "Smart Routing" for balanced performance and privacy.
+            {{ $t('setup.routes.tip') }}
           </p>
         </div>
       </div>
@@ -351,19 +355,19 @@ const handleSkip = () => {
     <!-- 规则详情 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Selected Strategy Rules:</p>
+        <p class="font-medium text-gray-900">{{ $t('setup.routes.rulesHeading') }}</p>
         <div v-if="routePresets.find(p => p.id === selectedPreset)">
           <ul class="list-disc list-inside space-y-1 ml-2">
             <li
               v-for="(rule, index) in routePresets.find(p => p.id === selectedPreset)!.rules"
               :key="index"
             >
-              <strong v-if="rule.rule_set">Rule Set {{ Array.isArray(rule.rule_set) ? rule.rule_set.join(', ') : rule.rule_set }}:</strong>
-              <strong v-else-if="rule.ip_cidr">Private IPs:</strong>
+              <strong v-if="rule.rule_set">{{ $t('setup.routes.ruleSet', { value: Array.isArray(rule.rule_set) ? rule.rule_set.join(', ') : rule.rule_set }) }}</strong>
+              <strong v-else-if="rule.ip_cidr">{{ $t('setup.routes.privateIps') }}</strong>
               → {{ rule.outbound }}
             </li>
             <li class="text-gray-700">
-              <strong>All other traffic:</strong> → {{ routePresets.find(p => p.id === selectedPreset)!.final }}
+              <strong>{{ $t('setup.routes.allOther') }}</strong> → {{ routePresets.find(p => p.id === selectedPreset)!.final }}
             </li>
           </ul>
         </div>

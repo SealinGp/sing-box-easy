@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { RuleSet } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { routeService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -22,6 +25,8 @@ const selectedPresets = ref<Set<string>>(new Set())
 interface PresetRuleSet {
   id: string
   tag: string
+  // i18n preset key under setup.ruleSets.presets.*
+  presetKey: string
   name: string
   description: string
   type: 'remote'
@@ -30,12 +35,15 @@ interface PresetRuleSet {
   download_detour?: string
 }
 
-const presetRuleSets: PresetRuleSet[] = [
+// Display label/description re-translate on locale switch; technical fields
+// (tag/type/format/url) sent to the backend stay unchanged.
+const presetRuleSets = computed<PresetRuleSet[]>(() => [
   {
     id: 'geosite-cn',
     tag: 'geosite-cn',
-    name: 'GeoSite CN',
-    description: 'Chinese domains (direct connection recommended)',
+    presetKey: 'geositeCn',
+    name: t('setup.ruleSets.presets.geositeCn.name'),
+    description: t('setup.ruleSets.presets.geositeCn.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs',
@@ -43,8 +51,9 @@ const presetRuleSets: PresetRuleSet[] = [
   {
     id: 'geosite-geolocation-!cn',
     tag: 'geosite-geolocation-!cn',
-    name: 'GeoSite Non-CN',
-    description: 'Non-Chinese domains (proxy recommended)',
+    presetKey: 'geositeNonCn',
+    name: t('setup.ruleSets.presets.geositeNonCn.name'),
+    description: t('setup.ruleSets.presets.geositeNonCn.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs',
@@ -52,8 +61,9 @@ const presetRuleSets: PresetRuleSet[] = [
   {
     id: 'geosite-category-ads-all',
     tag: 'geosite-category-ads-all',
-    name: 'Ad Blocking',
-    description: 'Advertisement and tracking domains (block recommended)',
+    presetKey: 'adsAll',
+    name: t('setup.ruleSets.presets.adsAll.name'),
+    description: t('setup.ruleSets.presets.adsAll.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs',
@@ -61,8 +71,9 @@ const presetRuleSets: PresetRuleSet[] = [
   {
     id: 'geoip-cn',
     tag: 'geoip-cn',
-    name: 'GeoIP CN',
-    description: 'Chinese IP addresses (direct connection recommended)',
+    presetKey: 'geoipCn',
+    name: t('setup.ruleSets.presets.geoipCn.name'),
+    description: t('setup.ruleSets.presets.geoipCn.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
@@ -70,8 +81,9 @@ const presetRuleSets: PresetRuleSet[] = [
   {
     id: 'geosite-google',
     tag: 'geosite-google',
-    name: 'Google Services',
-    description: 'Google domains (proxy recommended)',
+    presetKey: 'google',
+    name: t('setup.ruleSets.presets.google.name'),
+    description: t('setup.ruleSets.presets.google.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs',
@@ -79,13 +91,14 @@ const presetRuleSets: PresetRuleSet[] = [
   {
     id: 'geosite-github',
     tag: 'geosite-github',
-    name: 'GitHub',
-    description: 'GitHub domains (proxy recommended)',
+    presetKey: 'github',
+    name: t('setup.ruleSets.presets.github.name'),
+    description: t('setup.ruleSets.presets.github.description'),
     type: 'remote',
     format: 'binary',
     url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-github.srs',
   },
-]
+])
 
 onMounted(async () => {
   await loadRuleSets()
@@ -102,7 +115,7 @@ const loadRuleSets = async () => {
 
     // 预选已存在的规则集
     rule_sets?.forEach((ruleSet) => {
-      const preset = presetRuleSets.find(p => p.tag === ruleSet.tag)
+      const preset = presetRuleSets.value.find(p => p.tag === ruleSet.tag)
       if (preset) {
         selectedPresets.value.add(preset.id)
       }
@@ -121,7 +134,7 @@ const togglePreset = (presetId: string) => {
 }
 
 const selectAll = () => {
-  selectedPresets.value = new Set(presetRuleSets.map(p => p.id))
+  selectedPresets.value = new Set(presetRuleSets.value.map(p => p.id))
 }
 
 const deselectAll = () => {
@@ -138,8 +151,8 @@ const saveRuleSets = async () => {
     const existingTags = new Set(existingRuleSets.value.map(rs => rs.tag))
 
     // 添加选中的预设规则集
-    for (const preset of presetRuleSets) {
-      
+    for (const preset of presetRuleSets.value) {
+
       if (selectedPresets.value.has(preset.id)) {
         // 如果不存在，则添加
         if (!existingTags.has(preset.tag)) {
@@ -166,7 +179,7 @@ const saveRuleSets = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.message || 'Failed to save rule sets'
+    error.value = err.message || t('setup.ruleSets.saveFailed')
   } finally {
     saving.value = false
   }
@@ -188,8 +201,8 @@ const handleSkip = () => {
 <template>
   <div class="space-y-6">
     <!-- 成功提示 -->
-    <Alert v-if="success" type="success" title="Rule Sets Configured">
-      Rule sets have been configured successfully. Proceeding to next step...
+    <Alert v-if="success" type="success" :title="$t('setup.ruleSets.successTitle')">
+      {{ $t('setup.ruleSets.successDesc') }}
     </Alert>
 
     <!-- 错误提示 -->
@@ -202,9 +215,9 @@ const handleSkip = () => {
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Select Rule Sets</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.ruleSets.selectHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Choose commonly used rule sets for routing. You can add custom rule sets later.
+              {{ $t('setup.ruleSets.selectDesc') }}
             </p>
           </div>
           <div class="flex gap-2">
@@ -214,7 +227,7 @@ const handleSkip = () => {
               :disabled="loading || saving || success"
               @click="selectAll"
             >
-              Select All
+              {{ $t('setup.ruleSets.selectAll') }}
             </Button>
             <Button
               variant="ghost"
@@ -222,7 +235,7 @@ const handleSkip = () => {
               :disabled="loading || saving || success"
               @click="deselectAll"
             >
-              Clear
+              {{ $t('setup.ruleSets.clear') }}
             </Button>
           </div>
         </div>
@@ -257,7 +270,7 @@ const handleSkip = () => {
         <!-- 选择统计 -->
         <div class="bg-gray-50 rounded-lg p-3 text-center">
           <p class="text-sm text-gray-600">
-            <span class="font-semibold text-gray-900">{{ selectedPresets.size }}</span> rule sets selected
+            <span class="font-semibold text-gray-900">{{ selectedPresets.size }}</span> {{ $t('setup.ruleSets.selectedCount') }}
           </p>
         </div>
       </div>
@@ -271,7 +284,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleNext"
       >
-        {{ success ? 'Saved' : saving ? 'Saving...' : selectedPresets.size > 0 ? `Add ${selectedPresets.size} Rule Sets` : 'Continue' }}
+        {{ success ? $t('setup.ruleSets.saved') : saving ? $t('common.saving') : selectedPresets.size > 0 ? $t('setup.ruleSets.addRuleSets', { count: selectedPresets.size }) : $t('setup.ruleSets.continue') }}
       </Button>
 
       <Button
@@ -279,7 +292,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleSkip"
       >
-        Skip this step
+        {{ $t('setup.ruleSets.skip') }}
       </Button>
     </div>
 
@@ -288,16 +301,16 @@ const handleSkip = () => {
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
         <div class="text-sm text-violet-900 space-y-2">
-          <p class="font-medium">About Rule Sets:</p>
+          <p class="font-medium">{{ $t('setup.ruleSets.aboutHeading') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-            <li><strong>GeoSite:</strong> Domain-based rules (e.g., cn = Chinese domains)</li>
-            <li><strong>GeoIP:</strong> IP address-based rules (e.g., cn = Chinese IPs)</li>
-            <li><strong>Format:</strong> Binary (.srs) format for better performance</li>
-            <li>Rule sets are downloaded from official repositories and cached locally</li>
-            <li>You can add custom rule sets or manage them in the dashboard later</li>
+            <li><strong>{{ $t('setup.ruleSets.aboutGeositeLabel') }}</strong> {{ $t('setup.ruleSets.aboutGeosite') }}</li>
+            <li><strong>{{ $t('setup.ruleSets.aboutGeoipLabel') }}</strong> {{ $t('setup.ruleSets.aboutGeoip') }}</li>
+            <li><strong>{{ $t('setup.ruleSets.aboutFormatLabel') }}</strong> {{ $t('setup.ruleSets.aboutFormat') }}</li>
+            <li>{{ $t('setup.ruleSets.aboutDownloaded') }}</li>
+            <li>{{ $t('setup.ruleSets.aboutManage') }}</li>
           </ul>
           <p class="mt-2 text-xs text-violet-700">
-            💡 Tip: Select "GeoSite CN" + "GeoIP CN" for basic routing (direct for CN, proxy for others)
+            {{ $t('setup.ruleSets.tip') }}
           </p>
         </div>
       </div>
@@ -306,11 +319,11 @@ const handleSkip = () => {
     <!-- 使用建议 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Recommended Combinations:</p>
+        <p class="font-medium text-gray-900">{{ $t('setup.ruleSets.recommendedHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
-          <li><strong>Basic Setup:</strong> GeoSite CN + GeoIP CN (direct CN traffic)</li>
-          <li><strong>Ad Blocking:</strong> Add "Ad Blocking" rule set (block ads)</li>
-          <li><strong>Specific Services:</strong> Add Google/GitHub rule sets for better routing</li>
+          <li><strong>{{ $t('setup.ruleSets.recBasicLabel') }}</strong> {{ $t('setup.ruleSets.recBasic') }}</li>
+          <li><strong>{{ $t('setup.ruleSets.recAdsLabel') }}</strong> {{ $t('setup.ruleSets.recAds') }}</li>
+          <li><strong>{{ $t('setup.ruleSets.recServicesLabel') }}</strong> {{ $t('setup.ruleSets.recServices') }}</li>
         </ul>
       </div>
     </Card>

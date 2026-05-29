@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Button, Alert, Card } from '../../components'
 import { CheckCircleIcon, RocketLaunchIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { serviceControlService } from '../../services'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const completing = ref(false)
@@ -21,7 +23,7 @@ const completeSetup = async () => {
     // 跳转到管理面板
     router.push('/dashboard')
   } catch (err: any) {
-    error.value = err.message || 'Failed to complete initialization'
+    error.value = err.message || t('init.complete.completeFailed')
   } finally {
     completing.value = false
   }
@@ -46,24 +48,24 @@ const goToDashboard = () => {
           <CheckCircleIcon class="w-12 h-12 text-green-600" />
         </div>
       </div>
-      <h2 class="text-3xl font-bold text-gray-900 mb-2">Setup Complete!</h2>
+      <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ $t('init.complete.title') }}</h2>
       <p class="text-gray-600 max-w-md mx-auto">
-        Congratulations! You've successfully configured sing-box. Your proxy is ready to use.
+        {{ $t('init.complete.congrats') }}
       </p>
     </Card>
 
     <!-- 配置摘要 -->
     <Card>
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Configuration Summary</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('init.complete.summaryTitle') }}</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- sing-box 安装 -->
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">sing-box Installed</p>
-              <p class="text-xs text-gray-600 mt-0.5">Core proxy service is ready</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.installTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.installDesc') }}</p>
             </div>
           </div>
 
@@ -71,8 +73,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Logging Configured</p>
-              <p class="text-xs text-gray-600 mt-0.5">Logs are being recorded</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.logTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.logDesc') }}</p>
             </div>
           </div>
 
@@ -80,8 +82,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Experimental Features</p>
-              <p class="text-xs text-gray-600 mt-0.5">Clash API and cache configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.experimentalTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.experimentalDesc') }}</p>
             </div>
           </div>
 
@@ -89,8 +91,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Outbound Nodes</p>
-              <p class="text-xs text-gray-600 mt-0.5">Proxy servers configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.outboundTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.outboundDesc') }}</p>
             </div>
           </div>
 
@@ -98,8 +100,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Rule Sets</p>
-              <p class="text-xs text-gray-600 mt-0.5">Routing rules configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.ruleSetsTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.ruleSetsDesc') }}</p>
             </div>
           </div>
 
@@ -107,8 +109,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">DNS Configuration</p>
-              <p class="text-xs text-gray-600 mt-0.5">DNS servers configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.dnsTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.dnsDesc') }}</p>
             </div>
           </div>
 
@@ -116,8 +118,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Inbound Proxies</p>
-              <p class="text-xs text-gray-600 mt-0.5">Local proxy ports configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.inboundTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.inboundDesc') }}</p>
             </div>
           </div>
 
@@ -125,8 +127,8 @@ const goToDashboard = () => {
           <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm font-medium text-gray-900">Routing Rules</p>
-              <p class="text-xs text-gray-600 mt-0.5">Traffic routing configured</p>
+              <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.routingTitle') }}</p>
+              <p class="text-xs text-gray-600 mt-0.5">{{ $t('init.complete.summary.routingDesc') }}</p>
             </div>
           </div>
         </div>
@@ -139,23 +141,23 @@ const goToDashboard = () => {
         <div class="flex items-start space-x-3">
           <RocketLaunchIcon class="w-6 h-6 text-violet-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 class="text-lg font-semibold text-violet-900 mb-2">Next Steps</h3>
+            <h3 class="text-lg font-semibold text-violet-900 mb-2">{{ $t('init.complete.nextStepsTitle') }}</h3>
             <ul class="space-y-2 text-sm text-violet-800">
               <li class="flex items-start">
                 <span class="mr-2">1.</span>
-                <span>Start the sing-box service from the dashboard</span>
+                <span>{{ $t('init.complete.nextSteps.start') }}</span>
               </li>
               <li class="flex items-start">
                 <span class="mr-2">2.</span>
-                <span>Configure your applications to use the proxy (e.g., 127.0.0.1:7890)</span>
+                <span>{{ $t('init.complete.nextSteps.configure') }}</span>
               </li>
               <li class="flex items-start">
                 <span class="mr-2">3.</span>
-                <span>Monitor connections and manage nodes from the dashboard</span>
+                <span>{{ $t('init.complete.nextSteps.monitor') }}</span>
               </li>
               <li class="flex items-start">
                 <span class="mr-2">4.</span>
-                <span>Access web dashboard if Clash API is enabled (http://127.0.0.1:9090/ui)</span>
+                <span>{{ $t('init.complete.nextSteps.access') }}</span>
               </li>
             </ul>
           </div>
@@ -169,18 +171,18 @@ const goToDashboard = () => {
         <div class="flex items-start space-x-3">
           <Cog6ToothIcon class="w-6 h-6 text-gray-600 flex-shrink-0 mt-0.5" />
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Quick Access</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.complete.quickAccessTitle') }}</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div class="p-3 bg-gray-50 rounded-lg">
-                <p class="text-sm font-medium text-gray-900">HTTP/SOCKS5 Proxy</p>
+                <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.proxy') }}</p>
                 <code class="text-xs text-gray-600 font-mono">127.0.0.1:7890</code>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg">
-                <p class="text-sm font-medium text-gray-900">Clash API</p>
+                <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.clashApi') }}</p>
                 <code class="text-xs text-gray-600 font-mono">127.0.0.1:9090</code>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg">
-                <p class="text-sm font-medium text-gray-900">Web Dashboard</p>
+                <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.webDashboard') }}</p>
                 <code class="text-xs text-gray-600 font-mono">/ui</code>
               </div>
             </div>
@@ -198,7 +200,7 @@ const goToDashboard = () => {
         :disabled="completing"
         @click="completeSetup"
       >
-        {{ completing ? 'Completing...' : 'Complete Setup & Go to Dashboard' }}
+        {{ completing ? $t('init.complete.completingBtn') : $t('init.complete.completeBtn') }}
       </Button>
 
       <Button
@@ -207,13 +209,13 @@ const goToDashboard = () => {
         :disabled="completing"
         @click="goToDashboard"
       >
-        Skip to Dashboard
+        {{ $t('init.complete.skipBtn') }}
       </Button>
     </div>
 
     <!-- 提示信息 -->
     <div class="text-center text-sm text-gray-500">
-      <p>You can always reconfigure these settings later from the dashboard.</p>
+      <p>{{ $t('init.complete.reconfigureHint') }}</p>
     </div>
   </div>
 </template>

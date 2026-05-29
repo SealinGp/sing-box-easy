@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Code, type ServiceStatus } from '../../types/api'
 import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
@@ -9,6 +10,7 @@ const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
 const actionLoading = ref(false)
 const toast = useToast()
+const { t } = useI18n()
 
 const statusColor = computed(() => {
   if (!status.value) return 'text-gray-500'
@@ -20,6 +22,16 @@ const statusColor = computed(() => {
     default:
       return 'text-yellow-600'
   }
+})
+
+// Translate the known backend status words; fall back to the raw value for
+// anything we don't have a key for.
+const statusLabel = computed(() => {
+  const s = status.value?.status
+  if (s === 'running') return t('overview.status.running')
+  if (s === 'stopped') return t('overview.status.stopped')
+  if (s === 'unknown') return t('overview.status.unknown')
+  return s ?? ''
 })
 
 // Status icon was a dead switch returning the same bullet for every case;
@@ -35,8 +47,8 @@ const fetchStatus = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch service status',
+      summary: t('common.error'),
+      detail: err.message || t('overview.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -51,7 +63,7 @@ const handleStart = async () => {
     if(resp.code != Code.Success) {
       toast.add({
         severity: 'error',
-        summary: 'Error',
+        summary: t('common.error'),
         detail: resp.msg,
       })
       return
@@ -59,16 +71,16 @@ const handleStart = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Service started successfully',
+      summary: t('common.success'),
+      detail: t('overview.toast.startedOk'),
       life: 3000
     })
     await fetchStatus()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to start service',
+      summary: t('common.error'),
+      detail: err.message || t('overview.toast.startFailed'),
       life: 3000
     })
   } finally {
@@ -82,16 +94,16 @@ const handleStop = async () => {
     await serviceControlService.stopService()
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Service stopped successfully',
+      summary: t('common.success'),
+      detail: t('overview.toast.stoppedOk'),
       life: 3000
     })
     await fetchStatus()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to stop service',
+      summary: t('common.error'),
+      detail: err.message || t('overview.toast.stopFailed'),
       life: 3000
     })
   } finally {
@@ -105,16 +117,16 @@ const handleRestart = async () => {
     await serviceControlService.restartService()
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Service restarted successfully',
+      summary: t('common.success'),
+      detail: t('overview.toast.restartedOk'),
       life: 3000
     })
     await fetchStatus()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to restart service',
+      summary: t('common.error'),
+      detail: err.message || t('overview.toast.restartFailed'),
       life: 3000
     })
   } finally {
@@ -127,12 +139,12 @@ onMounted(fetchStatus)
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Dashboard Overview</h2>
+    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ $t('overview.title') }}</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Service Status Card -->
       <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50">
-        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Service Status</h3>
+        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">{{ $t('overview.serviceStatus') }}</h3>
 
         <div v-if="loading" class="flex items-center justify-center py-4">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
@@ -142,16 +154,16 @@ onMounted(fetchStatus)
           <div class="flex items-center gap-3">
             <span :class="statusColor" class="text-3xl">{{ statusIcon }}</span>
             <span :class="statusColor" class="text-2xl font-bold capitalize">
-              {{ status.status }}
+              {{ statusLabel }}
             </span>
           </div>
 
           <div v-if="status.pid" class="text-sm text-gray-600 dark:text-gray-400">
-            <p><span class="font-semibold">PID:</span> {{ status.pid }}</p>
+            <p><span class="font-semibold">{{ $t('overview.pid') }}:</span> {{ status.pid }}</p>
           </div>
 
           <div v-if="status.uptime" class="text-sm text-gray-600 dark:text-gray-400">
-            <p><span class="font-semibold">Uptime:</span> {{ status.uptime }}</p>
+            <p><span class="font-semibold">{{ $t('overview.uptime') }}:</span> {{ status.uptime }}</p>
           </div>
 
           <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -163,7 +175,7 @@ onMounted(fetchStatus)
                 size="sm"
                 class="text-xs"
               >
-                Start
+                {{ $t('common.start') }}
               </Button>
 
               <Button
@@ -173,7 +185,7 @@ onMounted(fetchStatus)
                 size="sm"
                 class="text-xs"
               >
-                Stop
+                {{ $t('common.stop') }}
               </Button>
 
               <Button
@@ -183,7 +195,7 @@ onMounted(fetchStatus)
                 size="sm"
                 class="text-xs"
               >
-                Restart
+                {{ $t('common.restart') }}
               </Button>
             </div>
           </div>
@@ -196,7 +208,7 @@ onMounted(fetchStatus)
               size="sm"
               class="w-full text-xs"
             >
-              Refresh Status
+              {{ $t('overview.refreshStatus') }}
             </Button>
           </div>
         </div>

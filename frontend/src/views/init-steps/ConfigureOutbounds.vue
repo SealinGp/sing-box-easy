@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Outbound } from '../../types/api'
 import { Button, Textarea, Alert, Card, Badge, NodeList } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { nodesService, outboundService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -27,7 +30,7 @@ const success = ref(false)
 // 解析订阅或节点链接
 const parseSubscription = async () => {
   if (!subscriptionInput.value.trim()) {
-    parseError.value = 'Please enter subscription URL(s) or node link(s)'
+    parseError.value = t('setup.outbounds.enterInput')
     return
   }
 
@@ -56,10 +59,10 @@ const parseSubscription = async () => {
     })
 
     if (nodes.length === 0) {
-      parseError.value = 'No nodes found'
+      parseError.value = t('setup.outbounds.noNodesFound')
     }
   } catch (err: any) {
-    parseError.value = err.message || 'Failed to parse subscription/nodes'
+    parseError.value = err.message || t('setup.outbounds.parseFailed')
   } finally {
     parsing.value = false
   }
@@ -128,7 +131,7 @@ const saveOutbounds = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.message || 'Failed to save outbounds'
+    error.value = err.message || t('setup.outbounds.saveFailed')
   } finally {
     saving.value = false
   }
@@ -170,8 +173,8 @@ onMounted(() => {
     <!-- Left column: Main content -->
     <div class="space-y-6">
       <!-- 成功提示 -->
-      <Alert v-if="success" type="success" title="Outbounds Saved">
-        Outbound nodes have been added successfully. Proceeding to next step...
+      <Alert v-if="success" type="success" :title="$t('setup.outbounds.successTitle')">
+        {{ $t('setup.outbounds.successDesc') }}
       </Alert>
 
       <!-- 错误提示 -->
@@ -183,16 +186,16 @@ onMounted(() => {
       <Card>
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Parse Subscription or Nodes</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.outbounds.parseHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.
+              {{ $t('setup.outbounds.parseDesc') }}
             </p>
           </div>
 
           <div class="space-y-3">
             <Textarea
               v-model="subscriptionInput"
-              placeholder="Examples:&#10;https://example.com/subscribe?token=xxx&#10;vmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...&#10;ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode&#10;trojan://password@example.com:443?sni=example.com#TrojanNode"
+              :placeholder="$t('setup.outbounds.inputPlaceholder')"
               :disabled="parsing"
               :error="parseError"
               :rows="6"
@@ -205,7 +208,7 @@ onMounted(() => {
                 :disabled="parsing"
                 @click="parseSubscription"
               >
-                {{ parsing ? 'Parsing...' : 'Parse' }}
+                {{ parsing ? $t('setup.outbounds.parsing') : $t('setup.outbounds.parse') }}
               </Button>
             </div>
           </div>
@@ -218,11 +221,11 @@ onMounted(() => {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-lg font-semibold text-gray-900">
-                Parsed Nodes
+                {{ $t('setup.outbounds.parsedNodes') }}
                 <Badge variant="primary" class="ml-2">{{ parsedNodes.length }}</Badge>
               </h3>
               <p class="text-sm text-gray-600 mt-1">
-                Select nodes to add ({{ selectedNodes.size }} selected)
+                {{ $t('setup.outbounds.selectToAdd', { count: selectedNodes.size }) }}
               </p>
             </div>
             <Button
@@ -230,7 +233,7 @@ onMounted(() => {
               size="sm"
               @click="toggleSelectAll"
             >
-              {{ selectedNodes.size === parsedNodes.length ? 'Deselect All' : 'Select All' }}
+              {{ selectedNodes.size === parsedNodes.length ? $t('setup.outbounds.deselectAll') : $t('setup.outbounds.selectAll') }}
             </Button>
           </div>
 
@@ -251,14 +254,14 @@ onMounted(() => {
               :disabled="saving || success || selectedNodes.size === 0"
               @click="saveOutbounds"
             >
-              {{ success ? 'Saved' : saving ? 'Saving...' : `Add ${selectedNodes.size} Nodes` }}
+              {{ success ? $t('setup.outbounds.saved') : saving ? $t('common.saving') : $t('setup.outbounds.addNodes', { count: selectedNodes.size }) }}
             </Button>
             <Button
               v-if="success"
               variant="primary"
               @click="handleNext"
             >
-              Continue to Next Step
+              {{ $t('setup.outbounds.continueNext') }}
             </Button>
           </div>
         </div>
@@ -268,9 +271,9 @@ onMounted(() => {
       <Card v-if="parsedNodes.length === 0 && !parsing">
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Manual Setup</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.outbounds.manualHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Skip subscription parsing and add basic outbounds (direct, block) only.
+              {{ $t('setup.outbounds.manualDesc') }}
             </p>
           </div>
 
@@ -278,13 +281,13 @@ onMounted(() => {
             <div class="flex items-start space-x-3">
               <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
               <div class="text-sm text-violet-900">
-                <p class="font-medium mb-1">Basic outbounds will be added:</p>
+                <p class="font-medium mb-1">{{ $t('setup.outbounds.basicWillBeAdded') }}</p>
                 <ul class="list-disc list-inside ml-2 text-violet-800">
-                  <li><strong>direct</strong>: Direct connection (no proxy)</li>
-                  <li><strong>block</strong>: Block connection</li>
+                  <li><strong>direct</strong>: {{ $t('setup.outbounds.basicDirect') }}</li>
+                  <li><strong>block</strong>: {{ $t('setup.outbounds.basicBlock') }}</li>
                 </ul>
                 <p class="mt-2 text-xs text-violet-700">
-                  You can add proxy nodes later from the dashboard.
+                  {{ $t('setup.outbounds.addProxyLater') }}
                 </p>
               </div>
             </div>
@@ -297,14 +300,14 @@ onMounted(() => {
               :disabled="saving || success"
               @click="saveOutbounds"
             >
-              {{ success ? 'Saved' : saving ? 'Saving...' : 'Add Basic Outbounds' }}
+              {{ success ? $t('setup.outbounds.saved') : saving ? $t('common.saving') : $t('setup.outbounds.addBasic') }}
             </Button>
             <Button
               variant="ghost"
               :disabled="saving || success"
               @click="handleSkip"
             >
-              Skip this step
+              {{ $t('setup.outbounds.skip') }}
             </Button>
           </div>
         </div>
@@ -316,11 +319,11 @@ onMounted(() => {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-lg font-semibold text-gray-900">
-                Current Nodes
+                {{ $t('setup.outbounds.currentNodes') }}
                 <Badge variant="gray" class="ml-2">{{ currentOutbounds.length }}</Badge>
               </h3>
               <p class="text-sm text-gray-600 mt-1">
-                Outbound nodes already configured
+                {{ $t('setup.outbounds.currentNodesDesc') }}
               </p>
             </div>
             <Button
@@ -328,7 +331,7 @@ onMounted(() => {
               size="sm"
               @click="loadCurrentOutbounds"
             >
-              Refresh
+              {{ $t('common.refresh') }}
             </Button>
           </div>
 
@@ -341,19 +344,19 @@ onMounted(() => {
       <Card v-if="loadingOutbounds" class="2xl:hidden">
         <div class="flex items-center justify-center py-4">
           <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
-          <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
+          <span class="ml-2 text-sm text-gray-600">{{ $t('setup.outbounds.loadingCurrent') }}</span>
         </div>
       </Card>
 
       <!-- 说明信息 -->
       <Card padding="sm" class="bg-gray-50">
         <div class="text-sm text-gray-600 space-y-2">
-          <p class="font-medium text-gray-900">About Outbounds:</p>
+          <p class="font-medium text-gray-900">{{ $t('setup.outbounds.aboutHeading') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2">
-            <li><strong>Proxy Nodes:</strong> Servers that relay your traffic (shadowsocks, vmess, etc.)</li>
-            <li><strong>Direct:</strong> Connect directly without proxy</li>
-            <li><strong>Block:</strong> Block the connection entirely</li>
-            <li>You can manage nodes and create groups in the dashboard later</li>
+            <li><strong>{{ $t('setup.outbounds.aboutProxyLabel') }}</strong> {{ $t('setup.outbounds.aboutProxy') }}</li>
+            <li><strong>{{ $t('setup.outbounds.aboutDirectLabel') }}</strong> {{ $t('setup.outbounds.aboutDirect') }}</li>
+            <li><strong>{{ $t('setup.outbounds.aboutBlockLabel') }}</strong> {{ $t('setup.outbounds.aboutBlock') }}</li>
+            <li>{{ $t('setup.outbounds.aboutManage') }}</li>
           </ul>
         </div>
       </Card>
@@ -368,11 +371,11 @@ onMounted(() => {
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="text-lg font-semibold text-gray-900">
-                  Current Nodes
+                  {{ $t('setup.outbounds.currentNodes') }}
                   <Badge variant="gray" class="ml-2">{{ currentOutbounds.length }}</Badge>
                 </h3>
                 <p class="text-sm text-gray-600 mt-1">
-                  Outbound nodes already configured
+                  {{ $t('setup.outbounds.currentNodesDesc') }}
                 </p>
               </div>
               <Button
@@ -380,7 +383,7 @@ onMounted(() => {
                 size="sm"
                 @click="loadCurrentOutbounds"
               >
-                Refresh
+                {{ $t('common.refresh') }}
               </Button>
             </div>
 
@@ -393,14 +396,14 @@ onMounted(() => {
         <Card v-if="loadingOutbounds">
           <div class="flex items-center justify-center py-4">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
-            <span class="ml-2 text-sm text-gray-600">Loading current nodes...</span>
+            <span class="ml-2 text-sm text-gray-600">{{ $t('setup.outbounds.loadingCurrent') }}</span>
           </div>
         </Card>
 
         <!-- Empty state -->
         <Card v-if="!loadingOutbounds && currentOutbounds.length === 0">
           <div class="text-center py-8">
-            <p class="text-sm text-gray-500">No nodes configured yet</p>
+            <p class="text-sm text-gray-500">{{ $t('setup.outbounds.noNodes') }}</p>
           </div>
         </Card>
       </div>

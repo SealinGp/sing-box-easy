@@ -106,6 +106,10 @@ export default defineConfig({
     minify: 'esbuild',
   },
   server: {
+    // Default 5173 is taken by another project; pin this one to 5179.
+    // strictPort avoids silently falling back to a different port.
+    port: 5179,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5100',

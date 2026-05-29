@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { apiService } from '../../services/api'
 import { SubscriptionService } from '../../services/subscription'
 import { Code, type Subscription } from '../../types/api'
@@ -21,6 +22,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const subscriptionService = new SubscriptionService(apiService)
+const { t } = useI18n()
 
 interface NotificationMessage {
   id: string
@@ -58,7 +60,7 @@ const formErrors = ref<Record<string, string>>({})
 
 // Computed properties
 const isEditing = computed(() => !!editingSubscription.value)
-const modalTitle = computed(() => isEditing.value ? 'Edit Subscription' : 'Add Subscription')
+const modalTitle = computed(() => isEditing.value ? t('subscriptions.modal.edit') : t('subscriptions.modal.add'))
 const isFormValid = computed(() => {
   return formData.value.name.trim() !== '' && formData.value.url.trim() !== ''
 })
@@ -90,10 +92,10 @@ const loadSubscriptions = async () => {
     if (response.code === Code.Success) {
       subscriptions.value = response.data.subscriptions || []
     } else {
-      showNotification('error', response.msg || 'Failed to load subscriptions')
+      showNotification('error', response.msg || t('subscriptions.notify.loadFailed'))
     }
   } catch (error) {
-    showNotification('error', 'Error loading subscriptions')
+    showNotification('error', t('subscriptions.notify.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -130,34 +132,34 @@ const validateForm = () => {
   const errors: Record<string, string> = {}
 
   if (!formData.value.name.trim()) {
-    errors.name = 'Name is required'
+    errors.name = t('subscriptions.validation.nameRequired')
   }
 
   if (!formData.value.url.trim()) {
-    errors.url = 'URL is required'
+    errors.url = t('subscriptions.validation.urlRequired')
   } else {
     // The backend fetches this URL server-side. Reject non-http(s) schemes
     // (file://, gopher://, etc.) to avoid SSRF / local-file disclosure.
     try {
       const parsed = new URL(formData.value.url)
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        errors.url = 'URL must use http or https'
+        errors.url = t('subscriptions.validation.urlScheme')
       }
     } catch {
-      errors.url = 'Invalid URL format'
+      errors.url = t('subscriptions.validation.urlInvalid')
     }
   }
 
   // Validate update_interval format if auto_update is enabled
   if (formData.value.auto_update) {
     if (!formData.value.update_interval) {
-      errors.update_interval = 'Update interval is required when auto-update is enabled'
+      errors.update_interval = t('subscriptions.validation.intervalRequired')
     } else if (!isValidDuration(formData.value.update_interval)) {
-      errors.update_interval = 'Invalid interval format (e.g., 24h, 7d, 30min, 2w)'
+      errors.update_interval = t('subscriptions.validation.intervalInvalid')
     } else {
       const hours = parseDurationToHours(formData.value.update_interval)
       if (hours && hours < 1) {
-        errors.update_interval = 'Interval must be at least 1 hour'
+        errors.update_interval = t('subscriptions.validation.intervalMin')
       }
     }
   }
@@ -187,15 +189,15 @@ const saveSubscription = async () => {
     }
 
     if (response.code === Code.Success) {
-      showNotification('success', response.data.message || 'Subscription saved successfully')
+      showNotification('success', response.data.message || t('subscriptions.notify.savedOk'))
       showModal.value = false
       resetForm()
       await loadSubscriptions()
     } else {
-      showNotification('error', response.msg || 'Failed to save subscription')
+      showNotification('error', response.msg || t('subscriptions.notify.saveFailed'))
     }
   } catch (error) {
-    showNotification('error', 'Error saving subscription')
+    showNotification('error', t('subscriptions.notify.saveError'))
   }
 }
 
@@ -211,15 +213,15 @@ const deleteSubscription = async () => {
     const response = await subscriptionService.deleteSubscription(deletingSubscriptionId.value)
 
     if (response.code === Code.Success) {
-      showNotification('success', response.data.message || 'Subscription deleted successfully')
+      showNotification('success', response.data.message || t('subscriptions.notify.deletedOk'))
       showDeleteConfirm.value = false
       deletingSubscriptionId.value = ''
       await loadSubscriptions()
     } else {
-      showNotification('error', response.msg || 'Failed to delete subscription')
+      showNotification('error', response.msg || t('subscriptions.notify.deleteFailed'))
     }
   } catch (error) {
-    showNotification('error', 'Error deleting subscription')
+    showNotification('error', t('subscriptions.notify.deleteError'))
   }
 }
 
@@ -236,17 +238,17 @@ const updateSubscription = async (subscription: Subscription) => {
       // and fall back to "no changes" when the subscription was already
       // in sync with the upstream feed.
       const parts: string[] = []
-      if (added > 0) parts.push(`+${added} added`)
-      if (updated > 0) parts.push(`~${updated} updated`)
-      if (deleted > 0) parts.push(`-${deleted} removed`)
-      const summary = parts.length > 0 ? parts.join(', ') : 'no changes'
-      showNotification('success', `Subscription "${subscription.name}" synced: ${summary}`)
+      if (added > 0) parts.push(t('subscriptions.notify.added', { n: added }))
+      if (updated > 0) parts.push(t('subscriptions.notify.updated', { n: updated }))
+      if (deleted > 0) parts.push(t('subscriptions.notify.removed', { n: deleted }))
+      const summary = parts.length > 0 ? parts.join(', ') : t('subscriptions.notify.noChanges')
+      showNotification('success', t('subscriptions.notify.synced', { name: subscription.name, summary }))
       await loadSubscriptions()
     } else {
-      showNotification('error', response.msg || 'Failed to update subscription')
+      showNotification('error', response.msg || t('subscriptions.notify.updateFailed'))
     }
   } catch (error) {
-    showNotification('error', 'Error updating subscription')
+    showNotification('error', t('subscriptions.notify.updateError'))
   } finally {
     const index = isUpdating.value.indexOf(subscription.id)
     if (index > -1) {
@@ -264,7 +266,7 @@ const updateAllSubscriptions = async () => {
 }
 
 const formatDate = (dateString?: string) => {
-  if (!dateString) return 'Never'
+  if (!dateString) return t('common.never')
   return new Date(dateString).toLocaleString()
 }
 
@@ -276,11 +278,11 @@ const getIntervalHours = (interval: string | undefined) => {
 
 const getStatusBadge = (subscription: Subscription) => {
   if (subscription.node_count === 0) {
-    return { type: 'danger' as const, icon: XCircleIcon, text: 'Empty' }
+    return { type: 'danger' as const, icon: XCircleIcon, text: t('subscriptions.status.empty') }
   }
 
   if (!subscription.last_update) {
-    return { type: 'warning' as const, icon: ClockIcon, text: 'Not Updated' }
+    return { type: 'warning' as const, icon: ClockIcon, text: t('subscriptions.status.notUpdated') }
   }
 
   const lastUpdate = new Date(subscription.last_update)
@@ -288,10 +290,10 @@ const getStatusBadge = (subscription: Subscription) => {
   const intervalHours = getIntervalHours(subscription.update_interval)  // Function handles undefined
 
   if (hoursSinceUpdate > intervalHours * 1.5) {
-    return { type: 'warning' as const, icon: ClockIcon, text: 'Outdated' }
+    return { type: 'warning' as const, icon: ClockIcon, text: t('subscriptions.status.outdated') }
   }
 
-  return { type: 'success' as const, icon: CheckCircleIcon, text: 'Updated' }
+  return { type: 'success' as const, icon: CheckCircleIcon, text: t('subscriptions.status.updated') }
 }
 
 // Lifecycle
@@ -305,8 +307,8 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscriptions</h2>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">Manage and update node subscriptions</p>
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('subscriptions.title') }}</h2>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">{{ $t('subscriptions.subtitle') }}</p>
       </div>
       <div class="flex gap-3">
         <Button
@@ -316,7 +318,7 @@ onMounted(() => {
           :disabled="isLoading"
         >
           <ArrowPathIcon class="h-5 w-5" />
-          Refresh
+          {{ $t('subscriptions.refresh') }}
         </Button>
         <Button
           v-if="subscriptions.length > 0"
@@ -326,11 +328,11 @@ onMounted(() => {
           :disabled="isUpdating.length > 0"
         >
           <ArrowPathIcon class="h-5 w-5" />
-          Update All
+          {{ $t('subscriptions.updateAll') }}
         </Button>
         <Button @click="openAddModal">
           <PlusIcon class="h-5 w-5" />
-          Add Subscription
+          {{ $t('subscriptions.add') }}
         </Button>
       </div>
     </div>
@@ -341,18 +343,18 @@ onMounted(() => {
         <div class="inline-flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900 rounded-full mb-4">
           <ServerIcon class="h-8 w-8 text-violet-600 dark:text-violet-400" />
         </div>
-        <p class="text-gray-500 dark:text-gray-400">Loading subscriptions...</p>
+        <p class="text-gray-500 dark:text-gray-400">{{ $t('subscriptions.loading') }}</p>
       </div>
 
       <div v-else-if="subscriptions.length === 0" class="p-12 text-center">
         <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
           <ServerIcon class="h-8 w-8 text-gray-400" />
         </div>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No subscriptions</h3>
-        <p class="text-gray-500 dark:text-gray-400 mb-6">Get started by adding your first subscription</p>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{{ $t('subscriptions.empty.title') }}</h3>
+        <p class="text-gray-500 dark:text-gray-400 mb-6">{{ $t('subscriptions.empty.desc') }}</p>
         <Button @click="openAddModal">
           <PlusIcon class="h-5 w-5" />
-          Add Subscription
+          {{ $t('subscriptions.add') }}
         </Button>
       </div>
 
@@ -361,25 +363,25 @@ onMounted(() => {
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Name
+                {{ $t('subscriptions.table.name') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                URL
+                {{ $t('subscriptions.table.url') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Status
+                {{ $t('subscriptions.table.status') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Nodes
+                {{ $t('subscriptions.table.nodes') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Last Update
+                {{ $t('subscriptions.table.lastUpdate') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Auto Update
+                {{ $t('subscriptions.table.autoUpdate') }}
               </th>
               <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Actions
+                {{ $t('subscriptions.table.actions') }}
               </th>
             </tr>
           </thead>
@@ -416,7 +418,7 @@ onMounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <Badge :type="subscription.enabled ? 'success' : 'secondary'">
-                  {{ subscription.enabled ? 'Enabled' : 'Disabled' }}
+                  {{ subscription.enabled ? $t('subscriptions.enabled') : $t('subscriptions.disabled') }}
                 </Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -427,7 +429,7 @@ onMounted(() => {
                     :loading="isUpdating.includes(subscription.id)"
                     @click="updateSubscription(subscription)"
                     :disabled="isUpdating.includes(subscription.id)"
-                    title="Update subscription"
+                    :title="$t('subscriptions.tooltip.update')"
                   >
                     <ArrowPathIcon class="h-4 w-4" />
                   </Button>
@@ -435,7 +437,7 @@ onMounted(() => {
                     variant="ghost"
                     size="sm"
                     @click="openEditModal(subscription)"
-                    title="Edit subscription"
+                    :title="$t('subscriptions.tooltip.edit')"
                   >
                     <PencilIcon class="h-4 w-4" />
                   </Button>
@@ -443,7 +445,7 @@ onMounted(() => {
                     variant="danger"
                     size="sm"
                     @click="confirmDelete(subscription)"
-                    title="Delete subscription"
+                    :title="$t('subscriptions.tooltip.del')"
                   >
                     <TrashIcon class="h-4 w-4" />
                   </Button>
@@ -466,15 +468,15 @@ onMounted(() => {
         <div class="space-y-4">
           <Input
             v-model="formData.name"
-            label="Name"
-            placeholder="Enter subscription name"
+            :label="$t('subscriptions.form.name')"
+            :placeholder="$t('subscriptions.form.namePlaceholder')"
             required
             :error="formErrors.name"
           />
 
           <Input
             v-model="formData.url"
-            label="Subscription URL"
+            :label="$t('subscriptions.form.url')"
             type="url"
             placeholder="https://example.com/subscription"
             required
@@ -488,12 +490,12 @@ onMounted(() => {
                 type="checkbox"
                 class="rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 dark:bg-gray-700"
               />
-              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Auto Update</span>
+              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('subscriptions.form.autoUpdate') }}</span>
             </label>
 
             <Input
               v-model="formData.update_interval"
-              label="Update Interval"
+              :label="$t('subscriptions.form.updateInterval')"
               placeholder="24h"
               class="flex-1"
               :disabled="!formData.auto_update"
@@ -508,14 +510,14 @@ onMounted(() => {
           variant="secondary"
           @click="showModal = false"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </Button>
         <Button
           :loading="isLoading"
           :disabled="!isFormValid"
           @click="saveSubscription"
         >
-          {{ isEditing ? 'Update' : 'Add' }}
+          {{ isEditing ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
     </Modal>
@@ -523,7 +525,7 @@ onMounted(() => {
     <!-- Delete Confirmation Modal -->
     <Modal
       v-model="showDeleteConfirm"
-      title="Delete Subscription"
+      :title="$t('subscriptions.del.title')"
       size="sm"
       show-close
     >
@@ -532,10 +534,10 @@ onMounted(() => {
           <TrashIcon class="h-6 w-6 text-red-600 dark:text-red-400" />
         </div>
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-          Delete subscription?
+          {{ $t('subscriptions.del.confirmHeading') }}
         </h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          This action cannot be undone. The subscription and all its nodes will be permanently removed.
+          {{ $t('subscriptions.del.confirmDesc') }}
         </p>
       </div>
 
@@ -544,14 +546,14 @@ onMounted(() => {
           variant="secondary"
           @click="showDeleteConfirm = false"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </Button>
         <Button
           variant="danger"
           :loading="isLoading"
           @click="deleteSubscription"
         >
-          Delete
+          {{ $t('common.delete') }}
         </Button>
       </template>
     </Modal>

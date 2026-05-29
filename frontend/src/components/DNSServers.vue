@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   TransitionRoot,
   TransitionChild,
@@ -17,6 +18,7 @@ import { useDNSStore } from '../stores/dns'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
+const { t } = useI18n()
 const dnsStore = useDNSStore()
 const { dnsServers, loading } = storeToRefs(dnsStore)
 
@@ -35,21 +37,21 @@ const currentServer = ref<any>({
 const showDeleteConfirm = ref(false)
 const deletingServer = ref<DNSServer | null>(null)
 
-const serverTypes = [
-  { value: 'udp', label: 'UDP' },
-  { value: 'tcp', label: 'TCP' },
-  { value: 'tls', label: 'DNS over TLS' },
-  { value: 'https', label: 'DNS over HTTPS' },
-  { value: 'http3', label: 'DNS over HTTP/3' },
-  { value: 'quic', label: 'DNS over QUIC' },
-  { value: 'local', label: 'Local System DNS' },
-  { value: 'dhcp', label: 'DHCP' },
-  { value: 'fakeip', label: 'FakeIP' },
-  { value: 'hosts', label: 'Hosts File' },
-]
+const serverTypes = computed(() => [
+  { value: 'udp', label: t('dns.servers.types.udp') },
+  { value: 'tcp', label: t('dns.servers.types.tcp') },
+  { value: 'tls', label: t('dns.servers.types.tls') },
+  { value: 'https', label: t('dns.servers.types.https') },
+  { value: 'http3', label: t('dns.servers.types.http3') },
+  { value: 'quic', label: t('dns.servers.types.quic') },
+  { value: 'local', label: t('dns.servers.types.local') },
+  { value: 'dhcp', label: t('dns.servers.types.dhcp') },
+  { value: 'fakeip', label: t('dns.servers.types.fakeip') },
+  { value: 'hosts', label: t('dns.servers.types.hosts') },
+])
 
 const getServerTypeLabel = (type: string) => {
-  return serverTypes.find(t => t.value === type)?.label || type
+  return serverTypes.value.find(s => s.value === type)?.label || type
 }
 
 const getServerBadgeVariant = (type: string): 'primary' | 'success' | 'warning' | 'info' | 'secondary' => {
@@ -78,12 +80,15 @@ const formatHostsSummary = (server: any): string => {
   const predefined = server?.predefined as Record<string, string | string[]> | undefined
   if (predefined) {
     const n = Object.keys(predefined).length
-    if (n > 0) parts.push(`${n} predefined`)
+    if (n > 0) parts.push(t('dns.servers.hostsSummary.predefined', { n }))
   }
   const path = server?.path
-  if (Array.isArray(path) && path.length > 0) parts.push(`${path.length} file${path.length === 1 ? '' : 's'}`)
-  else if (typeof path === 'string' && path) parts.push('1 file')
-  return parts.length > 0 ? parts.join(', ') : '(empty)'
+  if (Array.isArray(path) && path.length > 0) {
+    parts.push(t(path.length === 1 ? 'dns.servers.hostsSummary.file' : 'dns.servers.hostsSummary.files', { n: path.length }))
+  } else if (typeof path === 'string' && path) {
+    parts.push(t('dns.servers.hostsSummary.file', { n: 1 }))
+  }
+  return parts.length > 0 ? parts.join(', ') : t('dns.servers.hostsSummary.empty')
 }
 
 // Two-way bridge between the `predefined` object and a textarea where each
@@ -172,16 +177,16 @@ const handleSaveServer = async () => {
       await dnsStore.updateDNSServer(editingServerTag.value, currentServer.value)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'DNS server updated successfully',
+        summary: t('common.success'),
+        detail: t('dns.servers.toast.updatedOk'),
         life: 3000
       })
     } else {
       await dnsStore.addDNSServer(currentServer.value)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'DNS server added successfully',
+        summary: t('common.success'),
+        detail: t('dns.servers.toast.addedOk'),
         life: 3000
       })
     }
@@ -189,8 +194,8 @@ const handleSaveServer = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to save DNS server',
+      summary: t('common.error'),
+      detail: err.message || t('dns.servers.toast.saveFailed'),
       life: 3000
     })
   }
@@ -212,16 +217,16 @@ const handleDeleteServer = async () => {
     await dnsStore.deleteDNSServer(deletingServer.value.tag)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'DNS server deleted successfully',
+      summary: t('common.success'),
+      detail: t('dns.servers.toast.deletedOk'),
       life: 3000
     })
     closeDeleteConfirm()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to delete DNS server',
+      summary: t('common.error'),
+      detail: err.message || t('dns.servers.toast.deleteFailed'),
       life: 3000
     })
   }
@@ -238,14 +243,14 @@ onMounted(() => {
     <div class="flex justify-end mb-2">
       <Button @click="openAddServerModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
-        Add DNS Server
+        {{ $t('dns.servers.add') }}
       </Button>
     </div>
 
     <!-- DNS Servers Table -->
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">DNS Servers</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.servers.heading') }}</h3>
       </div>
 
       <div v-if="loading && dnsServers.length === 0" class="flex items-center justify-center py-12">
@@ -253,10 +258,10 @@ onMounted(() => {
       </div>
 
       <div v-else-if="dnsServers.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">No DNS servers configured</p>
+        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('dns.servers.empty') }}</p>
         <Button @click="openAddServerModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
-          Add Your First DNS Server
+          {{ $t('dns.servers.addFirst') }}
         </Button>
       </div>
 
@@ -264,11 +269,11 @@ onMounted(() => {
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Server</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.tag') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.type') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.server') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.port') }}</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.actions') }}</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -343,7 +348,7 @@ onMounted(() => {
               <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? 'Edit DNS Server' : 'Add DNS Server' }}
+                    {{ isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -357,18 +362,18 @@ onMounted(() => {
                 <div class="space-y-4">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.tag') }}</label>
                       <Input
                         v-model="currentServer.tag"
-                        placeholder="e.g., cloudflare"
+                        :placeholder="$t('dns.servers.form.tagPlaceholder')"
                         :disabled="isEditMode"
                       />
                     </div>
 
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.type') }}</label>
                       <select class="select" v-model="currentServer.type" :disabled="isEditMode">
-                        <option disabled selected>Pick dns type</option>
+                        <option disabled selected>{{ $t('dns.servers.form.typePlaceholder') }}</option>
                         <option v-for="serverType in serverTypes" :key="serverType.value" :value="serverType.value">
                           {{ serverType.label }}
                         </option>
@@ -378,53 +383,53 @@ onMounted(() => {
 
                   <div v-if="needsServerAddress" class="grid grid-cols-3 gap-4">
                     <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Server Address *</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.serverAddress') }}</label>
                       <Input
                         v-model="currentServer.server"
-                        placeholder="1.1.1.1 or dns.cloudflare.com"
+                        :placeholder="$t('dns.servers.form.serverAddressPlaceholder')"
                       />
                     </div>
 
                     <div class="col-span-1">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.port') }}</label>
                       <Input
                         v-model.number="currentServer.server_port"
                         type="number"
-                        placeholder="53"
+                        :placeholder="$t('dns.servers.form.portPlaceholder')"
                       />
                     </div>
                   </div>
 
                   <div v-if="needsPath">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Path</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.path') }}</label>
                     <Input
                       v-model="currentServer.path"
-                      placeholder="/dns-query"
+                      :placeholder="$t('dns.servers.form.pathPlaceholder')"
                     />
-                    <p class="mt-1 text-xs text-gray-500">URL path for DoH queries</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.pathHelp') }}</p>
                   </div>
 
                   <div v-if="currentServer.type === 'dhcp'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interface</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.interface') }}</label>
                     <Input
                       v-model="currentServer.interface"
-                      placeholder="e.g., eth0"
+                      :placeholder="$t('dns.servers.form.interfacePlaceholder')"
                     />
                   </div>
 
                   <div v-if="currentServer.type === 'fakeip'" class="space-y-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IPv4 Range</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet4Range') }}</label>
                       <Input
                         v-model="currentServer.inet4_range"
-                        placeholder="198.18.0.0/15"
+                        :placeholder="$t('dns.servers.form.inet4RangePlaceholder')"
                       />
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IPv6 Range</label>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet6Range') }}</label>
                       <Input
                         v-model="currentServer.inet6_range"
-                        placeholder="fc00::/18"
+                        :placeholder="$t('dns.servers.form.inet6RangePlaceholder')"
                       />
                     </div>
                   </div>
@@ -440,7 +445,7 @@ onMounted(() => {
                   <div v-if="currentServer.type === 'hosts'" class="space-y-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Predefined Hosts
+                        {{ $t('dns.servers.form.predefinedHosts') }}
                       </label>
                       <textarea
                         v-model="predefinedHostsText"
@@ -450,29 +455,32 @@ onMounted(() => {
 nas.example.com 192.168.1.20,192.168.1.21"
                       />
                       <p class="mt-1 text-xs text-gray-500">
-                        One mapping per line: <code>hostname IP[,IP2,...]</code>. Lines starting with <code>#</code> and blank lines are ignored.
+                        <i18n-t keypath="dns.servers.form.predefinedHostsHelp" scope="global">
+                          <template #format><code>hostname IP[,IP2,...]</code></template>
+                          <template #hash><code>#</code></template>
+                        </i18n-t>
                       </p>
                     </div>
 
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Hosts File Paths <span class="font-normal text-gray-500">(optional)</span>
+                        {{ $t('dns.servers.form.hostsFilePaths') }} <span class="font-normal text-gray-500">{{ $t('dns.servers.form.hostsFilePathsOptional') }}</span>
                       </label>
                       <textarea
                         v-model="hostsFilePathsText"
                         rows="2"
                         class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        placeholder="/etc/hosts"
+                        :placeholder="$t('dns.servers.form.hostsFilePathsPlaceholder')"
                       />
-                      <p class="mt-1 text-xs text-gray-500">One path per line. Loaded in addition to the predefined mappings above.</p>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.hostsFilePathsHelp') }}</p>
                     </div>
                   </div>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeServerModal" variant="secondary">Cancel</Button>
+                  <Button @click="closeServerModal" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleSaveServer" variant="primary" :disabled="loading">
-                    {{ isEditMode ? 'Update' : 'Add' }}
+                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
                   </Button>
                 </div>
               </DialogPanel>
@@ -511,7 +519,7 @@ nas.example.com 192.168.1.20,192.168.1.21"
               <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Delete DNS Server
+                    {{ $t('dns.servers.del.title') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -523,15 +531,15 @@ nas.example.com 192.168.1.20,192.168.1.21"
                 </div>
 
                 <p class="text-gray-700 dark:text-gray-300">
-                  Are you sure you want to delete the DNS server
-                  <strong>{{ deletingServer?.tag }}</strong>?
-                  This action cannot be undone.
+                  <i18n-t keypath="dns.servers.del.confirm" scope="global">
+                    <template #tag><strong>{{ deletingServer?.tag }}</strong></template>
+                  </i18n-t>
                 </p>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">Cancel</Button>
+                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleDeleteServer" variant="danger" :disabled="loading">
-                    Delete
+                    {{ $t('common.delete') }}
                   </Button>
                 </div>
               </DialogPanel>

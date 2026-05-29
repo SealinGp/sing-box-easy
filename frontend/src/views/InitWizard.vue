@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import type { InitState } from '../types/api'
 import InstallSingBox from './init-steps/InstallSingBox.vue'
@@ -12,34 +13,38 @@ import ConfigureDNS from './init-steps/ConfigureDNS.vue'
 import ConfigureInbounds from './init-steps/ConfigureInbounds.vue'
 import ConfigureRoutes from './init-steps/ConfigureRoutes.vue'
 import Complete from './init-steps/Complete.vue'
+import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { serviceControlService } from '../services'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 const currentStep = ref(0)
 const initState = ref<InitState | null>(null)
 const loading = ref(false)
 const error = ref('')
 
-const steps = [
-  { title: 'Install sing-box', component: InstallSingBox },
-  { title: 'Configure Logging', component: ConfigureLog },
-  { title: 'Configure Experimental', component: ConfigureExperimental },
-  { title: 'Download Dashboard', component: DownloadDashboard },
-  { title: 'Configure Outbounds', component: ConfigureOutbounds },
-  { title: 'Configure Route / Rule Sets', component: ConfigureRuleSets },
-  { title: 'Configure DNS', component: ConfigureDNS },
-  { title: 'Configure Inbounds', component: ConfigureInbounds },
-  { title: 'Configure Routes', component: ConfigureRoutes },
-  { title: 'Complete', component: Complete },
-]
+// Computed so step titles re-translate when the locale changes. Components are
+// static and unaffected.
+const steps = computed(() => [
+  { title: t('wizard.steps.install'), component: InstallSingBox },
+  { title: t('wizard.steps.log'), component: ConfigureLog },
+  { title: t('wizard.steps.experimental'), component: ConfigureExperimental },
+  { title: t('wizard.steps.dashboard'), component: DownloadDashboard },
+  { title: t('wizard.steps.outbounds'), component: ConfigureOutbounds },
+  { title: t('wizard.steps.ruleSets'), component: ConfigureRuleSets },
+  { title: t('wizard.steps.dns'), component: ConfigureDNS },
+  { title: t('wizard.steps.inbounds'), component: ConfigureInbounds },
+  { title: t('wizard.steps.routes'), component: ConfigureRoutes },
+  { title: t('wizard.steps.complete'), component: Complete },
+])
 
 // Initialize step from query param
 const initializeStep = () => {
   const stepParam = route.query.step
   if (stepParam) {
     const stepIndex = parseInt(stepParam as string, 10)
-    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.length) {
+    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.value.length) {
       currentStep.value = stepIndex
       return
     }
@@ -59,7 +64,7 @@ const updateQueryParam = (step: number) => {
 watch(() => route.query.step, (newStep) => {
   if (newStep) {
     const stepIndex = parseInt(newStep as string, 10)
-    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.length) {
+    if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < steps.value.length) {
       currentStep.value = stepIndex
     }
   }
@@ -92,14 +97,14 @@ onMounted(async () => {
       router.push('/dashboard')
     }
   } catch (err: any) {
-    error.value = err.message || 'Failed to get initialization status'
+    error.value = err.message || t('wizard.failedStatus')
   } finally {
     loading.value = false
   }
 })
 
 const nextStep = () => {
-  if (currentStep.value < steps.length - 1) {
+  if (currentStep.value < steps.value.length - 1) {
     currentStep.value++
   }
 }
@@ -115,9 +120,12 @@ const prevStep = () => {
   <div class="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
     <div class="mx-auto w-full 2xl:w-3/4 xl:w-2/3 p-3 grid grid-cols-1 gap-y-2">
       <!-- Header -->
-      <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-900 mb-1">Sing-box Easy Setup</h1>
-        <p class="text-gray-600">Welcome! Let's get you started with sing-box configuration</p>
+      <div class="text-center relative">
+        <div class="absolute right-0 top-0">
+          <LanguageSwitcher variant="compact" />
+        </div>
+        <h1 class="text-4xl font-bold text-gray-900 mb-1">{{ $t('wizard.title') }}</h1>
+        <p class="text-gray-600">{{ $t('wizard.welcome') }}</p>
       </div>
 
       <!-- Progress Steps -->
@@ -167,12 +175,12 @@ const prevStep = () => {
       <!-- Loading State -->
       <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 p-8 text-center">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
-        <p class="mt-4 text-gray-600">Loading initialization status...</p>
+        <p class="mt-4 text-gray-600">{{ $t('wizard.loadingStatus') }}</p>
       </div>
 
       <!-- Error State -->
       <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
-        <h3 class="text-red-800 font-semibold mb-1">Error</h3>
+        <h3 class="text-red-800 font-semibold mb-1">{{ $t('common.error') }}</h3>
         <p class="text-red-600">{{ error }}</p>
       </div>
 
@@ -199,22 +207,22 @@ const prevStep = () => {
             @prev="prevStep"
           />
           <div v-else class="text-center py-12">
-            <p class="text-gray-600">Step {{ currentStep + 1 }}: {{ steps[currentStep]?.title }}</p>
-            <p class="text-gray-500 mt-2">Implementation coming soon...</p>
+            <p class="text-gray-600">{{ $t('wizard.stepN', { n: currentStep + 1, title: steps[currentStep]?.title }) }}</p>
+            <p class="text-gray-500 mt-2">{{ $t('wizard.comingSoon') }}</p>
             <div class=" flex justify-center gap-3">
               <button
                 @click="prevStep"
                 :disabled="currentStep === 0"
                 class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                {{ $t('common.previous') }}
               </button>
               <button
                 v-if="currentStep < steps.length - 1"
                 @click="nextStep"
                 class="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
               >
-                Next
+                {{ $t('common.next') }}
               </button>
             </div>
           </div>

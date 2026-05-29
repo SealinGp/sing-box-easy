@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { ClashAPI, CacheFile } from '../../types/api'
 import { Button, Input, Select, Alert, Card, Loading } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import zashboardIcon from '../../assets/zashboard.svg'
 import yacdIcon from '../../assets/yacd.ico'
 import { experimentalService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -36,13 +39,13 @@ const cacheFileConfig = ref<CacheFile>({
 })
 
 // 默认模式选项
-const defaultModeOptions = [
-  { label: 'Rule (Rules-based routing)', value: 'rule' },
-  { label: 'Global (Route all traffic through proxy)', value: 'global' },
-  { label: 'Direct (Direct connection)', value: 'direct' },
-]
+const defaultModeOptions = computed(() => [
+  { label: t('init.experimental.modeOptions.rule'), value: 'rule' },
+  { label: t('init.experimental.modeOptions.global'), value: 'global' },
+  { label: t('init.experimental.modeOptions.direct'), value: 'direct' },
+])
 
-// Dashboard 预设选项
+// Dashboard 预设选项（descKey 对应 init.experimental.dashboards.*，name/url 为技术值保持不变）
 const dashboardOptions = [
   {
     id: 'zashboard',
@@ -51,7 +54,7 @@ const dashboardOptions = [
     link: 'https://github.com/Zephyruso/zashboard',
     icon: zashboardIcon,
     preview: 'https://raw.githubusercontent.com/Zephyruso/zashboard/refs/heads/main/readme/pc.png',
-    description: 'Modern dashboard with clean UI',
+    descKey: 'init.experimental.dashboards.zashboard',
   },
   {
     id: 'yacd',
@@ -60,7 +63,7 @@ const dashboardOptions = [
     link: 'https://github.com/haishanh/yacd',
     icon: yacdIcon,
     preview: 'https://user-images.githubusercontent.com/1166872/47954055-97e6cb80-dfc0-11e8-991f-230fd40481e5.png',
-    description: 'Yet another Clash dashboard',
+    descKey: 'init.experimental.dashboards.yacd',
   },
 ]
 
@@ -207,7 +210,7 @@ const saveConfigs = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.message || 'Failed to save experimental configuration'
+    error.value = err.message || t('init.experimental.saveFailed')
   } finally {
     saving.value = false
   }
@@ -230,14 +233,14 @@ const handleSkip = () => {
   <div class="space-y-6">
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-8">
-      <Loading size="lg" text="Loading experimental configuration..." />
+      <Loading size="lg" :text="$t('init.experimental.loading')" />
     </div>
 
     <!-- 配置表单 -->
     <div v-else class="space-y-6">
       <!-- 成功提示 -->
-      <Alert v-if="success" type="success" title="Configuration Saved">
-        Experimental configuration has been saved successfully. Proceeding to next step...
+      <Alert v-if="success" type="success" :title="$t('init.experimental.savedTitle')">
+        {{ $t('init.experimental.savedDesc') }}
       </Alert>
 
       <!-- 错误提示 -->
@@ -249,9 +252,9 @@ const handleSkip = () => {
       <Card>
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Clash API</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.experimental.clashHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Enable Clash-compatible RESTful API for external control and web dashboard.
+              {{ $t('init.experimental.clashIntro') }}
             </p>
           </div>
 
@@ -264,9 +267,9 @@ const handleSkip = () => {
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="enable-clash-api" class="flex-1 cursor-pointer">
-              <span class="text-sm font-medium text-gray-900">Enable Clash API</span>
+              <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.enableClashLabel') }}</span>
               <p class="text-xs text-gray-500 mt-0.5">
-                Allows external control via HTTP API
+                {{ $t('init.experimental.enableClashDesc') }}
               </p>
             </label>
           </div>
@@ -274,21 +277,21 @@ const handleSkip = () => {
           <div v-if="enableClashAPI" class="space-y-4 pl-4 border-l-2 border-violet-200">
             <Input
               v-model="clashAPIConfig.external_controller"
-              label="External Controller"
-              placeholder="e.g., 127.0.0.1:9090"
+              :label="$t('init.experimental.controllerLabel')"
+              :placeholder="$t('init.experimental.controllerPlaceholder')"
               required
             />
 
             <Input
               v-model="clashAPIConfig.external_ui"
-              label="External UI Path"
-              placeholder="e.g., /etc/sing-box/ui(default) or ./ui (optional)"
+              :label="$t('init.experimental.externalUILabel')"
+              :placeholder="$t('init.experimental.externalUIPlaceholder')"
             />
 
             <!-- Dashboard 选择器 -->
             <div v-if="clashAPIConfig.external_ui" class="space-y-3">
               <label class="block text-sm font-medium text-gray-700">
-                Dashboard Download URL (Optional)
+                {{ $t('init.experimental.downloadUrlLabel') }}
               </label>
 
               <!-- 当前选择的 URL 显示 -->
@@ -298,7 +301,7 @@ const handleSkip = () => {
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                   </svg>
                   <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium text-green-900">Selected Download URL:</p>
+                    <p class="text-xs font-medium text-green-900">{{ $t('init.experimental.selectedUrlLabel') }}</p>
                     <p class="text-xs text-green-700 break-all mt-1 font-mono">{{ clashAPIConfig.external_ui_download_url }}</p>
                   </div>
                 </div>
@@ -337,7 +340,7 @@ const handleSkip = () => {
                       >
                         {{ dashboard.name }}
                       </a>
-                      <p class="text-xs text-gray-500 mt-0.5">{{ dashboard.description }}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">{{ $t(dashboard.descKey) }}</p>
                     </div>
                     <!-- 选中标记 -->
                     <div
@@ -373,7 +376,7 @@ const handleSkip = () => {
                 ]"
               >
                 <div class="flex items-center justify-between mb-3">
-                  <span class="text-sm font-semibold text-gray-900">Custom Download URL</span>
+                  <span class="text-sm font-semibold text-gray-900">{{ $t('init.experimental.customLabel') }}</span>
                   <div
                     v-if="selectedDashboard === 'custom'"
                     class="w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
@@ -385,7 +388,7 @@ const handleSkip = () => {
                 </div>
                 <Input
                   v-model="customDownloadUrl"
-                  placeholder="https://github.com/user/repo/archive/gh-pages.zip"
+                  :placeholder="$t('init.experimental.customPlaceholder')"
                   @click.stop
                   @focus="selectedDashboard = 'custom'"
                 />
@@ -395,19 +398,19 @@ const handleSkip = () => {
             <Input
               v-model="clashAPIConfig.secret"
               type="password"
-              label="Secret"
-              placeholder="API access secret (optional)"
+              :label="$t('init.experimental.secretLabel')"
+              :placeholder="$t('init.experimental.secretPlaceholder')"
             />
 
             <Select
               v-model="clashAPIConfig.default_mode"
               :options="defaultModeOptions"
-              label="Default Mode"
+              :label="$t('init.experimental.modeLabel')"
             />
 
             <!-- Dashboard 下载提示 -->
-            <Alert v-if="needsDashboard" type="info" title="Dashboard Required">
-              You've configured an External UI path. You'll be able to download the dashboard in the next step.
+            <Alert v-if="needsDashboard" type="info" :title="$t('init.experimental.dashboardRequiredTitle')">
+              {{ $t('init.experimental.dashboardRequiredDesc') }}
             </Alert>
           </div>
         </div>
@@ -417,9 +420,9 @@ const handleSkip = () => {
       <Card>
         <div class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Cache File</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.experimental.cacheHeading') }}</h3>
             <p class="text-sm text-gray-600">
-              Enable persistent cache to store routing decisions and fake-ip mappings.
+              {{ $t('init.experimental.cacheIntro') }}
             </p>
           </div>
 
@@ -432,9 +435,9 @@ const handleSkip = () => {
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <label for="enable-cache-file" class="flex-1 cursor-pointer">
-              <span class="text-sm font-medium text-gray-900">Enable Cache File</span>
+              <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.enableCacheLabel') }}</span>
               <p class="text-xs text-gray-500 mt-0.5">
-                Improves performance by caching routing results
+                {{ $t('init.experimental.enableCacheDesc') }}
               </p>
             </label>
           </div>
@@ -442,14 +445,14 @@ const handleSkip = () => {
           <div v-if="enableCacheFile" class="space-y-4 pl-4 border-l-2 border-green-200">
             <Input
               v-model="cacheFileConfig.path"
-              label="Cache File Path"
-              placeholder="e.g., /var/lib/sing-box/cache.db (optional)"
+              :label="$t('init.experimental.cachePathLabel')"
+              :placeholder="$t('init.experimental.cachePathPlaceholder')"
             />
 
             <Input
               v-model="cacheFileConfig.cache_id"
-              label="Cache ID"
-              placeholder="Unique identifier for this cache (optional)"
+              :label="$t('init.experimental.cacheIdLabel')"
+              :placeholder="$t('init.experimental.cacheIdPlaceholder')"
             />
 
             <!-- Store FakeIP -->
@@ -461,9 +464,9 @@ const handleSkip = () => {
                 class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
               />
               <label for="store-fakeip" class="flex-1 cursor-pointer">
-                <span class="text-sm font-medium text-gray-900">Store Fake-IP mappings</span>
+                <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.storeFakeipLabel') }}</span>
                 <p class="text-xs text-gray-500 mt-0.5">
-                  Persist fake-ip to real-ip mappings
+                  {{ $t('init.experimental.storeFakeipDesc') }}
                 </p>
               </label>
             </div>
@@ -479,7 +482,7 @@ const handleSkip = () => {
           :disabled="saving || success"
           @click="handleNext"
         >
-          {{ success ? 'Saved' : saving ? 'Saving...' : 'Save & Continue' }}
+          {{ success ? $t('init.experimental.savedBtn') : saving ? $t('common.saving') : $t('init.experimental.saveContinueBtn') }}
         </Button>
 
         <Button
@@ -487,7 +490,7 @@ const handleSkip = () => {
           :disabled="saving || success"
           @click="handleSkip"
         >
-          Skip this step
+          {{ $t('init.experimental.skipBtn') }}
         </Button>
       </div>
 
@@ -496,15 +499,15 @@ const handleSkip = () => {
         <div class="flex items-start space-x-3">
           <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
           <div class="text-sm text-violet-900 space-y-2">
-            <p class="font-medium">About Experimental Features:</p>
+            <p class="font-medium">{{ $t('init.experimental.aboutTitle') }}</p>
             <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-              <li><strong>Clash API:</strong> Enables web-based dashboard and third-party app control</li>
-              <li><strong>External Controller:</strong> The HTTP API endpoint (host:port)</li>
-              <li><strong>External UI:</strong> Path to web dashboard files (e.g., yacd, metacubexd)</li>
-              <li><strong>Cache File:</strong> Speeds up DNS resolution and routing decisions</li>
+              <li><strong>Clash API:</strong> {{ $t('init.experimental.about.clash') }}</li>
+              <li><strong>External Controller:</strong> {{ $t('init.experimental.about.controller') }}</li>
+              <li><strong>External UI:</strong> {{ $t('init.experimental.about.externalUI') }}</li>
+              <li><strong>Cache File:</strong> {{ $t('init.experimental.about.cache') }}</li>
             </ul>
             <p class="mt-2 text-xs text-violet-700">
-              💡 Tip: Enable Clash API if you want to use a web dashboard to manage sing-box.
+              💡 {{ $t('init.experimental.aboutTip') }}
             </p>
           </div>
         </div>
@@ -531,7 +534,7 @@ const handleSkip = () => {
           <!-- 预览图片 -->
           <img
             :src="previewImage"
-            alt="Dashboard preview"
+            :alt="$t('init.experimental.previewAlt')"
             class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
             @click.stop
           />

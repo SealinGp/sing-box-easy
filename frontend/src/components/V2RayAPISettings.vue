@@ -6,8 +6,10 @@ import Card from './Card.vue'
 import Input from './Input.vue'
 import { experimentalService } from '../services'
 import { useToast } from 'primevue'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
@@ -53,8 +55,8 @@ const fetchV2RayAPI = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch V2Ray API configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.v2ray.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -103,16 +105,16 @@ const handleSave = async () => {
     await experimentalService.updateV2RayAPI(config)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'V2Ray API configuration updated successfully',
+      summary: t('common.success'),
+      detail: t('experimental.v2ray.toast.updatedOk'),
       life: 3000
     })
     await fetchV2RayAPI()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to update V2Ray API configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.v2ray.toast.updateFailed'),
       life: 3000
     })
   } finally {
@@ -129,7 +131,7 @@ onMounted(() => {
 <template>
   <div>
     <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">V2Ray API Settings</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('experimental.v2ray.title') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
@@ -139,20 +141,20 @@ onMounted(() => {
         <!-- API Listen Address -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Listen Address
+            {{ $t('experimental.v2ray.listen') }}
           </label>
           <Input
             v-model="settings.listen"
             placeholder="127.0.0.1:8080"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            V2Ray API gRPC server listening address
+            {{ $t('experimental.v2ray.listenHelp') }}
           </p>
         </div>
 
         <!-- Stats Service -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Stats Service</h4>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('experimental.v2ray.stats.title') }}</h4>
 
           <div class="space-y-4">
             <!-- Enable Stats -->
@@ -167,10 +169,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="stats_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Enable Stats Service
+                  {{ $t('experimental.v2ray.stats.enable') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Collect and provide traffic statistics
+                  {{ $t('experimental.v2ray.stats.enableHelp') }}
                 </p>
               </div>
             </div>
@@ -178,45 +180,45 @@ onMounted(() => {
             <!-- Monitored Inbounds -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Monitored Inbounds
+                {{ $t('experimental.v2ray.stats.inbounds') }}
               </label>
               <Input
                 v-model="inboundsText"
-                placeholder="http-in, socks-in (comma separated tags)"
+                :placeholder="$t('experimental.v2ray.stats.inboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Inbound tags to collect statistics for
+                {{ $t('experimental.v2ray.stats.inboundsHelp') }}
               </p>
             </div>
 
             <!-- Monitored Outbounds -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Monitored Outbounds
+                {{ $t('experimental.v2ray.stats.outbounds') }}
               </label>
               <Input
                 v-model="outboundsText"
-                placeholder="proxy-out, direct (comma separated tags)"
+                :placeholder="$t('experimental.v2ray.stats.outboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Outbound tags to collect statistics for
+                {{ $t('experimental.v2ray.stats.outboundsHelp') }}
               </p>
             </div>
 
             <!-- Monitored Users -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Monitored Users
+                {{ $t('experimental.v2ray.stats.users') }}
               </label>
               <Input
                 v-model="usersText"
-                placeholder="user1, user2 (comma separated usernames)"
+                :placeholder="$t('experimental.v2ray.stats.usersPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                User names to collect statistics for
+                {{ $t('experimental.v2ray.stats.usersHelp') }}
               </p>
             </div>
           </div>
@@ -225,15 +227,14 @@ onMounted(() => {
         <!-- Info Box -->
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p class="text-sm text-blue-700 dark:text-blue-300">
-            <strong>Note:</strong> V2Ray API provides a gRPC interface for programmatic access to sing-box statistics and control.
-            This is useful for developing custom monitoring tools or integrations.
+            <strong>{{ $t('experimental.v2ray.note') }}</strong> {{ $t('experimental.v2ray.noteText') }}
           </p>
         </div>
 
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button @click="handleSave" variant="primary" :disabled="loading">
-            Save Settings
+            {{ $t('experimental.v2ray.save') }}
           </Button>
         </div>
       </div>

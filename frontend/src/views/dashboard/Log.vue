@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { logService } from '../../services'
 import { Code, type LogConfig } from '../../types/api'
 import { useToast } from 'primevue'
+
+const { t } = useI18n()
 
 const logConfig = ref<LogConfig>({
   disabled: false,
@@ -29,16 +32,16 @@ const loadLog = async () => {
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: response.msg || 'Failed to load log configuration',
+        summary: t('common.error'),
+        detail: response.msg || t('log.toast.loadFailed'),
         life: 3000
       })
     }
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to load log configuration',
+      summary: t('common.error'),
+      detail: err.message || t('log.toast.loadFailed'),
       life: 3000
     })
   } finally {
@@ -54,23 +57,23 @@ const saveLog = async () => {
     if (response.code === Code.Success) {
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: response.data?.message || 'Log configuration saved successfully',
+        summary: t('common.success'),
+        detail: response.data?.message || t('log.toast.savedOk'),
         life: 3000
       })
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: response.msg || 'Failed to save log configuration',
+        summary: t('common.error'),
+        detail: response.msg || t('log.toast.saveFailed'),
         life: 3000
       })
     }
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to save log configuration',
+      summary: t('common.error'),
+      detail: err.message || t('log.toast.saveFailed'),
       life: 3000
     })
   } finally {
@@ -91,9 +94,9 @@ const resetToDefaults = () => {
 <template>
   <div class="p-8">
     <div class="mb-6">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Log Configuration</h2>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('log.title') }}</h2>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Configure sing-box logging settings
+        {{ $t('log.subtitle') }}
       </p>
     </div>
 
@@ -101,7 +104,7 @@ const resetToDefaults = () => {
       <div class="flex items-center justify-center">
         <div class="text-center">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-          <p class="mt-4 text-gray-500 dark:text-gray-400">Loading log configuration...</p>
+          <p class="mt-4 text-gray-500 dark:text-gray-400">{{ $t('log.loading') }}</p>
         </div>
       </div>
     </div>
@@ -112,10 +115,10 @@ const resetToDefaults = () => {
         <div class="flex items-center justify-between">
           <div>
             <label class="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Disable Logging
+              {{ $t('log.disabled.label') }}
             </label>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Turn off all logging output
+              {{ $t('log.disabled.help') }}
             </p>
           </div>
           <button
@@ -137,10 +140,10 @@ const resetToDefaults = () => {
         <!-- Log Level -->
         <div>
           <label class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-            Log Level
+            {{ $t('log.level.label') }}
           </label>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Set the minimum log level to display
+            {{ $t('log.level.help') }}
           </p>
           <select
             v-model="logConfig.level"
@@ -155,10 +158,10 @@ const resetToDefaults = () => {
         <!-- Output File -->
         <div>
           <label class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-            Output File
+            {{ $t('log.output.label') }}
           </label>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Path to log file (leave empty for stdout)
+            {{ $t('log.output.help') }}
           </p>
           <input
             v-model="logConfig.output"
@@ -172,10 +175,10 @@ const resetToDefaults = () => {
         <div class="flex items-center justify-between">
           <div>
             <label class="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Include Timestamp
+              {{ $t('log.timestamp.label') }}
             </label>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Add timestamps to log entries
+              {{ $t('log.timestamp.help') }}
             </p>
           </div>
           <button
@@ -200,7 +203,7 @@ const resetToDefaults = () => {
             @click="resetToDefaults"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600"
           >
-            Reset to Defaults
+            {{ $t('log.resetDefaults') }}
           </button>
 
           <button
@@ -208,7 +211,7 @@ const resetToDefaults = () => {
             :disabled="saving"
             class="px-6 py-2 text-sm font-medium text-white bg-violet-600 dark:bg-violet-700 rounded-md hover:bg-violet-700 dark:hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ saving ? 'Saving...' : 'Save Configuration' }}
+            {{ saving ? $t('common.saving') : $t('log.saveConfig') }}
           </button>
         </div>
       </div>

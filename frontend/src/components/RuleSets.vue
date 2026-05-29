@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
 import { Dialog, Button, Select } from '../volt'
@@ -9,6 +10,7 @@ import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
+const { t } = useI18n()
 const routeStore = useRouteStore()
 const { ruleSets, loading } = storeToRefs(routeStore)
 
@@ -19,10 +21,10 @@ const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
 // Form data
 const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
 
-const typeOptions = [
-  { label: 'Remote', value: 'remote' },
-  { label: 'Local', value: 'local' },
-]
+const typeOptions = computed(() => [
+  { label: t('route.ruleSets.types.remote'), value: 'remote' },
+  { label: t('route.ruleSets.types.local'), value: 'local' },
+])
 
 // formatOptions removed - not currently used
 // const formatOptions = [
@@ -108,14 +110,14 @@ function startEditRuleSet(ruleSet: RuleSet) {
 // so the URL field can't be coerced into a file:// / gopher:// scheme.
 function validateRuleSetUrl(form: RuleSet): string | null {
   if (form.type !== 'remote') return null
-  if (!form.url || !form.url.trim()) return 'URL is required for remote rule sets'
+  if (!form.url || !form.url.trim()) return t('route.ruleSets.validation.urlRequired')
   try {
     const parsed = new URL(form.url)
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return 'URL must use http or https'
+      return t('route.ruleSets.validation.urlScheme')
     }
   } catch {
-    return 'Invalid URL format'
+    return t('route.ruleSets.validation.urlInvalid')
   }
   return null
 }
@@ -123,23 +125,23 @@ function validateRuleSetUrl(form: RuleSet): string | null {
 async function handleAddRuleSet() {
   const urlError = validateRuleSetUrl(ruleSetForm.value)
   if (urlError) {
-    toast.add({ severity: 'error', summary: 'Validation Error', detail: urlError, life: 3000 })
+    toast.add({ severity: 'error', summary: t('route.ruleSets.toast.validationError'), detail: urlError, life: 3000 })
     return
   }
   try {
     await routeStore.addRuleSet(ruleSetForm.value)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Rule set added successfully',
+      summary: t('common.success'),
+      detail: t('route.ruleSets.toast.added'),
       life: 3000
     })
     dialogVisible.value = false
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to add rule set',
+      summary: t('common.error'),
+      detail: err.message || t('route.ruleSets.toast.addFailed'),
       life: 3000
     })
   }
@@ -149,23 +151,23 @@ async function handleUpdateRuleSet() {
   if (editingRuleSet.value) {
     const urlError = validateRuleSetUrl(editingRuleSet.value.ruleSet)
     if (urlError) {
-      toast.add({ severity: 'error', summary: 'Validation Error', detail: urlError, life: 3000 })
+      toast.add({ severity: 'error', summary: t('route.ruleSets.toast.validationError'), detail: urlError, life: 3000 })
       return
     }
     try {
       await routeStore.updateRuleSet(editingRuleSet.value.tag, editingRuleSet.value.ruleSet)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Rule set updated successfully',
+        summary: t('common.success'),
+        detail: t('route.ruleSets.toast.updated'),
         life: 3000
       })
       dialogVisible.value = false
     } catch (err: any) {
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: err.message || 'Failed to update rule set',
+        summary: t('common.error'),
+        detail: err.message || t('route.ruleSets.toast.updateFailed'),
         life: 3000
       })
     }
@@ -173,21 +175,21 @@ async function handleUpdateRuleSet() {
 }
 
 async function handleDeleteRuleSet(tag: string) {
-  if (!confirm('Are you sure you want to delete this rule set?')) return
+  if (!confirm(t('route.ruleSets.confirm.delete'))) return
 
   try {
     await routeStore.deleteRuleSet(tag)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Rule set deleted successfully',
+      summary: t('common.success'),
+      detail: t('route.ruleSets.toast.deleted'),
       life: 3000
     })
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to delete rule set',
+      summary: t('common.error'),
+      detail: err.message || t('route.ruleSets.toast.deleteFailed'),
       life: 3000
     })
   }
@@ -204,13 +206,13 @@ onMounted(() => {
     <Card>
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Rule Sets
+          {{ $t('route.ruleSets.title') }}
         </h3>
         <button
           @click="showAddRuleSetDialog = true"
           class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
         >
-          Add Rule Set
+          {{ $t('route.ruleSets.add') }}
         </button>
       </div>
 
@@ -219,7 +221,7 @@ onMounted(() => {
       </div>
 
       <div v-else-if="ruleSets.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-        No rule sets configured
+        {{ $t('route.ruleSets.empty') }}
       </div>
 
       <div v-else class="space-y-4">
@@ -232,23 +234,23 @@ onMounted(() => {
             <div class="flex-1">
               <div class="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">Tag:</span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.tag') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.tag }}</span>
                 </div>
                 <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">Type:</span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.type') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.type }}</span>
                 </div>
                 <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">Format:</span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.format') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.format }}</span>
                 </div>
                 <div v-if="ruleSet.url">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">URL:</span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.url') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.url }}</span>
                 </div>
                 <div v-if="ruleSet.update_interval">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">Update Interval:</span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.updateInterval') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.update_interval }}</span>
                 </div>
               </div>
@@ -258,13 +260,13 @@ onMounted(() => {
                 @click="startEditRuleSet(ruleSet)"
                 class="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300"
               >
-                Edit
+                {{ $t('common.edit') }}
               </button>
               <button
                 @click="handleDeleteRuleSet(ruleSet.tag)"
                 class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
               >
-                Delete
+                {{ $t('common.delete') }}
               </button>
             </div>
           </div>
@@ -276,27 +278,27 @@ onMounted(() => {
     <Dialog
       v-model:visible="dialogVisible"
       modal
-      :header="editingRuleSet ? 'Edit Rule Set' : 'Add Rule Set'"
+      :header="editingRuleSet ? $t('route.ruleSets.modal.edit') : $t('route.ruleSets.modal.add')"
       class="w-full max-w-lg"
     >
       <div class="space-y-4">
         <Input
           v-model="currentRuleSetTag"
-          label="Tag *"
-          placeholder="Rule set tag"
+          :label="$t('route.ruleSets.form.tag')"
+          :placeholder="$t('route.ruleSets.form.tagPlaceholder')"
           :disabled="!!editingRuleSet"
         />
 
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Type *
+            {{ $t('route.ruleSets.form.type') }}
           </label>
           <Select
             v-model="currentRuleSetType"
             :options="typeOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select type"
+            :placeholder="$t('route.ruleSets.form.typePlaceholder')"
             class="w-full"
           />
         </div>
@@ -318,25 +320,25 @@ onMounted(() => {
         <Input
           v-if="currentRuleSetType === 'remote'"
           v-model="currentRuleSetUrl"
-          label="URL *"
-          placeholder="Rule set URL"
+          :label="$t('route.ruleSets.form.url')"
+          :placeholder="$t('route.ruleSets.form.urlPlaceholder')"
         />
 
         <Input
           v-model="currentRuleSetUpdateInterval"
-          label="Update Interval"
-          placeholder="e.g., 1d, 12h, 30m"
+          :label="$t('route.ruleSets.form.updateInterval')"
+          :placeholder="$t('route.ruleSets.form.updateIntervalPlaceholder')"
         />
       </div>
 
       <template #footer>
         <Button
-          label="Cancel"
+          :label="$t('common.cancel')"
           severity="secondary"
           @click="dialogVisible = false"
         />
         <Button
-          :label="editingRuleSet ? 'Update' : 'Add'"
+          :label="editingRuleSet ? $t('common.update') : $t('common.add')"
           @click="editingRuleSet ? handleUpdateRuleSet() : handleAddRuleSet()"
         />
       </template>

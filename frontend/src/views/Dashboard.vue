@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import type { Component } from "vue";
 import Sidebar from "../components/Sidebar.vue";
 import {
@@ -23,56 +25,58 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-// Static menu definition — never mutated. Plain const avoids unnecessary
-// reactive tracking that `ref()` would impose.
-const menuItems: MenuItem[] = [
+const { t } = useI18n();
+
+// Computed so labels re-translate when the locale changes. Icons/paths are
+// static; only the display `name` is localized.
+const menuItems = computed<MenuItem[]>(() => [
   {
-    name: "Overview",
+    name: t("nav.overview"),
     icon: ChartBarIcon,
     path: "/dashboard/overview",
   },
   {
-    name: "Proxy",
+    name: t("nav.proxy"),
     icon: ServerIcon,
     children: [
       {
-        name: "Inbounds",
+        name: t("nav.inbounds"),
         icon: ArrowDownTrayIcon,
         path: "/dashboard/inbounds",
       },
       {
-        name: "Outbounds",
+        name: t("nav.outbounds"),
         icon: ArrowUpTrayIcon,
         path: "/dashboard/outbounds",
       },
     ],
   },
   {
-    name: "Network",
+    name: t("nav.network"),
     icon: ShieldCheckIcon,
     children: [
-      { name: "DNS", icon: GlobeAltIcon, path: "/dashboard/dns" },
-      { name: "Route", icon: MapIcon, path: "/dashboard/route" },
+      { name: t("nav.dns"), icon: GlobeAltIcon, path: "/dashboard/dns" },
+      { name: t("nav.route"), icon: MapIcon, path: "/dashboard/route" },
     ],
   },
   {
-    name: "Advanced",
+    name: t("nav.advanced"),
     icon: CogIcon,
     children: [
       {
-        name: "Experimental",
+        name: t("nav.experimental"),
         icon: BeakerIcon,
         path: "/dashboard/experimental",
       },
-      { name: "Config", icon: DocumentTextIcon, path: "/dashboard/config" },
+      { name: t("nav.config"), icon: DocumentTextIcon, path: "/dashboard/config" },
     ],
   },
   {
-    name: "Subscriptions",
+    name: t("nav.subscriptions"),
     icon: CloudArrowDownIcon,
     path: "/dashboard/subscriptions",
   },
-];
+]);
 </script>
 
 <template>

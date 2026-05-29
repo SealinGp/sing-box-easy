@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Component } from 'vue'
-import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ChevronRightIcon, ChevronDownIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import LanguageSwitcher from './LanguageSwitcher.vue'
 
 interface MenuItem {
   name: string
@@ -53,9 +54,23 @@ const isParentActive = (item: MenuItem) => {
   <div class="w-55 bg-white/95 backdrop-blur-sm dark:bg-slate-900/95 h-full flex flex-col shadow-xl">
     <!-- Logo/Brand with Menu label -->
     <div class="p-6 pb-4">
-      <div class="flex items-center gap-2 mb-4">
+      <!-- Row 1: icon + name -->
+      <div class="flex items-center gap-2">
+        <img src="/logo.jpg" alt="Sing Box Easy" class="h-7 w-7 rounded-lg flex-shrink-0 shadow-sm" />
         <span class="text-sm font-semibold text-gray-900 dark:text-white">Sing Box Easy</span>
+      </div>
+      <!-- Row 2 (secondary): version + language switch + settings -->
+      <div class="flex items-center gap-2 mt-2 mb-4">
         <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">{{ version }}</span>
+        <LanguageSwitcher variant="compact" class="ml-auto" />
+        <router-link
+          to="/dashboard/settings"
+          class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          :class="{ 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30': isActive('/dashboard/settings') }"
+          :title="$t('nav.settings')"
+        >
+          <Cog6ToothIcon class="h-4 w-4" />
+        </router-link>
       </div>
     </div>
 
@@ -192,8 +207,8 @@ const isParentActive = (item: MenuItem) => {
           A
         </div>
         <div class="flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">Admin</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">System Administrator</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('nav.admin') }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ $t('nav.adminRole') }}</p>
         </div>
       </div>
     </div>

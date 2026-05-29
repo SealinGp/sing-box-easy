@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { InstallTask } from '../../types/api'
 import { Button, Input, Alert, Card, Loading } from '../../components'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import { serviceControlService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -43,7 +46,7 @@ onMounted(async () => {
 
 const startInstall = async () => {
   if (!version.value.trim()) {
-    error.value = 'Please enter a version'
+    error.value = t('init.install.versionRequired')
     return
   }
 
@@ -66,7 +69,7 @@ const startInstall = async () => {
     // 开始轮询任务状态
     pollTaskStatus(data.task_id)
   } catch (err: any) {
-    error.value = err.message || 'Failed to start installation'
+    error.value = err.message || t('init.install.startFailed')
     installing.value = false
   }
 }
@@ -91,7 +94,7 @@ const pollTaskStatus = (taskId: string) => {
       console.error('Failed to poll task status:', err)
       stopPolling()
       installing.value = false
-      error.value = 'Failed to check installation status'
+      error.value = t('init.install.statusFailed')
     }
   }, 2000) // 每2秒轮询一次
 }
@@ -123,29 +126,29 @@ onUnmounted(() => {
   <div class="space-y-6">
     <!-- 检查现有安装状态 -->
     <div v-if="checkingExisting" class="flex justify-center py-8">
-      <Loading size="lg" text="Checking installation status..." />
+      <Loading size="lg" :text="$t('init.install.checking')" />
     </div>
 
     <!-- 已安装提示 -->
-    <Alert v-else-if="alreadyInstalled" type="success" title="sing-box Already Installed">
-      sing-box is already installed on your system. You can proceed to the next step or reinstall if needed.
+    <Alert v-else-if="alreadyInstalled" type="success" :title="$t('init.install.alreadyTitle')">
+      {{ $t('init.install.alreadyDesc') }}
     </Alert>
 
     <!-- 安装表单 -->
     <Card v-if="!checkingExisting">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Install sing-box</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.install.heading') }}</h3>
           <p class="text-sm text-gray-600">
-            sing-box is a universal proxy platform. Please specify the version you want to install.
+            {{ $t('init.install.intro') }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             v-model="version"
-            label="Version"
-            placeholder="e.g., 1.12.12"
+            :label="$t('init.install.versionLabel')"
+            :placeholder="$t('init.install.versionPlaceholder')"
             :disabled="true"
             required
           />
@@ -158,7 +161,7 @@ onUnmounted(() => {
                 class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                 :disabled="installing || alreadyInstalled"
               />
-              <span class="text-sm font-medium text-gray-700">Install beta version</span>
+              <span class="text-sm font-medium text-gray-700">{{ $t('init.install.betaLabel') }}</span>
             </label>
           </div>
         </div>
@@ -173,12 +176,12 @@ onUnmounted(() => {
           <div class="space-y-3">
             <div class="flex items-center space-x-2">
               <Loading size="sm" />
-              <p class="text-sm font-semibold text-violet-900">Installing sing-box...</p>
+              <p class="text-sm font-semibold text-violet-900">{{ $t('init.install.progressTitle') }}</p>
             </div>
             <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs overflow-auto max-h-32">
-              <pre class="whitespace-pre-wrap break-words">{{ installTask.message || 'Starting installation...' }}</pre>
+              <pre class="whitespace-pre-wrap break-words">{{ installTask.message || $t('init.install.progressStarting') }}</pre>
             </div>
-            <p class="text-xs text-violet-600">This may take a few minutes. Please wait...</p>
+            <p class="text-xs text-violet-600">{{ $t('init.install.progressWait') }}</p>
           </div>
         </Card>
 
@@ -191,7 +194,7 @@ onUnmounted(() => {
           <div class="flex items-start space-x-3">
             <CheckCircleIcon class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div class="flex-1">
-              <p class="text-sm font-medium text-green-900">Installation completed successfully!</p>
+              <p class="text-sm font-medium text-green-900">{{ $t('init.install.successTitle') }}</p>
               <p class="text-xs text-green-600 mt-1">{{ installTask.message }}</p>
             </div>
           </div>
@@ -206,7 +209,7 @@ onUnmounted(() => {
           <div class="flex items-start space-x-3">
             <XCircleIcon class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div class="flex-1">
-              <p class="text-sm font-medium text-red-900">Installation failed</p>
+              <p class="text-sm font-medium text-red-900">{{ $t('init.install.failedTitle') }}</p>
               <p class="text-xs text-red-600 mt-1">{{ installTask.error || installTask.message }}</p>
             </div>
           </div>
@@ -221,7 +224,7 @@ onUnmounted(() => {
             :disabled="installing"
             @click="startInstall"
           >
-            {{ installing ? 'Installing...' : 'Install sing-box' }}
+            {{ installing ? $t('init.install.installingBtn') : $t('init.install.installBtn') }}
           </Button>
 
           <Button
@@ -230,7 +233,7 @@ onUnmounted(() => {
             :disabled="installing"
             @click="startInstall"
           >
-            Reinstall
+            {{ $t('init.install.reinstallBtn') }}
           </Button>
 
           <Button
@@ -238,7 +241,7 @@ onUnmounted(() => {
             variant="primary"
             @click="handleNext"
           >
-            Continue to Next Step
+            {{ $t('init.install.continueBtn') }}
           </Button>
 
           <Button
@@ -246,7 +249,7 @@ onUnmounted(() => {
             variant="ghost"
             @click="handleSkip"
           >
-            Skip this step
+            {{ $t('init.install.skipBtn') }}
           </Button>
         </div>
       </div>
@@ -255,12 +258,12 @@ onUnmounted(() => {
     <!-- 说明信息 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Notes:</p>
+        <p class="font-medium text-gray-900">{{ $t('init.install.notesTitle') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
-          <li>The installation uses the official sing-box installation script</li>
-          <li>Default version is 1.12.12 (recommended)</li>
-          <li>Beta versions may contain experimental features</li>
-          <li>You can skip this step if sing-box is already installed manually</li>
+          <li>{{ $t('init.install.notes.script') }}</li>
+          <li>{{ $t('init.install.notes.default') }}</li>
+          <li>{{ $t('init.install.notes.beta') }}</li>
+          <li>{{ $t('init.install.notes.skip') }}</li>
         </ul>
       </div>
     </Card>

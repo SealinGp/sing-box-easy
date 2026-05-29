@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DialerOptions } from '../types/shared'
 import Input from './Input.vue'
 import Select from './Select.vue'
 import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
+
+const { t } = useI18n()
 
 interface Props {
   modelValue: any
@@ -114,8 +117,8 @@ const fallbackDelay = computed({
     <!-- Dial Fields Section Header -->
     <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
       <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-        Dial Options
-        <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">(Optional)</span>
+        {{ $t('dialer.title') }}
+        <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ $t('dialer.optional') }}</span>
       </h4>
     </div>
 
@@ -123,8 +126,8 @@ const fallbackDelay = computed({
     <div class="grid grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Detour
-          <span class="text-xs text-gray-500 ml-1">(Prefix Outbound tag for chain proxy)</span>
+          {{ $t('dialer.detour.label') }}
+          <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.detour.hint') }}</span>
         </label>
         <Select
           v-if="detourOptions.length > 0"
@@ -132,25 +135,25 @@ const fallbackDelay = computed({
           :options="detourOptions"
           :searchable="true"
           :clearable="true"
-          placeholder="Select an outbound to route through"
-          search-placeholder="Type to filter outbounds..."
-          no-options-text="No matching outbounds found"
+          :placeholder="$t('dialer.detour.placeholder')"
+          :search-placeholder="$t('dialer.detour.searchPlaceholder')"
+          :no-options-text="$t('dialer.detour.noOptions')"
         />
         <div v-else class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <p class="text-sm text-gray-500 dark:text-gray-400">No other outbounds available</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('dialer.detour.none') }}</p>
         </div>
-        <p class="mt-1 text-xs text-gray-500">Route through another outbound</p>
+        <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.detour.help') }}</p>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Bind Interface
+          {{ $t('dialer.bindInterface.label') }}
         </label>
         <Input
           v-model="bindInterface"
-          placeholder="e.g., eth0, en0"
+          :placeholder="$t('dialer.bindInterface.placeholder')"
         />
-        <p class="mt-1 text-xs text-gray-500">Bind to specific network interface</p>
+        <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.bindInterface.help') }}</p>
       </div>
     </div>
 
@@ -158,46 +161,46 @@ const fallbackDelay = computed({
     <div class="grid grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          IPv4 Bind Address
+          {{ $t('dialer.inet4BindAddress.label') }}
         </label>
         <Input
           v-model="inet4BindAddress"
-          placeholder="e.g., 192.168.1.100"
+          :placeholder="$t('dialer.inet4BindAddress.placeholder')"
         />
-        <p class="mt-1 text-xs text-gray-500">Local IPv4 address to bind</p>
+        <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.inet4BindAddress.help') }}</p>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          IPv6 Bind Address
+          {{ $t('dialer.inet6BindAddress.label') }}
         </label>
         <Input
           v-model="inet6BindAddress"
-          placeholder="e.g., ::1"
+          :placeholder="$t('dialer.inet6BindAddress.placeholder')"
         />
-        <p class="mt-1 text-xs text-gray-500">Local IPv6 address to bind</p>
+        <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.inet6BindAddress.help') }}</p>
       </div>
     </div>
 
     <!-- Domain Strategy -->
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Domain Strategy
+        {{ $t('dialer.domainStrategy.label') }}
       </label>
       <select class="select" v-model="domainStrategy">
-        <option value="">Default</option>
-        <option value="prefer_ipv4">Prefer IPv4</option>
-        <option value="prefer_ipv6">Prefer IPv6</option>
-        <option value="ipv4_only">IPv4 Only</option>
-        <option value="ipv6_only">IPv6 Only</option>
+        <option value="">{{ $t('dialer.domainStrategy.options.default') }}</option>
+        <option value="prefer_ipv4">{{ $t('dialer.domainStrategy.options.preferIpv4') }}</option>
+        <option value="prefer_ipv6">{{ $t('dialer.domainStrategy.options.preferIpv6') }}</option>
+        <option value="ipv4_only">{{ $t('dialer.domainStrategy.options.ipv4Only') }}</option>
+        <option value="ipv6_only">{{ $t('dialer.domainStrategy.options.ipv6Only') }}</option>
       </select>
-      <p class="mt-1 text-xs text-gray-500">DNS resolution strategy for domains</p>
+      <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.domainStrategy.help') }}</p>
     </div>
 
     <!-- Advanced Options (Collapsible) -->
     <details v-if="showAdvanced" class="border-t border-gray-200 dark:border-gray-700 pt-4">
       <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
-        Advanced Options
+        {{ $t('dialer.advanced') }}
       </summary>
 
       <div class="mt-4 space-y-4">
@@ -205,24 +208,24 @@ const fallbackDelay = computed({
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Connect Timeout
+              {{ $t('dialer.connectTimeout.label') }}
             </label>
             <Input
               v-model="connectTimeout"
-              placeholder="e.g., 5s, 30s"
+              :placeholder="$t('dialer.connectTimeout.placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">Connection timeout duration</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.connectTimeout.help') }}</p>
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Fallback Delay
+              {{ $t('dialer.fallbackDelay.label') }}
             </label>
             <Input
               v-model="fallbackDelay"
-              placeholder="e.g., 300ms"
+              :placeholder="$t('dialer.fallbackDelay.placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">Delay before fallback</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.fallbackDelay.help') }}</p>
           </div>
         </div>
 
@@ -230,27 +233,27 @@ const fallbackDelay = computed({
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Protect Path
-              <span class="text-xs text-gray-500 ml-1">(Android)</span>
+              {{ $t('dialer.protectPath.label') }}
+              <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.protectPath.hint') }}</span>
             </label>
             <Input
               v-model="protectPath"
-              placeholder="e.g., /dev/protect"
+              :placeholder="$t('dialer.protectPath.placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">Android VPN protect path</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.protectPath.help') }}</p>
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Routing Mark
-              <span class="text-xs text-gray-500 ml-1">(Linux)</span>
+              {{ $t('dialer.routingMark.label') }}
+              <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.routingMark.hint') }}</span>
             </label>
             <Input
               v-model="routingMark"
               type="number"
-              placeholder="e.g., 255"
+              :placeholder="$t('dialer.routingMark.placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">SO_MARK socket option</p>
+            <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.routingMark.help') }}</p>
           </div>
         </div>
 
@@ -263,8 +266,8 @@ const fallbackDelay = computed({
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
-              Reuse Address
-              <span class="text-xs text-gray-500 ml-1">(SO_REUSEADDR)</span>
+              {{ $t('dialer.reuseAddr.label') }}
+              <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.reuseAddr.hint') }}</span>
             </span>
           </label>
 
@@ -275,8 +278,8 @@ const fallbackDelay = computed({
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
-              TCP Fast Open
-              <span class="text-xs text-gray-500 ml-1">(TFO)</span>
+              {{ $t('dialer.tcpFastOpen.label') }}
+              <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.tcpFastOpen.hint') }}</span>
             </span>
           </label>
 
@@ -287,8 +290,8 @@ const fallbackDelay = computed({
               class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
-              TCP Multi-Path
-              <span class="text-xs text-gray-500 ml-1">(MPTCP)</span>
+              {{ $t('dialer.tcpMultiPath.label') }}
+              <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.tcpMultiPath.hint') }}</span>
             </span>
           </label>
         </div>
@@ -296,14 +299,14 @@ const fallbackDelay = computed({
         <!-- UDP Fragment -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            UDP Fragment
+            {{ $t('dialer.udpFragment.label') }}
           </label>
           <select class="select" v-model="udpFragment">
-            <option :value="undefined">Default</option>
-            <option :value="true">Enabled</option>
-            <option :value="false">Disabled</option>
+            <option :value="undefined">{{ $t('dialer.udpFragment.options.default') }}</option>
+            <option :value="true">{{ $t('dialer.udpFragment.options.enabled') }}</option>
+            <option :value="false">{{ $t('dialer.udpFragment.options.disabled') }}</option>
           </select>
-          <p class="mt-1 text-xs text-gray-500">Control UDP packet fragmentation</p>
+          <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.udpFragment.help') }}</p>
         </div>
       </div>
     </details>

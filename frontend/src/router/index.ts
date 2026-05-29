@@ -24,6 +24,7 @@ const V2RayAPISettings = () => import(/* webpackChunkName: "v2ray-api" */ '../co
 const Subscriptions = () => import(/* webpackChunkName: "subscriptions" */ '../views/dashboard/Subscriptions.vue')
 const Config = () => import(/* webpackChunkName: "config" */ '../views/dashboard/Config.vue')
 const Log = () => import(/* webpackChunkName: "log" */ '../views/dashboard/Log.vue')
+const Settings = () => import(/* webpackChunkName: "settings" */ '../views/dashboard/Settings.vue')
 
 const routes: RouteRecordRaw[] = [
   {
@@ -142,6 +143,11 @@ const routes: RouteRecordRaw[] = [
         path: 'log',
         name: 'DashboardLog',
         component: Log,
+      },
+      {
+        path: 'settings',
+        name: 'DashboardSettings',
+        component: Settings,
       },
     ],
   },

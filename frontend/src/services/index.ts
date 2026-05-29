@@ -9,6 +9,7 @@ import { NodesService } from './nodes'
 import { OutboundService } from './outbound'
 import { RouteService } from './route'
 import { ServiceControlService } from './service'
+import { SettingsService } from './settings'
 import { SubscriptionService } from './subscription'
 import { TemplateService } from './template'
 
@@ -24,6 +25,7 @@ export { NodesService } from './nodes'
 export { OutboundService } from './outbound'
 export { RouteService } from './route'
 export { ServiceControlService } from './service'
+export { SettingsService } from './settings'
 export { SubscriptionService } from './subscription'
 export { TemplateService } from './template'
 
@@ -38,6 +40,7 @@ export const nodesService = new NodesService(apiService)
 export const outboundService = new OutboundService(apiService)
 export const routeService = new RouteService(apiService)
 export const serviceControlService = new ServiceControlService(apiService)
+export const settingsService = new SettingsService(apiService)
 export const subscriptionService = new SubscriptionService(apiService)
 export const templateService = new TemplateService(apiService)
 

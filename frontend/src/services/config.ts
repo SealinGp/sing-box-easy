@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { BasicResponse, SingBoxConfig } from '../types/api'
+import type { BasicResponse, ConfigVersion, SingBoxConfig } from '../types/api'
 
 export class ConfigService {
   private api: ApiService
@@ -39,5 +39,22 @@ export class ConfigService {
   // Alias for updateConfig for backwards compatibility
   async saveConfig(config: SingBoxConfig): Promise<BasicResponse<{ message: string }>> {
     return this.updateConfig(config)
+  }
+
+  // --- Config version history ---
+
+  async listVersions(): Promise<BasicResponse<{ versions: ConfigVersion[] }>> {
+    const response = await this.api.get<BasicResponse<{ versions: ConfigVersion[] }>>('/config/versions')
+    return response.data
+  }
+
+  async getVersion(id: number): Promise<BasicResponse<SingBoxConfig>> {
+    const response = await this.api.get<BasicResponse<SingBoxConfig>>(`/config/versions/${id}`)
+    return response.data
+  }
+
+  async rollbackToVersion(id: number): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.post<BasicResponse<{ message: string }>>(`/config/versions/${id}/rollback`)
+    return response.data
   }
 }

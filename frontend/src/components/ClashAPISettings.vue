@@ -7,9 +7,11 @@ import Input from './Input.vue'
 import Select from './Select.vue'
 import { experimentalService } from '../services'
 import { useToast } from 'primevue'
+import { useI18n } from 'vue-i18n'
 import { LinkIcon } from '@heroicons/vue/24/outline'
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
@@ -35,11 +37,11 @@ const externalControllerHref = computed(() => {
 })
 
 // Mode options
-const modeOptions = [
-  { value: 'rule', label: 'Rule Mode' },
-  { value: 'global', label: 'Global Mode' },
-  { value: 'direct', label: 'Direct Mode' },
-]
+const modeOptions = computed(() => [
+  { value: 'rule', label: t('experimental.clash.mode.rule') },
+  { value: 'global', label: t('experimental.clash.mode.global') },
+  { value: 'direct', label: t('experimental.clash.mode.direct') },
+])
 
 // Fetch Clash API config
 const fetchClashAPI = async () => {
@@ -58,8 +60,8 @@ const fetchClashAPI = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch Clash API configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.clash.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -86,16 +88,16 @@ const handleSave = async () => {
     await experimentalService.updateClashAPI(config)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Clash API configuration updated successfully',
+      summary: t('common.success'),
+      detail: t('experimental.clash.toast.updatedOk'),
       life: 3000
     })
     await fetchClashAPI()
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to update Clash API configuration',
+      summary: t('common.error'),
+      detail: err.message || t('experimental.clash.toast.updateFailed'),
       life: 3000
     })
   } finally {
@@ -112,7 +114,7 @@ onMounted(() => {
 <template>
   <div>
     <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Clash API Settings</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('experimental.clash.title') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
@@ -122,7 +124,7 @@ onMounted(() => {
         <!-- External Controller -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex">
-            External Controller
+            {{ $t('experimental.clash.externalController') }}
             <a
               v-if="externalControllerHref"
               class="cursor-pointer hover:opacity-50"
@@ -138,94 +140,94 @@ onMounted(() => {
             placeholder="127.0.0.1:9090"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            RESTful API listening address
+            {{ $t('experimental.clash.externalControllerHelp') }}
           </p>
         </div>
 
         <!-- External UI -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            External UI
+            {{ $t('experimental.clash.externalUi') }}
           </label>
           <Input
             v-model="settings.external_ui"
             placeholder="/usr/share/sing-box/ui"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Path to external UI directory
+            {{ $t('experimental.clash.externalUiHelp') }}
           </p>
         </div>
 
         <!-- External UI Download URL -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            External UI Download URL
+            {{ $t('experimental.clash.externalUiDownloadUrl') }}
           </label>
           <Input
             v-model="settings.external_ui_download_url"
             placeholder="https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            URL to download UI if not exists
+            {{ $t('experimental.clash.externalUiDownloadUrlHelp') }}
           </p>
         </div>
 
         <!-- External UI Download Detour -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            External UI Download Detour
+            {{ $t('experimental.clash.externalUiDownloadDetour') }}
           </label>
           <Input
             v-model="settings.external_ui_download_detour"
             placeholder="proxy"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Outbound tag for downloading UI
+            {{ $t('experimental.clash.externalUiDownloadDetourHelp') }}
           </p>
         </div>
 
         <!-- Secret -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Secret
+            {{ $t('experimental.clash.secret') }}
           </label>
           <Input
             v-model="settings.secret"
             type="password"
-            placeholder="Enter secret key"
+            :placeholder="$t('experimental.clash.secretPlaceholder')"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Authentication secret for API access
+            {{ $t('experimental.clash.secretHelp') }}
           </p>
         </div>
 
         <!-- Default Mode -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Default Mode
+            {{ $t('experimental.clash.defaultMode') }}
           </label>
           <Select v-model="settings.default_mode" :options="modeOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Default proxy mode for Clash API
+            {{ $t('experimental.clash.defaultModeHelp') }}
           </p>
         </div>
 
         <!-- CORS Settings -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">CORS Settings</h4>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('experimental.clash.cors.title') }}</h4>
 
           <div class="space-y-4">
             <!-- Access Control Allow Origin -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Access Control Allow Origin
+                {{ $t('experimental.clash.cors.allowOrigin') }}
               </label>
               <Input
                 v-model="allowOriginText"
-                placeholder="http://localhost:3000, https://example.com (comma separated)"
+                :placeholder="$t('experimental.clash.cors.allowOriginPlaceholder')"
               />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Allowed origins for CORS requests
+                {{ $t('experimental.clash.cors.allowOriginHelp') }}
               </p>
             </div>
 
@@ -241,10 +243,10 @@ onMounted(() => {
               </div>
               <div class="ml-3">
                 <label for="allow_private_network" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Allow Private Network Access
+                  {{ $t('experimental.clash.cors.allowPrivateNetwork') }}
                 </label>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Allow requests from private network addresses
+                  {{ $t('experimental.clash.cors.allowPrivateNetworkHelp') }}
                 </p>
               </div>
             </div>
@@ -254,7 +256,7 @@ onMounted(() => {
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button @click="handleSave" variant="primary" :disabled="loading">
-            Save Settings
+            {{ $t('experimental.clash.save') }}
           </Button>
         </div>
       </div>

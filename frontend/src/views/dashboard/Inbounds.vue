@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   TransitionRoot,
   TransitionChild,
@@ -18,6 +19,7 @@ import { useToast } from 'primevue/usetoast'
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
 const toast = useToast()
+const { t } = useI18n()
 
 // Modal state
 const showModal = ref(false)
@@ -34,27 +36,27 @@ const currentInbound = ref<Partial<Inbound>>({
 const showDeleteConfirm = ref(false)
 const deletingInbound = ref<Inbound | null>(null)
 
-const inboundTypes = [
-  { value: 'mixed', label: 'Mixed (HTTP/SOCKS)' },
-  { value: 'http', label: 'HTTP' },
-  { value: 'socks', label: 'SOCKS' },
-  { value: 'tun', label: 'TUN' },
-  { value: 'redirect', label: 'Redirect' },
-  { value: 'tproxy', label: 'TProxy' },
-  { value: 'direct', label: 'Direct' },
-  { value: 'shadowsocks', label: 'Shadowsocks' },
-  { value: 'vmess', label: 'VMess' },
-  { value: 'trojan', label: 'Trojan' },
-  { value: 'vless', label: 'VLESS' },
-  { value: 'hysteria', label: 'Hysteria' },
-  { value: 'hysteria2', label: 'Hysteria2' },
-  { value: 'tuic', label: 'TUIC' },
-  { value: 'naive', label: 'Naive' },
-  { value: 'shadowtls', label: 'ShadowTLS' },
-]
+const inboundTypes = computed(() => [
+  { value: 'mixed', label: t('inbounds.types.mixed') },
+  { value: 'http', label: t('inbounds.types.http') },
+  { value: 'socks', label: t('inbounds.types.socks') },
+  { value: 'tun', label: t('inbounds.types.tun') },
+  { value: 'redirect', label: t('inbounds.types.redirect') },
+  { value: 'tproxy', label: t('inbounds.types.tproxy') },
+  { value: 'direct', label: t('inbounds.types.direct') },
+  { value: 'shadowsocks', label: t('inbounds.types.shadowsocks') },
+  { value: 'vmess', label: t('inbounds.types.vmess') },
+  { value: 'trojan', label: t('inbounds.types.trojan') },
+  { value: 'vless', label: t('inbounds.types.vless') },
+  { value: 'hysteria', label: t('inbounds.types.hysteria') },
+  { value: 'hysteria2', label: t('inbounds.types.hysteria2') },
+  { value: 'tuic', label: t('inbounds.types.tuic') },
+  { value: 'naive', label: t('inbounds.types.naive') },
+  { value: 'shadowtls', label: t('inbounds.types.shadowtls') },
+])
 
 const getInboundTypeLabel = (type: string) => {
-  return inboundTypes.find(t => t.value === type)?.label || type
+  return inboundTypes.value.find(it => it.value === type)?.label || type
 }
 
 const getInboundBadgeVariant = (type: string): 'primary' | 'success' | 'warning' | 'info' | 'secondary' => {
@@ -71,8 +73,8 @@ const fetchInbounds = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to fetch inbounds',
+      summary: t('common.error'),
+      detail: err.message || t('inbounds.toast.fetchFailed'),
       life: 3000
     })
   } finally {
@@ -113,8 +115,8 @@ const handleSave = async () => {
   if (!currentInbound.value.tag?.trim()) {
     toast.add({
       severity: 'error',
-      summary: 'Validation Error',
-      detail: 'Tag is required',
+      summary: t('inbounds.validation.title'),
+      detail: t('inbounds.validation.tagRequired'),
       life: 3000
     })
     return
@@ -123,8 +125,8 @@ const handleSave = async () => {
   if (!currentInbound.value.type) {
     toast.add({
       severity: 'error',
-      summary: 'Validation Error',
-      detail: 'Type is required',
+      summary: t('inbounds.validation.title'),
+      detail: t('inbounds.validation.typeRequired'),
       life: 3000
     })
     return
@@ -134,8 +136,8 @@ const handleSave = async () => {
   if (currentInbound.value.type !== 'tun' && !(currentInbound.value as any).listen_port) {
     toast.add({
       severity: 'error',
-      summary: 'Validation Error',
-      detail: 'Listen port is required',
+      summary: t('inbounds.validation.title'),
+      detail: t('inbounds.validation.listenPortRequired'),
       life: 3000
     })
     return
@@ -147,16 +149,16 @@ const handleSave = async () => {
       await inboundService.updateInbound(editingTag.value, currentInbound.value as Inbound)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Inbound updated successfully',
+        summary: t('common.success'),
+        detail: t('inbounds.toast.updatedOk'),
         life: 3000
       })
     } else {
       await inboundService.addInbound(currentInbound.value as Inbound)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Inbound added successfully',
+        summary: t('common.success'),
+        detail: t('inbounds.toast.addedOk'),
         life: 3000
       })
     }
@@ -165,8 +167,8 @@ const handleSave = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to save inbound',
+      summary: t('common.error'),
+      detail: err.message || t('inbounds.toast.saveFailed'),
       life: 3000
     })
   } finally {
@@ -193,8 +195,8 @@ const handleDelete = async () => {
     await inboundService.deleteInbound(deletingInbound.value.tag)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Inbound deleted successfully',
+      summary: t('common.success'),
+      detail: t('inbounds.toast.deletedOk'),
       life: 3000
     })
     closeDeleteConfirm()
@@ -202,8 +204,8 @@ const handleDelete = async () => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: err.message || 'Failed to delete inbound',
+      summary: t('common.error'),
+      detail: err.message || t('inbounds.toast.deleteFailed'),
       life: 3000
     })
   } finally {
@@ -240,10 +242,10 @@ onMounted(fetchInbounds)
 <template>
   <div class="p-8">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Inbounds Management</h2>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('inbounds.title') }}</h2>
       <Button @click="openAddModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
-        Add Inbound
+        {{ $t('inbounds.add') }}
       </Button>
     </div>
 
@@ -253,10 +255,10 @@ onMounted(fetchInbounds)
       </div>
 
       <div v-else-if="inbounds.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">No inbounds configured</p>
+        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('inbounds.empty') }}</p>
         <Button @click="openAddModal" variant="primary" size="sm">
           <PlusIcon class="h-4 w-4 mr-2" />
-          Add Your First Inbound
+          {{ $t('inbounds.addFirst') }}
         </Button>
       </div>
 
@@ -264,12 +266,12 @@ onMounted(fetchInbounds)
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Listen Address</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sniff</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.tag') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.type') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.listenAddress') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.port') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.sniff') }}</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.actions') }}</th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -289,8 +291,8 @@ onMounted(fetchInbounds)
                 <div class="text-sm text-gray-900 dark:text-gray-100">{{ (inbound as any).listen_port || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <Badge v-if="(inbound as any).sniff" variant="success">Enabled</Badge>
-                <Badge v-else variant="secondary">Disabled</Badge>
+                <Badge v-if="(inbound as any).sniff" variant="success">{{ $t('inbounds.sniff.enabled') }}</Badge>
+                <Badge v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
@@ -337,7 +339,7 @@ onMounted(fetchInbounds)
               <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? 'Edit Inbound' : 'Add Inbound' }}
+                    {{ isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -350,38 +352,38 @@ onMounted(fetchInbounds)
 
                 <div class="space-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.tag') }}</label>
                     <Input
                       v-model="(currentInbound as any).tag"
-                      placeholder="e.g., mixed-in"
+                      :placeholder="$t('inbounds.form.tagPlaceholder')"
                       :disabled="isEditMode"
                     />
-                    <p class="mt-1 text-xs text-gray-500">Unique identifier for this inbound</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.tagHelp') }}</p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
                     <select class="select" v-model="(currentInbound as any).type" :disabled="isEditMode">
-                        <option disabled selected>Pick inbound type</option>
+                        <option disabled selected>{{ $t('inbounds.form.typePlaceholder') }}</option>
                         <option v-for="inboundType in inboundTypes" :value="inboundType.value" >{{ inboundType.label }}</option>
                       </select>
                   </div>
 
                   <div v-if="currentInbound.type !== 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Listen Address</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenAddress') }}</label>
                     <Input
                       v-model="(currentInbound as any).listen"
-                      placeholder="127.0.0.1 or 0.0.0.0"
+                      :placeholder="$t('inbounds.form.listenAddressPlaceholder')"
                     />
-                    <p class="mt-1 text-xs text-gray-500">IP address to listen on</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.listenAddressHelp') }}</p>
                   </div>
 
                   <div v-if="currentInbound.type !== 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Listen Port *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenPort') }}</label>
                     <Input
                       v-model.number="(currentInbound as any).listen_port"
                       type="number"
-                      placeholder="1080"
+                      :placeholder="$t('inbounds.form.listenPortPlaceholder')"
                     />
                   </div>
 
@@ -392,7 +394,7 @@ onMounted(fetchInbounds)
                       v-model="(currentInbound as any).sniff"
                       class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
-                    <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Traffic Sniffing</label>
+                    <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.enableSniff') }}</label>
                   </div>
 
                   <div v-if="(currentInbound as any).sniff" class="flex items-center gap-2">
@@ -402,23 +404,23 @@ onMounted(fetchInbounds)
                       v-model="(currentInbound as any).sniff_override_destination"
                       class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
-                    <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">Override Destination</label>
+                    <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.overrideDestination') }}</label>
                   </div>
 
                   <div v-if="currentInbound.type === 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interface Name</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.interfaceName') }}</label>
                     <Input
                       v-model="(currentInbound as any).interface_name"
-                      placeholder="tun0"
+                      :placeholder="$t('inbounds.form.interfaceNamePlaceholder')"
                     />
                   </div>
 
                   <div v-if="currentInbound.type === 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MTU</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.mtu') }}</label>
                     <Input
                       v-model.number="(currentInbound as any).mtu"
                       type="number"
-                      placeholder="1500"
+                      :placeholder="$t('inbounds.form.mtuPlaceholder')"
                     />
                   </div>
 
@@ -429,14 +431,14 @@ onMounted(fetchInbounds)
                       v-model="(currentInbound as any).auto_route"
                       class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                     />
-                    <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Route</label>
+                    <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.autoRoute') }}</label>
                   </div>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeModal" variant="secondary">Cancel</Button>
+                  <Button @click="closeModal" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleSave" variant="primary" :disabled="loading">
-                    {{ isEditMode ? 'Update' : 'Add' }}
+                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
                   </Button>
                 </div>
               </DialogPanel>
@@ -475,7 +477,7 @@ onMounted(fetchInbounds)
               <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div class="flex items-center justify-between mb-4">
                   <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Delete Inbound
+                    {{ $t('inbounds.del.title') }}
                   </DialogTitle>
                   <button
                     type="button"
@@ -487,15 +489,13 @@ onMounted(fetchInbounds)
                 </div>
 
                 <p class="text-gray-700 dark:text-gray-300">
-                  Are you sure you want to delete the inbound
-                  <strong>{{ deletingInbound?.tag }}</strong>?
-                  This action cannot be undone.
+                  {{ $t('inbounds.del.confirm', { tag: deletingInbound?.tag }) }}
                 </p>
 
                 <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">Cancel</Button>
+                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
                   <Button @click="handleDelete" variant="danger" :disabled="loading">
-                    Delete
+                    {{ $t('common.delete') }}
                   </Button>
                 </div>
               </DialogPanel>

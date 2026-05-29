@@ -70,6 +70,19 @@ export interface ServiceStatus {
   uptime?: string
 }
 
+// Metadata for a stored historical config version (no content).
+export interface ConfigVersion {
+  id: number
+  size: number
+  created_at: string
+}
+
+// Application settings exposed to the frontend.
+export interface AppSettings {
+  settings: Record<string, string>
+  config_versions_keep: number
+}
+
 // Re-export Outbound types from outbound.ts (DialerOptions is from shared.ts)
 export type {
   Outbound,

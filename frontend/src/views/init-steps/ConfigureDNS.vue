@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DNS } from '../../types/api'
 import { Button, Alert, Card, Badge, Select } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import type { DNSServerOptions, HostsDNSServerOptions, DomainStrategy } from '../../types/dns'
 import { dnsService } from '../../services'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   next: []
@@ -23,13 +26,13 @@ const hostEntries = ref<Record<string, string | string[]>>({})
 const newHostDomain = ref('')
 const newHostIP = ref('')
 
-// DNS 策略选项
-const strategyOptions: Array<{ label: string; value: DomainStrategy }> = [
-  { label: 'Prefer IPv4', value: 'prefer_ipv4' },
-  { label: 'Prefer IPv6', value: 'prefer_ipv6' },
-  { label: 'IPv4 Only', value: 'ipv4_only' },
-  { label: 'IPv6 Only', value: 'ipv6_only' },
-]
+// DNS 策略选项 — value is the backend identifier, label re-translates.
+const strategyOptions = computed<Array<{ label: string; value: DomainStrategy }>>(() => [
+  { label: t('setup.dns.strategyOptions.preferIpv4'), value: 'prefer_ipv4' },
+  { label: t('setup.dns.strategyOptions.preferIpv6'), value: 'prefer_ipv6' },
+  { label: t('setup.dns.strategyOptions.ipv4Only'), value: 'ipv4_only' },
+  { label: t('setup.dns.strategyOptions.ipv6Only'), value: 'ipv6_only' },
+])
 
 const selectedStrategy = ref<DomainStrategy>('prefer_ipv4')
 
@@ -41,11 +44,13 @@ interface DNSPreset {
   servers: DNSServerOptions[]
 }
 
-const dnsPresets: DNSPreset[] = [
+// Display name/description re-translate on locale switch; server configs
+// (tag/server/port/type) sent to the backend stay unchanged.
+const dnsPresets = computed<DNSPreset[]>(() => [
   {
     id: 'smart',
-    name: 'Smart DNS (Recommended)',
-    description: 'Uses different DNS servers for domestic and foreign domains',
+    name: t('setup.dns.presets.smart.name'),
+    description: t('setup.dns.presets.smart.description'),
     servers: [
       {
         type: 'udp',
@@ -64,8 +69,8 @@ const dnsPresets: DNSPreset[] = [
   },
   {
     id: 'cloudflare',
-    name: 'Cloudflare DNS',
-    description: 'Uses Cloudflare DNS (1.1.1.1) for all queries',
+    name: t('setup.dns.presets.cloudflare.name'),
+    description: t('setup.dns.presets.cloudflare.description'),
     servers: [
       {
         type: 'https',
@@ -78,8 +83,8 @@ const dnsPresets: DNSPreset[] = [
   },
   {
     id: 'google',
-    name: 'Google DNS',
-    description: 'Uses Google DNS (8.8.8.8) for all queries',
+    name: t('setup.dns.presets.google.name'),
+    description: t('setup.dns.presets.google.description'),
     servers: [
       {
         type: 'https',
@@ -92,8 +97,8 @@ const dnsPresets: DNSPreset[] = [
   },
   {
     id: 'china',
-    name: 'China DNS Only',
-    description: 'Uses domestic DNS servers (Alibaba 223.5.5.5)',
+    name: t('setup.dns.presets.china.name'),
+    description: t('setup.dns.presets.china.description'),
     servers: [
       {
         type: 'udp',
@@ -103,7 +108,7 @@ const dnsPresets: DNSPreset[] = [
       }
     ],
   },
-]
+])
 
 // Hosts management functions
 const addHostEntry = () => {
@@ -147,7 +152,7 @@ const loadDNSConfig = async () => {
     if (dns && dns.servers && dns.servers.length > 0) {
       // 尝试识别预设配置
       const dnsServers = dns.servers
-      const matchedPreset = dnsPresets.find(preset => {
+      const matchedPreset = dnsPresets.value.find(preset => {
         return preset.servers.length === dnsServers.length &&
           preset.servers.every((ps, i) => {
             const dnsServer = dnsServers[i]
@@ -189,9 +194,9 @@ const saveDNSConfig = async () => {
   success.value = false
 
   try {
-    const preset = dnsPresets.find(p => p.id === selectedPreset.value)
+    const preset = dnsPresets.value.find(p => p.id === selectedPreset.value)
     if (!preset) {
-      error.value = 'Invalid DNS preset selected'
+      error.value = t('setup.dns.invalidPreset')
       return
     }
 
@@ -278,7 +283,7 @@ const saveDNSConfig = async () => {
       emit('next')
     }, 2000)
   } catch (err: any) {
-    error.value = err.message || 'Failed to save DNS configuration'
+    error.value = err.message || t('setup.dns.saveFailed')
   } finally {
     saving.value = false
   }
@@ -300,8 +305,8 @@ const handleSkip = () => {
 <template>
   <div class="space-y-6">
     <!-- 成功提示 -->
-    <Alert v-if="success" type="success" title="DNS Configured">
-      DNS configuration has been saved successfully. Proceeding to next step...
+    <Alert v-if="success" type="success" :title="$t('setup.dns.successTitle')">
+      {{ $t('setup.dns.successDesc') }}
     </Alert>
 
     <!-- 错误提示 -->
@@ -313,9 +318,9 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Select DNS Configuration</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.selectHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Choose a DNS configuration preset that best suits your needs.
+            {{ $t('setup.dns.selectDesc') }}
           </p>
         </div>
 
@@ -338,7 +343,7 @@ const handleSkip = () => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
-                <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">Recommended</Badge>
+                <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">{{ $t('setup.dns.recommended') }}</Badge>
               </div>
               <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
               <div class="space-y-1 mt-2">
@@ -348,7 +353,7 @@ const handleSkip = () => {
                   class="text-xs text-gray-700"
                 >
                   <span class="font-medium">{{ server.tag }}</span>
-                  <span class="text-gray-500"> ({{ server.type || 'legacy' }})</span>
+                  <span class="text-gray-500"> ({{ server.type || $t('setup.dns.legacy') }})</span>
                   <span v-if="'server' in server" class="text-gray-600">
                     : {{ server.server }}<span v-if="'server_port' in server && server.server_port !== 53 && server.server_port !== 853">:{{ server.server_port }}</span>
                   </span>
@@ -367,9 +372,9 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Hosts DNS (Optional)</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.hostsHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Add custom host entries to override DNS resolution for specific domains.
+            {{ $t('setup.dns.hostsDesc') }}
           </p>
         </div>
 
@@ -382,9 +387,9 @@ const handleSkip = () => {
             :disabled="loading || saving || success"
           />
           <label for="enable-hosts" class="flex-1 cursor-pointer">
-            <span class="text-sm font-medium text-gray-900">Enable Hosts DNS</span>
+            <span class="text-sm font-medium text-gray-900">{{ $t('setup.dns.enableHosts') }}</span>
             <p class="text-xs text-gray-500 mt-0.5">
-              Map domain names to specific IP addresses
+              {{ $t('setup.dns.enableHostsDesc') }}
             </p>
           </label>
         </div>
@@ -392,14 +397,14 @@ const handleSkip = () => {
         <div v-if="enableHosts" class="space-y-3">
           <!-- Add new host entry -->
           <div class="p-4 bg-violet-50 border border-violet-200 rounded-lg">
-            <p class="text-sm font-medium text-gray-900 mb-3">Add Host Entry</p>
+            <p class="text-sm font-medium text-gray-900 mb-3">{{ $t('setup.dns.addHostEntry') }}</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Domain</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ $t('setup.dns.domain') }}</label>
                 <input
                   v-model="newHostDomain"
                   type="text"
-                  placeholder="e.g., www.example.com"
+                  :placeholder="$t('setup.dns.domainPlaceholder')"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
                   :disabled="saving || success"
                   @keyup.enter="addHostEntry"
@@ -407,14 +412,14 @@ const handleSkip = () => {
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">
-                  IP Address(es)
-                  <span class="text-gray-500 font-normal">(comma-separated for multiple)</span>
+                  {{ $t('setup.dns.ipAddresses') }}
+                  <span class="text-gray-500 font-normal">{{ $t('setup.dns.ipAddressesHint') }}</span>
                 </label>
                 <div class="flex gap-2">
                   <input
                     v-model="newHostIP"
                     type="text"
-                    placeholder="e.g., 127.0.0.1 or 127.0.0.1, ::1"
+                    :placeholder="$t('setup.dns.ipPlaceholder')"
                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
                     :disabled="saving || success"
                     @keyup.enter="addHostEntry"
@@ -425,7 +430,7 @@ const handleSkip = () => {
                     :disabled="!newHostDomain || !newHostIP || saving || success"
                     @click="addHostEntry"
                   >
-                    Add
+                    {{ $t('setup.dns.add') }}
                   </Button>
                 </div>
               </div>
@@ -434,7 +439,7 @@ const handleSkip = () => {
 
           <!-- Host entries list -->
           <div v-if="Object.keys(hostEntries).length > 0" class="space-y-2">
-            <p class="text-sm font-medium text-gray-900">Host Entries:</p>
+            <p class="text-sm font-medium text-gray-900">{{ $t('setup.dns.hostEntries') }}</p>
             <div class="space-y-2">
               <div
                 v-for="(value, domain) in hostEntries"
@@ -451,14 +456,14 @@ const handleSkip = () => {
                   :disabled="saving || success"
                   @click="removeHostEntry(domain)"
                 >
-                  Remove
+                  {{ $t('setup.dns.remove') }}
                 </Button>
               </div>
             </div>
           </div>
 
-          <Alert v-else type="info" title="No host entries">
-            Add custom host entries above to map domains to specific IP addresses.
+          <Alert v-else type="info" :title="$t('setup.dns.noEntriesTitle')">
+            {{ $t('setup.dns.noEntriesDesc') }}
           </Alert>
         </div>
       </div>
@@ -468,16 +473,16 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">DNS Strategy</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.strategyHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Choose the IP version preference for DNS queries.
+            {{ $t('setup.dns.strategyDesc') }}
           </p>
         </div>
 
         <Select
           v-model="selectedStrategy"
           :options="strategyOptions"
-          label="Query Strategy"
+          :label="$t('setup.dns.queryStrategy')"
           :disabled="loading || saving || success"
         />
       </div>
@@ -487,9 +492,9 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">FakeIP</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.fakeipHeading') }}</h3>
           <p class="text-sm text-gray-600">
-            Enable FakeIP for faster connection establishment and better privacy.
+            {{ $t('setup.dns.fakeipDesc') }}
           </p>
         </div>
 
@@ -502,15 +507,15 @@ const handleSkip = () => {
             :disabled="loading || saving || success"
           />
           <label for="enable-fakeip" class="flex-1 cursor-pointer">
-            <span class="text-sm font-medium text-gray-900">Enable FakeIP</span>
+            <span class="text-sm font-medium text-gray-900">{{ $t('setup.dns.enableFakeip') }}</span>
             <p class="text-xs text-gray-500 mt-0.5">
-              Return fake IP addresses for DNS queries to speed up connections
+              {{ $t('setup.dns.enableFakeipDesc') }}
             </p>
           </label>
         </div>
 
-        <Alert v-if="enableFakeIP" type="info" title="FakeIP Enabled">
-          FakeIP will use ranges: 198.18.0.0/15 (IPv4) and fc00::/18 (IPv6)
+        <Alert v-if="enableFakeIP" type="info" :title="$t('setup.dns.fakeipEnabledTitle')">
+          {{ $t('setup.dns.fakeipEnabledDesc') }}
         </Alert>
       </div>
     </Card>
@@ -523,7 +528,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleNext"
       >
-        {{ success ? 'Saved' : saving ? 'Saving...' : 'Save & Continue' }}
+        {{ success ? $t('setup.dns.saved') : saving ? $t('common.saving') : $t('setup.dns.saveContinue') }}
       </Button>
 
       <Button
@@ -531,7 +536,7 @@ const handleSkip = () => {
         :disabled="saving || success"
         @click="handleSkip"
       >
-        Skip this step
+        {{ $t('setup.dns.skip') }}
       </Button>
     </div>
 
@@ -540,16 +545,16 @@ const handleSkip = () => {
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
         <div class="text-sm text-violet-900 space-y-2">
-          <p class="font-medium">About DNS Configuration:</p>
+          <p class="font-medium">{{ $t('setup.dns.aboutHeading') }}</p>
           <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
-            <li><strong>Smart DNS:</strong> Uses domestic DNS for CN domains, foreign DNS for others (best for China users)</li>
-            <li><strong>Cloudflare/Google:</strong> Uses single DNS provider for all queries (simple, reliable)</li>
-            <li><strong>China DNS:</strong> Uses only domestic DNS (fastest for China-only access)</li>
-            <li><strong>FakeIP:</strong> Returns fake IPs to speed up connections, recommended for most users</li>
-            <li><strong>Strategy:</strong> Prefer IPv4 is recommended for better compatibility</li>
+            <li><strong>{{ $t('setup.dns.aboutSmartLabel') }}</strong> {{ $t('setup.dns.aboutSmart') }}</li>
+            <li><strong>{{ $t('setup.dns.aboutSingleLabel') }}</strong> {{ $t('setup.dns.aboutSingle') }}</li>
+            <li><strong>{{ $t('setup.dns.aboutChinaLabel') }}</strong> {{ $t('setup.dns.aboutChina') }}</li>
+            <li><strong>{{ $t('setup.dns.aboutFakeipLabel') }}</strong> {{ $t('setup.dns.aboutFakeip') }}</li>
+            <li><strong>{{ $t('setup.dns.aboutStrategyLabel') }}</strong> {{ $t('setup.dns.aboutStrategy') }}</li>
           </ul>
           <p class="mt-2 text-xs text-violet-700">
-            💡 Tip: Use "Smart DNS" for the best routing performance with split DNS.
+            {{ $t('setup.dns.tip') }}
           </p>
         </div>
       </div>
@@ -558,23 +563,25 @@ const handleSkip = () => {
     <!-- DNS 服务器详情 -->
     <Card padding="sm" class="bg-gray-50">
       <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">Selected DNS Configuration:</p>
+        <p class="font-medium text-gray-900">{{ $t('setup.dns.selectedHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li v-for="server in dnsPresets.find(p => p.id === selectedPreset)?.servers" :key="server.tag">
             <strong>{{ server.tag }}</strong>
-            <span class="text-gray-500"> ({{ server.type || 'legacy' }})</span>:
+            <span class="text-gray-500"> ({{ server.type || $t('setup.dns.legacy') }})</span>:
             <span v-if="'server' in server">
               {{ server.server }}<span v-if="'server_port' in server">:{{ server.server_port }}</span>
             </span>
             <span v-else-if="'address' in server">
               {{ server.address }}
             </span>
-            <span v-if="'detour' in server && server.detour" class="text-gray-500"> (via {{ server.detour }})</span>
+            <span v-if="'detour' in server && server.detour" class="text-gray-500"> ({{ $t('setup.dns.via', { detour: server.detour }) }})</span>
           </li>
           <li v-if="enableHosts && Object.keys(hostEntries).length > 0">
             <strong>local-hosts</strong>
             <span class="text-gray-500"> (hosts)</span>:
-            {{ Object.keys(hostEntries).length }} custom host{{ Object.keys(hostEntries).length > 1 ? 's' : '' }}
+            {{ Object.keys(hostEntries).length > 1
+              ? $t('setup.dns.customHosts', { count: Object.keys(hostEntries).length })
+              : $t('setup.dns.customHost', { count: Object.keys(hostEntries).length }) }}
           </li>
         </ul>
       </div>

@@ -3,6 +3,8 @@ import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
+// Register the Chinese locale so the i18n layer can switch dayjs to it.
+import 'dayjs/locale/zh-cn'
 
 // Initialize dayjs with plugins
 export function loadDayjs(app: App<Element>) {
