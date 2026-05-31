@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { BasicResponse, InitState, InstallTask, ServiceStatus } from '../types/api'
+import type { BasicResponse, InitState, InstallTask, ServiceStatus, ServiceLogs } from '../types/api'
 
 export class ServiceControlService {
   private api: ApiService
@@ -10,6 +10,15 @@ export class ServiceControlService {
 
   async getServiceStatus(): Promise<BasicResponse<ServiceStatus>> {
     const response = await this.api.get<BasicResponse<ServiceStatus>>('/service/status')
+    return response.data
+  }
+
+  // Fetch recent logs. Pass the cursor returned by the previous call to fetch
+  // only newer lines (incremental polling for the live viewer).
+  async getServiceLogs(lines = 300, cursor = ''): Promise<BasicResponse<ServiceLogs>> {
+    const params = new URLSearchParams({ lines: String(lines) })
+    if (cursor) params.set('cursor', cursor)
+    const response = await this.api.get<BasicResponse<ServiceLogs>>(`/service/logs?${params.toString()}`)
     return response.data
   }
 

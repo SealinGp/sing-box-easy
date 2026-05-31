@@ -4,6 +4,7 @@ export default {
   serviceStatus: '服务状态',
   pid: 'PID',
   uptime: '运行时长',
+  lastStarted: '上次启动',
   refreshStatus: '刷新状态',
   status: {
     running: '运行中',

@@ -109,6 +109,27 @@ func (h *Handler) GetConfigVersion(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, cfg)
 }
 
+// DeleteConfigVersion removes a single historical version by id. This only
+// affects history; the live config is untouched.
+func (h *Handler) DeleteConfigVersion(ctx context.Context, c *app.RequestContext) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		respErr(ctx, c, CodeBadRequest, "invalid version id")
+		return
+	}
+	if err := h.configManager.DeleteVersion(id); err != nil {
+		if errors.Is(err, config.ErrVersionNotFound) {
+			respErr(ctx, c, CodeNotFound, err.Error())
+		} else {
+			respErr(ctx, c, CodeInternalError, err.Error())
+		}
+		return
+	}
+	respOK(ctx, c, map[string]any{
+		"message": "configuration version deleted",
+	})
+}
+
 // RollbackToConfigVersion restores a specific historical version to live config.
 func (h *Handler) RollbackToConfigVersion(ctx context.Context, c *app.RequestContext) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

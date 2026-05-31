@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon,
   CloudArrowDownIcon,
   CogIcon,
+  QueueListIcon,
 } from "@heroicons/vue/24/outline";
 
 interface MenuItem {
@@ -75,6 +76,11 @@ const menuItems = computed<MenuItem[]>(() => [
     name: t("nav.subscriptions"),
     icon: CloudArrowDownIcon,
     path: "/dashboard/subscriptions",
+  },
+  {
+    name: t("nav.logs"),
+    icon: QueueListIcon,
+    path: "/dashboard/logs",
   },
 ]);
 </script>

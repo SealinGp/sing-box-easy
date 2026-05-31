@@ -215,6 +215,29 @@ const rollbackTo = async (v: ConfigVersion) => {
   }
 }
 
+const deleteVersion = async (v: ConfigVersion) => {
+  if (!confirm(t('config.confirm.delete', { id: v.id }))) return
+  versionsLoading.value = true
+  try {
+    const resp = await configService.deleteVersion(v.id)
+    if (resp.code !== Code.Success) {
+      toast.add({ severity: 'error', summary: t('config.toast.deleteFailedTitle'), detail: resp.msg, life: 4000 })
+      return
+    }
+    // If the diff view is open on the version we just removed, drop back to the list.
+    if (showDiff.value && diffVersionId.value === v.id) {
+      showDiff.value = false
+      diffVersionId.value = null
+    }
+    await loadVersions()
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('config.toast.deleted', { id: v.id }), life: 3000 })
+  } catch (err: any) {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.deleteFailed'), life: 3000 })
+  } finally {
+    versionsLoading.value = false
+  }
+}
+
 const restartService = async () => {
   if (!confirm(t('config.confirm.restart'))) return
   restarting.value = true
@@ -530,6 +553,14 @@ onUnmounted(() => {
                       >
                         {{ $t('config.versionsModal.rollback') }}
                       </button>
+                      <button
+                        @click="deleteVersion(v)"
+                        :disabled="loading || versionsLoading"
+                        class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                        :title="$t('config.versionsModal.delete')"
+                      >
+                        {{ $t('config.versionsModal.delete') }}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -562,6 +593,14 @@ onUnmounted(() => {
                 class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
               >
                 {{ $t('config.versionsModal.rollbackToThis') }}
+              </button>
+              <button
+                v-if="diffVersionId !== null"
+                @click="deleteVersion({ id: diffVersionId, size: 0, created_at: '' })"
+                :disabled="loading || versionsLoading"
+                class="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+              >
+                {{ $t('config.versionsModal.delete') }}
               </button>
             </div>
           </div>

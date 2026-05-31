@@ -5,12 +5,27 @@ import { Code, type ServiceStatus } from '../../types/api'
 import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
 import { useToast } from 'primevue/usetoast'
+import { formatRelativeTime } from '../../utils/relativeTime'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
 const actionLoading = ref(false)
 const toast = useToast()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// "14 minutes ago", derived from the process start time the backend reports.
+const lastStartedRelative = computed(() => {
+  const ts = status.value?.started_at
+  if (!ts) return ''
+  return formatRelativeTime(ts * 1000, locale.value)
+})
+
+// Absolute timestamp for the tooltip on the relative label.
+const lastStartedAbsolute = computed(() => {
+  const ts = status.value?.started_at
+  if (!ts) return ''
+  return new Date(ts * 1000).toLocaleString(locale.value)
+})
 
 const statusColor = computed(() => {
   if (!status.value) return 'text-gray-500'
@@ -164,6 +179,13 @@ onMounted(fetchStatus)
 
           <div v-if="status.uptime" class="text-sm text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">{{ $t('overview.uptime') }}:</span> {{ status.uptime }}</p>
+          </div>
+
+          <div v-if="lastStartedRelative" class="text-sm text-gray-600 dark:text-gray-400">
+            <p>
+              <span class="font-semibold">{{ $t('overview.lastStarted') }}:</span>
+              <span :title="lastStartedAbsolute"> {{ lastStartedRelative }}</span>
+            </p>
           </div>
 
           <div class="pt-4 border-t border-gray-200 dark:border-gray-700">

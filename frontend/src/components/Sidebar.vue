@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
 import { ChevronRightIcon, ChevronDownIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import LanguageSwitcher from './LanguageSwitcher.vue'
+import { useServiceStore } from '../stores'
 
 interface MenuItem {
   name: string
@@ -19,9 +21,46 @@ interface Props {
 
 defineProps<Props>()
 const route = useRoute()
+const { t } = useI18n()
 
 // App version, injected at build time (see vite.config.ts `define`).
 const version = __APP_VERSION__
+
+// Shared service status, polled here so the running/stopped indicator stays
+// live on every page (e.g. right after restarting from the Config page).
+const serviceStore = useServiceStore()
+let unsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  unsubscribe = serviceStore.startPolling(5000)
+})
+onUnmounted(() => {
+  unsubscribe?.()
+})
+
+const serviceStatus = computed(() => serviceStore.status?.status ?? 'unknown')
+const serviceDotClass = computed(() => {
+  if (serviceStore.error) return 'bg-yellow-500'
+  switch (serviceStatus.value) {
+    case 'running':
+      return 'bg-green-500'
+    case 'stopped':
+      return 'bg-red-500'
+    default:
+      return 'bg-gray-400'
+  }
+})
+const serviceLabel = computed(() => {
+  if (serviceStore.error) return t('overview.status.unknown')
+  switch (serviceStatus.value) {
+    case 'running':
+      return t('overview.status.running')
+    case 'stopped':
+      return t('overview.status.stopped')
+    default:
+      return t('overview.status.unknown')
+  }
+})
 
 // Track expanded states for menu items with children
 const expandedItems = ref<Set<string>>(new Set())
@@ -72,6 +111,22 @@ const isParentActive = (item: MenuItem) => {
           <Cog6ToothIcon class="h-4 w-4" />
         </router-link>
       </div>
+      <!-- Row 3: live sing-box service status (polled) -->
+      <router-link
+        to="/dashboard/overview"
+        class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+        :title="$t('nav.serviceStatusHint')"
+      >
+        <span class="relative flex h-2.5 w-2.5">
+          <span
+            v-if="serviceStatus === 'running'"
+            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60"
+          ></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="serviceDotClass"></span>
+        </span>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">sing-box</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">{{ serviceLabel }}</span>
+      </router-link>
     </div>
 
     <!-- Menu Items -->

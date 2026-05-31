@@ -19,6 +19,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.GET("/config/versions", handler.ListConfigVersions)
 	v1.GET("/config/versions/:id", handler.GetConfigVersion)
 	v1.POST("/config/versions/:id/rollback", handler.RollbackToConfigVersion)
+	v1.DELETE("/config/versions/:id", handler.DeleteConfigVersion)
 
 	// Application settings
 	v1.GET("/settings", handler.GetSettings)
@@ -94,6 +95,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Service Control APIs
 	v1.GET("/service/status", handler.GetServiceStatus)
+	v1.GET("/service/logs", handler.GetServiceLogs)
 	v1.POST("/service/start", handler.StartService)
 	v1.POST("/service/stop", handler.StopService)
 	v1.POST("/service/restart", handler.RestartService)

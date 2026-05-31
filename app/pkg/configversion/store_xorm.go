@@ -78,6 +78,19 @@ func (s *StoreXORM) Get(id int64) ([]byte, error) {
 	return []byte(row.Content), nil
 }
 
+// Delete removes a single version by id. Returns ErrVersionNotFound (wrapped)
+// when no row matched, so callers can map it to a 404.
+func (s *StoreXORM) Delete(id int64) error {
+	affected, err := s.e.ID(id).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return fmt.Errorf("failed to delete config version %d: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("config version %d: %w", id, config.ErrVersionNotFound)
+	}
+	return nil
+}
+
 // Prune deletes the oldest versions beyond `keep`. When keep <= 0 it is a no-op
 // (the manager clamps keep to a sane minimum before calling).
 func (s *StoreXORM) Prune(keep int) error {

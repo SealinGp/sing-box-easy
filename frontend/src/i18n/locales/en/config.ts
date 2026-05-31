@@ -38,6 +38,9 @@ export default {
     rollbackFailedTitle: 'Rollback failed',
     rolledBack: 'Rolled back to version #{id}',
     rollbackFailed: 'Failed to rollback',
+    deleteFailedTitle: 'Delete failed',
+    deleted: 'Deleted version #{id}',
+    deleteFailed: 'Failed to delete version',
     restartFailedTitle: 'Restart failed',
     restartedTitle: 'Service restarted',
     restartedDetail: 'sing-box restarted successfully',
@@ -46,6 +49,7 @@ export default {
   confirm: {
     rollback: 'Roll back to version #{id}? Your current config is saved as a new version first, so this is reversible.',
     restart: 'Restart the sing-box service now?',
+    delete: 'Delete version #{id}? This permanently removes the snapshot and cannot be undone. Your live config is not affected.',
   },
   versionsModal: {
     title: 'Config Versions',
@@ -58,6 +62,7 @@ export default {
     latest: 'latest',
     diff: 'Diff',
     rollback: 'Rollback',
+    delete: 'Delete',
     backToList: 'Back to list',
     rollbackToThis: 'Rollback to this version',
   },

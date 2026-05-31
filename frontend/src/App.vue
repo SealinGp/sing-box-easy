@@ -5,6 +5,6 @@ import Toast from './volt/Toast.vue'
 <template>
   <div class="min-h-screen bg-gray-100 dark:bg-slate-600">
     <router-view />
-    <Toast />
+    <Toast position="top-center" />
   </div>
 </template>

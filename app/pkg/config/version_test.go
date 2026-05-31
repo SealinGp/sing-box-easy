@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -53,6 +54,22 @@ func (s *fakeStore) Get(id int64) ([]byte, error) {
 	return c, nil
 }
 
+func (s *fakeStore) Delete(id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.rows[id]; !ok {
+		return ErrVersionNotFound
+	}
+	delete(s.rows, id)
+	for i, v := range s.order {
+		if v == id {
+			s.order = append(s.order[:i], s.order[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
 func (s *fakeStore) Prune(keep int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -98,6 +115,41 @@ func TestSnapshotAndPrune(t *testing.T) {
 	// Newest first: ids should be 5,4,3 (1 and 2 pruned).
 	if versions[0].ID != 5 || versions[2].ID != 3 {
 		t.Fatalf("unexpected version ordering: %+v", versions)
+	}
+}
+
+func TestDeleteVersion(t *testing.T) {
+	store := newFakeStore()
+	m, cfgPath := newTestManager(t, store, 10)
+
+	// Create 3 versions.
+	for i := 0; i < 3; i++ {
+		if err := os.WriteFile(cfgPath, []byte(`{"v":`+string(rune('0'+i))+`}`), 0600); err != nil {
+			t.Fatal(err)
+		}
+		m.snapshotCurrent()
+	}
+
+	// Delete the middle one (id 2); only 1 and 3 should remain.
+	if err := m.DeleteVersion(2); err != nil {
+		t.Fatalf("DeleteVersion(2) failed: %v", err)
+	}
+	versions, err := m.ListVersions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) != 2 {
+		t.Fatalf("expected 2 versions after delete, got %d", len(versions))
+	}
+	for _, v := range versions {
+		if v.ID == 2 {
+			t.Fatalf("version 2 should have been deleted, still present: %+v", versions)
+		}
+	}
+
+	// Deleting a non-existent id reports ErrVersionNotFound.
+	if err := m.DeleteVersion(999); !errors.Is(err, ErrVersionNotFound) {
+		t.Fatalf("expected ErrVersionNotFound for missing id, got %v", err)
 	}
 }
 

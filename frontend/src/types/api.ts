@@ -66,8 +66,20 @@ export interface DashboardTask {
 
 export interface ServiceStatus {
   status: 'running' | 'stopped' | 'unknown'
+  running?: boolean
   pid?: number
   uptime?: string
+  // Unix seconds when the process started; 0/undefined when unknown or stopped.
+  started_at?: number
+}
+
+// A bounded chunk of recent sing-box logs returned by GET /service/logs.
+export interface ServiceLogs {
+  lines: string[]
+  // Opaque journald cursor; feed back on the next poll for incremental fetch.
+  cursor: string
+  // Where the lines came from: journald (systemd), file (log.output), or none.
+  source: 'journald' | 'file' | 'none'
 }
 
 // Metadata for a stored historical config version (no content).

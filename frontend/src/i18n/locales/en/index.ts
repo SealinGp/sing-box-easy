@@ -13,6 +13,7 @@ import route from './route'
 import experimental from './experimental'
 import dialer from './dialer'
 import log from './log'
+import logs from './logs'
 import init from './init'
 import setup from './setup'
 
@@ -31,6 +32,7 @@ export default {
   experimental,
   dialer,
   log,
+  logs,
   init,
   setup,
 }

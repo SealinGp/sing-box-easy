@@ -57,4 +57,9 @@ export class ConfigService {
     const response = await this.api.post<BasicResponse<{ message: string }>>(`/config/versions/${id}/rollback`)
     return response.data
   }
+
+  async deleteVersion(id: number): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.delete<BasicResponse<{ message: string }>>(`/config/versions/${id}`)
+    return response.data
+  }
 }

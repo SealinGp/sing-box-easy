@@ -4,6 +4,7 @@ export default {
   serviceStatus: 'Service Status',
   pid: 'PID',
   uptime: 'Uptime',
+  lastStarted: 'Last started',
   refreshStatus: 'Refresh Status',
   status: {
     running: 'running',

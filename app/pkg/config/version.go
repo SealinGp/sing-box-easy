@@ -35,6 +35,9 @@ type VersionStore interface {
 	List() ([]VersionInfo, error)
 	// Get returns the full content of a single version.
 	Get(id int64) ([]byte, error)
+	// Delete removes a single version by id, returning ErrVersionNotFound when
+	// no such version exists.
+	Delete(id int64) error
 	// Prune deletes the oldest versions beyond `keep`.
 	Prune(keep int) error
 }
@@ -103,6 +106,16 @@ func (m *Manager) GetVersion(id int64) (*SingBoxConfig, error) {
 		return nil, fmt.Errorf("failed to parse version %d: %w", id, err)
 	}
 	return &cfg, nil
+}
+
+// DeleteVersion removes a single historical version by id. It only touches the
+// history store and never affects the live config, so it is safe regardless of
+// which version is the latest.
+func (m *Manager) DeleteVersion(id int64) error {
+	if m.store == nil {
+		return fmt.Errorf("version store not configured")
+	}
+	return m.store.Delete(id)
 }
 
 // RollbackToVersion restores a specific historical version to the live config.
