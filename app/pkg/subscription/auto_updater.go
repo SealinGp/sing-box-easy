@@ -292,71 +292,87 @@ func collectKeys(m map[string]struct{}) []string {
 	return keys
 }
 
-// diffNodes compares current outbounds with new nodes and returns differences
-// keyed by server endpoint ("server:port"). The three return maps/slices are
-// independent: toDelete and toUpdate partition the existing subscription's
-// outbounds; toAdd is everything new in the fetched feed.
+// diffNodes compares current outbounds with the freshly fetched nodes and
+// returns the changes, keyed by the existing outbound's unique tag.
+//
+// Identity is the unique tag ("name server:port"), NOT the bare server:port.
+// Many providers put dozens of distinct nodes behind a single relay/CDN
+// endpoint (same host:port, different display names), so server:port is not a
+// unique node identity — keying by it collapses those nodes together and makes
+// a single update overwrite every co-located node with the same tag (a
+// duplicate-tag explosion that fails `sing-box check`). The unique tag is what
+// sing-box already requires to be unique, so it is the correct key.
+//
+//   - toDelete: tags of this subscription's outbounds no longer in the feed.
+//   - toUpdate: existing tag -> replacement outbound (the value's Tag may differ
+//     from the key only for the legacy-rename case below, which is applied as a
+//     group-reference rename in applyChanges).
+//   - toAdd:    feed nodes with no matching existing outbound.
 func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
-	// Initialize named return values (Go does not zero-init maps from named returns)
 	toDelete = make(map[string]struct{})
 	toUpdate = make(map[string]config.Outbound)
 
-	// Create a map of new nodes by server key (server:port) for quick lookup
-	newNodeMap := make(map[string]config.Outbound)
-	sub_servers := make(map[string]struct{})
+	// Index the feed by unique tag. subServers is the set of hosts in the feed,
+	// used to decide which existing outbounds belong to this subscription.
+	newByTag := make(map[string]config.Outbound)
+	subServers := make(map[string]struct{})
 	for _, n := range newNodes {
-		// Convert SubNode to Outbound
 		outbound := config.Outbound{
 			Tag:     n.Tag,
 			Type:    n.Type,
 			Options: n.Options,
 		}
-		svr := config.GetOutboundServer(outbound)
-		if svr != "" {
-			sub_servers[svr] = struct{}{}
+		if svr := config.GetOutboundServer(outbound); svr != "" {
+			subServers[svr] = struct{}{}
 		}
-
-		serverKey := config.GetOutboundServerKey(outbound)
-		if serverKey != "" {
-			// Generate unique tag
-			outbound.Tag = config.GenerateUniqueTag(n.Tag, outbound)
-			newNodeMap[serverKey] = outbound
+		if config.GetOutboundServerKey(outbound) == "" {
+			continue
 		}
+		uniqueTag := config.GenerateUniqueTag(n.Tag, outbound)
+		outbound.Tag = uniqueTag
+		// Two feed nodes with the same name AND endpoint are genuinely
+		// indistinguishable; collapsing them here is correct (one survives).
+		newByTag[uniqueTag] = outbound
 	}
 
-	// Track which server keys from new nodes have been processed
-	processedKeys := make(map[string]bool)
+	// consumed tracks which feed nodes (by unique tag) were matched to an
+	// existing outbound, so the leftovers become additions.
+	consumed := make(map[string]bool)
 
-	// Check existing outbounds
 	for _, outbound := range cfg.Outbounds {
-		svr := config.GetOutboundServer(outbound)
-		// Skip outbounds not from this subscription
-		if _, ok := sub_servers[svr]; !ok {
+		// Only consider outbounds belonging to this subscription (host in feed).
+		if _, ok := subServers[config.GetOutboundServer(outbound)]; !ok {
 			continue
 		}
 
-		serverKey := config.GetOutboundServerKey(outbound)
-		if serverKey == "" {
-			continue
-		}
-
-		if newOutbound, exists := newNodeMap[serverKey]; exists {
-			// Node with same server key exists in new nodes
-			processedKeys[serverKey] = true
-			// Check if the outbound has changed; if so replace in-place.
+		// Exact identity match on the unique tag.
+		if newOutbound, ok := newByTag[outbound.Tag]; ok && !consumed[outbound.Tag] {
+			consumed[outbound.Tag] = true
 			if !outboundsDeepEqual(outbound, newOutbound) {
-				toUpdate[serverKey] = newOutbound
+				toUpdate[outbound.Tag] = newOutbound
 			}
-			// If equal, keep the existing one (no action needed).
 			continue
 		}
 
-		toDelete[serverKey] = struct{}{}
+		// Legacy match: older imports stored the bare display name without the
+		// " server:port" suffix. Recognize "<tag> <server:port>" so such a node
+		// is renamed in place (preserving its selector-group memberships)
+		// instead of being deleted and re-added under a new tag.
+		if sk := config.GetOutboundServerKey(outbound); sk != "" {
+			candidate := outbound.Tag + " " + sk
+			if newOutbound, ok := newByTag[candidate]; ok && !consumed[candidate] {
+				consumed[candidate] = true
+				toUpdate[outbound.Tag] = newOutbound
+				continue
+			}
+		}
+
+		// Belongs to this subscription but absent from the feed → delete.
+		toDelete[outbound.Tag] = struct{}{}
 	}
 
-	// Add new nodes that weren't in the existing config
-	for serverKey, outbound := range newNodeMap {
-		if !processedKeys[serverKey] {
+	for tag, outbound := range newByTag {
+		if !consumed[tag] {
 			toAdd = append(toAdd, outbound)
 		}
 	}
@@ -390,33 +406,54 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 		deletedTags := make(map[string]struct{})
 		renameMap := make(map[string]string)
 
-		// First pass: keep non-deleted outbounds and apply updates
-		for _, outbound := range c.Outbounds {
-			svr_key := config.GetOutboundServerKey(outbound)
-			if svr_key == "" {
-				newOutbounds = append(newOutbounds, outbound)
-				continue
-			}
+		// emitted guards against duplicate tags ever reaching the config (which
+		// would fail `sing-box check`): the final outbound list has at most one
+		// entry per tag. Keyed by the tag actually written to newOutbounds.
+		emitted := make(map[string]bool)
 
-			if _, ok := toDelete[svr_key]; ok {
+		// First pass: keep non-deleted outbounds and apply updates. Identity is
+		// the outbound tag (matching diffNodes), not server:port.
+		for _, outbound := range c.Outbounds {
+			if _, ok := toDelete[outbound.Tag]; ok {
 				deletedTags[outbound.Tag] = struct{}{}
 				continue // Skip deleted
 			}
 
-			if updatedOutbound, ok := toUpdate[svr_key]; ok {
+			if updatedOutbound, ok := toUpdate[outbound.Tag]; ok {
 				if outbound.Tag != updatedOutbound.Tag {
 					renameMap[outbound.Tag] = updatedOutbound.Tag
 				}
+				// Multiple existing outbounds can resolve to the same updated
+				// node (e.g. pre-existing duplicates or legacy renames); emit it
+				// only once so we never write a duplicate tag.
+				if emitted[updatedOutbound.Tag] {
+					continue
+				}
+				emitted[updatedOutbound.Tag] = true
 				newOutbounds = append(newOutbounds, updatedOutbound)
-				continue // Skip updated
+				continue
 			}
 
-			// Keep existing outbound
+			// Keep existing outbound, dropping any stray duplicate-tag copy.
+			if emitted[outbound.Tag] {
+				logger.Warn("dropping duplicate outbound tag during subscription update",
+					zap.String("subscription", subID), zap.String("tag", outbound.Tag))
+				continue
+			}
+			emitted[outbound.Tag] = true
 			newOutbounds = append(newOutbounds, outbound)
 		}
 
-		// Add new outbounds
-		newOutbounds = append(newOutbounds, toAdd...)
+		// Add new outbounds (same duplicate guard).
+		for _, outbound := range toAdd {
+			if emitted[outbound.Tag] {
+				logger.Warn("dropping duplicate outbound tag during subscription update",
+					zap.String("subscription", subID), zap.String("tag", outbound.Tag))
+				continue
+			}
+			emitted[outbound.Tag] = true
+			newOutbounds = append(newOutbounds, outbound)
+		}
 
 		// Strip references to deleted tags and rewrite renamed tags inside
 		// selector/urltest group outbounds.
