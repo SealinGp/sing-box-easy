@@ -6,6 +6,7 @@ export default {
   uptime: '运行时长',
   lastStarted: '上次启动',
   refreshStatus: '刷新状态',
+  logSettings: '日志设置',
   status: {
     running: '运行中',
     stopped: '已停止',

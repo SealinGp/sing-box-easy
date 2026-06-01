@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { logService } from '../../services'
-import { Code, type LogConfig } from '../../types/api'
-import { useToast } from 'primevue'
+import { type LogConfig } from '../../types/api'
+import { useNotify } from '../../composables/useNotify'
 
 const { t } = useI18n()
 
@@ -15,7 +15,7 @@ const logConfig = ref<LogConfig>({
 })
 const loading = ref(false)
 const saving = ref(false)
-const toast = useToast()
+const notify = useNotify()
 
 const logLevels = ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic']
 
@@ -27,23 +27,11 @@ const loadLog = async () => {
   loading.value = true
   try {
     const response = await logService.getLog()
-    if (response.code === Code.Success && response.data) {
+    if (response.data) {
       logConfig.value = response.data
-    } else {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: response.msg || t('log.toast.loadFailed'),
-        life: 3000
-      })
     }
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('log.toast.loadFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('log.toast.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -54,28 +42,9 @@ const saveLog = async () => {
 
   try {
     const response = await logService.updateLog(logConfig.value)
-    if (response.code === Code.Success) {
-      toast.add({
-        severity: 'success',
-        summary: t('common.success'),
-        detail: response.data?.message || t('log.toast.savedOk'),
-        life: 3000
-      })
-    } else {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: response.msg || t('log.toast.saveFailed'),
-        life: 3000
-      })
-    }
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('log.toast.saveFailed'),
-      life: 3000
-    })
+    notify.success(response.data?.message || t('log.toast.savedOk'))
+  } catch (err) {
+    notify.apiError(err, t('log.toast.saveFailed'))
   } finally {
     saving.value = false
   }

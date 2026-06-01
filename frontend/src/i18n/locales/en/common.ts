@@ -17,6 +17,7 @@ export default {
   error: 'Error',
   success: 'Success',
   invalid: 'Invalid',
+  requestFailed: 'Request failed',
   start: 'Start',
   stop: 'Stop',
   restart: 'Restart',

@@ -3,12 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiService } from '../../services/api'
 import { SubscriptionService } from '../../services/subscription'
-import { Code, type Subscription } from '../../types/api'
+import { type Subscription } from '../../types/api'
+import { useNotify } from '../../composables/useNotify'
 import Button from '../../components/Button.vue'
 import Modal from '../../components/Modal.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import Notification from '../../components/Notification.vue'
 import { parseDurationToHours, isValidDuration } from '../../plugins/dayjs'
 import {
   PlusIcon,
@@ -18,18 +18,13 @@ import {
   ServerIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ClipboardDocumentIcon
 } from '@heroicons/vue/24/outline'
 
 const subscriptionService = new SubscriptionService(apiService)
 const { t } = useI18n()
-
-interface NotificationMessage {
-  id: string
-  type: 'success' | 'error' | 'info'
-  message: string
-  duration?: number
-}
+const notify = useNotify()
 
 interface FormData {
   name: string
@@ -45,7 +40,6 @@ const showModal = ref(false)
 const editingSubscription = ref<Subscription | null>(null)
 const showDeleteConfirm = ref(false)
 const deletingSubscriptionId = ref<string>('')
-const notifications = ref<NotificationMessage[]>([])
 
 // Form data
 const formData = ref<FormData>({
@@ -66,36 +60,13 @@ const isFormValid = computed(() => {
 })
 
 // Methods
-const showNotification = (type: 'success' | 'error' | 'info', message: string, duration = 5000) => {
-  const id = Date.now().toString()
-  notifications.value.push({ id, type, message, duration })
-
-  if (duration > 0) {
-    setTimeout(() => {
-      removeNotification(id)
-    }, duration)
-  }
-}
-
-const removeNotification = (id: string) => {
-  const index = notifications.value.findIndex(n => n.id === id)
-  if (index > -1) {
-    notifications.value.splice(index, 1)
-  }
-}
-
 const loadSubscriptions = async () => {
   try {
     isLoading.value = true
     const response = await subscriptionService.getSubscriptions()
-
-    if (response.code === Code.Success) {
-      subscriptions.value = response.data.subscriptions || []
-    } else {
-      showNotification('error', response.msg || t('subscriptions.notify.loadFailed'))
-    }
+    subscriptions.value = response.data.subscriptions || []
   } catch (error) {
-    showNotification('error', t('subscriptions.notify.loadError'))
+    notify.apiError(error, t('subscriptions.notify.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -188,16 +159,21 @@ const saveSubscription = async () => {
       response = await subscriptionService.addSubscription(subscriptionData)
     }
 
-    if (response.code === Code.Success) {
-      showNotification('success', response.data.message || t('subscriptions.notify.savedOk'))
-      showModal.value = false
-      resetForm()
-      await loadSubscriptions()
-    } else {
-      showNotification('error', response.msg || t('subscriptions.notify.saveFailed'))
-    }
+    notify.success(response.data.message || t('subscriptions.notify.savedOk'))
+    showModal.value = false
+    resetForm()
+    await loadSubscriptions()
   } catch (error) {
-    showNotification('error', t('subscriptions.notify.saveError'))
+    notify.apiError(error, t('subscriptions.notify.saveError'))
+  }
+}
+
+const copyUrl = async (url: string) => {
+  try {
+    await navigator.clipboard.writeText(url)
+    notify.success(t('subscriptions.notify.copiedOk'))
+  } catch (error) {
+    notify.apiError(error, t('subscriptions.notify.copyFailed'))
   }
 }
 
@@ -211,17 +187,12 @@ const deleteSubscription = async () => {
 
   try {
     const response = await subscriptionService.deleteSubscription(deletingSubscriptionId.value)
-
-    if (response.code === Code.Success) {
-      showNotification('success', response.data.message || t('subscriptions.notify.deletedOk'))
-      showDeleteConfirm.value = false
-      deletingSubscriptionId.value = ''
-      await loadSubscriptions()
-    } else {
-      showNotification('error', response.msg || t('subscriptions.notify.deleteFailed'))
-    }
+    notify.success(response.data.message || t('subscriptions.notify.deletedOk'))
+    showDeleteConfirm.value = false
+    deletingSubscriptionId.value = ''
+    await loadSubscriptions()
   } catch (error) {
-    showNotification('error', t('subscriptions.notify.deleteError'))
+    notify.apiError(error, t('subscriptions.notify.deleteError'))
   }
 }
 
@@ -232,23 +203,19 @@ const updateSubscription = async (subscription: Subscription) => {
     isUpdating.value.push(subscription.id)
     const response = await subscriptionService.updateSubscriptionContent(subscription.id)
 
-    if (response.code === Code.Success) {
-      const { added, updated, deleted } = response.data
-      // Backend now returns a 3-way diff. Build a human-readable summary
-      // and fall back to "no changes" when the subscription was already
-      // in sync with the upstream feed.
-      const parts: string[] = []
-      if (added > 0) parts.push(t('subscriptions.notify.added', { n: added }))
-      if (updated > 0) parts.push(t('subscriptions.notify.updated', { n: updated }))
-      if (deleted > 0) parts.push(t('subscriptions.notify.removed', { n: deleted }))
-      const summary = parts.length > 0 ? parts.join(', ') : t('subscriptions.notify.noChanges')
-      showNotification('success', t('subscriptions.notify.synced', { name: subscription.name, summary }))
-      await loadSubscriptions()
-    } else {
-      showNotification('error', response.msg || t('subscriptions.notify.updateFailed'))
-    }
+    const { added, updated, deleted } = response.data
+    // Backend now returns a 3-way diff. Build a human-readable summary
+    // and fall back to "no changes" when the subscription was already
+    // in sync with the upstream feed.
+    const parts: string[] = []
+    if (added > 0) parts.push(t('subscriptions.notify.added', { n: added }))
+    if (updated > 0) parts.push(t('subscriptions.notify.updated', { n: updated }))
+    if (deleted > 0) parts.push(t('subscriptions.notify.removed', { n: deleted }))
+    const summary = parts.length > 0 ? parts.join(', ') : t('subscriptions.notify.noChanges')
+    notify.success(t('subscriptions.notify.synced', { name: subscription.name, summary }))
+    await loadSubscriptions()
   } catch (error) {
-    showNotification('error', t('subscriptions.notify.updateError'))
+    notify.apiError(error, t('subscriptions.notify.updateError'))
   } finally {
     const index = isUpdating.value.indexOf(subscription.id)
     if (index > -1) {
@@ -393,8 +360,19 @@ onMounted(() => {
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                  {{ subscription.url }}
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                    {{ subscription.url }}
+                  </span>
+                  <button
+                    type="button"
+                    class="shrink-0 p-1 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                    @click="copyUrl(subscription.url)"
+                    :title="$t('subscriptions.tooltip.copy')"
+                    :aria-label="$t('subscriptions.tooltip.copy')"
+                  >
+                    <ClipboardDocumentIcon class="h-4 w-4" />
+                  </button>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -430,6 +408,7 @@ onMounted(() => {
                     @click="updateSubscription(subscription)"
                     :disabled="isUpdating.includes(subscription.id)"
                     :title="$t('subscriptions.tooltip.update')"
+                    :aria-label="$t('subscriptions.tooltip.update')"
                   >
                     <ArrowPathIcon class="h-4 w-4" />
                   </Button>
@@ -438,6 +417,7 @@ onMounted(() => {
                     size="sm"
                     @click="openEditModal(subscription)"
                     :title="$t('subscriptions.tooltip.edit')"
+                    :aria-label="$t('subscriptions.tooltip.edit')"
                   >
                     <PencilIcon class="h-4 w-4" />
                   </Button>
@@ -446,6 +426,7 @@ onMounted(() => {
                     size="sm"
                     @click="confirmDelete(subscription)"
                     :title="$t('subscriptions.tooltip.del')"
+                    :aria-label="$t('subscriptions.tooltip.del')"
                   >
                     <TrashIcon class="h-4 w-4" />
                   </Button>
@@ -557,17 +538,6 @@ onMounted(() => {
         </Button>
       </template>
     </Modal>
-
-    <!-- Notifications -->
-    <div class="fixed bottom-4 right-4 z-50 space-y-2">
-      <Notification
-        v-for="notification in notifications"
-        :key="notification.id"
-        :type="notification.type"
-        :message="notification.message"
-        @close="removeNotification(notification.id)"
-      />
-    </div>
   </div>
 </template>
 

@@ -2,11 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { settingsService } from '../../services'
-import { Code } from '../../types/api'
-import { useToast } from 'primevue'
+import { useNotify } from '../../composables/useNotify'
 import LanguageSwitcher from '../../components/LanguageSwitcher.vue'
 
-const toast = useToast()
+const notify = useNotify()
 const { t } = useI18n()
 
 const loading = ref(false)
@@ -24,8 +23,8 @@ const loadSettings = async () => {
   try {
     const { data } = await settingsService.getSettings()
     keep.value = data.config_versions_keep
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('settings.toast.loadFailed'), life: 3000 })
+  } catch (err) {
+    notify.apiError(err, t('settings.toast.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -35,15 +34,11 @@ const saveSettings = async () => {
   saving.value = true
   try {
     const resp = await settingsService.updateSettings({ config_versions_keep: keep.value })
-    if (resp.code !== Code.Success) {
-      toast.add({ severity: 'error', summary: t('settings.toast.invalidTitle'), detail: resp.msg, life: 4000 })
-      return
-    }
     keep.value = resp.data.config_versions_keep
     limits.value = resp.data.limits
-    toast.add({ severity: 'success', summary: t('settings.toast.savedTitle'), detail: t('settings.toast.savedDetail'), life: 3000 })
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('settings.toast.saveFailed'), life: 3000 })
+    notify.success(t('settings.toast.savedDetail'), t('settings.toast.savedTitle'))
+  } catch (err) {
+    notify.apiError(err, t('settings.toast.saveFailed'))
   } finally {
     saving.value = false
   }

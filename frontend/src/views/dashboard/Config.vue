@@ -2,8 +2,8 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { configService, serviceControlService } from '../../services'
-import { Code, type SingBoxConfig, type ConfigVersion } from '../../types/api'
-import { useToast } from 'primevue'
+import { type SingBoxConfig, type ConfigVersion } from '../../types/api'
+import { useNotify } from '../../composables/useNotify'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 import MonacoDiffEditor from '../../components/MonacoDiffEditor.vue'
 
@@ -19,7 +19,7 @@ const hasChanges = ref(false)
 const isFullscreen = ref(false)
 const isSplit = ref(false)
 const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
-const toast = useToast()
+const notify = useNotify()
 
 // --- Config version history (Versions modal) ---
 const showVersions = ref(false)
@@ -66,13 +66,8 @@ const loadConfig = async () => {
     configContent.value = jsonString
     originalContent.value = jsonString
     hasChanges.value = false
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('config.toast.loadFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('config.toast.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -90,27 +85,12 @@ const saveConfig = async () => {
     await configService.saveConfig(config)
     originalContent.value = configContent.value
     hasChanges.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('config.toast.savedOk'),
-      life: 3000
-    })
-  } catch (err: any) {
+    notify.success(t('config.toast.savedOk'))
+  } catch (err) {
     if (err instanceof SyntaxError) {
-      toast.add({
-        severity: 'error',
-        summary: t('config.toast.invalidJson'),
-        detail: t('config.toast.checkSyntax'),
-        life: 3000
-      })
+      notify.error(t('config.toast.checkSyntax'), t('config.toast.invalidJson'))
     } else {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: err.message || t('config.toast.saveFailed'),
-        life: 3000
-      })
+      notify.apiError(err, t('config.toast.saveFailed'))
     }
   } finally {
     saving.value = false
@@ -121,38 +101,13 @@ const validateConfig = async () => {
   validating.value = true
   try {
     const config = JSON.parse(configContent.value) as SingBoxConfig
-    const resp = await configService.validateConfig(config)
-    if(resp.code != Code.Success) {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: resp.msg,
-      })
-      return
-    }
-
-
-    toast.add({
-      severity: 'success',
-      summary: t('config.toast.validTitle'),
-      detail: t('config.toast.validDetail'),
-      life: 3000
-    })
-  } catch (err: any) {
+    await configService.validateConfig(config)
+    notify.success(t('config.toast.validDetail'), t('config.toast.validTitle'))
+  } catch (err) {
     if (err instanceof SyntaxError) {
-      toast.add({
-        severity: 'error',
-        summary: t('config.toast.invalidJson'),
-        detail: t('config.toast.checkSyntax'),
-        life: 3000
-      })
+      notify.error(t('config.toast.checkSyntax'), t('config.toast.invalidJson'))
     } else {
-      toast.add({
-        severity: 'error',
-        summary: t('config.toast.validationFailedTitle'),
-        detail: err.message || t('config.toast.validationFailedDetail'),
-        life: 3000
-      })
+      notify.apiError(err, t('config.toast.validationFailedDetail'), t('config.toast.validationFailedTitle'))
     }
   } finally {
     validating.value = false
@@ -177,8 +132,8 @@ const loadVersions = async () => {
   try {
     const { data } = await configService.listVersions()
     versions.value = data.versions || []
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.loadVersionsFailed'), life: 3000 })
+  } catch (err) {
+    notify.apiError(err, t('config.toast.loadVersionsFailed'))
   } finally {
     versionsLoading.value = false
   }
@@ -191,8 +146,8 @@ const openDiff = async (v: ConfigVersion) => {
     diffModified.value = configContent.value
     diffVersionId.value = v.id
     showDiff.value = true
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.loadVersionFailed'), life: 3000 })
+  } catch (err) {
+    notify.apiError(err, t('config.toast.loadVersionFailed'))
   }
 }
 
@@ -200,16 +155,12 @@ const rollbackTo = async (v: ConfigVersion) => {
   if (!confirm(t('config.confirm.rollback', { id: v.id }))) return
   loading.value = true
   try {
-    const resp = await configService.rollbackToVersion(v.id)
-    if (resp.code !== Code.Success) {
-      toast.add({ severity: 'error', summary: t('config.toast.rollbackFailedTitle'), detail: resp.msg, life: 4000 })
-      return
-    }
+    await configService.rollbackToVersion(v.id)
     await loadConfig()
     closeVersions()
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('config.toast.rolledBack', { id: v.id }), life: 3000 })
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.rollbackFailed'), life: 3000 })
+    notify.success(t('config.toast.rolledBack', { id: v.id }))
+  } catch (err) {
+    notify.apiError(err, t('config.toast.rollbackFailed'))
   } finally {
     loading.value = false
   }
@@ -219,20 +170,16 @@ const deleteVersion = async (v: ConfigVersion) => {
   if (!confirm(t('config.confirm.delete', { id: v.id }))) return
   versionsLoading.value = true
   try {
-    const resp = await configService.deleteVersion(v.id)
-    if (resp.code !== Code.Success) {
-      toast.add({ severity: 'error', summary: t('config.toast.deleteFailedTitle'), detail: resp.msg, life: 4000 })
-      return
-    }
+    await configService.deleteVersion(v.id)
     // If the diff view is open on the version we just removed, drop back to the list.
     if (showDiff.value && diffVersionId.value === v.id) {
       showDiff.value = false
       diffVersionId.value = null
     }
     await loadVersions()
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('config.toast.deleted', { id: v.id }), life: 3000 })
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.deleteFailed'), life: 3000 })
+    notify.success(t('config.toast.deleted', { id: v.id }))
+  } catch (err) {
+    notify.apiError(err, t('config.toast.deleteFailed'))
   } finally {
     versionsLoading.value = false
   }
@@ -242,14 +189,10 @@ const restartService = async () => {
   if (!confirm(t('config.confirm.restart'))) return
   restarting.value = true
   try {
-    const resp = await serviceControlService.restartService()
-    if (resp.code !== Code.Success) {
-      toast.add({ severity: 'error', summary: t('config.toast.restartFailedTitle'), detail: resp.msg, life: 4000 })
-      return
-    }
-    toast.add({ severity: 'success', summary: t('config.toast.restartedTitle'), detail: t('config.toast.restartedDetail'), life: 3000 })
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('config.toast.restartFailed'), life: 3000 })
+    await serviceControlService.restartService()
+    notify.success(t('config.toast.restartedDetail'), t('config.toast.restartedTitle'))
+  } catch (err) {
+    notify.apiError(err, t('config.toast.restartFailed'))
   } finally {
     restarting.value = false
   }
@@ -287,13 +230,8 @@ const formatDocument = () => {
   try {
     const parsed = JSON.parse(configContent.value)
     configContent.value = JSON.stringify(parsed, null, 2)
-  } catch (err) {
-    toast.add({
-      severity: 'error',
-      summary: t('config.toast.invalidJson'),
-      detail: t('config.toast.cannotFormat'),
-      life: 3000
-    })
+  } catch {
+    notify.error(t('config.toast.cannotFormat'), t('config.toast.invalidJson'))
   }
 }
 

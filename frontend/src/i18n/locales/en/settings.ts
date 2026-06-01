@@ -18,6 +18,5 @@ export default {
     saveFailed: 'Failed to save settings',
     savedTitle: 'Saved',
     savedDetail: 'Settings updated',
-    invalidTitle: 'Invalid',
   },
 }

@@ -18,6 +18,5 @@ export default {
     saveFailed: '保存设置失败',
     savedTitle: '已保存',
     savedDetail: '设置已更新',
-    invalidTitle: '无效',
   },
 }

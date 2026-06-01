@@ -17,6 +17,7 @@ export default {
   error: '错误',
   success: '成功',
   invalid: '无效',
+  requestFailed: '请求失败',
   start: '启动',
   stop: '停止',
   restart: '重启',

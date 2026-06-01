@@ -6,6 +6,7 @@ export default {
   uptime: 'Uptime',
   lastStarted: 'Last started',
   refreshStatus: 'Refresh Status',
+  logSettings: 'Log settings',
   status: {
     running: 'running',
     stopped: 'stopped',

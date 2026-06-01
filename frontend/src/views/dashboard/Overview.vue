@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Code, type ServiceStatus } from '../../types/api'
+import { type ServiceStatus } from '../../types/api'
 import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
-import { useToast } from 'primevue/usetoast'
+import { useNotify } from '../../composables/useNotify'
 import { formatRelativeTime } from '../../utils/relativeTime'
+import { DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
 const actionLoading = ref(false)
-const toast = useToast()
+const notify = useNotify()
 const { t, locale } = useI18n()
 
 // "14 minutes ago", derived from the process start time the backend reports.
@@ -59,13 +60,8 @@ const fetchStatus = async () => {
   try {
     const {data} = await serviceControlService.getServiceStatus()
     status.value = data
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('overview.toast.fetchFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('overview.toast.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -74,30 +70,11 @@ const fetchStatus = async () => {
 const handleStart = async () => {
   actionLoading.value = true
   try {
-    const resp = await serviceControlService.startService()
-    if(resp.code != Code.Success) {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: resp.msg,
-      })
-      return
-    }
-
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('overview.toast.startedOk'),
-      life: 3000
-    })
+    await serviceControlService.startService()
+    notify.success(t('overview.toast.startedOk'))
     await fetchStatus()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('overview.toast.startFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('overview.toast.startFailed'))
   } finally {
     actionLoading.value = false
   }
@@ -107,20 +84,10 @@ const handleStop = async () => {
   actionLoading.value = true
   try {
     await serviceControlService.stopService()
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('overview.toast.stoppedOk'),
-      life: 3000
-    })
+    notify.success(t('overview.toast.stoppedOk'))
     await fetchStatus()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('overview.toast.stopFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('overview.toast.stopFailed'))
   } finally {
     actionLoading.value = false
   }
@@ -130,20 +97,10 @@ const handleRestart = async () => {
   actionLoading.value = true
   try {
     await serviceControlService.restartService()
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('overview.toast.restartedOk'),
-      life: 3000
-    })
+    notify.success(t('overview.toast.restartedOk'))
     await fetchStatus()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('overview.toast.restartFailed'),
-      life: 3000
-    })
+  } catch (err) {
+    notify.apiError(err, t('overview.toast.restartFailed'))
   } finally {
     actionLoading.value = false
   }
@@ -232,6 +189,16 @@ onMounted(fetchStatus)
             >
               {{ $t('overview.refreshStatus') }}
             </Button>
+          </div>
+
+          <div class="pt-1">
+            <RouterLink
+              :to="{ name: 'DashboardLog' }"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+            >
+              <DocumentTextIcon class="h-4 w-4" />
+              {{ $t('overview.logSettings') }}
+            </RouterLink>
           </div>
         </div>
       </div>
