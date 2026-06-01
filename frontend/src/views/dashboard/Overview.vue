@@ -6,7 +6,7 @@ import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import { formatRelativeTime } from '../../utils/relativeTime'
-import { DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { DocumentTextIcon, CommandLineIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
@@ -191,13 +191,20 @@ onMounted(fetchStatus)
             </Button>
           </div>
 
-          <div class="pt-1">
+          <div class="pt-1 flex items-center gap-4">
             <RouterLink
               :to="{ name: 'DashboardLog' }"
               class="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
             >
               <DocumentTextIcon class="h-4 w-4" />
               {{ $t('overview.logSettings') }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'DashboardLogs' }"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+            >
+              <CommandLineIcon class="h-4 w-4" />
+              {{ $t('overview.realtimeLog') }}
             </RouterLink>
           </div>
         </div>

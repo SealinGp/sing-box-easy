@@ -7,6 +7,7 @@ export default {
   lastStarted: 'Last started',
   refreshStatus: 'Refresh Status',
   logSettings: 'Log settings',
+  realtimeLog: 'Real-time log',
   status: {
     running: 'running',
     stopped: 'stopped',
