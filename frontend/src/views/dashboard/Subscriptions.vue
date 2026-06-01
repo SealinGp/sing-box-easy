@@ -170,7 +170,22 @@ const saveSubscription = async () => {
 
 const copyUrl = async (url: string) => {
   try {
-    await navigator.clipboard.writeText(url)
+    if (navigator.clipboard?.writeText) {
+      // Secure context (HTTPS / localhost)
+      await navigator.clipboard.writeText(url)
+    } else {
+      // Fallback for plain-HTTP deployments where navigator.clipboard is undefined
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      if (!document.execCommand('copy')) {
+        throw new Error('execCommand copy failed')
+      }
+      document.body.removeChild(ta)
+    }
     notify.success(t('subscriptions.notify.copiedOk'))
   } catch (error) {
     notify.apiError(error, t('subscriptions.notify.copyFailed'))
