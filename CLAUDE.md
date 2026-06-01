@@ -35,20 +35,26 @@ go test ./app/pkg/sublink/protocol -v -run TestTrojanParser
 ```
 
 ### Frontend (Vue 3)
+
+**Always use `bun` for the frontend** (install, scripts, and package management) — do NOT use `npm`/`npx`/`yarn`/`pnpm`.
+
 ```bash
 cd frontend
 
 # Install dependencies
-npm install
+bun install
 
 # Dev server
-npm run dev
+bun run dev
 
-# Build for production
-npm run build
+# Build for production (runs vue-tsc type-check + vite build)
+bun run build
 
 # Preview production build
-npm run preview
+bun run preview
+
+# Run a one-off binary (npx equivalent)
+bunx <tool>
 ```
 
 ## Configuration
