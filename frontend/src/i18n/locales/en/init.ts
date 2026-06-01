@@ -114,6 +114,10 @@ export default {
     saveContinueBtn: 'Save & Continue',
     skipBtn: 'Skip this step',
     saveFailed: 'Failed to save experimental configuration',
+    loadFailed: 'Failed to load existing configuration. Please verify the service is running, then click Retry.',
+    loadFailedTitle: 'Configuration Load Failed',
+    loadFailedDesc: 'Could not read the current configuration from the server. Saving is blocked to prevent accidentally overwriting your existing settings (e.g. a custom external_controller address).',
+    retryLoad: 'Retry',
     previewAlt: 'Dashboard preview',
     modeOptions: {
       rule: 'Rule (Rules-based routing)',

@@ -107,6 +107,10 @@ export default {
     saveContinueBtn: '保存并继续',
     skipBtn: '跳过此步',
     saveFailed: '保存实验性配置失败',
+    loadFailed: '加载现有配置失败，请检查服务是否正常运行后点击重试。',
+    loadFailedTitle: '配置加载失败',
+    loadFailedDesc: '无法从服务器读取当前配置，保存已被阻止以防止意外覆盖已有设置（如自定义 external_controller 地址）。',
+    retryLoad: '点击重试',
     previewAlt: '控制面板预览',
     modeOptions: {
       rule: 'Rule（基于规则路由）',

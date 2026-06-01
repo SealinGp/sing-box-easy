@@ -87,8 +87,13 @@ func (au *AutoUpdater) Start(cronExpression string) error {
 	au.isRunning = true
 	logger.Info("Auto-updater started", zap.String("cron", cronExpression))
 
-	// Run an initial check
-	go au.CheckSubscriptions()
+	// Delay the initial check by 30 s so the HTTP server is fully up and any
+	// in-flight config edits the operator made just before restarting the
+	// service are not immediately overwritten by a subscription refresh.
+	go func() {
+		time.Sleep(30 * time.Second)
+		au.CheckSubscriptions()
+	}()
 
 	return nil
 }

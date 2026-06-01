@@ -65,6 +65,14 @@ func hasMeaningfulSingBoxConfig(mgr *config.Manager) bool {
 	if cfg.Route.Rules != nil && len(cfg.Route.Rules) > 0 {
 		return true
 	}
+	// A configured Clash API external_controller is a reliable signal that
+	// the operator has already set up the app (possibly through the wizard).
+	// Treat it as "meaningful" so the wizard does not re-run on upgrades.
+	if cfg.Experimental != nil &&
+		cfg.Experimental.ClashAPI != nil &&
+		cfg.Experimental.ClashAPI.ExternalController != "" {
+		return true
+	}
 	return false
 }
 

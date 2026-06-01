@@ -5,7 +5,7 @@ export default {
     successDesc: '出站节点已成功添加，正在进入下一步……',
     parseHeading: '解析订阅或节点',
     parseDesc: '输入订阅链接或节点链接（vmess://、ss://、trojan:// 等）。多个条目请每行一个。',
-    inputPlaceholder: '示例：\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@192.168.1.1:8388#MyNode\ntrojan://password@example.com:443?sni=example.com#TrojanNode',
+    inputPlaceholder: "示例：\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ={'@'}192.168.1.1:8388#MyNode\ntrojan://password{'@'}example.com:443?sni=example.com#TrojanNode",
     parse: '解析',
     parsing: '解析中……',
     parsedNodes: '已解析节点',
