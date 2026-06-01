@@ -19,6 +19,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const success = ref(false)
+const loadFailed = ref(false)
 
 // Clash API 配置
 const enableClashAPI = ref(false)
@@ -129,6 +130,7 @@ onMounted(async () => {
 const loadConfigs = async () => {
   loading.value = true
   error.value = ''
+  loadFailed.value = false
 
   try {
     // 加载 Clash API 配置    
@@ -172,7 +174,12 @@ const loadConfigs = async () => {
       }
     }
   } catch (err: any) {
-    console.log('No existing experimental config, using defaults')
+    // Surface the error so the user knows the loaded values may not reflect
+    // the existing configuration.  Do NOT silently fall back to defaults —
+    // that is precisely what causes the 0.0.0.0 / port mismatch bug where
+    // the user only corrects the port but leaves the host at its default.
+    loadFailed.value = true
+    error.value = t('init.experimental.loadFailed')
   } finally {
     loading.value = false
   }
@@ -243,8 +250,19 @@ const handleSkip = () => {
         {{ $t('init.experimental.savedDesc') }}
       </Alert>
 
-      <!-- 错误提示 -->
-      <Alert v-if="error" type="error" closable @close="error = ''">
+      <!-- 配置加载失败提示 — 阻止保存以防止意外覆盖现有配置 -->
+      <Alert v-if="loadFailed" type="error" :title="$t('init.experimental.loadFailedTitle')">
+        {{ $t('init.experimental.loadFailedDesc') }}
+        <button
+          class="mt-2 text-sm underline hover:no-underline"
+          @click="loadConfigs"
+        >
+          {{ $t('init.experimental.retryLoad') }}
+        </button>
+      </Alert>
+
+      <!-- 其他错误提示 -->
+      <Alert v-else-if="error" type="error" closable @close="error = ''">
         {{ error }}
       </Alert>
 
@@ -479,7 +497,7 @@ const handleSkip = () => {
         <Button
           variant="primary"
           :loading="saving"
-          :disabled="saving || success"
+          :disabled="saving || success || loadFailed"
           @click="handleNext"
         >
           {{ success ? $t('init.experimental.savedBtn') : saving ? $t('common.saving') : $t('init.experimental.saveContinueBtn') }}
