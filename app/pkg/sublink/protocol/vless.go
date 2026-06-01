@@ -86,6 +86,26 @@ func (v *VLESS) Parse(uri string) (*node.SubNode, error) {
 	}, nil
 }
 
+// flowVision is the only VLESS flow sing-box supports (see sing-vmess
+// vless.NewClient, which rejects anything else with "unsupported flow").
+const flowVision = "xtls-rprx-vision"
+
+// normalizeFlow maps the flow value from a subscription link to a value
+// sing-box accepts. Xray emits variants like "xtls-rprx-vision-udp443" that
+// sing-box does not recognize, so collapse any "xtls-rprx-vision*" value to
+// the canonical flow and drop everything else (returning "" disables flow).
+func normalizeFlow(flow string) string {
+	flow = strings.TrimSpace(flow)
+	if flow == "" {
+		return ""
+	}
+	if strings.HasPrefix(flow, flowVision) {
+		return flowVision
+	}
+	// Unknown / legacy (e.g. xtls-rprx-direct) flows would fail validation.
+	return ""
+}
+
 // parseServerInfo parses server:port, supporting bracketed IPv6.
 func (v *VLESS) parseServerInfo(serverInfo string) error {
 	server, portStr, err := splitHostPort(serverInfo)
@@ -105,8 +125,10 @@ func (v *VLESS) parseServerInfo(serverInfo string) error {
 }
 
 func (v *VLESS) parseQueryParams(params url.Values) error {
-	// flow (e.g. xtls-rprx-vision)
-	if flow := params.Get("flow"); flow != "" {
+	// flow (e.g. xtls-rprx-vision). Normalize Xray-specific variants such as
+	// "xtls-rprx-vision-udp443" down to the only value sing-box accepts, and
+	// drop unsupported flows so the generated config passes `sing-box check`.
+	if flow := normalizeFlow(params.Get("flow")); flow != "" {
 		v.Flow = flow
 	}
 
