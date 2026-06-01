@@ -14,6 +14,8 @@ export default {
   refresh: 'Refresh',
   reset: 'Reset',
   loading: 'Loading...',
+  confirm: 'Confirm',
+  confirmTitle: 'Please confirm',
   error: 'Error',
   success: 'Success',
   invalid: 'Invalid',

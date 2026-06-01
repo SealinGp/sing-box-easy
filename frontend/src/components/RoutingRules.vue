@@ -8,6 +8,7 @@ import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
+import { useConfirm } from '../composables/useConfirm'
 
 // sing-box accepts scalar OR array on the wire for every list-like matcher
 // (e.g. "inbound": "dns-in" is equivalent to ["dns-in"]). The backend
@@ -47,6 +48,7 @@ function normalizeRouteRule(rule: RouteRule): RouteRule {
 
 const toast = useToast()
 const { t } = useI18n()
+const { confirm } = useConfirm()
 
 // Local state
 const loading = ref(false)
@@ -138,7 +140,13 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
 }
 
 const handleDeleteRule = async (index: number) => {
-  if (!confirm(t('route.rules.confirm.delete'))) return
+  const ok = await confirm({
+    title: t('common.delete'),
+    message: t('route.rules.confirm.delete'),
+    confirmLabel: t('common.delete'),
+    tone: 'danger',
+  })
+  if (!ok) return
 
   loading.value = true
   try {

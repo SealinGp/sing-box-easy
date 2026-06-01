@@ -14,6 +14,8 @@ export default {
   refresh: '刷新',
   reset: '重置',
   loading: '加载中...',
+  confirm: '确认',
+  confirmTitle: '请确认',
   error: '错误',
   success: '成功',
   invalid: '无效',

@@ -8,9 +8,11 @@ import type { RuleSet } from '../types/api'
 import { useToast } from 'primevue'
 import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
+import { useConfirm } from '../composables/useConfirm'
 
 const toast = useToast()
 const { t } = useI18n()
+const { confirm } = useConfirm()
 const routeStore = useRouteStore()
 const { ruleSets, loading } = storeToRefs(routeStore)
 
@@ -175,7 +177,13 @@ async function handleUpdateRuleSet() {
 }
 
 async function handleDeleteRuleSet(tag: string) {
-  if (!confirm(t('route.ruleSets.confirm.delete'))) return
+  const ok = await confirm({
+    title: t('common.delete'),
+    message: t('route.ruleSets.confirm.delete'),
+    confirmLabel: t('common.delete'),
+    tone: 'danger',
+  })
+  if (!ok) return
 
   try {
     await routeStore.deleteRuleSet(tag)
