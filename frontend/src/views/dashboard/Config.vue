@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { configService, serviceControlService } from '../../services'
 import { type SingBoxConfig, type ConfigVersion } from '../../types/api'
 import { useNotify } from '../../composables/useNotify'
+import { useConfirm } from '../../composables/useConfirm'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 import MonacoDiffEditor from '../../components/MonacoDiffEditor.vue'
 
@@ -20,6 +21,7 @@ const isFullscreen = ref(false)
 const isSplit = ref(false)
 const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
 const notify = useNotify()
+const { confirm } = useConfirm()
 
 // --- Config version history (Versions modal) ---
 const showVersions = ref(false)
@@ -152,7 +154,12 @@ const openDiff = async (v: ConfigVersion) => {
 }
 
 const rollbackTo = async (v: ConfigVersion) => {
-  if (!confirm(t('config.confirm.rollback', { id: v.id }))) return
+  const ok = await confirm({
+    title: t('config.versionsModal.rollback'),
+    message: t('config.confirm.rollback', { id: v.id }),
+    confirmLabel: t('config.versionsModal.rollback'),
+  })
+  if (!ok) return
   loading.value = true
   try {
     await configService.rollbackToVersion(v.id)
@@ -167,7 +174,13 @@ const rollbackTo = async (v: ConfigVersion) => {
 }
 
 const deleteVersion = async (v: ConfigVersion) => {
-  if (!confirm(t('config.confirm.delete', { id: v.id }))) return
+  const ok = await confirm({
+    title: t('config.versionsModal.delete'),
+    message: t('config.confirm.delete', { id: v.id }),
+    confirmLabel: t('common.delete'),
+    tone: 'danger',
+  })
+  if (!ok) return
   versionsLoading.value = true
   try {
     await configService.deleteVersion(v.id)
@@ -186,7 +199,12 @@ const deleteVersion = async (v: ConfigVersion) => {
 }
 
 const restartService = async () => {
-  if (!confirm(t('config.confirm.restart'))) return
+  const ok = await confirm({
+    title: t('config.restart'),
+    message: t('config.confirm.restart'),
+    confirmLabel: t('config.restart'),
+  })
+  if (!ok) return
   restarting.value = true
   try {
     await serviceControlService.restartService()
