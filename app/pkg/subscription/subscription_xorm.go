@@ -147,21 +147,25 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 		return fmt.Errorf("subscription not found")
 	}
 
-	// Update subscription (XORM will handle updated_at automatically)
-	updates := map[string]interface{}{
-		"name":            sub.Name,
-		"url":             sub.URL,
-		"enabled":         sub.Enabled,
-		"auto_update":     sub.AutoUpdate,
-		"update_interval": sub.UpdateInterval,
+	// Build the update struct and explicit column list so XORM writes every
+	// field regardless of zero-value, and auto-updates updated_at via the
+	// xorm:"updated" tag.
+	dbSub := &repo.Subscription{
+		Name:           sub.Name,
+		URL:            sub.URL,
+		Enabled:        sub.Enabled,
+		AutoUpdate:     sub.AutoUpdate,
+		UpdateInterval: sub.UpdateInterval,
 	}
+	cols := []string{"name", "url", "enabled", "auto_update", "update_interval"}
 
-	// Only update last_update if it's provided
+	// Only include last_update when an explicit value is provided.
 	if !sub.LastUpdate.IsZero() {
-		updates["last_update"] = sub.LastUpdate
+		dbSub.LastUpdate = sub.LastUpdate
+		cols = append(cols, "last_update")
 	}
 
-	_, err = session.ID(id).Update(&repo.Subscription{}, updates)
+	_, err = session.ID(id).Cols(cols...).Update(dbSub)
 	if err != nil {
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
