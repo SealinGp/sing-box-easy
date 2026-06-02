@@ -68,7 +68,7 @@ func TestPruneGroupReferences_RemovesDeletedTagsFromSelector(t *testing.T) {
 		"node-b": {},
 	}
 
-	got := PruneGroupReferences(outbounds, deleted, nil)
+	got := PruneGroupReferences(outbounds, deleted, nil, nil)
 
 	if want := []string{"node-a", "node-c"}; !slices.Equal(selectorMembers(t, got[0]), want) {
 		t.Errorf("selector members = %v, want %v", selectorMembers(t, got[0]), want)
@@ -89,7 +89,7 @@ func TestPruneGroupReferences_DoesNotMutateInput(t *testing.T) {
 	original := makeSelector("manual", []string{"node-a", "node-b"}, "node-b")
 	outbounds := []Outbound{original}
 
-	_ = PruneGroupReferences(outbounds, map[string]struct{}{"node-b": {}}, nil)
+	_ = PruneGroupReferences(outbounds, map[string]struct{}{"node-b": {}}, nil, nil)
 
 	opts := original.Options.(*option.SelectorOutboundOptions)
 	if !slices.Equal(opts.Outbounds, []string{"node-a", "node-b"}) {
@@ -111,7 +111,7 @@ func TestPruneGroupReferences_RenameRewrites(t *testing.T) {
 
 	rename := map[string]string{"old-tag": "new-tag"}
 
-	got := PruneGroupReferences(outbounds, nil, rename)
+	got := PruneGroupReferences(outbounds, nil, rename, nil)
 
 	if want := []string{"new-tag", "node-other"}; !slices.Equal(selectorMembers(t, got[0]), want) {
 		t.Errorf("selector members = %v, want %v", selectorMembers(t, got[0]), want)
@@ -135,6 +135,7 @@ func TestPruneGroupReferences_RenameThenDelete(t *testing.T) {
 	got := PruneGroupReferences(outbounds,
 		map[string]struct{}{"new": {}},
 		map[string]string{"old": "new"},
+		nil,
 	)
 
 	if want := []string{"keep"}; !slices.Equal(selectorMembers(t, got[0]), want) {
@@ -151,7 +152,7 @@ func TestPruneGroupReferences_NoopWhenEmpty(t *testing.T) {
 	outbounds := []Outbound{
 		makeSelector("manual", []string{"a", "b"}, "a"),
 	}
-	got := PruneGroupReferences(outbounds, nil, nil)
+	got := PruneGroupReferences(outbounds, nil, nil, nil)
 	if len(got) != 1 {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
@@ -167,7 +168,7 @@ func TestPruneGroupReferences_DropsDuplicatesAfterRename(t *testing.T) {
 	outbounds := []Outbound{
 		makeSelector("manual", []string{"old", "new"}, "new"),
 	}
-	got := PruneGroupReferences(outbounds, nil, map[string]string{"old": "new"})
+	got := PruneGroupReferences(outbounds, nil, map[string]string{"old": "new"}, nil)
 
 	if want := []string{"new"}; !slices.Equal(selectorMembers(t, got[0]), want) {
 		t.Errorf("selector members = %v, want %v (rename collision)", selectorMembers(t, got[0]), want)
@@ -187,9 +188,39 @@ func TestPruneGroupReferences_LeavesNonGroupOutboundsAlone(t *testing.T) {
 		makeSelector("manual", []string{"node-a", "gone"}, ""),
 	}
 
-	got := PruneGroupReferences(outbounds, map[string]struct{}{"gone": {}}, nil)
+	got := PruneGroupReferences(outbounds, map[string]struct{}{"gone": {}}, nil, nil)
 
 	if got[0].Options != other.Options {
 		t.Errorf("non-group outbound options were replaced")
+	}
+}
+
+// TestPruneGroupReferences_AddsNewNodesToCollectionsOnly verifies that
+// freshly-added node tags are appended to node *collections* (flat aggregates
+// of final exit nodes) but NOT to node *groups* (curated lists of other
+// selectors, identified by the "分组"/"group" name marker).
+func TestPruneGroupReferences_AddsNewNodesToCollectionsOnly(t *testing.T) {
+	outbounds := []Outbound{
+		// Collection: flat list of nodes → should receive the new nodes.
+		makeURLTest("♻️ 自动选择", []string{"node-a"}),
+		// Collection: another flat list → should also receive them.
+		makeSelector("🌍 其他节点", []string{"node-a"}, "node-a"),
+		// Group: curates other selectors → must NOT receive raw nodes.
+		makeSelector("🎬 流媒体分组", []string{"♻️ 自动选择", "🌍 其他节点"}, "♻️ 自动选择"),
+	}
+
+	addTags := []string{"node-new1", "node-new2", "node-a"} // node-a already present → deduped
+
+	got := PruneGroupReferences(outbounds, nil, nil, addTags)
+
+	if want := []string{"node-a", "node-new1", "node-new2"}; !slices.Equal(urlTestMembers(t, got[0]), want) {
+		t.Errorf("collection urltest members = %v, want %v", urlTestMembers(t, got[0]), want)
+	}
+	if want := []string{"node-a", "node-new1", "node-new2"}; !slices.Equal(selectorMembers(t, got[1]), want) {
+		t.Errorf("collection selector members = %v, want %v", selectorMembers(t, got[1]), want)
+	}
+	// The group keeps exactly its curated members — no raw nodes added.
+	if want := []string{"♻️ 自动选择", "🌍 其他节点"}; !slices.Equal(selectorMembers(t, got[2]), want) {
+		t.Errorf("group members = %v, want %v (groups must not receive raw nodes)", selectorMembers(t, got[2]), want)
 	}
 }

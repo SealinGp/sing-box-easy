@@ -3,8 +3,9 @@ package config
 import "github.com/sagernet/sing-box/option"
 
 // PruneGroupReferences rewrites all selector/urltest outbound groups so they no
-// longer reference deleted tags and pick up any renames produced by the same
-// edit (e.g. a subscription update that re-tags an existing server).
+// longer reference deleted tags, pick up any renames produced by the same edit
+// (e.g. a subscription update that re-tags an existing server), and sync newly
+// added nodes into node *collections* (but never into node *groups*).
 //
 //   - deletedTags: tags that have been removed from the outbound list; any
 //     reference to one of these tags is stripped from group `outbounds` lists
@@ -12,6 +13,10 @@ import "github.com/sagernet/sing-box/option"
 //   - renameMap:   old-tag -> new-tag rewrites for outbounds whose identity
 //     (server:port) survives but whose tag changed; references are rewritten
 //     before the delete check so a renamed-and-then-deleted tag still wins.
+//   - addTags:     tags of freshly-added outbounds (e.g. new subscription
+//     nodes) to append to every node *collection*'s member list. Node *groups*
+//     (see IsNodeGroup) are skipped — they curate other selectors and must not
+//     have raw nodes dumped into them. Pass nil to add nothing.
 //
 // Immutability contract:
 //   - The input []Outbound slice is not mutated.
@@ -30,11 +35,11 @@ import "github.com/sagernet/sing-box/option"
 // `sing-box check` validates protocol-level fields, not whether group outbounds
 // reference live tags, so leaving stale references in place silently breaks
 // selectors at runtime even though the config "validates".
-func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{}, renameMap map[string]string) []Outbound {
+func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{}, renameMap map[string]string, addTags []string) []Outbound {
 	if len(outbounds) == 0 {
 		return outbounds
 	}
-	if len(deletedTags) == 0 && len(renameMap) == 0 {
+	if len(deletedTags) == 0 && len(renameMap) == 0 && len(addTags) == 0 {
 		return outbounds
 	}
 
@@ -74,6 +79,29 @@ func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{},
 		return def
 	}
 
+	// appendNewNodes returns a fresh list with addTags appended (deduped against
+	// the existing members). Always allocates a new slice so the caller's input
+	// is never mutated. Only invoked for node collections, never for groups.
+	appendNewNodes := func(list []string) []string {
+		seen := make(map[string]struct{}, len(list)+len(addTags))
+		out := make([]string, 0, len(list)+len(addTags))
+		for _, tag := range list {
+			if _, dup := seen[tag]; dup {
+				continue
+			}
+			seen[tag] = struct{}{}
+			out = append(out, tag)
+		}
+		for _, tag := range addTags {
+			if _, dup := seen[tag]; dup {
+				continue
+			}
+			seen[tag] = struct{}{}
+			out = append(out, tag)
+		}
+		return out
+	}
+
 	result := make([]Outbound, len(outbounds))
 	for i, ob := range outbounds {
 		switch ob.Type {
@@ -82,12 +110,20 @@ func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{},
 				newOpts := *opts
 				newOpts.Outbounds = rewriteList(opts.Outbounds)
 				newOpts.Default = rewriteDefault(opts.Default)
+				// Sync new nodes into collections only; groups curate other
+				// selectors and must not receive raw nodes.
+				if len(addTags) > 0 && !IsNodeGroup(ob.Tag) {
+					newOpts.Outbounds = appendNewNodes(newOpts.Outbounds)
+				}
 				ob.Options = &newOpts
 			}
 		case "urltest":
 			if opts, ok := ob.Options.(*option.URLTestOutboundOptions); ok && opts != nil {
 				newOpts := *opts
 				newOpts.Outbounds = rewriteList(opts.Outbounds)
+				if len(addTags) > 0 && !IsNodeGroup(ob.Tag) {
+					newOpts.Outbounds = appendNewNodes(newOpts.Outbounds)
+				}
 				ob.Options = &newOpts
 			}
 		}

@@ -230,7 +230,7 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 
 		// Strip the deleted tag from selector/urltest group references so the
 		// config doesn't silently keep dangling pointers.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, nil)
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, nil, nil)
 
 		cfg.Outbounds = newOutbounds
 		return nil
@@ -302,7 +302,7 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 
 		// Strip every deleted tag from selector/urltest group references so the
 		// resulting config doesn't silently keep dangling pointers.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedSet, nil)
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedSet, nil, nil)
 
 		cfg.Outbounds = newOutbounds
 		logger.Info(fmt.Sprintf("deleted %d outbounds: %v", len(deletedTags), deletedTags))

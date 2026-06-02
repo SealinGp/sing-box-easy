@@ -233,7 +233,7 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	}
 
 	// Step 3: Compare and diff nodes
-	toDelete, toAdd, toUpdate := au.diffNodes(cfg, newNodes)
+	toDelete, toAdd, toUpdate := au.diffNodes(cfg, sub, newNodes)
 
 	// Build the result up-front from the diff so callers (route handler,
 	// cron logger) get the same shape regardless of whether any change was
@@ -297,29 +297,59 @@ func collectKeys(m map[string]struct{}) []string {
 	return keys
 }
 
+// subscriptionTagSeparator joins the human-facing unique tag with its owning
+// subscription's ID. It is visually distinct and unlikely to appear inside a
+// provider-supplied node name, so it can be used to recognize ownership.
+const subscriptionTagSeparator = " | "
+
+// subscriptionTagSuffix returns the ownership suffix for a subscription, e.g.
+// " | sub_1778669376". The ID is appended (not prepended) because it exists
+// only to machine-identify the owning subscription — keeping it at the end
+// leaves the human-readable "<name> <server:port>" at the front of the tag.
+// Every node fetched from this subscription is tagged as
+// "<name> <server:port> | <subID>".
+func subscriptionTagSuffix(subID string) string {
+	return subscriptionTagSeparator + subID
+}
+
+// tagBelongsToSubscription reports whether an outbound tag was minted for the
+// given subscription (i.e. it carries that subscription's ID suffix). This is
+// the authoritative ownership test: it holds no matter how the provider has
+// since renamed the node in front of the suffix.
+func tagBelongsToSubscription(tag, subID string) bool {
+	return strings.HasSuffix(tag, subscriptionTagSuffix(subID))
+}
+
 // diffNodes compares current outbounds with the freshly fetched nodes and
-// returns the changes, keyed by the existing outbound's unique tag.
+// returns the changes, keyed by the existing outbound's tag.
 //
-// Identity is the unique tag ("name server:port"), NOT the bare server:port.
-// Many providers put dozens of distinct nodes behind a single relay/CDN
-// endpoint (same host:port, different display names), so server:port is not a
-// unique node identity — keying by it collapses those nodes together and makes
-// a single update overwrite every co-located node with the same tag (a
-// duplicate-tag explosion that fails `sing-box check`). The unique tag is what
-// sing-box already requires to be unique, so it is the correct key.
+// Ownership is determined by the subscription-ID suffix on the tag, NOT by the
+// node's server host. Every node fetched from a subscription is tagged as
+// "<name> <server:port> | <subID>", so the suffix unambiguously enumerates all
+// of a subscription's nodes even when the provider renames them or co-locates
+// many distinct nodes behind one relay/CDN endpoint. The leading
+// "name server:port" keeps tags unique within the namespace (sing-box requires
+// globally unique tags), so it remains the per-node identity in front of the
+// suffix.
 //
-//   - toDelete: tags of this subscription's outbounds no longer in the feed.
-//   - toUpdate: existing tag -> replacement outbound (the value's Tag may differ
-//     from the key only for the legacy-rename case below, which is applied as a
-//     group-reference rename in applyChanges).
+//   - toDelete: tags of this subscription's outbounds no longer in the feed
+//     (including nodes whose name changed — the old tag is deleted and the new
+//     one is added, since the name is part of the identity).
+//   - toUpdate: existing tag -> replacement outbound. The value's Tag differs
+//     from the key only for the legacy-migration case (an un-suffixed outbound
+//     adopted into the namespace), which is applied as a group-reference rename
+//     in applyChanges.
 //   - toAdd:    feed nodes with no matching existing outbound.
-func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
+func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
 	toDelete = make(map[string]struct{})
 	toUpdate = make(map[string]config.Outbound)
 
-	// Index the feed by unique tag. subServers is the set of hosts in the feed,
-	// used to decide which existing outbounds belong to this subscription.
-	newByTag := make(map[string]config.Outbound)
+	suffix := subscriptionTagSuffix(sub.ID)
+
+	// Index the feed by its final (suffixed) unique tag. subServers records the
+	// feed's server hosts purely so legacy un-suffixed outbounds from this
+	// subscription can still be recognized and migrated into the namespace.
+	newByTag := make(map[string]config.Outbound, len(newNodes))
 	subServers := make(map[string]struct{})
 	for _, n := range newNodes {
 		outbound := config.Outbound{
@@ -333,24 +363,25 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.Sub
 		if config.GetOutboundServerKey(outbound) == "" {
 			continue
 		}
-		uniqueTag := config.GenerateUniqueTag(n.Tag, outbound)
-		outbound.Tag = uniqueTag
+		// Final tag = "<name> <server:port> | <subID>".
+		taggedTag := config.GenerateUniqueTag(n.Tag, outbound) + suffix
+		outbound.Tag = taggedTag
 		// Two feed nodes with the same name AND endpoint are genuinely
 		// indistinguishable; collapsing them here is correct (one survives).
-		newByTag[uniqueTag] = outbound
+		newByTag[taggedTag] = outbound
 	}
 
-	// consumed tracks which feed nodes (by unique tag) were matched to an
+	// consumed tracks which feed nodes (by suffixed tag) were matched to an
 	// existing outbound, so the leftovers become additions.
 	consumed := make(map[string]bool)
 
+	// Pass 1: outbounds already in this subscription's namespace. The suffix is
+	// the sole ownership signal here, so a node that was renamed by the provider
+	// (new tag) is correctly seen as a delete of the old tag plus an add.
 	for _, outbound := range cfg.Outbounds {
-		// Only consider outbounds belonging to this subscription (host in feed).
-		if _, ok := subServers[config.GetOutboundServer(outbound)]; !ok {
+		if !tagBelongsToSubscription(outbound.Tag, sub.ID) {
 			continue
 		}
-
-		// Exact identity match on the unique tag.
 		if newOutbound, ok := newByTag[outbound.Tag]; ok && !consumed[outbound.Tag] {
 			consumed[outbound.Tag] = true
 			if !outboundsDeepEqual(outbound, newOutbound) {
@@ -358,21 +389,46 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, newNodes []*node.Sub
 			}
 			continue
 		}
+		// Carries our suffix but no longer in the feed → delete.
+		toDelete[outbound.Tag] = struct{}{}
+	}
 
-		// Legacy match: older imports stored the bare display name without the
-		// " server:port" suffix. Recognize "<tag> <server:port>" so such a node
-		// is renamed in place (preserving its selector-group memberships)
-		// instead of being deleted and re-added under a new tag.
-		if sk := config.GetOutboundServerKey(outbound); sk != "" {
-			candidate := outbound.Tag + " " + sk
-			if newOutbound, ok := newByTag[candidate]; ok && !consumed[candidate] {
-				consumed[candidate] = true
-				toUpdate[outbound.Tag] = newOutbound
-				continue
-			}
+	// Pass 2: migration for outbounds added before tag-suffixing existed (or
+	// added manually). Recognize them by server host and re-tag them into the
+	// namespace so future passes can rely solely on the suffix. Running after
+	// pass 1 guarantees already-suffixed nodes win the match for a feed entry.
+	for _, outbound := range cfg.Outbounds {
+		if tagBelongsToSubscription(outbound.Tag, sub.ID) {
+			continue
+		}
+		// Only outbounds whose server is present in this feed are candidates,
+		// matching the historical host-based ownership heuristic.
+		if _, ok := subServers[config.GetOutboundServer(outbound)]; !ok {
+			continue
 		}
 
-		// Belongs to this subscription but absent from the feed → delete.
+		// The legacy tag is either already "name server:port" or a bare display
+		// name. Try both forms against the suffixed feed index.
+		candidates := []string{outbound.Tag + suffix}
+		if sk := config.GetOutboundServerKey(outbound); sk != "" {
+			candidates = append(candidates, outbound.Tag+" "+sk+suffix)
+		}
+		matched := false
+		for _, candidate := range candidates {
+			if newOutbound, ok := newByTag[candidate]; ok && !consumed[candidate] {
+				consumed[candidate] = true
+				// Rename in place (legacy tag -> suffixed tag) so selector/urltest
+				// group memberships are preserved via the rename map in applyChanges.
+				toUpdate[outbound.Tag] = newOutbound
+				matched = true
+				break
+			}
+		}
+		if matched {
+			continue
+		}
+
+		// Legacy node from this subscription's host set but absent from the feed → delete.
 		toDelete[outbound.Tag] = struct{}{}
 	}
 
@@ -460,9 +516,10 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 			newOutbounds = append(newOutbounds, outbound)
 		}
 
-		// Strip references to deleted tags and rewrite renamed tags inside
-		// selector/urltest group outbounds.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap)
+		// Strip references to deleted tags, rewrite renamed tags, and sync the
+		// freshly-added nodes into node *collections* (never node *groups*)
+		// inside selector/urltest outbounds.
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap, collectTags(toAdd))
 
 		// Update the configuration
 		c.Outbounds = newOutbounds
