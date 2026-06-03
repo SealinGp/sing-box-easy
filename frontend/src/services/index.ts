@@ -5,6 +5,7 @@ import { DNSService } from './dns'
 import { ExperimentalService } from './experimental'
 import { InboundService } from './inbound'
 import { LogService } from './log'
+import { NodeRulesService } from './noderules'
 import { NodesService } from './nodes'
 import { OutboundService } from './outbound'
 import { RouteService } from './route'
@@ -21,6 +22,7 @@ export { DNSService } from './dns'
 export { ExperimentalService } from './experimental'
 export { InboundService } from './inbound'
 export { LogService } from './log'
+export { NodeRulesService } from './noderules'
 export { NodesService } from './nodes'
 export { OutboundService } from './outbound'
 export { RouteService } from './route'
@@ -36,6 +38,7 @@ export const dnsService = new DNSService(apiService)
 export const experimentalService = new ExperimentalService(apiService)
 export const inboundService = new InboundService(apiService)
 export const logService = new LogService(apiService)
+export const nodeRulesService = new NodeRulesService(apiService)
 export const nodesService = new NodesService(apiService)
 export const outboundService = new OutboundService(apiService)
 export const routeService = new RouteService(apiService)

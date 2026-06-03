@@ -53,13 +53,28 @@ export class RouteService {
     return response.data
   }
 
-  async getRouteFinal(): Promise<BasicResponse<{ final: string }>> {
-    const response = await this.api.get<BasicResponse<{ final: string }>>('/route/final')
+  async getRouteFinal(): Promise<
+    BasicResponse<{ final: string; auto_detect_interface: boolean; default_domain_resolver: string }>
+  > {
+    const response = await this.api.get<
+      BasicResponse<{ final: string; auto_detect_interface: boolean; default_domain_resolver: string }>
+    >('/route/final')
     return response.data
   }
 
-  async updateRouteFinal(final: string): Promise<BasicResponse<{ message: string; final: string }>> {
-    const response = await this.api.put<BasicResponse<{ message: string; final: string }>>('/route/final', { final })
+  async updateRouteFinal(final: string): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/route/final', { final })
+    return response.data
+  }
+
+  // updateRouteSettings patches any subset of route-level policy fields. Omitted
+  // fields are left unchanged on the server (partial update).
+  async updateRouteSettings(payload: {
+    final?: string
+    auto_detect_interface?: boolean
+    default_domain_resolver?: string
+  }): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/route/final', payload)
     return response.data
   }
 }

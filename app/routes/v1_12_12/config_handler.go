@@ -130,6 +130,40 @@ func (h *Handler) DeleteConfigVersion(ctx context.Context, c *app.RequestContext
 	})
 }
 
+// DeleteConfigVersionsBatch removes multiple historical versions in one call.
+// Used by the dashboard's multi-select delete. Only history is affected; the
+// live config.json is never touched.
+func (h *Handler) DeleteConfigVersionsBatch(ctx context.Context, c *app.RequestContext) {
+	type Request struct {
+		IDs []int64 `json:"ids"`
+	}
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+	if len(req.IDs) == 0 {
+		respErr(ctx, c, CodeBadRequest, "ids array is required and cannot be empty")
+		return
+	}
+	for _, id := range req.IDs {
+		if id <= 0 {
+			respErr(ctx, c, CodeBadRequest, "ids must be positive integers")
+			return
+		}
+	}
+
+	deleted, err := h.versionStore.DeleteBatch(req.IDs)
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+	respOK(ctx, c, map[string]any{
+		"message":       "configuration versions deleted",
+		"deleted_count": deleted,
+	})
+}
+
 // RollbackToConfigVersion restores a specific historical version to live config.
 func (h *Handler) RollbackToConfigVersion(ctx context.Context, c *app.RequestContext) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

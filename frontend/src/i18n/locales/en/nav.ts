@@ -14,6 +14,7 @@ export default {
   experimental: 'Experimental',
   config: 'Config',
   subscriptions: 'Subscriptions',
+  nodeRules: 'Node Rules',
   logs: 'Logs',
   serviceStatusHint: 'Live sing-box service status — click for details',
 }

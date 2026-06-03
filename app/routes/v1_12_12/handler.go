@@ -8,6 +8,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installer"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
@@ -31,7 +32,9 @@ type Handler struct {
 	autoUpdater         *subscription.AutoUpdater
 	schedulerHandler    *schedulerHandler
 	versionStore        *configversion.StoreXORM
+	versionCleaner      *configversion.Cleaner
 	settingsManager     *settings.ManagerXORM
+	nodeRulesManager    *noderules.ManagerXORM
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers
@@ -48,6 +51,7 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 
 	// Config version history (DB-backed) + application settings.
 	versionStore := configversion.NewStoreXORM()
+	versionCleaner := configversion.NewCleaner(versionStore, configversion.DefaultMaxAge)
 	settingsManager := settings.NewManagerXORM()
 	configManager.SetVersionStore(versionStore)
 
@@ -55,8 +59,12 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 	installerManager := installer.NewManager(initStateManager, configManager)
 	dashboardManager := installer.NewDashboardManager(initStateManager)
 
-	// Initialize auto-updater
-	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser)
+	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
+	// subscription nodes.
+	nodeRulesManager := noderules.NewManagerXORM()
+
+	// Initialize auto-updater (rules-aware)
+	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager)
 	schedulerHandler := newSchedulerHandler(autoUpdater)
 
 	return &Handler{
@@ -70,7 +78,9 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 		autoUpdater:         autoUpdater,
 		schedulerHandler:    schedulerHandler,
 		versionStore:        versionStore,
+		versionCleaner:      versionCleaner,
 		settingsManager:     settingsManager,
+		nodeRulesManager:    nodeRulesManager,
 	}
 }
 
@@ -96,6 +106,11 @@ func (h *Handler) Init() error {
 	}
 	h.configManager.SetKeepVersions(h.settingsManager.GetConfigVersionsKeep())
 
+	// Initialize node-rules tables + seed the mandatory fallback Filter.
+	if err := h.nodeRulesManager.Init(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -111,6 +126,22 @@ func (h *Handler) StartAutoUpdater(cronExpression string) error {
 func (h *Handler) StopAutoUpdater() {
 	if h.autoUpdater != nil {
 		h.autoUpdater.Stop()
+	}
+}
+
+// StartVersionCleaner starts the daily retention sweep that deletes config
+// versions older than the configured max age.
+func (h *Handler) StartVersionCleaner() error {
+	if h.versionCleaner == nil {
+		return nil
+	}
+	return h.versionCleaner.Start(configversion.DefaultCleanupCron)
+}
+
+// StopVersionCleaner stops the retention sweep.
+func (h *Handler) StopVersionCleaner() {
+	if h.versionCleaner != nil {
+		h.versionCleaner.Stop()
 	}
 }
 

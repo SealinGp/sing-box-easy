@@ -17,6 +17,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Config version history
 	v1.GET("/config/versions", handler.ListConfigVersions)
+	v1.DELETE("/config/versions/batch", handler.DeleteConfigVersionsBatch)
 	v1.GET("/config/versions/:id", handler.GetConfigVersion)
 	v1.POST("/config/versions/:id/rollback", handler.RollbackToConfigVersion)
 	v1.DELETE("/config/versions/:id", handler.DeleteConfigVersion)
@@ -107,6 +108,22 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.PUT("/subscriptions/:id", handler.UpdateSubscription)
 	v1.DELETE("/subscriptions/:id", handler.DeleteSubscription)
 	v1.POST("/subscriptions/:id/update", handler.UpdateSubscriptionContent)
+
+	// Outbound Node Rules APIs (Filters + Groups, auto-grouping)
+	v1.GET("/node-rules", handler.GetNodeRules)
+	v1.POST("/node-rules/apply", handler.ApplyNodeRules)
+	v1.POST("/node-rules/preview", handler.PreviewNodeRules)
+	v1.GET("/node-rules/keywords", handler.GetNodeRuleKeywords)
+	v1.GET("/node-rules/templates", handler.GetNodeRuleTemplates)
+	v1.POST("/node-rules/templates/:id/apply", handler.ApplyNodeRuleTemplate)
+	v1.GET("/node-rules/filters", handler.GetFilters)
+	v1.POST("/node-rules/filters", handler.CreateFilter)
+	v1.PUT("/node-rules/filters/:id", handler.UpdateFilter)
+	v1.DELETE("/node-rules/filters/:id", handler.DeleteFilter)
+	v1.GET("/node-rules/groups", handler.GetGroups)
+	v1.POST("/node-rules/groups", handler.CreateGroup)
+	v1.PUT("/node-rules/groups/:id", handler.UpdateGroup)
+	v1.DELETE("/node-rules/groups/:id", handler.DeleteGroup)
 
 	// Scheduler Management APIs
 	v1.GET("/scheduler/status", handler.schedulerHandler.GetStatus)

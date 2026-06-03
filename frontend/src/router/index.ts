@@ -22,6 +22,7 @@ const CacheFileSettings = () => import(/* webpackChunkName: "cache-file" */ '../
 const ClashAPISettings = () => import(/* webpackChunkName: "clash-api" */ '../components/ClashAPISettings.vue')
 const V2RayAPISettings = () => import(/* webpackChunkName: "v2ray-api" */ '../components/V2RayAPISettings.vue')
 const Subscriptions = () => import(/* webpackChunkName: "subscriptions" */ '../views/dashboard/Subscriptions.vue')
+const NodeRules = () => import(/* webpackChunkName: "node-rules" */ '../views/dashboard/NodeRules.vue')
 const Config = () => import(/* webpackChunkName: "config" */ '../views/dashboard/Config.vue')
 const Log = () => import(/* webpackChunkName: "log" */ '../views/dashboard/Log.vue')
 const Logs = () => import(/* webpackChunkName: "logs" */ '../views/dashboard/Logs.vue')
@@ -134,6 +135,11 @@ const routes: RouteRecordRaw[] = [
         path: 'subscriptions',
         name: 'DashboardSubscriptions',
         component: Subscriptions,
+      },
+      {
+        path: 'node-rules',
+        name: 'DashboardNodeRules',
+        component: NodeRules,
       },
       {
         path: 'config',

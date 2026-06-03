@@ -6,6 +6,7 @@ import overview from './overview'
 import config from './config'
 import settings from './settings'
 import subscriptions from './subscriptions'
+import nodeRules from './nodeRules'
 import inbounds from './inbounds'
 import outbounds from './outbounds'
 import dns from './dns'
@@ -25,6 +26,7 @@ export default {
   config,
   settings,
   subscriptions,
+  nodeRules,
   inbounds,
   outbounds,
   dns,

@@ -83,6 +83,13 @@ func (r *Route) initEndpoints() error {
 		logger.L.Info("Auto-updater started successfully with 5-minute interval")
 	}
 
+	// Start the config-version retention sweep (deletes versions older than 60 days).
+	if err := v1Handler.StartVersionCleaner(); err != nil {
+		logger.L.Error("Failed to start config version cleaner", zap.Error(err))
+	} else {
+		logger.L.Info("Config version cleaner started (daily, 60-day retention)")
+	}
+
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
 	// PWA/SPA fallback handler: serve static files if they exist, otherwise index.html

@@ -1,0 +1,102 @@
+package noderules
+
+import (
+	"sort"
+	"strings"
+)
+
+// matcherMatches reports whether a single matcher hits the (already lowercased)
+// tag. The original tag is also passed because emoji synonyms are matched
+// verbatim (lowercasing an emoji is a no-op but we keep the literal form clear).
+func matcherMatches(m Matcher, tag, lowerTag string) bool {
+	switch m.Type {
+	case MatcherKeyword:
+		v := strings.ToLower(strings.TrimSpace(m.Value))
+		return v != "" && strings.Contains(lowerTag, v)
+	case MatcherEmoji:
+		v := strings.TrimSpace(m.Value)
+		return v != "" && strings.Contains(tag, v)
+	case MatcherCode:
+		for _, syn := range CodeSynonyms(m.Value) {
+			s := strings.TrimSpace(syn)
+			if s == "" {
+				continue
+			}
+			// Text synonyms compare case-insensitively; emoji synonyms are
+			// covered by the same lowercased contains (ToLower is identity on
+			// emoji), so a single check suffices.
+			if strings.Contains(lowerTag, strings.ToLower(s)) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
+}
+
+// filterMatches reports whether a tag satisfies any of a Filter's matchers (OR
+// semantics within a Filter).
+func filterMatches(f *Filter, tag, lowerTag string) bool {
+	for _, m := range f.Matchers {
+		if matcherMatches(m, tag, lowerTag) {
+			return true
+		}
+	}
+	return false
+}
+
+// AssignFilters maps endpoint tags to Filters using multi-match semantics: an
+// endpoint joins EVERY non-fallback Filter whose matchers it satisfies. Any
+// endpoint that matches no non-fallback Filter is assigned to the fallback
+// Filter (and also reported in `others` for preview/diagnostics).
+//
+// The returned membership is keyed by Filter ID; each value is the list of
+// endpoint tags assigned to that Filter, in input order. Non-fallback Filters
+// are evaluated in ascending (Priority, ID) order — order does not change
+// membership under multi-match, but it keeps output deterministic and mirrors
+// the UI ordering.
+//
+// The function is pure: no I/O, no config dependency. It is safe to call for a
+// dry-run preview.
+func AssignFilters(endpointTags []string, filters []*Filter) (membership map[string][]string, others []string) {
+	membership = make(map[string][]string)
+
+	// Partition into fallback (there should be exactly one) and the rest.
+	var fallback *Filter
+	ranked := make([]*Filter, 0, len(filters))
+	for _, f := range filters {
+		if f == nil {
+			continue
+		}
+		if f.IsFallback {
+			fallback = f
+			continue
+		}
+		ranked = append(ranked, f)
+	}
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].Priority != ranked[j].Priority {
+			return ranked[i].Priority < ranked[j].Priority
+		}
+		return ranked[i].ID < ranked[j].ID
+	})
+
+	for _, tag := range endpointTags {
+		lower := strings.ToLower(tag)
+		matchedAny := false
+		for _, f := range ranked {
+			if filterMatches(f, tag, lower) {
+				membership[f.ID] = append(membership[f.ID], tag)
+				matchedAny = true
+			}
+		}
+		if !matchedAny {
+			others = append(others, tag)
+			if fallback != nil {
+				membership[fallback.ID] = append(membership[fallback.ID], tag)
+			}
+		}
+	}
+	return membership, others
+}

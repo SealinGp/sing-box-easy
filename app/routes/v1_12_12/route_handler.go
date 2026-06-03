@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/sagernet/sing-box/option"
 )
 
 // GetRouteRules returns all route rules
@@ -286,17 +288,32 @@ func (h *Handler) GetRouteFinal(ctx context.Context, c *app.RequestContext) {
 	}
 
 	final := ""
+	autoDetectInterface := false
+	defaultDomainResolver := ""
 	if cfg.Route != nil {
 		final = cfg.Route.Final
+		autoDetectInterface = cfg.Route.AutoDetectInterface
+		if cfg.Route.DefaultDomainResolver != nil {
+			defaultDomainResolver = cfg.Route.DefaultDomainResolver.Server
+		}
 	}
 
-	respOK(ctx, c, map[string]any{"final": final})
+	respOK(ctx, c, map[string]any{
+		"final":                   final,
+		"auto_detect_interface":   autoDetectInterface,
+		"default_domain_resolver": defaultDomainResolver,
+	})
 }
 
-// UpdateRouteFinal updates the final route policy
+// UpdateRouteFinal updates route-level policy: the final outbound, interface
+// auto-detection, and the default domain resolver. All fields are optional
+// pointers so callers can patch a single field (the init wizard sends only
+// `final`, the route page may send any subset).
 func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
 	type Request struct {
-		Final string `json:"final"`
+		Final                 *string `json:"final"`
+		AutoDetectInterface   *bool   `json:"auto_detect_interface"`
+		DefaultDomainResolver *string `json:"default_domain_resolver"`
 	}
 
 	var req Request
@@ -310,7 +327,21 @@ func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
 			cfg.Route = &config.RouteConfig{}
 		}
 
-		cfg.Route.Final = req.Final
+		if req.Final != nil {
+			cfg.Route.Final = *req.Final
+		}
+		if req.AutoDetectInterface != nil {
+			cfg.Route.AutoDetectInterface = *req.AutoDetectInterface
+		}
+		if req.DefaultDomainResolver != nil {
+			// Empty string clears the resolver; otherwise it is the DNS server tag.
+			server := strings.TrimSpace(*req.DefaultDomainResolver)
+			if server == "" {
+				cfg.Route.DefaultDomainResolver = nil
+			} else {
+				cfg.Route.DefaultDomainResolver = &option.DomainResolveOptions{Server: server}
+			}
+		}
 		return nil
 	})
 
@@ -320,7 +351,6 @@ func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
 	}
 
 	respOK(ctx, c, map[string]any{
-		"message": "final route policy updated successfully",
-		"final":   req.Final,
+		"message": "route policy updated successfully",
 	})
 }

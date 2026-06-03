@@ -8,7 +8,7 @@ import { useConfirm } from '../../composables/useConfirm'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 import MonacoDiffEditor from '../../components/MonacoDiffEditor.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const configContent = ref('')
 const originalContent = ref('')
@@ -27,6 +27,20 @@ const { confirm } = useConfirm()
 const showVersions = ref(false)
 const versions = ref<ConfigVersion[]>([])
 const versionsLoading = ref(false)
+// Retention window for auto-deletion of old versions. Mirrors the backend
+// constant configversion.DefaultMaxAge (60 days); the daily cron removes
+// anything older.
+const versionRetentionDays = 60
+// Multi-select for batch delete.
+const selectedVersionIds = ref<Set<number>>(new Set())
+const batchDeleting = ref(false)
+const allVersionsSelected = computed(
+  () => versions.value.length > 0 && versions.value.every((v) => selectedVersionIds.value.has(v.id)),
+)
+// `now` ticks while the versions modal is open so the relative "x ago" labels
+// stay fresh without a full reload.
+const now = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | undefined
 // Diff view (within the versions modal)
 const showDiff = ref(false)
 const diffVersionId = ref<number | null>(null)
@@ -121,12 +135,20 @@ const validateConfig = async () => {
 const openVersions = async () => {
   showVersions.value = true
   showDiff.value = false
+  selectedVersionIds.value = new Set()
+  now.value = Date.now()
+  if (!nowTimer) nowTimer = setInterval(() => (now.value = Date.now()), 30000)
   await loadVersions()
 }
 
 const closeVersions = () => {
   showVersions.value = false
   showDiff.value = false
+  selectedVersionIds.value = new Set()
+  if (nowTimer) {
+    clearInterval(nowTimer)
+    nowTimer = undefined
+  }
 }
 
 const loadVersions = async () => {
@@ -134,9 +156,57 @@ const loadVersions = async () => {
   try {
     const { data } = await configService.listVersions()
     versions.value = data.versions || []
+    // Drop any selected ids that no longer exist.
+    const present = new Set(versions.value.map((v) => v.id))
+    selectedVersionIds.value = new Set([...selectedVersionIds.value].filter((id) => present.has(id)))
   } catch (err) {
     notify.apiError(err, t('config.toast.loadVersionsFailed'))
   } finally {
+    versionsLoading.value = false
+  }
+}
+
+const toggleSelectVersion = (id: number) => {
+  const next = new Set(selectedVersionIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedVersionIds.value = next
+}
+
+const toggleSelectAllVersions = () => {
+  if (allVersionsSelected.value) {
+    selectedVersionIds.value = new Set()
+  } else {
+    selectedVersionIds.value = new Set(versions.value.map((v) => v.id))
+  }
+}
+
+const batchDeleteVersions = async () => {
+  const ids = [...selectedVersionIds.value]
+  if (ids.length === 0) return
+  const ok = await confirm({
+    title: t('config.versionsModal.deleteSelected'),
+    message: t('config.confirm.deleteBatch', { n: ids.length }),
+    confirmLabel: t('common.delete'),
+    tone: 'danger',
+  })
+  if (!ok) return
+  batchDeleting.value = true
+  versionsLoading.value = true
+  try {
+    await configService.deleteVersionsBatch(ids)
+    // If the diff view is open on a deleted version, drop back to the list.
+    if (showDiff.value && diffVersionId.value !== null && ids.includes(diffVersionId.value)) {
+      showDiff.value = false
+      diffVersionId.value = null
+    }
+    selectedVersionIds.value = new Set()
+    await loadVersions()
+    notify.success(t('config.toast.deletedBatch', { n: ids.length }))
+  } catch (err) {
+    notify.apiError(err, t('config.toast.deleteFailed'))
+  } finally {
+    batchDeleting.value = false
     versionsLoading.value = false
   }
 }
@@ -227,6 +297,37 @@ const formatTime = (s: string) => {
   return isNaN(d.getTime()) ? s : d.toLocaleString()
 }
 
+// formatRelative returns a locale-aware "x ago" string relative to `now` (e.g.
+// "5 minutes ago" / "5 分钟前"). Returns '' for unparseable timestamps.
+const formatRelative = (s: string): string => {
+  const ts = new Date(s).getTime()
+  if (isNaN(ts)) return ''
+  const diffSec = Math.round((ts - now.value) / 1000) // negative = in the past
+  const abs = Math.abs(diffSec)
+  let value: number
+  let unit: Intl.RelativeTimeFormatUnit
+  if (abs < 60) {
+    value = diffSec
+    unit = 'second'
+  } else if (abs < 3600) {
+    value = Math.round(diffSec / 60)
+    unit = 'minute'
+  } else if (abs < 86400) {
+    value = Math.round(diffSec / 3600)
+    unit = 'hour'
+  } else if (abs < 2592000) {
+    value = Math.round(diffSec / 86400)
+    unit = 'day'
+  } else if (abs < 31536000) {
+    value = Math.round(diffSec / 2592000)
+    unit = 'month'
+  } else {
+    value = Math.round(diffSec / 31536000)
+    unit = 'year'
+  }
+  return new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' }).format(value, unit)
+}
+
 const resetChanges = () => {
   configContent.value = originalContent.value
   hasChanges.value = false
@@ -270,6 +371,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
+  if (nowTimer) clearInterval(nowTimer)
 })
 </script>
 
@@ -467,15 +569,48 @@ onUnmounted(() => {
 
           <!-- List view -->
           <div v-if="!showDiff" class="flex-1 min-h-0 overflow-y-auto p-5">
+            <!-- Retention tip -->
+            <div class="mb-4 flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+              <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ $t('config.versionsModal.retentionTip', { days: versionRetentionDays }) }}</span>
+            </div>
+
             <div v-if="versionsLoading" class="flex items-center justify-center h-32">
               <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-violet-600"></div>
             </div>
             <div v-else-if="versions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
               {{ $t('config.versionsModal.empty') }}
             </div>
-            <table v-else class="w-full text-sm">
+            <div v-else>
+              <!-- Batch toolbar -->
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                  <template v-if="selectedVersionIds.size">{{ $t('config.versionsModal.selected', { n: selectedVersionIds.size }) }}</template>
+                </span>
+                <button
+                  @click="batchDeleteVersions"
+                  :disabled="selectedVersionIds.size === 0 || batchDeleting || versionsLoading"
+                  class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {{ $t('config.versionsModal.deleteSelected') }}
+                  <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
+                </button>
+              </div>
+              <table class="w-full text-sm">
               <thead>
                 <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  <th class="py-2 pr-3 font-medium w-8">
+                    <input
+                      type="checkbox"
+                      class="cursor-pointer"
+                      :checked="allVersionsSelected"
+                      @change="toggleSelectAllVersions"
+                      :aria-label="$t('config.versionsModal.selectAll')"
+                      :title="$t('config.versionsModal.selectAll')"
+                    />
+                  </th>
                   <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colVersion') }}</th>
                   <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colSavedAt') }}</th>
                   <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colSize') }}</th>
@@ -487,12 +622,25 @@ onUnmounted(() => {
                   v-for="(v, i) in versions"
                   :key="v.id"
                   class="border-b border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200"
+                  :class="selectedVersionIds.has(v.id) ? 'bg-violet-50/60 dark:bg-violet-900/10' : ''"
                 >
+                  <td class="py-2.5 pr-3">
+                    <input
+                      type="checkbox"
+                      class="cursor-pointer"
+                      :checked="selectedVersionIds.has(v.id)"
+                      @change="toggleSelectVersion(v.id)"
+                      :aria-label="$t('config.versionsModal.selectOne', { id: v.id })"
+                    />
+                  </td>
                   <td class="py-2.5 pr-4">
                     #{{ v.id }}
                     <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">{{ $t('config.versionsModal.latest') }}</span>
                   </td>
-                  <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">{{ formatTime(v.created_at) }}</td>
+                  <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">
+                    {{ formatTime(v.created_at) }}
+                    <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({{ formatRelative(v.created_at) }})</span>
+                  </td>
                   <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">{{ formatBytes(v.size) }}</td>
                   <td class="py-2.5 pr-4">
                     <div class="flex items-center justify-end gap-2">
@@ -521,11 +669,24 @@ onUnmounted(() => {
                   </td>
                 </tr>
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           <!-- Diff view -->
           <div v-else class="flex-1 min-h-0 flex flex-col">
+            <!-- Left/right legend so it's clear which side is which (and that
+                 rollback restores the left). -->
+            <div class="flex items-center justify-between px-5 py-2 text-xs border-b border-gray-200 dark:border-gray-700 shrink-0">
+              <span class="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                {{ $t('config.versionsModal.diffLeft', { id: diffVersionId }) }}
+              </span>
+              <span class="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-400">
+                {{ $t('config.versionsModal.diffRight') }}
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+              </span>
+            </div>
             <div class="flex-1 min-h-0">
               <MonacoDiffEditor
                 :original="diffOriginal"
@@ -535,28 +696,26 @@ onUnmounted(() => {
                 class="h-full"
               />
             </div>
-            <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+              <!-- Rollback sits on the LEFT, aligned with the left pane it restores. -->
+              <div class="flex items-center gap-3">
+                <button
+                  v-if="diffVersionId !== null"
+                  @click="rollbackTo({ id: diffVersionId, size: 0, created_at: '' })"
+                  :disabled="loading"
+                  class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+                >
+                  {{ $t('config.versionsModal.rollbackToLeft', { id: diffVersionId }) }}
+                </button>
+                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+                  {{ $t('config.versionsModal.diffRollbackHint', { id: diffVersionId }) }}
+                </span>
+              </div>
               <button
                 @click="showDiff = false"
                 class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {{ $t('config.versionsModal.backToList') }}
-              </button>
-              <button
-                v-if="diffVersionId !== null"
-                @click="rollbackTo({ id: diffVersionId, size: 0, created_at: '' })"
-                :disabled="loading"
-                class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
-              >
-                {{ $t('config.versionsModal.rollbackToThis') }}
-              </button>
-              <button
-                v-if="diffVersionId !== null"
-                @click="deleteVersion({ id: diffVersionId, size: 0, created_at: '' })"
-                :disabled="loading || versionsLoading"
-                class="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-              >
-                {{ $t('config.versionsModal.delete') }}
               </button>
             </div>
           </div>

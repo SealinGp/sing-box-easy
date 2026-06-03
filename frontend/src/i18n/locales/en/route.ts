@@ -167,8 +167,15 @@ export default {
   finalPolicy: {
     title: 'Final Route Policy',
     description: "Configure the default outbound for traffic that doesn't match any specific routing rules.",
-    label: 'Final Policy:',
-    placeholder: 'Select final policy',
+    label: 'Final Outbound:',
+    placeholder: 'Select an outbound',
+    none: 'None (sing-box default)',
+    groupsHeading: 'Groups',
+    nodesHeading: 'Nodes',
+    autoDetectInterface: 'Auto-detect interface',
+    autoDetectInterfaceHint: 'Automatically choose the outbound network interface.',
+    defaultDomainResolver: 'Default Domain Resolver',
+    defaultDomainResolverHint: 'DNS server used to resolve domains during routing.',
     options: {
       proxy: 'Proxy',
       direct: 'Direct',
@@ -176,9 +183,9 @@ export default {
       dns: 'DNS',
     },
     toast: {
-      fetchFailed: 'Failed to fetch final route',
-      updated: 'Final route policy updated successfully',
-      updateFailed: 'Failed to update final route',
+      fetchFailed: 'Failed to fetch route settings',
+      updated: 'Route settings updated',
+      updateFailed: 'Failed to update route settings',
     },
   },
 }

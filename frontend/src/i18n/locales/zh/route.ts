@@ -167,8 +167,15 @@ export default {
   finalPolicy: {
     title: '默认路由策略',
     description: '为未匹配任何具体路由规则的流量配置默认出站。',
-    label: '默认策略：',
-    placeholder: '选择默认策略',
+    label: '默认出站：',
+    placeholder: '选择一个出站',
+    none: '无(使用 sing-box 默认)',
+    groupsHeading: '分组',
+    nodesHeading: '节点',
+    autoDetectInterface: '自动检测网络接口',
+    autoDetectInterfaceHint: '自动选择出站网络接口。',
+    defaultDomainResolver: '默认域名解析器',
+    defaultDomainResolverHint: '路由过程中用于解析域名的 DNS 服务器。',
     options: {
       proxy: '代理',
       direct: '直连',
@@ -176,9 +183,9 @@ export default {
       dns: 'DNS',
     },
     toast: {
-      fetchFailed: '获取默认路由失败',
-      updated: '默认路由策略更新成功',
-      updateFailed: '更新默认路由失败',
+      fetchFailed: '获取路由设置失败',
+      updated: '路由设置已更新',
+      updateFailed: '更新路由设置失败',
     },
   },
 }

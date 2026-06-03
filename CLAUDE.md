@@ -76,6 +76,7 @@ bunx <tool>
 - `app/pkg/process/` - Process discovery and signaling helpers (pgrep/SIGTERM/SIGHUP)
 - `app/pkg/database/` - SQLite database management, migrations, and JSON import
 - `app/pkg/subscription/` - Subscription CRUD + cron AutoUpdater (database-backed)
+- `app/pkg/noderules/` - Outbound Node Rules: Filters (keyword/tag-matched node buckets) + Groups (sets of Filters). Pure matcher + XORM manager; `BuildSpecs`/`config.BuildGroupOutbounds` materialize selector/urltest groups on each subscription update
 - `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching
 - `app/pkg/installer/` - sing-box and dashboard installation (task-based)
@@ -215,6 +216,7 @@ API surface groups (registered in `routes.go`):
 - `/experimental/{clash-api,cache-file,v2ray-api}`
 - `/service/{status,start,stop,restart}`
 - `/subscriptions` + `/subscriptions/:id/update`
+- `/node-rules` (full ruleset), `/node-rules/{apply,preview,keywords,templates}`, `/node-rules/templates/:id/apply`, `/node-rules/filters[/:id]`, `/node-rules/groups[/:id]` — Outbound Node Rules CRUD + dry-run/apply
 - `/scheduler/{status,start,stop,trigger,jobs}` — cron auto-updater control
 - `/install`, `/install/task/:task_id`, `/install/status`, `/update`
 - `/dashboard/{download,upload}`, `/dashboard/task/:task_id`, `/dashboard/status`

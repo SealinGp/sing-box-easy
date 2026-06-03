@@ -62,4 +62,12 @@ export class ConfigService {
     const response = await this.api.delete<BasicResponse<{ message: string }>>(`/config/versions/${id}`)
     return response.data
   }
+
+  async deleteVersionsBatch(ids: number[]): Promise<BasicResponse<{ message: string; deleted_count: number }>> {
+    const response = await this.api.delete<BasicResponse<{ message: string; deleted_count: number }>>(
+      '/config/versions/batch',
+      { ids },
+    )
+    return response.data
+  }
 }

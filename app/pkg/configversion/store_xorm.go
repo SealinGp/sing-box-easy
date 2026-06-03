@@ -2,6 +2,7 @@ package configversion
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/configversion/repo"
@@ -89,6 +90,34 @@ func (s *StoreXORM) Delete(id int64) error {
 		return fmt.Errorf("config version %d: %w", id, config.ErrVersionNotFound)
 	}
 	return nil
+}
+
+// DeleteBatch removes multiple versions by id in a single statement and returns
+// the number of rows actually deleted (ids that don't exist are ignored).
+func (s *StoreXORM) DeleteBatch(ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	affected, err := s.e.In("id", ids).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return 0, fmt.Errorf("failed to batch delete config versions: %w", err)
+	}
+	return affected, nil
+}
+
+// DeleteOlderThan removes every version whose created_at is older than maxAge
+// ago, returning the number deleted. Used by the retention cron. A non-positive
+// maxAge is treated as a no-op to avoid accidentally wiping all history.
+func (s *StoreXORM) DeleteOlderThan(maxAge time.Duration) (int64, error) {
+	if maxAge <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().Add(-maxAge)
+	affected, err := s.e.Where("created_at < ?", cutoff).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete config versions older than %s: %w", maxAge, err)
+	}
+	return affected, nil
 }
 
 // Prune deletes the oldest versions beyond `keep`. When keep <= 0 it is a no-op

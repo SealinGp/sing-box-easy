@@ -14,6 +14,7 @@ export default {
   experimental: '实验性',
   config: '配置',
   subscriptions: '订阅',
+  nodeRules: '节点规则',
   logs: '日志',
   serviceStatusHint: 'sing-box 实时运行状态 —— 点击查看详情',
 }

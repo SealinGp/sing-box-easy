@@ -10,17 +10,28 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/node"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
+// NodeRulesProvider supplies the current Outbound Node Rules (Filters + Groups)
+// used to auto-organize freshly-fetched nodes on each subscription update. It is
+// an interface (not the concrete manager) so the updater stays testable and the
+// rules feature can be absent (nil) without breaking subscription updates.
+type NodeRulesProvider interface {
+	ListFilters() ([]*noderules.Filter, error)
+	ListGroups() ([]*noderules.Group, error)
+}
+
 // AutoUpdater handles automatic subscription updates
 type AutoUpdater struct {
 	subscriptionManager SubscriptionManager
 	sublinkManager      *sublink.SubLink
 	configManager       *config.Manager
+	nodeRules           NodeRulesProvider
 	cron                *cron.Cron
 	mutex               sync.RWMutex
 	isRunning           bool
@@ -53,12 +64,15 @@ func (r *UpdateResult) Counts() (added, updated, deleted int) {
 	return len(r.AddedTags), len(r.UpdatedTags), len(r.DeletedKeys)
 }
 
-// NewAutoUpdater creates a new auto-updater instance
-func NewAutoUpdater(configManager *config.Manager, subscriptionManager SubscriptionManager, sublinkManager *sublink.SubLink) *AutoUpdater {
+// NewAutoUpdater creates a new auto-updater instance. nodeRules may be nil, in
+// which case the legacy "append new nodes into non-group collections" behavior
+// is used; when present, the Outbound Node Rules engine owns node placement.
+func NewAutoUpdater(configManager *config.Manager, subscriptionManager SubscriptionManager, sublinkManager *sublink.SubLink, nodeRules NodeRulesProvider) *AutoUpdater {
 	return &AutoUpdater{
 		subscriptionManager: subscriptionManager,
 		sublinkManager:      sublinkManager,
 		configManager:       configManager,
+		nodeRules:           nodeRules,
 		updateStats:         make(map[string]*UpdateStats),
 	}
 }
@@ -516,10 +530,29 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 			newOutbounds = append(newOutbounds, outbound)
 		}
 
-		// Strip references to deleted tags, rewrite renamed tags, and sync the
-		// freshly-added nodes into node *collections* (never node *groups*)
-		// inside selector/urltest outbounds.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap, collectTags(toAdd))
+		// Strip references to deleted tags and rewrite renamed tags inside
+		// selector/urltest outbounds. When the Outbound Node Rules engine is
+		// active it owns node placement, so we do NOT append new nodes here
+		// (addTags=nil); the rebuild below assigns them. Without rules, fall back
+		// to the legacy "append into non-group collections" behavior.
+		addTags := []string(nil)
+		if au.nodeRules == nil {
+			addTags = collectTags(toAdd)
+		}
+		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap, addTags)
+
+		// Rules-driven rebuild: reassign every endpoint to its matching Filters
+		// and regenerate Filter/Group outbounds from the current rule set. This
+		// is a full, deterministic rebuild from (endpoints + rules), so it
+		// handles adds/deletes/renames and multiple subscriptions uniformly.
+		rebuilt, rerr := au.rebuildNodeRules(newOutbounds, subID)
+		if rerr != nil {
+			// A rules failure must not abandon the subscription update; log and
+			// keep the pruned outbounds as-is.
+			logger.Warn("node-rules rebuild skipped", zap.String("subscription", subID), zap.Error(rerr))
+		} else {
+			newOutbounds = rebuilt
+		}
 
 		// Update the configuration
 		c.Outbounds = newOutbounds
@@ -533,6 +566,36 @@ func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[stri
 
 		return nil
 	})
+}
+
+// rebuildNodeRules regenerates the rule-managed Filter/Group outbounds from the
+// current rule set and the endpoints present in `outbounds`. Returns the new
+// outbound list. When no rules provider is configured it returns the input
+// unchanged (the legacy path already handled additions).
+func (au *AutoUpdater) rebuildNodeRules(outbounds []config.Outbound, subID string) ([]config.Outbound, error) {
+	if au.nodeRules == nil {
+		return outbounds, nil
+	}
+	filters, err := au.nodeRules.ListFilters()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list filters: %w", err)
+	}
+	groups, err := au.nodeRules.ListGroups()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list groups: %w", err)
+	}
+
+	endpointTags := config.EndpointTags(outbounds)
+	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, endpointTags)
+	rebuilt := config.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
+
+	logger.Info("Rebuilt node-rules groups",
+		zap.String("subscription", subID),
+		zap.Int("endpoints", len(endpointTags)),
+		zap.Int("filters", len(filterSpecs)),
+		zap.Int("groups", len(groupSpecs)),
+		zap.Int("unmatched", len(others)))
+	return rebuilt, nil
 }
 
 // outboundsDeepEqual performs deep comparison of two outbounds via JSON.
