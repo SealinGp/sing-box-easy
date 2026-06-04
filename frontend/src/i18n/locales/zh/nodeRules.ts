@@ -23,6 +23,25 @@ export default {
   matcherValue: '匹配值(如 Streaming、香港、🇭🇰)',
   addMatcher: '添加匹配项',
   addCountry: '+ 国家/地区代码…',
+  // 匹配规则说明(显示在过滤器编辑器内)
+  help: {
+    toggle: '匹配规则是怎么工作的?',
+    intro:
+      '当节点名称命中下面任意一个匹配项时(任一即可,OR 关系),该节点就会归入此过滤器。匹配不区分大小写,只要节点名称里「包含」你填写的文字即算命中。',
+    keywordTitle: 'keyword — 自由关键词',
+    keywordDesc:
+      '子串包含匹配。节点名称中包含你填的文字即命中。例如「Netflix」命中「🇭🇰HK-Netflix-01」;「香港」命中「香港IEPL专线」。',
+    codeTitle: 'code — 国家/地区代码(推荐)',
+    codeDesc:
+      '选择一个地区后,会一次性展开该地区的所有常见写法 —— 中文、英文、两位代码、旗帜表情。例如 HK 会同时匹配 香港 / Hong Kong / HK / 🇭🇰,无需逐个手动添加。',
+    emojiTitle: 'emoji — 旗帜表情',
+    emojiDesc:
+      '精确匹配某个旗帜表情。例如 🇭🇰 命中任何包含该旗帜的名称。当节点名称只带旗帜表情时适用。',
+    multi:
+      '一个节点可以同时归入多个过滤器;未命中任何过滤器的节点会落入「兜底」。',
+    codesTitle: '当前支持的地区代码',
+    codesHint: '将鼠标悬停在代码上可查看它展开的所有写法。',
+  },
   noMatchers: '无匹配项',
   noFilters: '未选择过滤器',
   noGroups: '暂无分组。',

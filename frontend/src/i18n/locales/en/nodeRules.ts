@@ -23,6 +23,25 @@ export default {
   matcherValue: 'value (e.g. Streaming, 香港, 🇭🇰)',
   addMatcher: 'Add matcher',
   addCountry: '+ Country code…',
+  // How-matching-works explainer (shown inside the filter editor)
+  help: {
+    toggle: 'How does matching work?',
+    intro:
+      'A node joins this filter when its name matches ANY one of the matchers below (OR). Matching is case-insensitive and looks for your text anywhere inside the node name.',
+    keywordTitle: 'keyword — free text',
+    keywordDesc:
+      'Substring match. The node joins if its name contains your text. e.g. "Netflix" matches "🇭🇰HK-Netflix-01"; "香港" matches "香港IEPL专线".',
+    codeTitle: 'code — country / region (recommended)',
+    codeDesc:
+      'Pick a region and it expands to ALL common spellings at once — Chinese, English, the 2-letter code and the flag emoji. e.g. HK matches 香港 / Hong Kong / HK / 🇭🇰. No need to add each spelling by hand.',
+    emojiTitle: 'emoji — flag character',
+    emojiDesc:
+      'Exact match of an emoji flag. e.g. 🇭🇰 matches any name containing that flag. Use when node names carry only the flag.',
+    multi:
+      'A node can belong to several filters at once. Nodes that match no filter fall through to the Fallback.',
+    codesTitle: 'Supported region codes',
+    codesHint: 'Hover a code to see every spelling it expands to.',
+  },
   noMatchers: 'no matchers',
   noFilters: 'no filters selected',
   noGroups: 'No groups yet.',

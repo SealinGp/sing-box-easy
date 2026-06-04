@@ -298,6 +298,52 @@ onMounted(async () => {
               </div>
             </div>
 
+            <!-- How matching works (collapsible explainer) -->
+            <details class="rounded-md border border-base-200 bg-base-100/60 text-xs">
+              <summary class="cursor-pointer select-none px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300">
+                ⓘ {{ t('nodeRules.help.toggle') }}
+              </summary>
+              <div class="px-2 pb-2 pt-1 space-y-2 text-gray-600 dark:text-gray-300">
+                <p>{{ t('nodeRules.help.intro') }}</p>
+                <ul class="space-y-1.5">
+                  <li>
+                    <code class="badge badge-ghost badge-xs">keyword</code>
+                    <span class="font-medium">{{ t('nodeRules.help.keywordTitle') }}</span>
+                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.keywordDesc') }}</span>
+                  </li>
+                  <li>
+                    <code class="badge badge-ghost badge-xs">code</code>
+                    <span class="font-medium">{{ t('nodeRules.help.codeTitle') }}</span>
+                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.codeDesc') }}</span>
+                  </li>
+                  <li>
+                    <code class="badge badge-ghost badge-xs">emoji</code>
+                    <span class="font-medium">{{ t('nodeRules.help.emojiTitle') }}</span>
+                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.emojiDesc') }}</span>
+                  </li>
+                </ul>
+                <p class="text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.multi') }}</p>
+
+                <!-- Supported region codes (catalog from the backend) -->
+                <div v-if="keywords.length" class="space-y-1 border-t border-base-200 pt-2">
+                  <div class="font-medium text-gray-600 dark:text-gray-300">{{ t('nodeRules.help.codesTitle') }}</div>
+                  <div class="flex flex-wrap gap-1">
+                    <button
+                      v-for="kw in keywords"
+                      :key="kw.code"
+                      type="button"
+                      class="badge badge-ghost badge-xs cursor-pointer hover:badge-primary"
+                      :title="kw.synonyms.join(' · ')"
+                      @click="addCodeMatcher(kw.code)"
+                    >
+                      {{ kw.code }} · {{ kw.label }}
+                    </button>
+                  </div>
+                  <div class="text-gray-400">{{ t('nodeRules.help.codesHint') }}</div>
+                </div>
+              </div>
+            </details>
+
             <!-- Matchers -->
             <div class="space-y-1">
               <div v-for="(m, idx) in filterForm.matchers" :key="idx" class="flex gap-2 items-center">
