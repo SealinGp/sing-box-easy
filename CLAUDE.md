@@ -8,7 +8,7 @@ sing-box-easy is a RESTful API service for managing sing-box configurations and 
 - Full sing-box configuration management (Inbound, Outbound, DNS, Route, etc.)
 - Service lifecycle control (start, stop, restart)
 - Subscription management with auto-update
-- Multi-protocol node parsing (shadowsocks, vmess, trojan)
+- Multi-protocol node parsing (shadowsocks, vmess, trojan, vless)
 - Vue 3 + TypeScript frontend with Tailwind CSS
 
 ## Build and Run Commands
@@ -72,6 +72,8 @@ bunx <tool>
 **Core Packages**:
 - `app/pkg/appconfig/` - Application configuration loading (app.yml)
 - `app/pkg/config/` - sing-box config management with validation and rollback
+- `app/pkg/configversion/` - DB-backed config version history store (XORM) + retention cleaner (used by `config.Manager` snapshots and the rollback endpoints)
+- `app/pkg/settings/` - Application settings persistence (XORM); served via `GET/PUT /settings`
 - `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart)
 - `app/pkg/process/` - Process discovery and signaling helpers (pgrep/SIGTERM/SIGHUP)
 - `app/pkg/database/` - SQLite database management, migrations, and JSON import
@@ -84,7 +86,7 @@ bunx <tool>
 
 **Protocol Parsers** (`app/pkg/sublink/protocol/`):
 - Factory pattern for creating protocol-specific parsers
-- Currently supports: Shadowsocks (ss://), VMess (vmess://), Trojan (trojan://)
+- Currently supports: Shadowsocks (ss://), VMess (vmess://), Trojan (trojan://), VLESS (vless://)
 - Each parser implements `node.SubNodeParser` interface
 - New protocols: Add parser file + register in `ppMap` in `protocol.go`
 
@@ -144,6 +146,7 @@ The application uses SQLite with XORM ORM for persistent storage:
 - **Framework**: Vue 3 + TypeScript + Vite
 - **Routing**: Vue Router with `/init` wizard and `/dashboard` main app. A global `beforeEach` guard hits `/init/status` and redirects to `/init` until initialization is marked complete.
 - **State**: Pinia stores in `src/stores/` (currently `dns`, `outbounds`, `route`)
+- **i18n**: `vue-i18n` setup in `src/i18n/`; reusable logic in `src/composables/`; app-wide plugins registered in `src/plugins/`; PrimeVue "Volt" theme components in `src/volt/`
 - **Styling**: Tailwind CSS v4 + DaisyUI utility classes; PrimeVue + HeadlessUI for components; Heroicons for icons
 - **API Client**: Axios wrapper in `src/services/api.ts` (`baseURL: /api/1.12.12`), with one service module per domain (`config.ts`, `dns.ts`, `outbound.ts`, …)
 - **Editor**: Monaco (via `monaco-editor-vue3`) — kept in its own chunk by `vite.config.ts`
@@ -222,6 +225,7 @@ API surface groups (registered in `routes.go`):
 - `/dashboard/{download,upload}`, `/dashboard/task/:task_id`, `/dashboard/status`
 - `/init/{status,complete,reset}`
 - `/templates/rule-sets`
+- `/settings` (GET/PUT) — application settings
 
 ## Testing Notes
 
