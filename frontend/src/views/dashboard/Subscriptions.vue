@@ -469,7 +469,7 @@ onMounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <Badge
-                  :type="getStatusBadge(subscription).type"
+                  :variant="getStatusBadge(subscription).type"
                   class="inline-flex items-center gap-1"
                 >
                   <component
@@ -490,13 +490,30 @@ onMounted(() => {
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <Badge :type="subscription.enabled ? 'success' : 'secondary'">
-                  {{
-                    subscription.enabled
-                      ? $t("subscriptions.enabled")
-                      : $t("subscriptions.disabled")
-                  }}
-                </Badge>
+                <div class="flex items-center gap-2">
+                  <Badge
+                    :variant="subscription.enabled ? 'success' : 'secondary'"
+                    class="inline-flex items-center gap-1"
+                  >
+                    <component
+                      :is="subscription.enabled ? CheckCircleIcon : XCircleIcon"
+                      class="h-3 w-3"
+                    />
+                    {{
+                      subscription.enabled
+                        ? $t("subscriptions.enabled")
+                        : $t("subscriptions.disabled")
+                    }}
+                  </Badge>
+                  <span
+                    v-if="subscription.enabled && subscription.update_interval"
+                    class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+                    :title="$t('subscriptions.form.updateInterval')"
+                  >
+                    <ClockIcon class="h-3 w-3" />
+                    {{ subscription.update_interval }}
+                  </span>
+                </div>
               </td>
               <td
                 class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
