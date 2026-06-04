@@ -5,10 +5,15 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 ## ✨ 主要特性
 
 ### 🖥️ Web 仪表盘
-- **可视化配置管理**：内置 Monaco Editor，支持 JSON 语法高亮、补全与校验。
+- **可视化配置管理**：内置 Monaco Editor，支持 JSON 语法高亮、补全与校验。 版本管理
+[![Editor](./doc/images/editor.png)]
+[![Editor](./doc/images/version.png)]
 - **节点与订阅**：直观的节点列表、分组（selector / urltest）编辑、订阅自动更新调度器。
+[![Editor](./doc/images/subscriptions.png)]
+[![Editor](./doc/images/filters.png)]
 - **初始化向导**：首次启动自动进入 `/init` 引导，分步完成 sing-box 安装、配置生成、Dashboard UI 部署。
 - **实时监控**：查看 sing-box 进程状态与日志。
+[![Editor](./doc/images/logs.png)]
 - **现代化 UI**：Vue 3 + TypeScript + TailwindCSS v4 + DaisyUI + PrimeVue。
 
 ### ⚙️ 后端核心
