@@ -1,6 +1,12 @@
 // Outbounds page (Outbounds.vue) + node list component (NodeList.vue).
 export default {
   title: 'Outbounds Management',
+  // Tab labels for the Outbounds parent view (node list / subscriptions / node rules).
+  tabs: {
+    list: 'Outbounds',
+    subscriptions: 'Subscriptions',
+    nodeRules: 'Node Rules',
+  },
   add: 'Add Outbound',
   addFirst: 'Add Your First Outbound',
   import: 'Import',

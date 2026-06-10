@@ -30,6 +30,7 @@ declare module 'vue' {
     MonacoDiffEditor: typeof import('./src/components/MonacoDiffEditor.vue')['default']
     MonacoEditor: typeof import('./src/components/MonacoEditor.vue')['default']
     NodeList: typeof import('./src/components/NodeList.vue')['default']
+    OutboundsList: typeof import('./src/components/OutboundsList.vue')['default']
     PopConfirm: typeof import('./src/components/PopConfirm.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouteRuleMatchers: typeof import('./src/components/RouteRuleMatchers.vue')['default']

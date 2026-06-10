@@ -217,13 +217,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 space-y-6">
-    <!-- Header -->
+  <div class="space-y-6">
+    <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ t('nodeRules.title') }}</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
-      </div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
       <div class="flex gap-2">
         <button class="btn btn-sm" :disabled="loading" @click="store.runPreview()">
           {{ t('nodeRules.preview') }}

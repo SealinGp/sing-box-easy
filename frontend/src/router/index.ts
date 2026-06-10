@@ -9,6 +9,7 @@ const InitWizard = () => import(/* webpackChunkName: "init-wizard" */ '../views/
 const Overview = () => import(/* webpackChunkName: "overview" */ '../views/dashboard/Overview.vue')
 const Inbounds = () => import(/* webpackChunkName: "inbounds" */ '../views/dashboard/Inbounds.vue')
 const Outbounds = () => import(/* webpackChunkName: "outbounds" */ '../views/dashboard/Outbounds.vue')
+const OutboundsList = () => import(/* webpackChunkName: "outbounds-list" */ '../components/OutboundsList.vue')
 const DNS = () => import(/* webpackChunkName: "dns" */ '../views/dashboard/DNS.vue')
 const DNSServers = () => import(/* webpackChunkName: "dns-servers" */ '../components/DNSServers.vue')
 const DNSRules = () => import(/* webpackChunkName: "dns-rules" */ '../components/DNSRules.vue')
@@ -61,6 +62,24 @@ const routes: RouteRecordRaw[] = [
         path: 'outbounds',
         name: 'DashboardOutbounds',
         component: Outbounds,
+        redirect: '/dashboard/outbounds/list',
+        children: [
+          {
+            path: 'list',
+            name: 'OutboundsList',
+            component: OutboundsList,
+          },
+          {
+            path: 'subscriptions',
+            name: 'DashboardSubscriptions',
+            component: Subscriptions,
+          },
+          {
+            path: 'node-rules',
+            name: 'DashboardNodeRules',
+            component: NodeRules,
+          },
+        ],
       },
       {
         path: 'dns',
@@ -131,15 +150,15 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
+      // Subscriptions and Node Rules are now tabs under Outbounds. Keep the
+      // old top-level paths as redirects so existing bookmarks keep working.
       {
         path: 'subscriptions',
-        name: 'DashboardSubscriptions',
-        component: Subscriptions,
+        redirect: '/dashboard/outbounds/subscriptions',
       },
       {
         path: 'node-rules',
-        name: 'DashboardNodeRules',
-        component: NodeRules,
+        redirect: '/dashboard/outbounds/node-rules',
       },
       {
         path: 'config',

@@ -1,6 +1,12 @@
 // 出站页（Outbounds.vue）+ 节点列表组件（NodeList.vue）。
 export default {
   title: '出站管理',
+  // 出站父页面的标签页（节点列表 / 订阅 / 节点规则）。
+  tabs: {
+    list: '出站',
+    subscriptions: '订阅',
+    nodeRules: '节点规则',
+  },
   add: '添加出站',
   addFirst: '添加第一个出站',
   import: '导入',
