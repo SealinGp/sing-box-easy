@@ -37,6 +37,8 @@ export default {
     url: 'Subscription URL',
     autoUpdate: 'Auto Update',
     updateInterval: 'Update Interval',
+    updateIntervalHint:
+      'Duration format: number + unit, e.g. 1h, 24h, 7d, 2w (h=hour, d=day, w=week). Minimum 1 hour.',
   },
   del: {
     title: 'Delete Subscription',

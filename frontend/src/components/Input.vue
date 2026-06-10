@@ -7,6 +7,9 @@ interface Props {
   placeholder?: string
   disabled?: boolean
   error?: string
+  // Helper text shown under the input when there is no error,
+  // e.g. format examples for duration fields.
+  hint?: string
   label?: string
   required?: boolean
   fullWidth?: boolean
@@ -56,5 +59,8 @@ const handleInput = (event: Event) => {
       @input="handleInput"
     />
     <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
+    <p v-else-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      {{ hint }}
+    </p>
   </div>
 </template>

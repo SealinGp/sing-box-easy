@@ -145,6 +145,9 @@ export interface Subscription {
   url: string
   update_interval: string
   enabled: boolean
+  // Whether the cron auto-updater refreshes this subscription. The backend
+  // only auto-refreshes when BOTH enabled and auto_update are true.
+  auto_update?: boolean
   last_update?: string
   node_count?: number
 }

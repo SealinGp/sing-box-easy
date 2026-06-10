@@ -94,7 +94,9 @@ const openEditModal = (subscription: Subscription) => {
   formData.value = {
     name: subscription.name,
     url: subscription.url,
-    auto_update: subscription.enabled,
+    // Older records were saved without auto_update; fall back to enabled so
+    // re-saving them through this modal repairs the flag.
+    auto_update: subscription.auto_update ?? subscription.enabled,
     update_interval: subscription.update_interval, // Already a string from backend (e.g., "24h")
   };
   editingSubscription.value = subscription;
@@ -150,7 +152,11 @@ const saveSubscription = async () => {
     const subscriptionData = {
       name: formData.value.name,
       url: formData.value.url,
-      enabled: formData.value.auto_update, // Map auto_update to enabled
+      // The cron auto-updater only refreshes subscriptions where BOTH
+      // enabled and auto_update are true, so the single UI checkbox drives
+      // both flags.
+      enabled: formData.value.auto_update,
+      auto_update: formData.value.auto_update,
       update_interval: formData.value.update_interval, // Send as string
     };
 
@@ -319,17 +325,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-8">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          {{ $t("subscriptions.title") }}
-        </h2>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">
-          {{ $t("subscriptions.subtitle") }}
-        </p>
-      </div>
+  <div>
+    <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-gray-500 dark:text-gray-400">
+        {{ $t("subscriptions.subtitle") }}
+      </p>
       <div class="flex gap-3">
         <Button
           variant="secondary"
@@ -596,6 +597,7 @@ onMounted(() => {
               class="flex-1"
               :disabled="!formData.auto_update"
               :error="formErrors.update_interval"
+              :hint="$t('subscriptions.form.updateIntervalHint')"
             />
           </div>
         </div>

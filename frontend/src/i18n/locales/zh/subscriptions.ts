@@ -37,6 +37,8 @@ export default {
     url: '订阅链接',
     autoUpdate: '自动更新',
     updateInterval: '更新间隔',
+    updateIntervalHint:
+      '时长格式：数字 + 单位，如 1h、24h、7d、2w（h=小时，d=天，w=周），最小 1 小时',
   },
   del: {
     title: '删除订阅',
