@@ -53,6 +53,7 @@ export default {
   versionsModal: {
     title: 'Config Versions',
     retentionTip: 'Versions older than {days} days are deleted automatically.',
+    retentionSettingsLink: 'Configure how many versions to keep in Settings →',
     diffTitle: 'Diff — version #{id} (left) vs current (right)',
     empty: 'No saved versions yet. Versions are created automatically each time you save the config.',
     colVersion: 'Version',

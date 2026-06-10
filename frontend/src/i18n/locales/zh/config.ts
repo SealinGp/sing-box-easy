@@ -53,6 +53,7 @@ export default {
   versionsModal: {
     title: '配置版本',
     retentionTip: '超过 {days} 天的版本将被自动删除。',
+    retentionSettingsLink: '在设置中配置保留的版本数量 →',
     diffTitle: '差异对比 — 版本 #{id}（左）对比当前（右）',
     empty: '暂无已保存的版本。每次保存配置时会自动创建版本。',
     colVersion: '版本',
