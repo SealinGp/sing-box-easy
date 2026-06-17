@@ -41,6 +41,14 @@ export default {
     updateInterval: 'Update Interval',
     updateIntervalHint:
       'Duration format: number + unit, e.g. 1h, 24h, 7d, 2w (h=hour, d=day, w=week). Minimum 1 hour.',
+    fetchMode: 'Update method',
+    fetchModeDirect: 'Direct (default)',
+    fetchModeCleanDns: 'Clean DNS (resolve via DoH, then connect)',
+    fetchModeProxy: 'Via proxy',
+    fetchModeHint:
+      'On censored networks: "Clean DNS" resolves the host over DoH (AliDNS) to dodge DNS poisoning; "Via proxy" fetches through the proxy below (falls back to direct).',
+    proxyUrl: 'Proxy URL',
+    proxyUrlHint: 'e.g. socks5://127.0.0.1:7893 or http://127.0.0.1:7890 (your sing-box socks/http inbound).',
   },
   del: {
     title: 'Delete Subscription',

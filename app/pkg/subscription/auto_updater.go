@@ -229,9 +229,14 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 		}
 	}()
 
-	// Step 1: Fetch new nodes (and account metadata) from the subscription URL.
+	// Step 1: Fetch new nodes (and account metadata) from the subscription URL,
+	// honoring the per-subscription fetch strategy (direct / clean-DNS / proxy)
+	// for censored networks.
 	lines := []string{sub.URL}
-	newNodes, meta, err := au.sublinkManager.ListNodesWithMeta(lines)
+	newNodes, meta, err := au.sublinkManager.ListNodesWithMetaOpts(lines, sublink.FetchOptions{
+		Mode:     sub.FetchMode,
+		ProxyURL: sub.ProxyURL,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nodes: %w", err)
 	}

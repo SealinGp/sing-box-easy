@@ -41,6 +41,14 @@ export default {
     updateInterval: '更新间隔',
     updateIntervalHint:
       '时长格式：数字 + 单位，如 1h、24h、7d、2w（h=小时，d=天，w=周），最小 1 小时',
+    fetchMode: '更新方式',
+    fetchModeDirect: '直连（默认）',
+    fetchModeCleanDns: '纯净 DNS（通过 DoH 解析后直连）',
+    fetchModeProxy: '通过代理',
+    fetchModeHint:
+      '受限网络下：“纯净 DNS”通过 DoH（AliDNS）解析域名，避开 DNS 污染；“通过代理”使用下方代理拉取（失败时回退直连）。',
+    proxyUrl: '代理地址',
+    proxyUrlHint: '如 socks5://127.0.0.1:7893 或 http://127.0.0.1:7890（sing-box 的 socks/http 入站）。',
   },
   del: {
     title: '删除订阅',

@@ -31,6 +31,8 @@ interface FormData {
   url: string;
   auto_update: boolean;
   update_interval: string;
+  fetch_mode: "" | "clean_dns" | "proxy";
+  proxy_url: string;
 }
 
 const subscriptions = ref<Subscription[]>([]);
@@ -47,6 +49,8 @@ const formData = ref<FormData>({
   url: "",
   auto_update: true,
   update_interval: "24h",
+  fetch_mode: "",
+  proxy_url: "",
 });
 
 // Form errors
@@ -80,6 +84,8 @@ const resetForm = () => {
     url: "",
     auto_update: true,
     update_interval: "24h",
+    fetch_mode: "",
+    proxy_url: "",
   } as FormData;
   formErrors.value = {};
   editingSubscription.value = null;
@@ -98,6 +104,8 @@ const openEditModal = (subscription: Subscription) => {
     // re-saving them through this modal repairs the flag.
     auto_update: subscription.auto_update ?? subscription.enabled,
     update_interval: subscription.update_interval, // Already a string from backend (e.g., "24h")
+    fetch_mode: subscription.fetch_mode ?? "",
+    proxy_url: subscription.proxy_url ?? "",
   };
   editingSubscription.value = subscription;
   showModal.value = true;
@@ -158,6 +166,12 @@ const saveSubscription = async () => {
       enabled: formData.value.auto_update,
       auto_update: formData.value.auto_update,
       update_interval: formData.value.update_interval, // Send as string
+      fetch_mode: formData.value.fetch_mode,
+      // proxy_url only matters in proxy mode; send empty otherwise.
+      proxy_url:
+        formData.value.fetch_mode === "proxy"
+          ? formData.value.proxy_url.trim()
+          : "",
     };
 
     let response;
@@ -615,6 +629,33 @@ onMounted(() => {
               :hint="$t('subscriptions.form.updateIntervalHint')"
             />
           </div>
+
+          <!-- Update method — for censored networks where direct fetch is
+               DNS-poisoned or reset. -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ $t("subscriptions.form.fetchMode") }}
+            </label>
+            <select
+              v-model="formData.fetch_mode"
+              class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm focus:ring-violet-500 focus:border-violet-500"
+            >
+              <option value="">{{ $t("subscriptions.form.fetchModeDirect") }}</option>
+              <option value="clean_dns">{{ $t("subscriptions.form.fetchModeCleanDns") }}</option>
+              <option value="proxy">{{ $t("subscriptions.form.fetchModeProxy") }}</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ $t("subscriptions.form.fetchModeHint") }}
+            </p>
+          </div>
+
+          <Input
+            v-if="formData.fetch_mode === 'proxy'"
+            v-model="formData.proxy_url"
+            :label="$t('subscriptions.form.proxyUrl')"
+            placeholder="socks5://127.0.0.1:7893"
+            :hint="$t('subscriptions.form.proxyUrlHint')"
+          />
         </div>
       </form>
 

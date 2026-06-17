@@ -66,6 +66,8 @@ func (m *ManagerXORM) List() ([]*Subscription, error) {
 			UpdateInterval: dbSub.UpdateInterval,
 			LastUpdate:     dbSub.LastUpdate,
 			Info:           unmarshalInfo(dbSub.Info),
+			FetchMode:      dbSub.FetchMode,
+			ProxyURL:       dbSub.ProxyURL,
 			CreatedAt:      dbSub.CreatedAt,
 			UpdatedAt:      dbSub.UpdatedAt,
 		}
@@ -98,6 +100,8 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 		UpdateInterval: dbSub.UpdateInterval,
 		LastUpdate:     dbSub.LastUpdate,
 		Info:           unmarshalInfo(dbSub.Info),
+		FetchMode:      dbSub.FetchMode,
+		ProxyURL:       dbSub.ProxyURL,
 		CreatedAt:      dbSub.CreatedAt,
 		UpdatedAt:      dbSub.UpdatedAt,
 	}
@@ -124,6 +128,8 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 		AutoUpdate:     sub.AutoUpdate,
 		UpdateInterval: sub.UpdateInterval,
 		LastUpdate:     sub.LastUpdate,
+		FetchMode:      sub.FetchMode,
+		ProxyURL:       sub.ProxyURL,
 	}
 
 	_, err := session.Insert(dbSub)
@@ -159,8 +165,10 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 		Enabled:        sub.Enabled,
 		AutoUpdate:     sub.AutoUpdate,
 		UpdateInterval: sub.UpdateInterval,
+		FetchMode:      sub.FetchMode,
+		ProxyURL:       sub.ProxyURL,
 	}
-	cols := []string{"name", "url", "enabled", "auto_update", "update_interval"}
+	cols := []string{"name", "url", "enabled", "auto_update", "update_interval", "fetch_mode", "proxy_url"}
 
 	// Only include last_update when an explicit value is provided.
 	if !sub.LastUpdate.IsZero() {

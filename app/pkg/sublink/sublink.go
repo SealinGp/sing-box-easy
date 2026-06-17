@@ -3,9 +3,12 @@ package sublink
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/protocol"
 	"github.com/imroc/req/v3"
 	"go.uber.org/zap"
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 const (
@@ -35,9 +39,138 @@ const (
 
 // httpClient is a package-level req client with a bounded timeout.
 // It is safe for concurrent use.
-var httpClient = req.C().
-	SetTimeout(subscriptionFetchTimeout).
-	SetUserAgent(subscriptionUserAgent)
+var httpClient = newBaseClient()
+
+// newBaseClient builds a subscription HTTP client with the bounded timeout and
+// the neutral User-Agent. Each non-default fetch mode gets its own client so
+// per-subscription proxy/dialer settings don't leak into the shared one.
+func newBaseClient() *req.Client {
+	return req.C().
+		SetTimeout(subscriptionFetchTimeout).
+		SetUserAgent(subscriptionUserAgent)
+}
+
+// Fetch strategy values (mirror subscription.FetchMode* — kept here to avoid an
+// import cycle; the auto-updater maps the stored mode string onto FetchOptions).
+const (
+	FetchModeDirect   = ""
+	FetchModeCleanDNS = "clean_dns"
+	FetchModeProxy    = "proxy"
+
+	// defaultDoHServer is AliDNS DoH addressed by IP, so it needs no bootstrap
+	// DNS and can't be poisoned — the right default for CN-based airports.
+	defaultDoHServer = "https://223.5.5.5/dns-query"
+)
+
+// FetchOptions selects how a subscription URL is retrieved on a censored network.
+type FetchOptions struct {
+	Mode      string // FetchMode* ("" = direct)
+	ProxyURL  string // for FetchModeProxy, e.g. "socks5://127.0.0.1:7893"
+	DoHServer string // for FetchModeCleanDNS; defaultDoHServer when empty
+}
+
+// buildFetchClient returns the HTTP client for the requested fetch mode.
+func buildFetchClient(opts FetchOptions) (*req.Client, error) {
+	switch opts.Mode {
+	case FetchModeDirect:
+		return httpClient, nil
+	case FetchModeProxy:
+		proxy := strings.TrimSpace(opts.ProxyURL)
+		if proxy == "" {
+			return nil, fmt.Errorf("proxy fetch mode requires a proxy URL (e.g. socks5://127.0.0.1:7893)")
+		}
+		return newBaseClient().SetProxyURL(proxy), nil
+	case FetchModeCleanDNS:
+		doh := strings.TrimSpace(opts.DoHServer)
+		if doh == "" {
+			doh = defaultDoHServer
+		}
+		return newBaseClient().SetDial(cleanDNSDialer(doh)), nil
+	default:
+		return nil, fmt.Errorf("unknown subscription fetch mode: %q", opts.Mode)
+	}
+}
+
+// cleanDNSDialer returns a DialContext that resolves the host over DoH and dials
+// the resulting IP. TLS still uses the original host for SNI (req sets it from
+// the request URL), so this fixes DNS poisoning without changing the handshake.
+func cleanDNSDialer(dohServer string) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		// Already an IP literal → nothing to resolve.
+		if net.ParseIP(host) != nil {
+			return dialer.DialContext(ctx, network, addr)
+		}
+		ip, err := resolveDoH(ctx, dohServer, host)
+		if err != nil {
+			return nil, fmt.Errorf("clean-dns resolve %q via %s: %w", host, dohServer, err)
+		}
+		return dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
+	}
+}
+
+// dohClient performs the DoH lookup itself. Its target is an IP-form URL, so it
+// needs no recursive DNS of its own.
+var dohClient = &http.Client{Timeout: 10 * time.Second}
+
+// resolveDoH resolves host's first A record via an RFC 8484 DoH endpoint.
+func resolveDoH(ctx context.Context, server, host string) (string, error) {
+	fqdn := host
+	if !strings.HasSuffix(fqdn, ".") {
+		fqdn += "."
+	}
+	name, err := dnsmessage.NewName(fqdn)
+	if err != nil {
+		return "", fmt.Errorf("invalid host %q: %w", host, err)
+	}
+	query := dnsmessage.Message{
+		Header: dnsmessage.Header{RecursionDesired: true},
+		Questions: []dnsmessage.Question{{
+			Name:  name,
+			Type:  dnsmessage.TypeA,
+			Class: dnsmessage.ClassINET,
+		}},
+	}
+	packed, err := query.Pack()
+	if err != nil {
+		return "", fmt.Errorf("pack dns query: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, server, bytes.NewReader(packed))
+	if err != nil {
+		return "", err
+	}
+	httpReq.Header.Set("Content-Type", "application/dns-message")
+	httpReq.Header.Set("Accept", "application/dns-message")
+
+	resp, err := dohClient.Do(httpReq)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("doh server returned http %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return "", err
+	}
+
+	var answer dnsmessage.Message
+	if err := answer.Unpack(body); err != nil {
+		return "", fmt.Errorf("unpack dns answer: %w", err)
+	}
+	for _, ans := range answer.Answers {
+		if a, ok := ans.Body.(*dnsmessage.AResource); ok {
+			return net.IP(a.A[:]).String(), nil
+		}
+	}
+	return "", fmt.Errorf("no A record for %s", host)
+}
 
 type SubLink struct {
 }
@@ -70,6 +203,18 @@ type FetchMeta struct {
 // refresh) use this to surface account traffic/expiry; ListNodes keeps the
 // node-only signature for callers that don't care.
 func (l *SubLink) ListNodesWithMeta(lines []string) ([]*node.SubNode, *FetchMeta, error) {
+	return l.ListNodesWithMetaOpts(lines, FetchOptions{})
+}
+
+// ListNodesWithMetaOpts is ListNodesWithMeta with an explicit fetch strategy
+// (direct / clean-DNS / proxy), used by the subscription refresh path to work
+// around DNS poisoning or RST on censored networks.
+func (l *SubLink) ListNodesWithMetaOpts(lines []string, opts FetchOptions) ([]*node.SubNode, *FetchMeta, error) {
+	client, err := buildFetchClient(opts)
+	if err != nil {
+		return nil, &FetchMeta{}, err
+	}
+
 	nodes := make([]*node.SubNode, 0)
 	meta := &FetchMeta{}
 	var lastFetchErr error
@@ -84,7 +229,14 @@ func (l *SubLink) ListNodesWithMeta(lines []string) ([]*node.SubNode, *FetchMeta
 		// 订阅链接 (http/https subscription URL): fetch + base64-decode.
 		if strings.HasPrefix(line, "http://") || strings.HasPrefix(line, "https://") {
 			fetchAttempts++
-			modeNodes, m, err := l.fetchNodesWithMeta(line)
+			modeNodes, m, err := l.fetchNodesWithMeta(line, client)
+			// Proxy mode: if the proxied fetch fails (proxy down / no node), fall
+			// back to a direct fetch so a working network still updates.
+			if err != nil && opts.Mode == FetchModeProxy {
+				logger.Warn("proxied subscription fetch failed, retrying direct",
+					zap.String("url", line), zap.Error(err))
+				modeNodes, m, err = l.fetchNodesWithMeta(line, httpClient)
+			}
 			if err != nil {
 				lastFetchErr = err
 				logger.Warn("subscription fetch failed",
@@ -168,12 +320,15 @@ func validateSubscriptionURL(raw string) error {
 	return nil
 }
 
-func (l *SubLink) fetchNodesWithMeta(sub_url string) ([]*node.SubNode, *FetchMeta, error) {
+func (l *SubLink) fetchNodesWithMeta(sub_url string, client *req.Client) ([]*node.SubNode, *FetchMeta, error) {
 	if err := validateSubscriptionURL(sub_url); err != nil {
 		return nil, nil, err
 	}
+	if client == nil {
+		client = httpClient
+	}
 
-	resp, err := httpClient.R().Get(sub_url)
+	resp, err := client.R().Get(sub_url)
 	if err != nil {
 		return nil, nil, fmt.Errorf("http get failed: %w", err)
 	}

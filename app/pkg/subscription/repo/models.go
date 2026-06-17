@@ -13,7 +13,11 @@ type Subscription struct {
 	LastUpdate     time.Time `xorm:"'last_update' null" json:"last_update,omitempty"`
 	// Info is a JSON-encoded []subscription.SubInfo of generic account metadata
 	// (traffic/expiry/reset) extracted from the feed's loopback "info nodes".
-	Info      string    `xorm:"'info' text" json:"info"`
+	Info string `xorm:"'info' text" json:"info"`
+	// FetchMode / ProxyURL control how the URL is fetched (direct / clean_dns /
+	// proxy) on censored networks. See subscription.FetchMode* constants.
+	FetchMode string    `xorm:"'fetch_mode' notnull default('')" json:"fetch_mode"`
+	ProxyURL  string    `xorm:"'proxy_url' notnull default('')" json:"proxy_url"`
 	CreatedAt time.Time `xorm:"created" json:"created_at"`
 	UpdatedAt      time.Time `xorm:"updated" json:"updated_at"`
 }

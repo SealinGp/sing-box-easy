@@ -153,6 +153,10 @@ export interface Subscription {
   // Generic account metadata (traffic/expiry/reset) extracted from the feed's
   // loopback "info nodes". Provider-defined keys, stored & shown verbatim.
   info?: { key: string; value: string }[]
+  // How the URL is fetched on censored networks: '' = direct, 'clean_dns'
+  // resolves via DoH then dials by IP, 'proxy' fetches through proxy_url.
+  fetch_mode?: '' | 'clean_dns' | 'proxy'
+  proxy_url?: string
 }
 
 // Response payload for POST /subscriptions/:id/update.
