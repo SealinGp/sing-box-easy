@@ -74,6 +74,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1.GET("/route/rule-sets", handler.GetRuleSets)
 	v1.POST("/route/rule-sets", handler.AddRuleSet)
 	v1.GET("/route/rule-sets/:tag", handler.GetRuleSetByTag)
+	v1.GET("/route/rule-sets/:tag/references", handler.GetRuleSetReferences)
 	v1.PUT("/route/rule-sets/:tag", handler.UpdateRuleSet)
 	v1.DELETE("/route/rule-sets/:tag", handler.DeleteRuleSet)
 

@@ -49,10 +49,10 @@ export const useRouteStore = defineStore('route', () => {
     }
   }
 
-  const deleteRuleSet = async (tag: string) => {
+  const deleteRuleSet = async (tag: string, opts?: { cascade?: boolean }) => {
     loading.value = true
     try {
-      await routeService.deleteRuleSet(tag)
+      await routeService.deleteRuleSet(tag, opts)
       await fetchRuleSets()
     } catch (err: any) {
       console.error('Failed to delete rule set:', err)

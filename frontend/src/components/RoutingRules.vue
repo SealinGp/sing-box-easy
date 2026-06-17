@@ -5,6 +5,7 @@ import Card from './Card.vue'
 import { Dialog, Button, Select, Chips } from '../volt'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
+import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
@@ -58,6 +59,15 @@ const outbounds = ref<Outbound[]>([])
 // State for dialog
 const showAddRuleDialog = ref(false)
 const editingRule = ref<{ index: number; rule: RouteRule } | null>(null)
+
+// Guided "Smart Routing Rule" wizard — the default Add flow. The legacy
+// full-form dialog (showAddRuleDialog) is kept for Edit and for the wizard's
+// "Advanced options" escape hatch.
+const showWizard = ref(false)
+function openLegacyAdd() {
+  showWizard.value = false
+  showAddRuleDialog.value = true
+}
 
 // Form data
 const ruleForm = ref<RouteRule>({ action: 'route', outbound: '' })
@@ -427,7 +437,7 @@ onMounted(() => {
           {{ $t('route.rules.title') }}
         </h3>
         <button
-          @click="showAddRuleDialog = true"
+          @click="showWizard = true"
           class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
         >
           {{ $t('route.rules.add') }}
@@ -453,6 +463,13 @@ onMounted(() => {
         />
       </div>
     </Card>
+
+    <!-- Guided add wizard (default Add flow) -->
+    <SmartRoutingRuleWizard
+      v-model:visible="showWizard"
+      @completed="fetchRouteRules"
+      @advanced="openLegacyAdd"
+    />
 
     <!-- Add/Edit Rule Dialog -->
     <Dialog

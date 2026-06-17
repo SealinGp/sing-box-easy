@@ -3,8 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
+import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import { Dialog, Button, Select } from '../volt'
 import type { RuleSet } from '../types/api'
+import { routeService } from '../services'
 import { useToast } from 'primevue'
 import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
@@ -19,6 +21,11 @@ const { ruleSets, loading } = storeToRefs(routeStore)
 // State for dialog
 const showAddRuleSetDialog = ref(false)
 const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
+
+// Smart Routing Rule wizard, opened (seeded with the new rule_set tag) when the
+// user opts in after adding a rule set — routing + clean DNS in one flow.
+const showWizard = ref(false)
+const wizardSeedTag = ref<string>('')
 
 // Form data
 const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
@@ -130,6 +137,8 @@ async function handleAddRuleSet() {
     toast.add({ severity: 'error', summary: t('route.ruleSets.toast.validationError'), detail: urlError, life: 3000 })
     return
   }
+  // Capture the tag before dialogVisible reset clears the form.
+  const addedTag = ruleSetForm.value.tag
   try {
     await routeStore.addRuleSet(ruleSetForm.value)
     toast.add({
@@ -139,6 +148,21 @@ async function handleAddRuleSet() {
       life: 3000
     })
     dialogVisible.value = false
+
+    // Offer to create a routing rule for the new rule set, which flows into the
+    // Smart Routing Rule wizard (and its DNS-pollution guard).
+    if (addedTag) {
+      const wantRoute = await confirm({
+        title: t('route.ruleSets.configurePrompt.title'),
+        message: t('route.ruleSets.configurePrompt.message', { tag: addedTag }),
+        confirmLabel: t('route.ruleSets.configurePrompt.confirm'),
+        cancelLabel: t('route.ruleSets.configurePrompt.cancel'),
+      })
+      if (wantRoute) {
+        wizardSeedTag.value = addedTag
+        showWizard.value = true
+      }
+    }
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -177,16 +201,39 @@ async function handleUpdateRuleSet() {
 }
 
 async function handleDeleteRuleSet(tag: string) {
+  // Discover how many route/dns rules reference this set so we can tell the user
+  // exactly what a cascade delete will change before they confirm.
+  let cascade = false
+  let message = t('route.ruleSets.confirm.delete')
+  try {
+    const { data } = await routeService.getRuleSetReferences(tag)
+    const refs = data.references || []
+    if (refs.length) {
+      cascade = true
+      const stripCount = refs.filter((r) => r.action === 'strip').length
+      const deleteCount = refs.filter((r) => r.action === 'delete').length
+      message = t('route.ruleSets.cascade.summary', {
+        tag,
+        routeCount: data.route_count,
+        dnsCount: data.dns_count,
+        stripCount,
+        deleteCount,
+      })
+    }
+  } catch {
+    // Reference lookup failed — fall back to a plain delete confirmation.
+  }
+
   const ok = await confirm({
-    title: t('common.delete'),
-    message: t('route.ruleSets.confirm.delete'),
-    confirmLabel: t('common.delete'),
+    title: cascade ? t('route.ruleSets.cascade.title') : t('common.delete'),
+    message,
+    confirmLabel: cascade ? t('route.ruleSets.cascade.confirm') : t('common.delete'),
     tone: 'danger',
   })
   if (!ok) return
 
   try {
-    await routeStore.deleteRuleSet(tag)
+    await routeStore.deleteRuleSet(tag, { cascade })
     toast.add({
       severity: 'success',
       summary: t('common.success'),
@@ -281,6 +328,13 @@ onMounted(() => {
         </div>
       </div>
     </Card>
+
+    <!-- Smart Routing Rule wizard, seeded with the just-added rule set -->
+    <SmartRoutingRuleWizard
+      v-model:visible="showWizard"
+      seed-match-type="rule_set"
+      :seed-values="[wizardSeedTag]"
+    />
 
     <!-- Add/Edit Rule Set Dialog -->
     <Dialog

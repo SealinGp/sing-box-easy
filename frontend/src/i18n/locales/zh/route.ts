@@ -101,6 +101,54 @@ export default {
     confirm: {
       delete: '确定要删除这条规则吗？',
     },
+    smart: {
+      title: '添加路由规则',
+      steps: {
+        match: '匹配',
+        action: '动作',
+        outbound: '出站',
+        dns: 'DNS',
+      },
+      matchType: '匹配方式',
+      matchTypes: {
+        domain: '域名',
+        domainSuffix: '域名后缀',
+        ruleSet: '规则集',
+      },
+      matchTypeHint: '只选择一种匹配方式。同时填写多种是「与」(取交集)，不是「或」(取并集)。',
+      values: {
+        domain: '域名',
+        domainSuffix: '域名后缀',
+        ruleSet: '规则集',
+      },
+      valuesPlaceholder: {
+        domain: '例如 accounts.google.com',
+        domainSuffix: '例如 shopify.com',
+        ruleSet: '选择一个规则集',
+      },
+      action: '动作',
+      outbound: '出站',
+      outboundHint: '匹配的流量将发往该出站。',
+      advanced: '高级选项…',
+      next: '下一步',
+      back: '上一步',
+      finish: '添加规则',
+      dns: {
+        heading: '防止 DNS 污染',
+        intro: '该匹配将通过代理出站（{outbound}）。请为它指定一个干净的 DNS 服务器，避免被污染。',
+        server: 'DNS 服务器',
+        serverHint: '推荐：加密或经代理的服务器（如 dns_google）。',
+        enable: '同时为此匹配添加一条 DNS 规则',
+        appended: '已追加到现有 DNS 规则',
+        created: '已创建新的 DNS 规则',
+      },
+      toast: {
+        added: '路由规则已添加',
+        addFailed: '添加路由规则失败',
+        dnsFailed: '规则已添加，但 DNS 规则更新失败',
+        validation: '请填写必填项',
+      },
+    },
   },
   ruleItem: {
     action: '动作：',
@@ -162,6 +210,17 @@ export default {
     },
     confirm: {
       delete: '确定要删除这个规则集吗？',
+    },
+    configurePrompt: {
+      title: '配置路由？',
+      message: '规则集「{tag}」已添加。现在为它创建一条路由规则吗？',
+      confirm: '去配置',
+      cancel: '暂不',
+    },
+    cascade: {
+      title: '删除规则集并清理引用？',
+      summary: '规则集「{tag}」被 {routeCount} 条路由规则和 {dnsCount} 条 DNS 规则引用。删除后将更新其中 {stripCount} 条、移除 {deleteCount} 条。',
+      confirm: '删除并清理',
     },
   },
   finalPolicy: {
