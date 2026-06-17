@@ -101,6 +101,54 @@ export default {
     confirm: {
       delete: 'Are you sure you want to delete this rule?',
     },
+    smart: {
+      title: 'Add Routing Rule',
+      steps: {
+        match: 'Match',
+        action: 'Action',
+        outbound: 'Outbound',
+        dns: 'DNS',
+      },
+      matchType: 'Match by',
+      matchTypes: {
+        domain: 'Domain',
+        domainSuffix: 'Domain Suffix',
+        ruleSet: 'Rule Set',
+      },
+      matchTypeHint: 'Pick one match type. Combining types narrows (AND), it does not widen (OR).',
+      values: {
+        domain: 'Domains',
+        domainSuffix: 'Domain Suffixes',
+        ruleSet: 'Rule Set',
+      },
+      valuesPlaceholder: {
+        domain: 'e.g. accounts.google.com',
+        domainSuffix: 'e.g. shopify.com',
+        ruleSet: 'Select a rule set',
+      },
+      action: 'Action',
+      outbound: 'Outbound',
+      outboundHint: 'Where matching traffic is sent.',
+      advanced: 'Advanced options…',
+      next: 'Next',
+      back: 'Back',
+      finish: 'Add Rule',
+      dns: {
+        heading: 'Prevent DNS pollution',
+        intro: 'This match is routed through a proxied outbound ({outbound}). Resolve it with a clean DNS server so it is not poisoned.',
+        server: 'DNS server',
+        serverHint: 'Recommended: an encrypted or proxied server (e.g. dns_google).',
+        enable: 'Also add a DNS rule for this match',
+        appended: 'Appended to an existing DNS rule',
+        created: 'Created a new DNS rule',
+      },
+      toast: {
+        added: 'Routing rule added',
+        addFailed: 'Failed to add routing rule',
+        dnsFailed: 'Rule added, but the DNS rule update failed',
+        validation: 'Please complete the required field',
+      },
+    },
   },
   ruleItem: {
     action: 'Action:',
@@ -162,6 +210,17 @@ export default {
     },
     confirm: {
       delete: 'Are you sure you want to delete this rule set?',
+    },
+    configurePrompt: {
+      title: 'Configure routing?',
+      message: 'Rule set "{tag}" was added. Create a routing rule for it now?',
+      confirm: 'Configure',
+      cancel: 'Not now',
+    },
+    cascade: {
+      title: 'Delete rule set & clean up references?',
+      summary: 'Rule set "{tag}" is referenced by {routeCount} route rule(s) and {dnsCount} DNS rule(s). Deleting it will update {stripCount} and remove {deleteCount} of them.',
+      confirm: 'Delete & clean up',
     },
   },
   finalPolicy: {

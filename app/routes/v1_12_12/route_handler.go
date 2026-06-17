@@ -240,30 +240,90 @@ func (h *Handler) UpdateRuleSet(ctx context.Context, c *app.RequestContext) {
 	})
 }
 
-// DeleteRuleSet deletes a rule set
+// GetRuleSetReferences returns a dry-run of how deleting :tag would affect
+// route.rules and dns.rules, so the frontend can show the user exactly what
+// will be stripped or removed before they confirm a cascade delete.
+func (h *Handler) GetRuleSetReferences(ctx context.Context, c *app.RequestContext) {
+	tag := c.Param("tag")
+
+	cfg, err := h.configManager.GetConfig()
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	if !config.RuleSetExists(cfg, tag) {
+		respErr(ctx, c, CodeNotFound, "rule set not found")
+		return
+	}
+
+	refs := config.FindRuleSetReferences(cfg, tag)
+	routeCount, dnsCount := 0, 0
+	for _, ref := range refs {
+		if ref.Scope == config.RefScopeRoute {
+			routeCount++
+		} else {
+			dnsCount++
+		}
+	}
+
+	respOK(ctx, c, map[string]any{
+		"tag":         tag,
+		"references":  refs,
+		"route_count": routeCount,
+		"dns_count":   dnsCount,
+	})
+}
+
+// DeleteRuleSet deletes a rule set. With ?cascade=true it also scrubs the tag
+// from every route.rules / dns.rules matcher (deleting rules whose only matcher
+// was this tag) in the same validated transaction — otherwise sing-box would
+// reject the config for referencing an undefined rule-set.
 func (h *Handler) DeleteRuleSet(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
+	cascade, _ := strconv.ParseBool(string(c.Query("cascade")))
+
+	// Pre-flight: surface "not found" and "referenced" as actionable codes
+	// instead of an opaque validation error from the write-validate-rollback.
+	if cfg, err := h.configManager.GetConfig(); err == nil {
+		if !config.RuleSetExists(cfg, tag) {
+			respErr(ctx, c, CodeNotFound, "rule set not found")
+			return
+		}
+		if refs := config.FindRuleSetReferences(cfg, tag); len(refs) > 0 && !cascade {
+			respErr(ctx, c, CodeConflict, fmt.Sprintf(
+				"rule set %q is referenced by %d rule(s); retry with ?cascade=true to remove them", tag, len(refs)))
+			return
+		}
+	}
 
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.Route == nil {
 			return fmt.Errorf("route configuration not found")
 		}
 
-		newRuleSets := make([]config.RuleSet, 0)
 		found := false
-
 		for _, ruleSet := range cfg.Route.RuleSet {
-			if ruleSet.Tag != tag {
-				newRuleSets = append(newRuleSets, ruleSet)
-			} else {
+			if ruleSet.Tag == tag {
 				found = true
+				break
 			}
 		}
-
 		if !found {
 			return fmt.Errorf("rule set not found")
 		}
 
+		// Scrub references first so removing the definition leaves a valid config.
+		if cascade {
+			config.ApplyRuleSetCascade(cfg, tag)
+		}
+
+		newRuleSets := make([]config.RuleSet, 0, len(cfg.Route.RuleSet))
+		for _, ruleSet := range cfg.Route.RuleSet {
+			if ruleSet.Tag != tag {
+				newRuleSets = append(newRuleSets, ruleSet)
+			}
+		}
 		cfg.Route.RuleSet = newRuleSets
 		return nil
 	})
@@ -276,6 +336,7 @@ func (h *Handler) DeleteRuleSet(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, map[string]any{
 		"message": "rule set deleted successfully",
 		"tag":     tag,
+		"cascade": cascade,
 	})
 }
 

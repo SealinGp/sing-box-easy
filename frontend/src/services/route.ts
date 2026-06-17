@@ -1,6 +1,14 @@
 import type { ApiService } from './api'
 import type { BasicResponse, RouteRule, RuleSet } from '../types/api'
 
+// One rule that references a rule-set tag, and how a cascade delete changes it.
+export interface RuleSetReference {
+  scope: 'route' | 'dns'
+  index: number
+  action: 'strip' | 'delete'
+  rule_set: string[]
+}
+
 export class RouteService {
   private api: ApiService
 
@@ -48,8 +56,25 @@ export class RouteService {
     return response.data
   }
 
-  async deleteRuleSet(tag: string): Promise<BasicResponse<{ message: string; tag: string }>> {
-    const response = await this.api.delete<BasicResponse<{ message: string; tag: string }>>(`/route/rule-sets/${tag}`)
+  // Dry-run: how would deleting `tag` affect route.rules / dns.rules?
+  async getRuleSetReferences(tag: string): Promise<
+    BasicResponse<{ tag: string; references: RuleSetReference[]; route_count: number; dns_count: number }>
+  > {
+    const response = await this.api.get<
+      BasicResponse<{ tag: string; references: RuleSetReference[]; route_count: number; dns_count: number }>
+    >(`/route/rule-sets/${tag}/references`)
+    return response.data
+  }
+
+  // cascade=true also scrubs the tag from route.rules / dns.rules matchers.
+  async deleteRuleSet(
+    tag: string,
+    opts?: { cascade?: boolean },
+  ): Promise<BasicResponse<{ message: string; tag: string }>> {
+    const query = opts?.cascade ? '?cascade=true' : ''
+    const response = await this.api.delete<BasicResponse<{ message: string; tag: string }>>(
+      `/route/rule-sets/${tag}${query}`,
+    )
     return response.data
   }
 
