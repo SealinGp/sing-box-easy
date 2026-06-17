@@ -39,6 +39,7 @@ type migrationEntry struct {
 // Append new migrations to the END; never reorder existing entries.
 var migrations = []migrationEntry{
 	{"001_add_enabled_to_subscriptions", migrate001AddEnabledToSubscriptions},
+	{"002_add_info_to_subscriptions", migrate002AddInfoToSubscriptions},
 }
 
 // runMigrations executes pending migrations
@@ -126,6 +127,8 @@ func getMigrationName(id string) string {
 	switch id {
 	case "001_add_enabled_to_subscriptions":
 		return "Add enabled field to subscriptions table"
+	case "002_add_info_to_subscriptions":
+		return "Add info field to subscriptions table"
 	default:
 		return id
 	}
@@ -163,6 +166,32 @@ func migrate001AddEnabledToSubscriptions(session *xorm.Session) error {
 	}
 
 	return fmt.Errorf("failed to add enabled column: %w", err)
+}
+
+// migrate002AddInfoToSubscriptions adds the info column (JSON-encoded account
+// metadata extracted from the feed's loopback "info nodes") to the subscriptions
+// table. Same three valid cases as migrate001: real migration, already-present
+// (duplicate column), or fresh DB (table created later by Sync2 with the column
+// already on the model).
+func migrate002AddInfoToSubscriptions(session *xorm.Session) error {
+	sql := `ALTER TABLE subscriptions ADD COLUMN info TEXT NOT NULL DEFAULT ''`
+	_, err := session.Exec(sql)
+	if err == nil {
+		logger.Info("Added info column to subscriptions table")
+		return nil
+	}
+
+	if isDuplicateColumnError(err) {
+		logger.Info("Info column already exists in subscriptions table")
+		return nil
+	}
+
+	if isNoSuchTableError(err) {
+		logger.Info("subscriptions table does not exist yet — fresh DB, will be created with info column by Sync2")
+		return nil
+	}
+
+	return fmt.Errorf("failed to add info column: %w", err)
 }
 
 // isDuplicateColumnError checks if the error indicates a duplicate column name.

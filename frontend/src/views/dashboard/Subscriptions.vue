@@ -298,17 +298,24 @@ const getStatusBadge = (subscription: Subscription) => {
     };
   }
 
-  const lastUpdate = new Date(subscription.last_update);
-  const hoursSinceUpdate =
-    (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
-  const intervalHours = getIntervalHours(subscription.update_interval); // Function handles undefined
+  // "Outdated" only has meaning for auto-updating subscriptions: it mirrors the
+  // backend's own refresh rule (AutoUpdater.shouldUpdate), which considers a
+  // subscription due once time-since-last-update >= its update_interval. When
+  // auto-update is off there is no expected cadence, so we never flag outdated.
+  const autoUpdate = subscription.auto_update ?? subscription.enabled;
+  if (autoUpdate) {
+    const lastUpdate = new Date(subscription.last_update);
+    const hoursSinceUpdate =
+      (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+    const intervalHours = getIntervalHours(subscription.update_interval); // handles undefined
 
-  if (hoursSinceUpdate > intervalHours * 1.5) {
-    return {
-      type: "warning" as const,
-      icon: ClockIcon,
-      text: t("subscriptions.status.outdated"),
-    };
+    if (hoursSinceUpdate >= intervalHours) {
+      return {
+        type: "warning" as const,
+        icon: ClockIcon,
+        text: t("subscriptions.status.outdated"),
+      };
+    }
   }
 
   return {
@@ -399,37 +406,22 @@ onMounted(() => {
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                {{ $t("subscriptions.table.name") }}
+                {{ $t("subscriptions.table.subscription") }}
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.url") }}
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
                 {{ $t("subscriptions.table.status") }}
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
-                {{ $t("subscriptions.table.nodes") }}
+                {{ $t("subscriptions.table.info") }}
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.lastUpdate") }}
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.autoUpdate") }}
-              </th>
-              <th
-                class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
               >
                 {{ $t("subscriptions.table.actions") }}
               </th>
@@ -443,81 +435,99 @@ onMounted(() => {
               :key="subscription.id"
               class="hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div
-                  class="text-sm font-medium text-gray-900 dark:text-gray-100"
-                >
-                  {{ subscription.name }}
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <span
-                    class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs"
-                  >
-                    {{ subscription.url }}
+              <!-- Subscription: name + URL (copy) + node count, stacked -->
+              <td class="px-4 py-3 align-top">
+                <div class="flex flex-col gap-1 max-w-[18rem]">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :title="subscription.name">
+                    {{ subscription.name }}
                   </span>
-                  <button
-                    type="button"
-                    class="shrink-0 p-1 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-                    @click="copyUrl(subscription.url)"
-                    :title="$t('subscriptions.tooltip.copy')"
-                    :aria-label="$t('subscriptions.tooltip.copy')"
-                  >
-                    <ClipboardDocumentIcon class="h-4 w-4" />
-                  </button>
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span
+                      class="text-xs text-gray-500 dark:text-gray-400 truncate"
+                      :title="subscription.url"
+                    >
+                      {{ subscription.url }}
+                    </span>
+                    <button
+                      type="button"
+                      class="shrink-0 p-0.5 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                      @click="copyUrl(subscription.url)"
+                      :title="$t('subscriptions.tooltip.copy')"
+                      :aria-label="$t('subscriptions.tooltip.copy')"
+                    >
+                      <ClipboardDocumentIcon class="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">
+                    {{ subscription.node_count || 0 }} {{ $t("subscriptions.table.nodes") }}
+                  </span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <Badge
-                  :variant="getStatusBadge(subscription).type"
-                  class="inline-flex items-center gap-1"
-                >
-                  <component
-                    :is="getStatusBadge(subscription).icon"
-                    class="h-3 w-3"
-                  />
-                  {{ getStatusBadge(subscription).text }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">
-                  {{ subscription.node_count || 0 }}
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDate(subscription.last_update) }}
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
+              <!-- Status: state badge + auto-update/interval + last update, stacked -->
+              <td class="px-4 py-3 align-top">
+                <div class="flex flex-col items-start gap-1.5">
                   <Badge
-                    :variant="subscription.enabled ? 'success' : 'secondary'"
+                    :variant="getStatusBadge(subscription).type"
                     class="inline-flex items-center gap-1"
                   >
                     <component
-                      :is="subscription.enabled ? CheckCircleIcon : XCircleIcon"
+                      :is="getStatusBadge(subscription).icon"
                       class="h-3 w-3"
                     />
-                    {{
-                      subscription.enabled
-                        ? $t("subscriptions.enabled")
-                        : $t("subscriptions.disabled")
-                    }}
+                    {{ getStatusBadge(subscription).text }}
                   </Badge>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <Badge
+                      :variant="subscription.enabled ? 'success' : 'secondary'"
+                      class="inline-flex items-center gap-1"
+                    >
+                      <component
+                        :is="subscription.enabled ? CheckCircleIcon : XCircleIcon"
+                        class="h-3 w-3"
+                      />
+                      {{
+                        subscription.enabled
+                          ? $t("subscriptions.enabled")
+                          : $t("subscriptions.disabled")
+                      }}
+                    </Badge>
+                    <span
+                      v-if="subscription.enabled && subscription.update_interval"
+                      class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+                      :title="$t('subscriptions.form.updateInterval')"
+                    >
+                      <ClockIcon class="h-3 w-3" />
+                      {{ subscription.update_interval }}
+                    </span>
+                  </div>
                   <span
-                    v-if="subscription.enabled && subscription.update_interval"
-                    class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
-                    :title="$t('subscriptions.form.updateInterval')"
+                    class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap"
+                    :title="$t('subscriptions.table.lastUpdate')"
                   >
-                    <ClockIcon class="h-3 w-3" />
-                    {{ subscription.update_interval }}
+                    {{ $t("subscriptions.table.lastUpdate") }}: {{ formatDate(subscription.last_update) }}
                   </span>
                 </div>
               </td>
+              <!-- Plan info: generic key/value entries -->
+              <td class="px-4 py-3 align-top">
+                <div
+                  v-if="subscription.info && subscription.info.length"
+                  class="flex flex-col gap-1"
+                >
+                  <span
+                    v-for="(entry, i) in subscription.info"
+                    :key="i"
+                    class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    :title="`${entry.key}: ${entry.value}`"
+                  >
+                    <span class="text-gray-400 dark:text-gray-500">{{ entry.key }}</span>
+                    <span v-if="entry.value" class="font-medium ml-1">{{ entry.value }}</span>
+                  </span>
+                </div>
+                <span v-else class="text-xs text-gray-300 dark:text-gray-600">—</span>
+              </td>
               <td
-                class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                class="px-4 py-3 align-top text-right text-sm font-medium"
               >
                 <div class="flex items-center justify-end gap-2">
                   <Button
@@ -529,7 +539,12 @@ onMounted(() => {
                     :title="$t('subscriptions.tooltip.update')"
                     :aria-label="$t('subscriptions.tooltip.update')"
                   >
-                    <ArrowPathIcon class="h-4 w-4" />
+                    <!-- Hide the icon while updating: the Button shows only its
+                         spinner and is disabled, so the row can't be re-triggered. -->
+                    <ArrowPathIcon
+                      v-if="!isUpdating.includes(subscription.id)"
+                      class="h-4 w-4"
+                    />
                   </Button>
                   <Button
                     variant="ghost"
