@@ -13,7 +13,9 @@ export default {
   table: {
     name: 'Name',
     url: 'URL',
+    subscription: 'Subscription',
     status: 'Status',
+    info: 'Plan Info',
     nodes: 'Nodes',
     lastUpdate: 'Last Update',
     autoUpdate: 'Auto Update',

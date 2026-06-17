@@ -132,10 +132,15 @@ func (m *ManagerXORM) CreateFilter(f *Filter) (*Filter, error) {
 	if err != nil {
 		return nil, err
 	}
+	excludes, err := marshalMatchers(f.Excludes)
+	if err != nil {
+		return nil, err
+	}
 	row := &repo.FilterRule{
 		ID:            fmt.Sprintf("filter_%d", time.Now().UnixNano()),
 		Name:          f.Name,
 		Matchers:      matchers,
+		Excludes:      excludes,
 		OutboundType:  NormalizeOutboundType(f.OutboundType),
 		Priority:      f.Priority,
 		IsFallback:    false,
@@ -172,8 +177,13 @@ func (m *ManagerXORM) UpdateFilter(f *Filter) (*Filter, error) {
 	}
 
 	matchers := "[]"
+	excludes := "[]"
 	if !existing.IsFallback {
 		matchers, err = marshalMatchers(f.Matchers)
+		if err != nil {
+			return nil, err
+		}
+		excludes, err = marshalMatchers(f.Excludes)
 		if err != nil {
 			return nil, err
 		}
@@ -186,6 +196,7 @@ func (m *ManagerXORM) UpdateFilter(f *Filter) (*Filter, error) {
 	row := &repo.FilterRule{
 		Name:          f.Name,
 		Matchers:      matchers,
+		Excludes:      excludes,
 		OutboundType:  NormalizeOutboundType(f.OutboundType),
 		Priority:      priority,
 		TestURL:       f.TestURL,
@@ -193,7 +204,7 @@ func (m *ManagerXORM) UpdateFilter(f *Filter) (*Filter, error) {
 		TestTolerance: f.TestTolerance,
 	}
 	// Cols forces writing these columns even when zero-valued.
-	if _, err := m.e.ID(f.ID).Cols("name", "matchers", "outbound_type", "priority", "test_url", "test_interval", "test_tolerance").Update(row); err != nil {
+	if _, err := m.e.ID(f.ID).Cols("name", "matchers", "excludes", "outbound_type", "priority", "test_url", "test_interval", "test_tolerance").Update(row); err != nil {
 		return nil, fmt.Errorf("failed to update filter %q: %w", f.ID, err)
 	}
 	return m.GetFilter(f.ID)
@@ -382,10 +393,15 @@ func filterFromRow(r *repo.FilterRule) (*Filter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filter %q has invalid matchers: %w", r.ID, err)
 	}
+	excludes, err := unmarshalMatchers(r.Excludes)
+	if err != nil {
+		return nil, fmt.Errorf("filter %q has invalid excludes: %w", r.ID, err)
+	}
 	return &Filter{
 		ID:            r.ID,
 		Name:          r.Name,
 		Matchers:      matchers,
+		Excludes:      excludes,
 		OutboundType:  NormalizeOutboundType(r.OutboundType),
 		Priority:      r.Priority,
 		IsFallback:    r.IsFallback,

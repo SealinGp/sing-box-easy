@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -64,6 +65,7 @@ func (m *ManagerXORM) List() ([]*Subscription, error) {
 			AutoUpdate:     dbSub.AutoUpdate,
 			UpdateInterval: dbSub.UpdateInterval,
 			LastUpdate:     dbSub.LastUpdate,
+			Info:           unmarshalInfo(dbSub.Info),
 			CreatedAt:      dbSub.CreatedAt,
 			UpdatedAt:      dbSub.UpdatedAt,
 		}
@@ -95,6 +97,7 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 		AutoUpdate:     dbSub.AutoUpdate,
 		UpdateInterval: dbSub.UpdateInterval,
 		LastUpdate:     dbSub.LastUpdate,
+		Info:           unmarshalInfo(dbSub.Info),
 		CreatedAt:      dbSub.CreatedAt,
 		UpdatedAt:      dbSub.UpdatedAt,
 	}
@@ -229,4 +232,58 @@ func (m *ManagerXORM) UpdateLastUpdate(id string) error {
 
 	logger.Info("Subscription last_update timestamp updated", zap.String("id", id))
 	return nil
+}
+
+// UpdateInfo persists the generic account-metadata entries extracted from a
+// subscription's info nodes. The full set is written each time (an empty slice
+// clears stale info), keyed only by the info column so other fields are
+// untouched.
+func (m *ManagerXORM) UpdateInfo(id string, info []SubInfo) error {
+	session := m.e.NewSession()
+	defer session.Close()
+
+	has, err := session.ID(id).Exist(&repo.Subscription{})
+	if err != nil {
+		return fmt.Errorf("failed to check subscription existence: %w", err)
+	}
+	if !has {
+		return fmt.Errorf("subscription not found")
+	}
+
+	encoded, err := marshalInfo(info)
+	if err != nil {
+		return err
+	}
+	if _, err := session.ID(id).Cols("info").Update(&repo.Subscription{Info: encoded}); err != nil {
+		return fmt.Errorf("failed to update subscription info: %w", err)
+	}
+
+	logger.Info("Subscription info updated", zap.String("id", id), zap.Int("entries", len(info)))
+	return nil
+}
+
+// marshalInfo JSON-encodes the info slice for the text column (nil → "[]").
+func marshalInfo(info []SubInfo) (string, error) {
+	if info == nil {
+		info = []SubInfo{}
+	}
+	b, err := json.Marshal(info)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode subscription info: %w", err)
+	}
+	return string(b), nil
+}
+
+// unmarshalInfo decodes the info column, tolerating empty/invalid values by
+// returning nil so a bad row never breaks listing.
+func unmarshalInfo(s string) []SubInfo {
+	if s == "" {
+		return nil
+	}
+	var info []SubInfo
+	if err := json.Unmarshal([]byte(s), &info); err != nil {
+		logger.Warn("ignoring invalid subscription info json", zap.Error(err))
+		return nil
+	}
+	return info
 }

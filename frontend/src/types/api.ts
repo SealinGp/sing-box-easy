@@ -150,6 +150,9 @@ export interface Subscription {
   auto_update?: boolean
   last_update?: string
   node_count?: number
+  // Generic account metadata (traffic/expiry/reset) extracted from the feed's
+  // loopback "info nodes". Provider-defined keys, stored & shown verbatim.
+  info?: { key: string; value: string }[]
 }
 
 // Response payload for POST /subscriptions/:id/update.

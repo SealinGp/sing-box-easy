@@ -52,7 +52,26 @@ type SubLink struct {
 // warnings, and if the caller passed exactly one input and it failed wholesale,
 // the error is surfaced so the route handler can show a real message.
 func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
+	nodes, _, err := l.ListNodesWithMeta(lines)
+	return nodes, err
+}
+
+// FetchMeta carries subscription metadata captured during a fetch that is NOT
+// part of the node list. Currently the raw `Subscription-Userinfo` response
+// header (e.g. "upload=…; download=…; total=…; expire=…"), the cross-provider
+// standard airports use to report account traffic and plan expiry — independent
+// of the (provider-specific, localized) "info node" mechanism some feeds embed.
+type FetchMeta struct {
+	Userinfo string
+}
+
+// ListNodesWithMeta is ListNodes plus the response metadata from the first
+// subscription that supplies it. Single-line/single-URL callers (subscription
+// refresh) use this to surface account traffic/expiry; ListNodes keeps the
+// node-only signature for callers that don't care.
+func (l *SubLink) ListNodesWithMeta(lines []string) ([]*node.SubNode, *FetchMeta, error) {
 	nodes := make([]*node.SubNode, 0)
+	meta := &FetchMeta{}
 	var lastFetchErr error
 	fetchAttempts := 0
 
@@ -65,13 +84,18 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 		// 订阅链接 (http/https subscription URL): fetch + base64-decode.
 		if strings.HasPrefix(line, "http://") || strings.HasPrefix(line, "https://") {
 			fetchAttempts++
-			modeNodes, err := l.fetchNodes(line)
+			modeNodes, m, err := l.fetchNodesWithMeta(line)
 			if err != nil {
 				lastFetchErr = err
 				logger.Warn("subscription fetch failed",
 					zap.String("url", line),
 					zap.Error(err))
 				continue
+			}
+			// Keep the first non-empty userinfo seen (subscription refresh
+			// passes exactly one URL, so this is simply "this feed's userinfo").
+			if meta.Userinfo == "" && m != nil && m.Userinfo != "" {
+				meta.Userinfo = m.Userinfo
 			}
 			nodes = append(nodes, modeNodes...)
 			continue
@@ -98,10 +122,10 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 	// If every fetch failed and produced no nodes, surface the last fetch
 	// error rather than returning an empty list with no diagnostic.
 	if len(nodes) == 0 && fetchAttempts > 0 && lastFetchErr != nil {
-		return nodes, fmt.Errorf("subscription fetch failed: %w", lastFetchErr)
+		return nodes, meta, fmt.Errorf("subscription fetch failed: %w", lastFetchErr)
 	}
 
-	return nodes, nil
+	return nodes, meta, nil
 }
 
 // validateSubscriptionURL rejects URLs that point at non-public addresses.
@@ -144,22 +168,27 @@ func validateSubscriptionURL(raw string) error {
 	return nil
 }
 
-func (l *SubLink) fetchNodes(sub_url string) ([]*node.SubNode, error) {
+func (l *SubLink) fetchNodesWithMeta(sub_url string) ([]*node.SubNode, *FetchMeta, error) {
 	if err := validateSubscriptionURL(sub_url); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	resp, err := httpClient.R().Get(sub_url)
 	if err != nil {
-		return nil, fmt.Errorf("http get failed: %w", err)
+		return nil, nil, fmt.Errorf("http get failed: %w", err)
 	}
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("subscription server returned http %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("subscription server returned http %d", resp.StatusCode)
 	}
+
+	// Capture the standard account-metadata header before reading the body.
+	// http.Header.Get canonicalizes the key, so the wire-lowercase
+	// "subscription-userinfo" is matched here.
+	meta := &FetchMeta{Userinfo: resp.Header.Get("Subscription-Userinfo")}
 
 	respStr, err := resp.ToString()
 	if err != nil {
-		return nil, fmt.Errorf("read response body failed: %w", err)
+		return nil, meta, fmt.Errorf("read response body failed: %w", err)
 	}
 
 	nodes, err := decodeSubscriptionBody(respStr)
@@ -171,10 +200,10 @@ func (l *SubLink) fetchNodes(sub_url string) ([]*node.SubNode, error) {
 		if len(preview) > 80 {
 			preview = preview[:80] + "..."
 		}
-		return nil, fmt.Errorf("base64 decode failed (body preview: %q): %w", preview, err)
+		return nil, meta, fmt.Errorf("base64 decode failed (body preview: %q): %w", preview, err)
 	}
 
-	return l.parseBody(nodes), nil
+	return l.parseBody(nodes), meta, nil
 }
 
 // parseBody scans a decoded subscription body (newline-separated proxy URIs)

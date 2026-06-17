@@ -13,7 +13,9 @@ export default {
   table: {
     name: '名称',
     url: '链接',
+    subscription: '订阅',
     status: '状态',
+    info: '套餐信息',
     nodes: '节点',
     lastUpdate: '最近更新',
     autoUpdate: '自动更新',

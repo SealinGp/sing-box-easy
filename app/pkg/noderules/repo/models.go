@@ -10,9 +10,13 @@ import "time"
 // noderules.Matcher domain type). FilterIDs/membership is computed at apply
 // time from the live endpoint set, not stored here.
 type FilterRule struct {
-	ID           string `xorm:"'id' pk varchar(255)" json:"id"`
-	Name         string `xorm:"'name' notnull unique index" json:"name"`
-	Matchers     string `xorm:"'matchers' text" json:"matchers"`
+	ID       string `xorm:"'id' pk varchar(255)" json:"id"`
+	Name     string `xorm:"'name' notnull unique index" json:"name"`
+	Matchers string `xorm:"'matchers' text" json:"matchers"`
+	// Excludes is a JSON-encoded ordered array of {type,value} deny-rules: an
+	// endpoint matched by Matchers is still kept out of this Filter when it also
+	// matches an Exclude (e.g. keep code "US" but drop the node "relay_bwh_us1").
+	Excludes     string `xorm:"'excludes' text" json:"excludes"`
 	OutboundType string `xorm:"'outbound_type' notnull default('urltest')" json:"outbound_type"`
 	Priority     int    `xorm:"'priority' notnull default(0) index" json:"priority"`
 	IsFallback   bool   `xorm:"'is_fallback' notnull default(0)" json:"is_fallback"`
