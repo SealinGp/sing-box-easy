@@ -40,6 +40,7 @@ type migrationEntry struct {
 var migrations = []migrationEntry{
 	{"001_add_enabled_to_subscriptions", migrate001AddEnabledToSubscriptions},
 	{"002_add_info_to_subscriptions", migrate002AddInfoToSubscriptions},
+	{"003_add_fetch_options_to_subscriptions", migrate003AddFetchOptionsToSubscriptions},
 }
 
 // runMigrations executes pending migrations
@@ -129,6 +130,8 @@ func getMigrationName(id string) string {
 		return "Add enabled field to subscriptions table"
 	case "002_add_info_to_subscriptions":
 		return "Add info field to subscriptions table"
+	case "003_add_fetch_options_to_subscriptions":
+		return "Add fetch_mode and proxy_url fields to subscriptions table"
 	default:
 		return id
 	}
@@ -192,6 +195,25 @@ func migrate002AddInfoToSubscriptions(session *xorm.Session) error {
 	}
 
 	return fmt.Errorf("failed to add info column: %w", err)
+}
+
+// migrate003AddFetchOptionsToSubscriptions adds the fetch_mode and proxy_url
+// columns (per-subscription URL-fetch strategy for censored networks). Same
+// three valid cases as the earlier migrations, applied per column.
+func migrate003AddFetchOptionsToSubscriptions(session *xorm.Session) error {
+	for _, col := range []string{
+		`ALTER TABLE subscriptions ADD COLUMN fetch_mode TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE subscriptions ADD COLUMN proxy_url TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := session.Exec(col); err != nil {
+			if isDuplicateColumnError(err) || isNoSuchTableError(err) {
+				continue
+			}
+			return fmt.Errorf("failed to add subscription fetch option column: %w", err)
+		}
+	}
+	logger.Info("Added fetch_mode/proxy_url columns to subscriptions table")
+	return nil
 }
 
 // isDuplicateColumnError checks if the error indicates a duplicate column name.
