@@ -316,13 +316,22 @@ func (h *Handler) GetDNSRules(ctx context.Context, c *app.RequestContext) {
 
 // AddDNSRule adds a new DNS rule
 func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
+	// Parse with sing-box's JSON (not c.Bind): option.DNSRule is polymorphic and
+	// relies on its custom UnmarshalJSON to default an omitted "type" to "default"
+	// and populate the per-type options. Hertz's reflection binder skips that, so
+	// the rule would marshal back with an empty type ("unknown rule type: ").
+	body, err := c.Body()
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
+		return
+	}
 	var rule option.DNSRule
-	if err := c.Bind(&rule); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := json.UnmarshalContext(config.CreateContext(ctx), body, &rule); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid DNS rule: "+err.Error())
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.DNS == nil {
 			cfg.DNS = &option.DNSOptions{}
 		}
@@ -348,9 +357,18 @@ func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	// Parse with sing-box's JSON (not c.Bind): option.DNSRule is polymorphic and
+	// relies on its custom UnmarshalJSON to default an omitted "type" to "default"
+	// and populate the per-type options. Hertz's reflection binder skips that, so
+	// the rule would marshal back with an empty type ("unknown rule type: ").
+	body, err := c.Body()
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
+		return
+	}
 	var rule option.DNSRule
-	if err := c.Bind(&rule); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := json.UnmarshalContext(config.CreateContext(ctx), body, &rule); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid DNS rule: "+err.Error())
 		return
 	}
 

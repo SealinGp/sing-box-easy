@@ -183,6 +183,17 @@ const handleSaveRule = async () => {
     }
   })
 
+  // Keep only the fields valid for the selected action. sing-box strict-parses
+  // DNS rules and rejects fields that don't belong to the action — e.g.
+  // `method` is reject-only ("unknown field method" on a route rule), and
+  // `server` belongs to route, not reject.
+  if (processedRule.action === 'reject') {
+    delete processedRule.server
+  } else {
+    delete processedRule.method
+    delete processedRule.no_drop
+  }
+
   loading.value = true
   try {
     if (isEditMode.value) {
