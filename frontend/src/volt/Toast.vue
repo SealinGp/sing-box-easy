@@ -5,6 +5,8 @@
         :ptOptions="{
             mergeProps: ptViewMerge
         }"
+        :onMouseEnter="pauseOnHover"
+        :onMouseLeave="pauseOnHover"
     >
         <template #closeicon>
             <TimesIcon />
@@ -23,6 +25,12 @@ import { ptViewMerge } from './utils';
 interface Props extends /* @vue-ignore */ ToastProps {}
 defineProps<Props>();
 
+// PrimeVue's ToastMessage only pauses its auto-dismiss timer on hover when an
+// `onMouseEnter`/`onMouseLeave` handler is present (see handleMouseEnter's
+// `if (this.onMouseEnter)` guard). We pass a no-op so the built-in pause/resume
+// runs — the toast stays visible while the cursor is over it.
+const pauseOnHover = () => {};
+
 // Static PT theme — plain const, not a ref. `aria-label` on `closeButton`
 // is explicit because `unstyled` mode strips PrimeVue's default.
 const theme: ToastPassThroughOptions = {
@@ -38,15 +46,18 @@ const theme: ToastPassThroughOptions = {
         p-contrast:bg-surface-900 p-contrast:border-surface-950 p-contrast:text-surface-50 dark:p-contrast:bg-surface-0 dark:p-contrast:border-surface-100 dark:p-contrast:text-surface-950`,
     messageContent: `flex items-start p-3 gap-2`,
     messageIcon: `flex-shrink-0 text-lg w-[1.125rem] h-[1.125rem] mt-1`,
-    messageText: `flex-auto flex flex-col gap-2`,
-    summary: `font-medium text-base`,
-    detail: `font-medium text-sm text-surface-700 dark:text-surface-0
+    // min-w-0 lets this flex child shrink below its content size so long,
+    // unbroken strings (URLs, "ip:port->ip:port") wrap instead of overflowing
+    // the fixed-width toast and spilling out of the colored background.
+    messageText: `flex-auto min-w-0 flex flex-col gap-2`,
+    summary: `font-medium text-base break-words`,
+    detail: `font-medium text-sm text-surface-700 dark:text-surface-0 break-words
         p-contrast:text-surface-0 dark:p-contrast:text-surface-950`,
     buttonContainer: ``,
     closeButton: {
         'aria-label': 'Close',
         class: `flex items-center justify-center overflow-hidden relative cursor-pointer bg-transparent select-none
-        transition-colors duration-200 text-inherit w-7 h-7 rounded-full -mt-[25%] -end-1/4 p-0 border-none
+        transition-colors duration-200 text-inherit w-7 h-7 rounded-full shrink-0 -mr-1 p-0 border-none
         focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
         p-info:hover:bg-violet-100 p-info:focus-visible:outline-violet-600 dark:p-info:hover:bg-white/5 dark:p-info:focus-visible:outline-violet-500
         p-success:hover:bg-green-100 p-success:focus-visible:outline-green-600 dark:p-success:hover:bg-white/5 dark:p-success:focus-visible:outline-green-500
