@@ -3,6 +3,7 @@
   "compilerOptions":{
     "lib": ["ES2016"]
   },
+  "plugins": [{ "name": "@vue/typescript-plugin" }],
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
