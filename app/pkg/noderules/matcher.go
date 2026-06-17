@@ -46,9 +46,28 @@ func filterMatches(f *Filter, tag, lowerTag string) bool {
 	return false
 }
 
+// filterExcluded reports whether a tag matches any of a Filter's exclude rules
+// (OR semantics). A tag that is excluded is kept out of the Filter even when it
+// satisfied a matcher.
+func filterExcluded(f *Filter, tag, lowerTag string) bool {
+	for _, m := range f.Excludes {
+		if matcherMatches(m, tag, lowerTag) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterClaims reports whether a Filter should take ownership of a tag: it must
+// match at least one matcher AND not match any exclude.
+func filterClaims(f *Filter, tag, lowerTag string) bool {
+	return filterMatches(f, tag, lowerTag) && !filterExcluded(f, tag, lowerTag)
+}
+
 // AssignFilters maps endpoint tags to Filters using multi-match semantics: an
-// endpoint joins EVERY non-fallback Filter whose matchers it satisfies. Any
-// endpoint that matches no non-fallback Filter is assigned to the fallback
+// endpoint joins EVERY non-fallback Filter whose matchers it satisfies AND whose
+// excludes it does not (an excluded tag is treated as not claimed by that
+// Filter). Any endpoint that matches no non-fallback Filter is assigned to the fallback
 // Filter (and also reported in `others` for preview/diagnostics).
 //
 // The returned membership is keyed by Filter ID; each value is the list of
@@ -86,7 +105,7 @@ func AssignFilters(endpointTags []string, filters []*Filter) (membership map[str
 		lower := strings.ToLower(tag)
 		matchedAny := false
 		for _, f := range ranked {
-			if filterMatches(f, tag, lower) {
+			if filterClaims(f, tag, lower) {
 				membership[f.ID] = append(membership[f.ID], tag)
 				matchedAny = true
 			}

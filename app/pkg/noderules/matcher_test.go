@@ -46,6 +46,33 @@ func TestAssignFilters_MultiMatch(t *testing.T) {
 	}
 }
 
+// TestAssignFilters_Excludes verifies the deny-list: a node matched by a
+// matcher (code "US") is kept OUT of the Filter when it also matches an exclude
+// (keyword "relay_bwh_us1"), and — matching no other Filter — falls through to
+// the fallback.
+func TestAssignFilters_Excludes(t *testing.T) {
+	us := filter("f_us", "US", 10, code("US"))
+	us.Excludes = []Matcher{kw("relay_bwh_us1")}
+	other := fallback()
+
+	tags := []string{
+		"relay_bwh_us1",              // matches US code, but excluded -> Other
+		"🇺🇸 美国 04 host:36004 | sub_1", // matches US, not excluded -> US
+		"relay_bwh_us2",             // matches US, not excluded -> US
+	}
+	membership, others := AssignFilters(tags, []*Filter{us, other})
+
+	if want := []string{tags[1], tags[2]}; !slices.Equal(membership["f_us"], want) {
+		t.Errorf("US members = %v, want %v", membership["f_us"], want)
+	}
+	if want := []string{"relay_bwh_us1"}; !slices.Equal(membership[FallbackFilterID], want) {
+		t.Errorf("fallback members = %v, want %v", membership[FallbackFilterID], want)
+	}
+	if want := []string{"relay_bwh_us1"}; !slices.Equal(others, want) {
+		t.Errorf("others = %v, want %v", others, want)
+	}
+}
+
 // TestAssignFilters_CodeSynonyms verifies a single `code` matcher catches
 // Chinese, English, bare-code, and emoji spellings.
 func TestAssignFilters_CodeSynonyms(t *testing.T) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useNodeRulesStore } from '../../stores/noderules'
@@ -33,6 +33,7 @@ const filterForm = reactive<{
   outbound_type: FilterOutboundType
   priority: number
   matchers: Matcher[]
+  excludes: Matcher[]
   test_url: string
   test_interval: string
   test_tolerance: number
@@ -41,10 +42,65 @@ const filterForm = reactive<{
   outbound_type: 'urltest',
   priority: 0,
   matchers: [],
+  excludes: [],
   test_url: URLTEST_DEFAULTS.test_url,
   test_interval: URLTEST_DEFAULTS.test_interval,
   test_tolerance: URLTEST_DEFAULTS.test_tolerance,
 })
+
+// All endpoint node tags currently known (from the latest preview): the union of
+// every filter's members plus the unmatched list. Drives the "exclude a node"
+// picker so users can deny a specific outbound by its exact tag.
+const endpointTags = computed<string[]>(() => {
+  const p = preview.value
+  if (!p) return []
+  const seen = new Set<string>()
+  for (const pf of p.filters) for (const tag of pf.members) seen.add(tag)
+  for (const tag of p.unmatched) seen.add(tag)
+  return [...seen].sort((a, b) => a.localeCompare(b))
+})
+
+// Search box for the "exclude a node" combobox. Filtered case-insensitively and
+// capped so a large subscription doesn't render thousands of options at once.
+const excludeQuery = ref('')
+const filteredExcludeNodes = computed<string[]>(() => {
+  const q = excludeQuery.value.trim().toLowerCase()
+  const all = q ? endpointTags.value.filter((tag) => tag.toLowerCase().includes(q)) : endpointTags.value
+  return all.slice(0, 50)
+})
+
+// Open state for the custom "exclude a node" dropdown (focus opens it; blur
+// closes it — option clicks use mousedown.prevent so they fire before blur).
+const excludeOpen = ref(false)
+
+// Picking a node adds it as a keyword exclude and resets the search so the list
+// shows every node again, ready for another pick.
+function pickExcludeNode(tag: string) {
+  addExcludeNode(tag)
+  excludeQuery.value = ''
+}
+
+// Country-code matcher picker — same searchable-dropdown UX as the exclude
+// picker, but over the backend keyword catalog (matched by code, label, or any
+// synonym).
+const codeQuery = ref('')
+const codeOpen = ref(false)
+const filteredCodeKeywords = computed(() => {
+  const q = codeQuery.value.trim().toLowerCase()
+  if (!q) return keywords.value
+  return keywords.value.filter(
+    (kw) =>
+      kw.code.toLowerCase().includes(q) ||
+      kw.label.toLowerCase().includes(q) ||
+      kw.synonyms.some((s) => s.toLowerCase().includes(q)),
+  )
+})
+
+// Picking a country code adds a `code` matcher and resets the search.
+function pickCodeMatcher(code: string) {
+  addCodeMatcher(code)
+  codeQuery.value = ''
+}
 
 function startCreateFilter() {
   editingFilterId.value = ''
@@ -52,6 +108,7 @@ function startCreateFilter() {
   filterForm.outbound_type = 'urltest'
   filterForm.priority = (filters.value.filter((f) => !f.is_fallback).length + 1) * 10
   filterForm.matchers = []
+  filterForm.excludes = []
   filterForm.test_url = URLTEST_DEFAULTS.test_url
   filterForm.test_interval = URLTEST_DEFAULTS.test_interval
   filterForm.test_tolerance = URLTEST_DEFAULTS.test_tolerance
@@ -63,6 +120,7 @@ function startEditFilter(f: Filter) {
   filterForm.outbound_type = f.outbound_type
   filterForm.priority = f.priority
   filterForm.matchers = f.matchers.map((m) => ({ ...m }))
+  filterForm.excludes = (f.excludes ?? []).map((m) => ({ ...m }))
   filterForm.test_url = f.test_url || URLTEST_DEFAULTS.test_url
   filterForm.test_interval = f.test_interval || URLTEST_DEFAULTS.test_interval
   filterForm.test_tolerance = f.test_tolerance || URLTEST_DEFAULTS.test_tolerance
@@ -87,6 +145,23 @@ function addCodeMatcher(code: string) {
   filterForm.matchers = [...filterForm.matchers, { type: 'code', value: code }]
 }
 
+// Exclude (deny-list) edits — same immutable pattern as matchers.
+function addExclude(type: MatcherType = 'keyword', value = '') {
+  filterForm.excludes = [...filterForm.excludes, { type, value }]
+}
+
+function removeExclude(idx: number) {
+  filterForm.excludes = filterForm.excludes.filter((_, i) => i !== idx)
+}
+
+// Exclude a specific node by its exact tag (keyword match). De-dupes so picking
+// the same node twice is a no-op.
+function addExcludeNode(tag: string) {
+  if (!tag) return
+  if (filterForm.excludes.some((m) => m.type === 'keyword' && m.value === tag)) return
+  filterForm.excludes = [...filterForm.excludes, { type: 'keyword', value: tag }]
+}
+
 async function saveFilter() {
   notice.value = ''
   const input = {
@@ -94,6 +169,7 @@ async function saveFilter() {
     outbound_type: filterForm.outbound_type,
     priority: filterForm.priority,
     matchers: filterForm.matchers.filter((m) => m.value.trim() !== ''),
+    excludes: filterForm.excludes.filter((m) => m.value.trim() !== ''),
     test_url: filterForm.test_url.trim(),
     test_interval: filterForm.test_interval.trim(),
     test_tolerance: Number(filterForm.test_tolerance) || 0,
@@ -354,10 +430,82 @@ onMounted(async () => {
               </div>
               <div class="flex flex-wrap gap-2 items-center pt-1">
                 <button class="btn btn-xs" @click="addMatcher('keyword')">+ {{ t('nodeRules.addMatcher') }}</button>
-                <select class="select select-xs select-bordered" @change="(e) => { addCodeMatcher((e.target as HTMLSelectElement).value); (e.target as HTMLSelectElement).value = '' }">
-                  <option value="">{{ t('nodeRules.addCountry') }}</option>
-                  <option v-for="kw in keywords" :key="kw.code" :value="kw.code">{{ kw.label }} ({{ kw.code }})</option>
+                <!-- Searchable country-code picker: focus shows all, type to filter, click to add a code matcher -->
+                <div v-if="keywords.length" class="relative">
+                  <input
+                    v-model="codeQuery"
+                    class="input input-xs input-bordered w-64 max-w-full"
+                    :placeholder="t('nodeRules.addCountry')"
+                    @focus="codeOpen = true"
+                    @blur="codeOpen = false"
+                  />
+                  <div
+                    v-if="codeOpen"
+                    class="absolute z-20 mt-1 max-h-48 w-72 max-w-[90vw] overflow-auto rounded-md border border-base-300 bg-base-100 shadow-lg text-xs"
+                  >
+                    <button
+                      v-for="kw in filteredCodeKeywords"
+                      :key="kw.code"
+                      type="button"
+                      class="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-primary hover:text-primary-content"
+                      :title="kw.synonyms.join(' · ')"
+                      @mousedown.prevent="pickCodeMatcher(kw.code)"
+                    >
+                      {{ kw.label }} ({{ kw.code }})
+                    </button>
+                    <div v-if="!filteredCodeKeywords.length" class="px-2 py-1 text-gray-400">
+                      {{ t('nodeRules.noCodeMatches') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Excludes (deny-list): nodes kept OUT even when a matcher hits them -->
+            <div class="space-y-1 rounded-md border border-error/30 bg-error/5 p-2">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {{ t('nodeRules.excludes') }}
+                <span class="text-gray-400 font-normal">{{ t('nodeRules.excludesHint') }}</span>
+              </div>
+              <div v-for="(m, idx) in filterForm.excludes" :key="idx" class="flex gap-2 items-center">
+                <select v-model="m.type" class="select select-xs select-bordered">
+                  <option value="keyword">keyword</option>
+                  <option value="code">code</option>
+                  <option value="emoji">emoji</option>
                 </select>
+                <input v-model="m.value" class="input input-xs input-bordered flex-1" :placeholder="t('nodeRules.matcherValue')" />
+                <button class="btn btn-xs btn-ghost" @click="removeExclude(idx)">✕</button>
+              </div>
+              <div class="flex flex-wrap gap-2 items-center pt-1">
+                <button class="btn btn-xs" @click="addExclude('keyword')">+ {{ t('nodeRules.addExclude') }}</button>
+                <!-- Searchable node picker: focus shows all nodes, type to filter, click to exclude -->
+                <div v-if="endpointTags.length" class="relative">
+                  <input
+                    v-model="excludeQuery"
+                    class="input input-xs input-bordered w-64 max-w-full"
+                    :placeholder="t('nodeRules.excludeNode')"
+                    @focus="excludeOpen = true"
+                    @blur="excludeOpen = false"
+                  />
+                  <div
+                    v-if="excludeOpen"
+                    class="absolute z-20 mt-1 max-h-48 w-80 max-w-[90vw] overflow-auto rounded-md border border-base-300 bg-base-100 shadow-lg text-xs"
+                  >
+                    <button
+                      v-for="tag in filteredExcludeNodes"
+                      :key="tag"
+                      type="button"
+                      class="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-primary hover:text-primary-content"
+                      :title="tag"
+                      @mousedown.prevent="pickExcludeNode(tag)"
+                    >
+                      {{ tag }}
+                    </button>
+                    <div v-if="!filteredExcludeNodes.length" class="px-2 py-1 text-gray-400">
+                      {{ t('nodeRules.noNodeMatches') }}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -384,6 +532,12 @@ onMounted(async () => {
                 <div v-if="!f.is_fallback" class="flex flex-wrap gap-1 mt-1">
                   <span v-for="(m, i) in f.matchers" :key="i" class="badge badge-ghost badge-xs">{{ m.value }}</span>
                   <span v-if="!f.matchers.length" class="text-xs text-gray-400">{{ t('nodeRules.noMatchers') }}</span>
+                  <span
+                    v-for="(m, i) in (f.excludes ?? [])"
+                    :key="`x${i}`"
+                    class="badge badge-xs badge-error badge-outline gap-0.5"
+                    :title="t('nodeRules.excludeBadgeTitle')"
+                  >− {{ m.value }}</span>
                 </div>
                 <div v-else class="text-xs text-gray-400 mt-1">{{ t('nodeRules.fallbackHint') }}</div>
               </div>

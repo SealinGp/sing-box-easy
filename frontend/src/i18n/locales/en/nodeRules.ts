@@ -22,7 +22,15 @@ export default {
   testTolerance: 'Tolerance (ms)',
   matcherValue: 'value (e.g. Streaming, 香港, 🇭🇰)',
   addMatcher: 'Add matcher',
-  addCountry: '+ Country code…',
+  addCountry: 'Search a country code…',
+  noCodeMatches: 'No matching codes',
+  // Exclude (deny-list): nodes kept out even when a matcher hits them.
+  excludes: 'Except nodes',
+  excludesHint: '— matched but kept out (e.g. drop relay_bwh_us1 from US)',
+  addExclude: 'Add exclude',
+  excludeNode: 'Search a node to exclude…',
+  excludeBadgeTitle: 'excluded — never added even if matched',
+  noNodeMatches: 'No matching nodes',
   // How-matching-works explainer (shown inside the filter editor)
   help: {
     toggle: 'How does matching work?',

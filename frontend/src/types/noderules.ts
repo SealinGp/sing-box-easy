@@ -14,6 +14,10 @@ export interface Filter {
   id: string
   name: string
   matchers: Matcher[]
+  // excludes: deny-list — a node matched by `matchers` is still kept out of this
+  // filter when it also matches an exclude (e.g. match code "US", except the
+  // node tagged "relay_bwh_us1").
+  excludes: Matcher[]
   outbound_type: FilterOutboundType
   priority: number
   is_fallback: boolean
@@ -68,6 +72,7 @@ export interface PreviewResult {
 export interface FilterInput {
   name: string
   matchers: Matcher[]
+  excludes: Matcher[]
   outbound_type: FilterOutboundType
   priority: number
   test_url: string

@@ -22,7 +22,15 @@ export default {
   testTolerance: '容差 (ms)',
   matcherValue: '匹配值(如 Streaming、香港、🇭🇰)',
   addMatcher: '添加匹配项',
-  addCountry: '+ 国家/地区代码…',
+  addCountry: '搜索国家/地区代码…',
+  noCodeMatches: '没有匹配的代码',
+  // 排除项(黑名单):即使命中匹配项也不会加入该规则的节点。
+  excludes: '排除节点',
+  excludesHint: '— 已匹配但被排除(如把 relay_bwh_us1 从美国规则中剔除)',
+  addExclude: '添加排除项',
+  excludeNode: '搜索要排除的节点…',
+  excludeBadgeTitle: '已排除 — 即使匹配也不会加入',
+  noNodeMatches: '没有匹配的节点',
   // 匹配规则说明(显示在过滤器编辑器内)
   help: {
     toggle: '匹配规则是怎么工作的?',

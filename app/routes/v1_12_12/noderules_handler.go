@@ -45,6 +45,7 @@ func (h *Handler) GetNodeRules(ctx context.Context, c *app.RequestContext) {
 type filterRequest struct {
 	Name          string              `json:"name"`
 	Matchers      []noderules.Matcher `json:"matchers"`
+	Excludes      []noderules.Matcher `json:"excludes"`
 	OutboundType  string              `json:"outbound_type"`
 	Priority      int                 `json:"priority"`
 	TestURL       string              `json:"test_url"`
@@ -58,6 +59,7 @@ func (r filterRequest) toFilter(id string) *noderules.Filter {
 		ID:            id,
 		Name:          r.Name,
 		Matchers:      r.Matchers,
+		Excludes:      r.Excludes,
 		OutboundType:  r.OutboundType,
 		Priority:      r.Priority,
 		TestURL:       r.TestURL,

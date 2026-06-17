@@ -66,9 +66,15 @@ type Matcher struct {
 
 // Filter is the domain representation of a FilterRule (matchers parsed).
 type Filter struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Matchers     []Matcher `json:"matchers"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Matchers []Matcher `json:"matchers"`
+	// Excludes is an optional deny-list evaluated AFTER Matchers: an endpoint
+	// that satisfies a Matcher is still kept OUT of this Filter if it also
+	// satisfies any Exclude (e.g. match code "US" but exclude the node tagged
+	// "relay_bwh_us1"). Excluded endpoints fall through to the fallback Filter
+	// unless another Filter still claims them.
+	Excludes     []Matcher `json:"excludes"`
 	OutboundType string    `json:"outbound_type"`
 	Priority     int       `json:"priority"`
 	IsFallback   bool      `json:"is_fallback"`
