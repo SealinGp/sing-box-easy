@@ -100,9 +100,7 @@ const openEditModal = (subscription: Subscription) => {
   formData.value = {
     name: subscription.name,
     url: subscription.url,
-    // Older records were saved without auto_update; fall back to enabled so
-    // re-saving them through this modal repairs the flag.
-    auto_update: subscription.auto_update ?? subscription.enabled,
+    auto_update: subscription.auto_update ?? false,
     update_interval: subscription.update_interval, // Already a string from backend (e.g., "24h")
     fetch_mode: subscription.fetch_mode ?? "",
     proxy_url: subscription.proxy_url ?? "",
@@ -160,10 +158,6 @@ const saveSubscription = async () => {
     const subscriptionData = {
       name: formData.value.name,
       url: formData.value.url,
-      // The cron auto-updater only refreshes subscriptions where BOTH
-      // enabled and auto_update are true, so the single UI checkbox drives
-      // both flags.
-      enabled: formData.value.auto_update,
       auto_update: formData.value.auto_update,
       update_interval: formData.value.update_interval, // Send as string
       fetch_mode: formData.value.fetch_mode,
@@ -296,14 +290,6 @@ const getIntervalHours = (interval: string | undefined) => {
 };
 
 const getStatusBadge = (subscription: Subscription) => {
-  if (subscription.node_count === 0) {
-    return {
-      type: "danger" as const,
-      icon: XCircleIcon,
-      text: t("subscriptions.status.empty"),
-    };
-  }
-
   if (!subscription.last_update) {
     return {
       type: "warning" as const,
@@ -316,7 +302,7 @@ const getStatusBadge = (subscription: Subscription) => {
   // backend's own refresh rule (AutoUpdater.shouldUpdate), which considers a
   // subscription due once time-since-last-update >= its update_interval. When
   // auto-update is off there is no expected cadence, so we never flag outdated.
-  const autoUpdate = subscription.auto_update ?? subscription.enabled;
+  const autoUpdate = subscription.auto_update ?? false;
   if (autoUpdate) {
     const lastUpdate = new Date(subscription.last_update);
     const hoursSinceUpdate =
@@ -472,9 +458,6 @@ onMounted(() => {
                       <ClipboardDocumentIcon class="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <span class="text-xs text-gray-400 dark:text-gray-500">
-                    {{ subscription.node_count || 0 }} {{ $t("subscriptions.table.nodes") }}
-                  </span>
                 </div>
               </td>
               <!-- Status: state badge + auto-update/interval + last update, stacked -->
@@ -492,21 +475,21 @@ onMounted(() => {
                   </Badge>
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <Badge
-                      :variant="subscription.enabled ? 'success' : 'secondary'"
+                      :variant="subscription.auto_update ? 'success' : 'secondary'"
                       class="inline-flex items-center gap-1"
                     >
                       <component
-                        :is="subscription.enabled ? CheckCircleIcon : XCircleIcon"
+                        :is="subscription.auto_update ? CheckCircleIcon : XCircleIcon"
                         class="h-3 w-3"
                       />
                       {{
-                        subscription.enabled
+                        subscription.auto_update
                           ? $t("subscriptions.enabled")
                           : $t("subscriptions.disabled")
                       }}
                     </Badge>
                     <span
-                      v-if="subscription.enabled && subscription.update_interval"
+                      v-if="subscription.auto_update && subscription.update_interval"
                       class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
                       :title="$t('subscriptions.form.updateInterval')"
                     >

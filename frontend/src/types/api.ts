@@ -144,12 +144,9 @@ export interface Subscription {
   name: string
   url: string
   update_interval: string
-  enabled: boolean
-  // Whether the cron auto-updater refreshes this subscription. The backend
-  // only auto-refreshes when BOTH enabled and auto_update are true.
+  // Whether the cron auto-updater refreshes this subscription on its interval.
   auto_update?: boolean
   last_update?: string
-  node_count?: number
   // Generic account metadata (traffic/expiry/reset) extracted from the feed's
   // loopback "info nodes". Provider-defined keys, stored & shown verbatim.
   info?: { key: string; value: string }[]

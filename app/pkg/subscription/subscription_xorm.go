@@ -61,7 +61,6 @@ func (m *ManagerXORM) List() ([]*Subscription, error) {
 			ID:             dbSub.ID,
 			Name:           dbSub.Name,
 			URL:            dbSub.URL,
-			Enabled:        dbSub.Enabled,
 			AutoUpdate:     dbSub.AutoUpdate,
 			UpdateInterval: dbSub.UpdateInterval,
 			LastUpdate:     dbSub.LastUpdate,
@@ -95,7 +94,6 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 		ID:             dbSub.ID,
 		Name:           dbSub.Name,
 		URL:            dbSub.URL,
-		Enabled:        dbSub.Enabled,
 		AutoUpdate:     dbSub.AutoUpdate,
 		UpdateInterval: dbSub.UpdateInterval,
 		LastUpdate:     dbSub.LastUpdate,
@@ -124,7 +122,6 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 		ID:             sub.ID,
 		Name:           sub.Name,
 		URL:            sub.URL,
-		Enabled:        sub.Enabled,
 		AutoUpdate:     sub.AutoUpdate,
 		UpdateInterval: sub.UpdateInterval,
 		LastUpdate:     sub.LastUpdate,
@@ -162,13 +159,12 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 	dbSub := &repo.Subscription{
 		Name:           sub.Name,
 		URL:            sub.URL,
-		Enabled:        sub.Enabled,
 		AutoUpdate:     sub.AutoUpdate,
 		UpdateInterval: sub.UpdateInterval,
 		FetchMode:      sub.FetchMode,
 		ProxyURL:       sub.ProxyURL,
 	}
-	cols := []string{"name", "url", "enabled", "auto_update", "update_interval", "fetch_mode", "proxy_url"}
+	cols := []string{"name", "url", "auto_update", "update_interval", "fetch_mode", "proxy_url"}
 
 	// Only include last_update when an explicit value is provided.
 	if !sub.LastUpdate.IsZero() {

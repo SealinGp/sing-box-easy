@@ -152,8 +152,8 @@ func (au *AutoUpdater) CheckSubscriptions() {
 	failedCount := 0
 
 	for _, sub := range subscriptions {
-		// Skip disabled or non-auto-update subscriptions
-		if !sub.Enabled || !sub.AutoUpdate {
+		// Skip subscriptions that don't have auto-update enabled
+		if !sub.AutoUpdate {
 			continue
 		}
 

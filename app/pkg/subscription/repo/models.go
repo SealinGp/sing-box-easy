@@ -7,7 +7,6 @@ type Subscription struct {
 	ID             string    `xorm:"'id' pk varchar(255)" json:"id"`
 	Name           string    `xorm:"'name' notnull index" json:"name"`
 	URL            string    `xorm:"'url' notnull text" json:"url"`
-	Enabled        bool      `xorm:"'enabled' notnull default(1)" json:"enabled"`
 	AutoUpdate     bool      `xorm:"'auto_update' notnull default(0)" json:"auto_update"`
 	UpdateInterval string    `xorm:"'update_interval' default('24h')" json:"update_interval"`
 	LastUpdate     time.Time `xorm:"'last_update' null" json:"last_update,omitempty"`
