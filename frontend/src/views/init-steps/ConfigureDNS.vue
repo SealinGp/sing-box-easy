@@ -89,7 +89,7 @@ const dnsPresets = computed<DNSPreset[]>(() => [
       {
         type: 'https',
         tag: 'dns-google',
-        server: 'dns.google',
+        server: '8.8.8.8',
         server_port: 443,
         tls: {},
       }
