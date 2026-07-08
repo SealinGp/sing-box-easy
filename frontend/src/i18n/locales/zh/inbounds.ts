@@ -38,6 +38,11 @@ export default {
     mtu: 'MTU',
     mtuPlaceholder: '1500',
     autoRoute: '自动路由',
+    ssMethod: '加密方法 *',
+    ssPassword: '密码 *',
+    generate: '生成',
+    ssPasswordHelp2022: 'AEAD-2022 方法需要：{len} 字节 Base64 编码的密钥。',
+    ssPasswordHelpOther: '任意密码字符串。',
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -79,5 +84,7 @@ export default {
     tagRequired: '标签为必填项',
     typeRequired: '类型为必填项',
     listenPortRequired: '监听端口为必填项',
+    ssMethodRequired: '加密方法为必填项',
+    ssPasswordRequired: '密码为必填项',
   },
 }

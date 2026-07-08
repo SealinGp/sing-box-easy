@@ -38,6 +38,11 @@ export default {
     mtu: 'MTU',
     mtuPlaceholder: '1500',
     autoRoute: 'Auto Route',
+    ssMethod: 'Encryption Method *',
+    ssPassword: 'Password *',
+    generate: 'Generate',
+    ssPasswordHelp2022: 'Required: {len}-byte base64 encoded key for AEAD-2022 methods.',
+    ssPasswordHelpOther: 'Any password string.',
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -79,5 +84,7 @@ export default {
     tagRequired: 'Tag is required',
     typeRequired: 'Type is required',
     listenPortRequired: 'Listen port is required',
+    ssMethodRequired: 'Encryption method is required',
+    ssPasswordRequired: 'Password is required',
   },
 }

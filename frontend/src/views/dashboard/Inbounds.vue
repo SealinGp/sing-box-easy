@@ -144,6 +144,29 @@ const handleSave = async () => {
     return
   }
 
+  // Shadowsocks validation
+  if (currentInbound.value.type === 'shadowsocks') {
+    const ssInbound = currentInbound.value as any
+    if (!ssInbound.method) {
+      toast.add({
+        severity: 'error',
+        summary: t('inbounds.validation.title'),
+        detail: t('inbounds.validation.ssMethodRequired'),
+        life: 3000
+      })
+      return
+    }
+    if (ssInbound.method !== 'none' && !ssInbound.password) {
+      toast.add({
+        severity: 'error',
+        summary: t('inbounds.validation.title'),
+        detail: t('inbounds.validation.ssPasswordRequired'),
+        life: 3000
+      })
+      return
+    }
+  }
+
   loading.value = true
   try {
     if (isEditMode.value) {
@@ -213,6 +236,47 @@ const handleDelete = async () => {
     loading.value = false
   }
 }
+
+const generatePassword = () => {
+  const method = (currentInbound.value as any).method || '2022-blake3-aes-128-gcm'
+  if (method === 'none') {
+    ;(currentInbound.value as any).password = ''
+    return
+  }
+  
+  if (method.startsWith('2022-blake3-')) {
+    const keyLen = method.includes('128') ? 16 : 32
+    const arr = new Uint8Array(keyLen)
+    window.crypto.getRandomValues(arr)
+    let binary = ''
+    const len = arr.byteLength
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(arr[i] as number)
+    }
+    ;(currentInbound.value as any).password = window.btoa(binary)
+  } else {
+    // Generate a secure random string (32 characters)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = ''
+    const arr = new Uint8Array(32)
+    window.crypto.getRandomValues(arr)
+    for (let i = 0; i < arr.length; i++) {
+      result += chars.charAt((arr[i] as number) % chars.length)
+    }
+    ;(currentInbound.value as any).password = result
+  }
+}
+
+watch(() => currentInbound.value.type, (newType) => {
+  if (newType === 'shadowsocks') {
+    if (!(currentInbound.value as any).method) {
+      ;(currentInbound.value as any).method = '2022-blake3-aes-128-gcm'
+    }
+    if (!(currentInbound.value as any).password) {
+      generatePassword()
+    }
+  }
+})
 
 // Watch for modal close to reset form state
 watch(showModal, (newValue) => {
@@ -450,6 +514,45 @@ onMounted(fetchInbounds)
                       type="number"
                       :placeholder="$t('inbounds.form.listenPortPlaceholder')"
                     />
+                  </div>
+
+                  <!-- Shadowsocks Options -->
+                  <div v-if="currentInbound.type === 'shadowsocks'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssMethod') }}</label>
+                      <select class="select" v-model="(currentInbound as any).method" @change="generatePassword">
+                        <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm</option>
+                        <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
+                        <option value="2022-blake3-chacha20-poly1305">2022-blake3-chacha20-poly1305</option>
+                        <option value="none">none</option>
+                        <option value="aes-128-gcm">aes-128-gcm</option>
+                        <option value="aes-192-gcm">aes-192-gcm</option>
+                        <option value="aes-256-gcm">aes-256-gcm</option>
+                        <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                        <option value="xchacha20-ietf-poly1305">xchacha20-ietf-poly1305</option>
+                      </select>
+                    </div>
+
+                    <div v-if="(currentInbound as any).method !== 'none'">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssPassword') }}</label>
+                      <div class="flex gap-2">
+                        <div class="flex-1">
+                          <Input
+                            v-model="(currentInbound as any).password"
+                            placeholder="Password or Key"
+                          />
+                        </div>
+                        <Button type="button" @click="generatePassword" variant="secondary" class="shrink-0 flex items-center justify-center">
+                          {{ $t('inbounds.form.generate') }}
+                        </Button>
+                      </div>
+                      <p class="mt-1 text-xs text-gray-500">
+                        {{ (currentInbound as any).method?.startsWith('2022-blake3-')
+                          ? $t('inbounds.form.ssPasswordHelp2022', { len: (currentInbound as any).method.includes('128') ? 16 : 32 })
+                          : $t('inbounds.form.ssPasswordHelpOther')
+                        }}
+                      </p>
+                    </div>
                   </div>
 
                   <div class="flex items-center gap-2">
