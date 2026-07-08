@@ -6,6 +6,17 @@ import { useNodeRulesStore } from '../../stores/noderules'
 import PopConfirm from '../../components/PopConfirm.vue'
 import type { Filter, Group, Matcher, MatcherType, FilterOutboundType } from '../../types/noderules'
 import { URLTEST_DEFAULTS } from '../../types/noderules'
+import {
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+  XMarkIcon,
+  AdjustmentsHorizontalIcon,
+  SparklesIcon,
+  InformationCircleIcon,
+  ChevronRightIcon,
+  ChevronDownIcon
+} from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 const store = useNodeRulesStore()
@@ -293,31 +304,46 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 animate-fade-in">
     <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
-      <div class="flex gap-2">
-        <button class="btn btn-sm" :disabled="loading" @click="store.runPreview()">
+      <div class="flex items-center gap-3">
+        <button
+          class="bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer"
+          :disabled="loading"
+          @click="store.runPreview()"
+        >
           {{ t('nodeRules.preview') }}
         </button>
-        <button class="btn btn-sm btn-primary" :disabled="applying" @click="doApply">
+        <button
+          class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md transition-colors cursor-pointer"
+          :disabled="applying"
+          @click="doApply"
+        >
           {{ applying ? t('nodeRules.applying') : t('nodeRules.applyNow') }}
         </button>
       </div>
     </div>
 
-    <div v-if="notice" class="alert alert-info text-sm">{{ notice }}</div>
-    <div v-if="error" class="alert alert-error text-sm">{{ error }}</div>
+    <!-- Alert Messages -->
+    <div v-if="notice" class="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-700 dark:text-violet-400 text-sm animate-fade-in flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-violet-500 animate-ping"></span>
+      <span>{{ notice }}</span>
+    </div>
+    <div v-if="error" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm animate-fade-in flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+      <span>{{ error }}</span>
+    </div>
 
     <!-- Templates -->
-    <section v-if="templates.length" class="space-y-2">
-      <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ t('nodeRules.templates') }}</h2>
+    <section v-if="templates.length" class="space-y-3 bg-gray-50/50 dark:bg-slate-900/40 border border-gray-100 dark:border-gray-800/80 p-4 rounded-2xl">
+      <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ t('nodeRules.templates') }}</h2>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="tpl in templates"
           :key="tpl.id"
-          class="badge badge-outline gap-1 cursor-pointer hover:badge-primary"
+          class="border border-violet-200 dark:border-violet-850 hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer"
           :title="tpl.description"
           @click="addTemplate(tpl.id)"
         >
@@ -326,328 +352,174 @@ onMounted(async () => {
       </div>
     </section>
 
+    <!-- Filters & Groups Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Filters panel -->
-      <section class="card bg-base-100 shadow-sm border border-base-200 overflow-visible">
-        <div class="card-body p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <h2 class="card-title text-base">{{ t('nodeRules.filters') }}</h2>
-            <button class="btn btn-xs btn-primary" @click="startCreateFilter">+ {{ t('nodeRules.addFilter') }}</button>
-          </div>
+      <section class="space-y-4 flex flex-col">
+        <div class="flex items-center justify-between">
+          <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <AdjustmentsHorizontalIcon class="h-5 w-5 text-violet-500" />
+            {{ t('nodeRules.filters') }}
+          </h2>
+          <button
+            class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+            @click="startCreateFilter"
+          >
+            <PlusIcon class="h-3.5 w-3.5" />
+            {{ t('nodeRules.addFilter') }}
+          </button>
+        </div>
 
-          <!-- Filter create/edit form -->
-          <div v-if="editingFilterId !== null" class="rounded-lg border border-base-300 p-3 space-y-2 bg-base-200/40">
-            <div class="flex gap-2">
-              <input v-model="filterForm.name" :placeholder="t('nodeRules.filterName')" class="input input-sm input-bordered flex-1" />
-              <select v-model="filterForm.outbound_type" class="select select-sm select-bordered">
-                <option value="urltest">urltest</option>
-                <option value="selector">selector</option>
-              </select>
-            </div>
-
-            <!-- Priority (with a label explaining the number) -->
-            <label class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 dark:text-gray-400 w-28 shrink-0">{{ t('nodeRules.priorityLabel') }}</span>
-              <input v-model.number="filterForm.priority" type="number" class="input input-xs input-bordered w-24" />
-              <span class="text-xs text-gray-400">{{ t('nodeRules.priorityHint') }}</span>
-            </label>
-
-            <!-- urltest health-check settings (only relevant for urltest) -->
-            <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-1 rounded-md bg-base-100/60 p-2 border border-base-200">
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('nodeRules.urltestSettings') }}</div>
-              <label class="flex items-center gap-2">
-                <span class="text-xs text-gray-500 w-28 shrink-0">{{ t('nodeRules.testUrl') }}</span>
-                <input v-model="filterForm.test_url" class="input input-xs input-bordered flex-1" placeholder="http://www.gstatic.com/generate_204" />
-              </label>
-              <div class="flex gap-2">
-                <label class="flex items-center gap-2 flex-1">
-                  <span class="text-xs text-gray-500 w-28 shrink-0">{{ t('nodeRules.testInterval') }}</span>
-                  <input v-model="filterForm.test_interval" class="input input-xs input-bordered w-24" placeholder="10s" />
-                </label>
-                <label class="flex items-center gap-2 flex-1">
-                  <span class="text-xs text-gray-500 shrink-0">{{ t('nodeRules.testTolerance') }}</span>
-                  <input v-model.number="filterForm.test_tolerance" type="number" min="0" class="input input-xs input-bordered w-24" placeholder="200" />
-                </label>
-              </div>
-            </div>
-
-            <!-- How matching works (collapsible explainer) -->
-            <details class="rounded-md border border-base-200 bg-base-100/60 text-xs">
-              <summary class="cursor-pointer select-none px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300">
-                ⓘ {{ t('nodeRules.help.toggle') }}
-              </summary>
-              <div class="px-2 pb-2 pt-1 space-y-2 text-gray-600 dark:text-gray-300">
-                <p>{{ t('nodeRules.help.intro') }}</p>
-                <ul class="space-y-1.5">
-                  <li>
-                    <code class="badge badge-ghost badge-xs">keyword</code>
-                    <span class="font-medium">{{ t('nodeRules.help.keywordTitle') }}</span>
-                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.keywordDesc') }}</span>
-                  </li>
-                  <li>
-                    <code class="badge badge-ghost badge-xs">code</code>
-                    <span class="font-medium">{{ t('nodeRules.help.codeTitle') }}</span>
-                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.codeDesc') }}</span>
-                  </li>
-                  <li>
-                    <code class="badge badge-ghost badge-xs">emoji</code>
-                    <span class="font-medium">{{ t('nodeRules.help.emojiTitle') }}</span>
-                    <span class="block text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.emojiDesc') }}</span>
-                  </li>
-                </ul>
-                <p class="text-gray-500 dark:text-gray-400">{{ t('nodeRules.help.multi') }}</p>
-
-                <!-- Supported region codes (catalog from the backend) -->
-                <div v-if="keywords.length" class="space-y-1 border-t border-base-200 pt-2">
-                  <div class="font-medium text-gray-600 dark:text-gray-300">{{ t('nodeRules.help.codesTitle') }}</div>
-                  <div class="flex flex-wrap gap-1">
-                    <button
-                      v-for="kw in keywords"
-                      :key="kw.code"
-                      type="button"
-                      class="badge badge-ghost badge-xs cursor-pointer hover:badge-primary"
-                      :title="kw.synonyms.join(' · ')"
-                      @click="addCodeMatcher(kw.code)"
-                    >
-                      {{ kw.code }} · {{ kw.label }}
-                    </button>
-                  </div>
-                  <div class="text-gray-400">{{ t('nodeRules.help.codesHint') }}</div>
-                </div>
-              </div>
-            </details>
-
-            <!-- Matchers -->
-            <div class="space-y-1">
-              <div v-for="(m, idx) in filterForm.matchers" :key="idx" class="flex gap-2 items-center">
-                <select v-model="m.type" class="select select-xs select-bordered">
-                  <option value="keyword">keyword</option>
-                  <option value="code">code</option>
-                  <option value="emoji">emoji</option>
-                </select>
-                <input v-model="m.value" class="input input-xs input-bordered flex-1" :placeholder="t('nodeRules.matcherValue')" />
-                <button class="btn btn-xs btn-ghost" @click="removeMatcher(idx)">✕</button>
-              </div>
-              <div class="flex flex-wrap gap-2 items-center pt-1">
-                <button class="btn btn-xs" @click="addMatcher('keyword')">+ {{ t('nodeRules.addMatcher') }}</button>
-                <!-- Searchable country-code picker: focus shows all, type to filter, click to add a code matcher -->
-                <div v-if="keywords.length" class="relative">
-                  <input
-                    v-model="codeQuery"
-                    class="input input-xs input-bordered w-64 max-w-full"
-                    :placeholder="t('nodeRules.addCountry')"
-                    @focus="codeOpen = true"
-                    @blur="codeOpen = false"
-                  />
-                  <div
-                    v-if="codeOpen"
-                    class="absolute z-20 mt-1 max-h-48 w-72 max-w-[90vw] overflow-auto rounded-md border border-base-300 bg-base-100 shadow-lg text-xs"
-                  >
-                    <button
-                      v-for="kw in filteredCodeKeywords"
-                      :key="kw.code"
-                      type="button"
-                      class="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-primary hover:text-primary-content"
-                      :title="kw.synonyms.join(' · ')"
-                      @mousedown.prevent="pickCodeMatcher(kw.code)"
-                    >
-                      {{ kw.label }} ({{ kw.code }})
-                    </button>
-                    <div v-if="!filteredCodeKeywords.length" class="px-2 py-1 text-gray-400">
-                      {{ t('nodeRules.noCodeMatches') }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Excludes (deny-list): nodes kept OUT even when a matcher hits them -->
-            <div class="space-y-1 rounded-md border border-error/30 bg-error/5 p-2">
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {{ t('nodeRules.excludes') }}
-                <span class="text-gray-400 font-normal">{{ t('nodeRules.excludesHint') }}</span>
-              </div>
-              <div v-for="(m, idx) in filterForm.excludes" :key="idx" class="flex gap-2 items-center">
-                <select v-model="m.type" class="select select-xs select-bordered">
-                  <option value="keyword">keyword</option>
-                  <option value="code">code</option>
-                  <option value="emoji">emoji</option>
-                </select>
-                <input v-model="m.value" class="input input-xs input-bordered flex-1" :placeholder="t('nodeRules.matcherValue')" />
-                <button class="btn btn-xs btn-ghost" @click="removeExclude(idx)">✕</button>
-              </div>
-              <div class="flex flex-wrap gap-2 items-center pt-1">
-                <button class="btn btn-xs" @click="addExclude('keyword')">+ {{ t('nodeRules.addExclude') }}</button>
-                <!-- Searchable node picker: focus shows all nodes, type to filter, click to exclude -->
-                <div v-if="endpointTags.length" class="relative">
-                  <input
-                    v-model="excludeQuery"
-                    class="input input-xs input-bordered w-64 max-w-full"
-                    :placeholder="t('nodeRules.excludeNode')"
-                    @focus="excludeOpen = true"
-                    @blur="excludeOpen = false"
-                  />
-                  <div
-                    v-if="excludeOpen"
-                    class="absolute z-20 mt-1 max-h-48 w-80 max-w-[90vw] overflow-auto rounded-md border border-base-300 bg-base-100 shadow-lg text-xs"
-                  >
-                    <button
-                      v-for="tag in filteredExcludeNodes"
-                      :key="tag"
-                      type="button"
-                      class="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-primary hover:text-primary-content"
-                      :title="tag"
-                      @mousedown.prevent="pickExcludeNode(tag)"
-                    >
-                      {{ tag }}
-                    </button>
-                    <div v-if="!filteredExcludeNodes.length" class="px-2 py-1 text-gray-400">
-                      {{ t('nodeRules.noNodeMatches') }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-1">
-              <button class="btn btn-xs btn-ghost" @click="cancelFilterEdit">{{ t('nodeRules.cancel') }}</button>
-              <button class="btn btn-xs btn-primary" @click="saveFilter">{{ t('nodeRules.save') }}</button>
-            </div>
-          </div>
-
-          <!-- Filter list -->
-          <ul class="space-y-2">
-            <li
-              v-for="f in filters"
-              :key="f.id"
-              class="rounded-lg border border-base-200 p-2 flex items-start justify-between gap-2"
-            >
-              <div class="min-w-0">
+        <!-- Filter list -->
+        <ul class="space-y-3">
+          <li
+            v-for="f in filters"
+            :key="f.id"
+            class="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
+              <div class="min-w-0 space-y-2">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-medium truncate">{{ f.name }}</span>
-                  <span class="badge badge-xs">{{ f.outbound_type }}</span>
-                  <span v-if="f.is_fallback" class="badge badge-xs badge-warning">{{ t('nodeRules.fallback') }}</span>
-                  <span class="text-xs text-gray-400">P{{ f.priority }}</span>
+                  <span class="font-bold text-sm text-gray-900 dark:text-white truncate">{{ f.name }}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400">
+                    {{ f.outbound_type }}
+                  </span>
+                  <span v-if="f.is_fallback" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                    {{ t('nodeRules.fallback') }}
+                  </span>
+                  <span class="text-xs text-gray-400 font-mono">P{{ f.priority }}</span>
                 </div>
-                <div v-if="!f.is_fallback" class="flex flex-wrap gap-1 mt-1">
-                  <span v-for="(m, i) in f.matchers" :key="i" class="badge badge-ghost badge-xs">{{ m.value }}</span>
-                  <span v-if="!f.matchers.length" class="text-xs text-gray-400">{{ t('nodeRules.noMatchers') }}</span>
+                <div v-if="!f.is_fallback" class="flex flex-wrap gap-1">
+                  <span v-for="(m, i) in f.matchers" :key="i" class="px-2 py-0.5 rounded-md text-[11px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium">
+                    {{ m.value }}
+                  </span>
+                  <span v-if="!f.matchers.length" class="text-xs text-gray-400 italic">{{ t('nodeRules.noMatchers') }}</span>
                   <span
                     v-for="(m, i) in (f.excludes ?? [])"
                     :key="`x${i}`"
-                    class="badge badge-xs badge-error badge-outline gap-0.5"
+                    class="px-2 py-0.5 rounded-md text-[11px] bg-red-50/50 dark:bg-red-950/10 border border-red-200/40 dark:border-red-950/20 text-red-600 dark:text-red-400 font-medium"
                     :title="t('nodeRules.excludeBadgeTitle')"
-                  >− {{ m.value }}</span>
+                  >
+                    − {{ m.value }}
+                  </span>
                 </div>
-                <div v-else class="text-xs text-gray-400 mt-1">{{ t('nodeRules.fallbackHint') }}</div>
+                <div v-else class="text-xs text-gray-400">{{ t('nodeRules.fallbackHint') }}</div>
               </div>
               <div class="flex gap-1 shrink-0">
-                <button class="btn btn-xs btn-ghost" @click="startEditFilter(f)">{{ t('nodeRules.edit') }}</button>
+                <button
+                  @click="startEditFilter(f)"
+                  class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  :title="t('nodeRules.edit')"
+                >
+                  <PencilIcon class="h-4 w-4" />
+                </button>
                 <PopConfirm
                   v-if="!f.is_fallback"
                   :message="t('nodeRules.confirmDeleteFilter', { name: f.name })"
                   :confirm-label="t('nodeRules.delete')"
                   tone="danger"
+                  triggerClass="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                   @confirm="removeFilter(f)"
                 >
-                  {{ t('nodeRules.delete') }}
+                  <TrashIcon class="h-4 w-4" />
                 </PopConfirm>
               </div>
             </li>
           </ul>
-        </div>
       </section>
 
       <!-- Groups panel -->
-      <section class="card bg-base-100 shadow-sm border border-base-200 overflow-visible">
-        <div class="card-body p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <h2 class="card-title text-base">{{ t('nodeRules.groups') }}</h2>
-            <button class="btn btn-xs btn-primary" @click="startCreateGroup">+ {{ t('nodeRules.addGroup') }}</button>
-          </div>
+      <section class="space-y-4 flex flex-col">
+        <div class="flex items-center justify-between">
+          <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <SparklesIcon class="h-5 w-5 text-violet-500" />
+            {{ t('nodeRules.groups') }}
+          </h2>
+          <button
+            class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+            @click="startCreateGroup"
+          >
+            <PlusIcon class="h-3.5 w-3.5" />
+            {{ t('nodeRules.addGroup') }}
+          </button>
+        </div>
 
-          <!-- Group create/edit form -->
-          <div v-if="editingGroupId !== null" class="rounded-lg border border-base-300 p-3 space-y-2 bg-base-200/40">
-            <input v-model="groupForm.name" :placeholder="t('nodeRules.groupName')" class="input input-sm input-bordered w-full" />
-            <label class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 dark:text-gray-400 w-28 shrink-0">{{ t('nodeRules.priorityLabel') }}</span>
-              <input v-model.number="groupForm.priority" type="number" class="input input-xs input-bordered w-24" />
-              <span class="text-xs text-gray-400">{{ t('nodeRules.priorityHint') }}</span>
-            </label>
-            <div class="flex flex-wrap gap-2">
-              <label
-                v-for="f in filters"
-                :key="f.id"
-                class="badge gap-1 cursor-pointer"
-                :class="groupForm.filter_ids.includes(f.id) ? 'badge-primary' : 'badge-outline'"
-                @click="toggleGroupFilter(f.id)"
-              >
-                {{ f.name }}
-              </label>
-            </div>
-            <div class="flex justify-end gap-2 pt-1">
-              <button class="btn btn-xs btn-ghost" @click="cancelGroupEdit">{{ t('nodeRules.cancel') }}</button>
-              <button class="btn btn-xs btn-primary" @click="saveGroup">{{ t('nodeRules.save') }}</button>
-            </div>
-          </div>
-
-          <!-- Group list -->
-          <ul class="space-y-2">
-            <li v-for="g in groups" :key="g.id" class="rounded-lg border border-base-200 p-2 flex items-start justify-between gap-2">
-              <div class="min-w-0">
+        <!-- Group list -->
+        <ul class="space-y-3">
+          <li
+            v-for="g in groups"
+            :key="g.id"
+            class="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
+              <div class="min-w-0 space-y-2">
                 <div class="flex items-center gap-2">
-                  <span class="font-medium truncate">{{ g.name }}</span>
-                  <span class="text-xs text-gray-400">P{{ g.priority }}</span>
+                  <span class="font-bold text-sm text-gray-900 dark:text-white truncate">{{ g.name }}</span>
+                  <span class="text-xs text-gray-400 font-mono">P{{ g.priority }}</span>
                 </div>
-                <div class="flex flex-wrap gap-1 mt-1">
-                  <span v-for="fid in g.filter_ids" :key="fid" class="badge badge-ghost badge-xs">{{ filterName(fid) }}</span>
-                  <span v-if="!g.filter_ids.length" class="text-xs text-gray-400">{{ t('nodeRules.noFilters') }}</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="fid in g.filter_ids" :key="fid" class="px-2 py-0.5 rounded-md text-[11px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium">
+                    {{ filterName(fid) }}
+                  </span>
+                  <span v-if="!g.filter_ids.length" class="text-xs text-gray-400 italic">{{ t('nodeRules.noFilters') }}</span>
                 </div>
               </div>
               <div class="flex gap-1 shrink-0">
-                <button class="btn btn-xs btn-ghost" @click="startEditGroup(g)">{{ t('nodeRules.edit') }}</button>
+                <button
+                  @click="startEditGroup(g)"
+                  class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  :title="t('nodeRules.edit')"
+                >
+                  <PencilIcon class="h-4 w-4" />
+                </button>
                 <PopConfirm
                   :message="t('nodeRules.confirmDeleteGroup', { name: g.name })"
                   :confirm-label="t('nodeRules.delete')"
                   tone="danger"
+                  triggerClass="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                   @confirm="removeGroup(g)"
                 >
-                  {{ t('nodeRules.delete') }}
+                  <TrashIcon class="h-4 w-4" />
                 </PopConfirm>
               </div>
             </li>
-            <li v-if="!groups.length" class="text-xs text-gray-400">{{ t('nodeRules.noGroups') }}</li>
+            <li v-if="!groups.length" class="text-xs text-gray-400 text-center py-6 bg-gray-50/20 dark:bg-slate-900/20 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl">
+              {{ t('nodeRules.noGroups') }}
+            </li>
           </ul>
-        </div>
       </section>
     </div>
 
-    <!-- Preview -->
-    <section v-if="preview" class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body p-4 space-y-3">
-        <h2 class="card-title text-base">
-          {{ t('nodeRules.previewResult') }}
-          <span class="text-sm font-normal text-gray-400">({{ t('nodeRules.endpoints', { n: preview.endpoints }) }})</span>
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          <div v-for="pf in preview.filters" :key="pf.id" class="rounded-lg border border-base-200 p-2 self-start">
+    <!-- Preview Section -->
+    <section v-if="preview" class="space-y-4">
+      <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <InformationCircleIcon class="h-5 w-5 text-violet-500" />
+        {{ t('nodeRules.previewResult') }}
+        <span class="text-sm font-normal text-gray-400">({{ t('nodeRules.endpoints', { n: preview.endpoints }) }})</span>
+      </h2>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div v-for="pf in preview.filters" :key="pf.id" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 p-4 self-start shadow-sm hover:shadow-md transition-shadow duration-200">
             <button
-              class="w-full flex items-center justify-between gap-2 cursor-pointer"
+              class="w-full flex items-center justify-between gap-2 cursor-pointer focus:outline-none"
               :disabled="!pf.member_count"
               @click="togglePreview(pf.id)"
             >
-              <span class="font-medium truncate flex items-center gap-1 min-w-0">
-                <span v-if="pf.member_count" class="text-gray-400 text-xs shrink-0">{{ expandedPreview.has(pf.id) ? '▾' : '▸' }}</span>
+              <span class="font-bold text-sm text-gray-900 dark:text-white truncate flex items-center gap-1.5 min-w-0">
+                <span v-if="pf.member_count" class="text-gray-400 shrink-0">
+                  <ChevronDownIcon v-if="expandedPreview.has(pf.id)" class="h-3.5 w-3.5" />
+                  <ChevronRightIcon v-else class="h-3.5 w-3.5" />
+                </span>
                 <span class="truncate">{{ pf.name }}</span>
-                <span v-if="pf.is_fallback" class="badge badge-xs badge-warning shrink-0">{{ t('nodeRules.fallback') }}</span>
+                <span v-if="pf.is_fallback" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 shrink-0">{{ t('nodeRules.fallback') }}</span>
               </span>
-              <span class="badge badge-sm shrink-0" :class="pf.member_count ? 'badge-primary' : 'badge-ghost'">{{ pf.member_count }}</span>
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold shrink-0" :class="pf.member_count ? 'bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-400'">
+                {{ pf.member_count }}
+              </span>
             </button>
-            <div v-if="expandedPreview.has(pf.id)" class="mt-2 max-h-44 overflow-y-auto space-y-0.5 border-t border-base-200 pt-2">
+            <div v-if="expandedPreview.has(pf.id)" class="mt-2 max-h-44 overflow-y-auto space-y-1 border-t border-gray-100 dark:border-gray-800 pt-2 text-xs font-mono">
               <div
                 v-for="(tag, i) in pf.members"
                 :key="i"
-                class="text-xs text-gray-600 dark:text-gray-300 truncate"
+                class="text-gray-600 dark:text-gray-350 truncate hover:text-gray-900 dark:hover:text-white py-0.5"
                 :title="tag"
               >
                 {{ tag }}
@@ -657,23 +529,366 @@ onMounted(async () => {
         </div>
 
         <!-- Unmatched nodes (fall through to the fallback) -->
-        <div v-if="preview.unmatched.length" class="rounded-lg border border-warning/40 bg-warning/5 p-2">
-          <button class="w-full flex items-center gap-1 text-xs text-warning cursor-pointer" @click="showUnmatched = !showUnmatched">
-            <span class="shrink-0">{{ showUnmatched ? '▾' : '▸' }}</span>
+        <div v-if="preview.unmatched.length" class="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-4 shadow-sm">
+          <button class="w-full flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 cursor-pointer focus:outline-none" @click="showUnmatched = !showUnmatched">
+            <span class="shrink-0">
+              <ChevronDownIcon v-if="showUnmatched" class="h-3.5 w-3.5" />
+              <ChevronRightIcon v-else class="h-3.5 w-3.5" />
+            </span>
             <span>{{ t('nodeRules.unmatched', { n: preview.unmatched.length }) }}</span>
           </button>
-          <div v-if="showUnmatched" class="mt-2 max-h-44 overflow-y-auto space-y-0.5 border-t border-warning/30 pt-2">
+          <div v-if="showUnmatched" class="mt-2 max-h-44 overflow-y-auto space-y-1 border-t border-amber-200/50 dark:border-amber-950/20 pt-2 text-xs font-mono">
             <div
               v-for="(tag, i) in preview.unmatched"
               :key="i"
-              class="text-xs text-gray-600 dark:text-gray-300 truncate"
+              class="text-gray-600 dark:text-gray-350 truncate py-0.5 hover:text-gray-900 dark:hover:text-white"
               :title="tag"
             >
               {{ tag }}
             </div>
           </div>
         </div>
-      </div>
     </section>
+
+    <!-- Create/Edit Filter Modal -->
+    <div v-if="editingFilterId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full shadow-2xl animate-scale-up flex flex-col my-8 max-h-[85vh]">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <AdjustmentsHorizontalIcon class="h-5 w-5 text-violet-500" />
+            {{ editingFilterId === '' ? $t('nodeRules.modal.addFilter') : $t('nodeRules.modal.editFilter') }}
+          </h3>
+          <button @click="cancelFilterEdit" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+          <!-- Basic Settings Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Basic Settings</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Filter Name</label>
+                <input
+                  v-model="filterForm.name"
+                  :placeholder="t('nodeRules.filterName')"
+                  class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-violet-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Outbound Type</label>
+                <select
+                  v-model="filterForm.outbound_type"
+                  class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-violet-500"
+                >
+                  <option value="urltest">urltest</option>
+                  <option value="selector">selector</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex justify-between">
+                <span>Priority</span>
+                <span class="text-gray-400 font-normal">Filters execute in descending order (higher first)</span>
+              </label>
+              <input
+                v-model.number="filterForm.priority"
+                type="number"
+                class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-violet-500"
+              />
+            </div>
+          </div>
+
+          <!-- Rule Matchers Section -->
+          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+            <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              Rule Matchers
+              <span class="text-[11px] font-normal text-gray-400 normal-case">(Matches node names by keywords, country codes, or emoji)</span>
+            </h4>
+
+            <!-- Existing Matchers list -->
+            <div class="space-y-2 max-h-40 overflow-y-auto">
+              <div v-for="(m, idx) in filterForm.matchers" :key="idx" class="flex gap-2 items-center bg-gray-50 dark:bg-slate-800/40 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
+                <select
+                  v-model="m.type"
+                  class="bg-transparent text-xs font-bold text-gray-500 dark:text-gray-400 focus:outline-none border-r border-gray-250 dark:border-gray-700 pr-2 cursor-pointer"
+                >
+                  <option value="keyword">keyword</option>
+                  <option value="code">code</option>
+                  <option value="emoji">emoji</option>
+                </select>
+                <input
+                  v-model="m.value"
+                  class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"
+                  :placeholder="t('nodeRules.matcherValue')"
+                />
+                <button @click="removeMatcher(idx)" class="text-gray-400 hover:text-red-500 p-1 cursor-pointer">
+                  <XMarkIcon class="h-4 w-4" />
+                </button>
+              </div>
+              <div v-if="!filterForm.matchers.length" class="text-xs text-gray-400 text-center py-3 bg-gray-50/40 dark:bg-slate-800/10 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+                No matchers configured. This filter will not match any nodes.
+              </div>
+            </div>
+
+            <!-- Add Matcher Buttons -->
+            <div class="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                @click="addMatcher('keyword')"
+                class="border border-violet-200 dark:border-violet-850 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-600 dark:text-violet-400 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+              >
+                + Add Keyword
+              </button>
+              <button
+                type="button"
+                @click="addMatcher('emoji')"
+                class="border border-violet-200 dark:border-violet-850 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-600 dark:text-violet-400 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+              >
+                + Add Emoji
+              </button>
+
+              <!-- Country Picker Searchable Input -->
+              <div v-if="keywords.length" class="relative">
+                <input
+                  v-model="codeQuery"
+                  class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-violet-500 w-48"
+                  :placeholder="t('nodeRules.addCountry')"
+                  @focus="codeOpen = true"
+                  @blur="codeOpen = false"
+                />
+                <div
+                  v-if="codeOpen"
+                  class="absolute z-20 mt-1 max-h-48 w-60 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-xl text-xs"
+                >
+                  <button
+                    v-for="kw in filteredCodeKeywords"
+                    :key="kw.code"
+                    type="button"
+                    class="block w-full cursor-pointer truncate px-3 py-2 text-left hover:bg-violet-50 dark:hover:bg-violet-950/30 text-gray-700 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400"
+                    :title="kw.synonyms.join(' · ')"
+                    @mousedown.prevent="pickCodeMatcher(kw.code)"
+                  >
+                    {{ kw.label }} ({{ kw.code }})
+                  </button>
+                  <div v-if="!filteredCodeKeywords.length" class="px-3 py-2 text-gray-400 text-center">
+                    {{ t('nodeRules.noCodeMatches') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rule Excludes Section -->
+          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+            <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              Exclude Rules (Deny-list)
+              <span class="text-[11px] font-normal text-gray-400 normal-case">(Keep nodes OUT even if they match)</span>
+            </h4>
+
+            <!-- Existing Excludes list -->
+            <div class="space-y-2 max-h-40 overflow-y-auto">
+              <div v-for="(m, idx) in filterForm.excludes" :key="idx" class="flex gap-2 items-center bg-red-50/20 dark:bg-red-950/5 p-1.5 rounded-xl border border-red-100/50 dark:border-red-950/20">
+                <select
+                  v-model="m.type"
+                  class="bg-transparent text-xs font-bold text-red-550 dark:text-red-400 focus:outline-none border-r border-red-200/50 dark:border-red-950/25 pr-2 cursor-pointer"
+                >
+                  <option value="keyword">keyword</option>
+                  <option value="code">code</option>
+                  <option value="emoji">emoji</option>
+                </select>
+                <input
+                  v-model="m.value"
+                  class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"
+                  :placeholder="t('nodeRules.matcherValue')"
+                />
+                <button @click="removeExclude(idx)" class="text-gray-400 hover:text-red-500 p-1 cursor-pointer">
+                  <XMarkIcon class="h-4 w-4" />
+                </button>
+              </div>
+              <div v-if="!filterForm.excludes.length" class="text-xs text-gray-400 text-center py-3 bg-gray-50/40 dark:bg-slate-800/10 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+                No exclusion rules configured.
+              </div>
+            </div>
+
+            <!-- Add Exclude Buttons -->
+            <div class="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                @click="addExclude('keyword')"
+                class="border border-red-200 dark:border-red-900/50 hover:bg-red-55/10 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+              >
+                + Add Exclude Keyword
+              </button>
+
+              <!-- Node Picker Searchable Input -->
+              <div v-if="endpointTags.length" class="relative">
+                <input
+                  v-model="excludeQuery"
+                  class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-red-500 w-48"
+                  :placeholder="t('nodeRules.excludeNode')"
+                  @focus="excludeOpen = true"
+                  @blur="excludeOpen = false"
+                />
+                <div
+                  v-if="excludeOpen"
+                  class="absolute z-20 mt-1 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-xl text-xs"
+                >
+                  <button
+                    v-for="tag in filteredExcludeNodes"
+                    :key="tag"
+                    type="button"
+                    class="block w-full cursor-pointer truncate px-3 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+                    :title="tag"
+                    @mousedown.prevent="pickExcludeNode(tag)"
+                  >
+                    {{ tag }}
+                  </button>
+                  <div v-if="!filteredExcludeNodes.length" class="px-3 py-2 text-gray-400 text-center">
+                    {{ t('nodeRules.noNodeMatches') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- urltest Advanced Settings Section -->
+          <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+            <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Health Check Settings (urltest)</h4>
+            <div class="grid grid-cols-1 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Test URL</label>
+                <input
+                  v-model="filterForm.test_url"
+                  class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-violet-500"
+                  placeholder="http://www.gstatic.com/generate_204"
+                />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Test Interval</label>
+                  <input
+                    v-model="filterForm.test_interval"
+                    class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-955 dark:text-white focus:outline-none"
+                    placeholder="10s"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Tolerance (ms)</label>
+                  <input
+                    v-model.number="filterForm.test_tolerance"
+                    type="number"
+                    min="0"
+                    class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-955 dark:text-white focus:outline-none"
+                    placeholder="200"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
+          <button
+            type="button"
+            @click="cancelFilterEdit"
+            class="px-5 py-2.5 text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-55/10 cursor-pointer"
+          >
+            {{ t('nodeRules.cancel') }}
+          </button>
+          <button
+            type="button"
+            @click="saveFilter"
+            class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
+          >
+            {{ t('nodeRules.save') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Group Modal -->
+    <div v-if="editingGroupId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full shadow-2xl animate-scale-up flex flex-col my-8 max-h-[85vh]">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <SparklesIcon class="h-5 w-5 text-violet-500" />
+            {{ editingGroupId === '' ? $t('nodeRules.modal.addGroup') : $t('nodeRules.modal.editGroup') }}
+          </h3>
+          <button @click="cancelGroupEdit" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 overflow-y-auto space-y-5 flex-1 min-h-0">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Group Name</label>
+            <input
+              v-model="groupForm.name"
+              :placeholder="t('nodeRules.groupName')"
+              class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-955 dark:text-white focus:outline-none focus:border-violet-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex justify-between">
+              <span>Priority</span>
+              <span class="text-gray-400 font-normal">lower number = matched first</span>
+            </label>
+            <input
+              v-model.number="groupForm.priority"
+              type="number"
+              class="w-full bg-gray-55 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-955 dark:text-white focus:outline-none focus:border-violet-500"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Select Filters to Include</label>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <button
+                v-for="f in filters"
+                :key="f.id"
+                type="button"
+                @click="toggleGroupFilter(f.id)"
+                class="px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer"
+                :class="groupForm.filter_ids.includes(f.id)
+                  ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                  : 'bg-gray-55 dark:bg-slate-800 border-gray-200 dark:border-gray-700 text-gray-750 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'"
+              >
+                {{ f.name }}
+              </button>
+            </div>
+            <div v-if="!filters.length" class="text-xs text-gray-400 py-1">
+              No filters available. Please add a filter first.
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
+          <button
+            type="button"
+            @click="cancelGroupEdit"
+            class="px-5 py-2.5 text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-55/10 cursor-pointer"
+          >
+            {{ t('nodeRules.cancel') }}
+          </button>
+          <button
+            type="button"
+            @click="saveGroup"
+            class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
+          >
+            {{ t('nodeRules.save') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

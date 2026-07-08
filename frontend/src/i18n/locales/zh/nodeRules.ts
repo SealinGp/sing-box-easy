@@ -11,6 +11,12 @@ export default {
   groups: '分组(组节点)',
   addFilter: '新增过滤器',
   addGroup: '新增分组',
+  modal: {
+    addFilter: '添加过滤器',
+    editFilter: '编辑过滤器',
+    addGroup: '添加分组',
+    editGroup: '编辑分组',
+  },
   filterName: '过滤器名称(如 亚洲、YouTube)',
   groupName: '分组名称(如 流媒体)',
   priority: '优先级(数值越小越先匹配)',

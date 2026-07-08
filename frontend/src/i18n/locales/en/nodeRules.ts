@@ -11,6 +11,12 @@ export default {
   groups: 'Groups (Group Nodes)',
   addFilter: 'Add Filter',
   addGroup: 'Add Group',
+  modal: {
+    addFilter: 'Add Filter',
+    editFilter: 'Edit Filter',
+    addGroup: 'Add Group',
+    editGroup: 'Edit Group',
+  },
   filterName: 'Filter name (e.g. Asia, YouTube)',
   groupName: 'Group name (e.g. Streaming)',
   priority: 'Priority (lower = matched first)',
