@@ -22,7 +22,7 @@
 #
 # Optional environment overrides:
 #   PORT             HTTP port for sing-box-easy (default: 8080)
-#   SINGBOX_CONFIG   Path to sing-box config.json (skips the interactive prompt)
+#   SINGBOX_CONFIG   Path to sing-box config.json (default: /etc/sing-box/config.json)
 #   INSTALL_DIR      Where to extract/run (default: current directory)
 #   ADMIN_USER       Default admin username (default: admin)
 #   ADMIN_PASS       Default admin password (default: admin)
@@ -39,7 +39,7 @@ DEFAULT_SINGBOX_CONFIG="/etc/sing-box/config.json"
 VERSION="${1:-${VERSION:-}}"                 # empty => latest release
 INSTALL_DIR="${INSTALL_DIR:-$(pwd)}"
 PORT="${PORT:-8080}"
-SINGBOX_CONFIG="${SINGBOX_CONFIG:-}"         # empty => detect/prompt
+SINGBOX_CONFIG="${SINGBOX_CONFIG:-}"         # empty => use default path
 ADMIN_USER="${ADMIN_USER:-}"
 ADMIN_PASS="${ADMIN_PASS:-}"
 IS_FIRST_INSTALL=false
@@ -154,29 +154,9 @@ ok "Extracted sing-box-easy + frontend"
 
 # ── 4. Resolve the sing-box config.json path ───────────────────────────────────
 if [ -z "$SINGBOX_CONFIG" ]; then
-    if [ -f "$DEFAULT_SINGBOX_CONFIG" ]; then
-        SINGBOX_CONFIG="$DEFAULT_SINGBOX_CONFIG"
-        ok "Found sing-box config: $SINGBOX_CONFIG"
-    else
-        warn "sing-box config not found at $DEFAULT_SINGBOX_CONFIG"
-        if [ ! -t 0 ]; then
-            die "no config found and shell is non-interactive; set SINGBOX_CONFIG=<path> and re-run"
-        fi
-        # Prompt until the user supplies a path to an existing file.
-        while true; do
-            printf "Enter the full path to your sing-box config.json: "
-            read -r SINGBOX_CONFIG
-            [ -n "$SINGBOX_CONFIG" ] || { warn "path cannot be empty"; continue; }
-            if [ -f "$SINGBOX_CONFIG" ]; then
-                ok "Using sing-box config: $SINGBOX_CONFIG"
-                break
-            fi
-            warn "no file at '$SINGBOX_CONFIG' — try again (Ctrl-C to abort)"
-        done
-    fi
-else
-    ok "Using sing-box config from SINGBOX_CONFIG: $SINGBOX_CONFIG"
+    SINGBOX_CONFIG="$DEFAULT_SINGBOX_CONFIG"
 fi
+ok "Using sing-box config path: $SINGBOX_CONFIG"
 
 # Keep the database next to the sing-box config so all state lives together.
 SINGBOX_DIR="$(dirname "$SINGBOX_CONFIG")"
