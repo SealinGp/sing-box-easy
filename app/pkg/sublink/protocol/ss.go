@@ -34,7 +34,9 @@ func (s *Shadowsocks) Parse(uri string) (*node.SubNode, error) {
 		return nil, fmt.Errorf("invalid ss URI format: missing tag")
 	}
 
-	ssInfo := parts[0]
+	// Split off the ?query
+	ssInfoParts := strings.SplitN(parts[0], "?", 2)
+	ssInfo := ssInfoParts[0]
 	encodedTag := parts[1]
 
 	// URL decode the tag
