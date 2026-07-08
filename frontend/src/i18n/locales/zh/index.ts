@@ -18,6 +18,7 @@ import logs from './logs'
 import init from './init'
 import setup from './setup'
 import users from './users'
+import profile from './profile'
 
 export default {
   common,
@@ -39,4 +40,5 @@ export default {
   init,
   setup,
   users,
+  profile,
 }
