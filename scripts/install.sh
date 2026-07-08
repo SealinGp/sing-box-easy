@@ -233,7 +233,7 @@ start_with_nohup() {
 if [ "$have_systemd" = "true" ]; then
     info "Installing systemd service '${SERVICE_NAME}'..."
     UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
-    local exec_start="${INSTALL_DIR}/sing-box-easy -c ${APP_YML}"
+    exec_start="${INSTALL_DIR}/sing-box-easy -c ${APP_YML}"
     if [ -n "$ADMIN_USER" ]; then
         exec_start="$exec_start -admin_user=${ADMIN_USER}"
     fi
