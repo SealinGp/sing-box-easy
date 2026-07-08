@@ -4,6 +4,8 @@
 server:
   # HTTP 服务器端口
   # 可以通过环境变量 HTTP_PORT 覆盖
+  # 请确保在云服务商安全组和系统防火墙中放行此端口，以允许从外部访问
+  # Ensure this port is open in your cloud provider security group and system firewall to allow external access.
   port: "8080"
 
 sing_box:
