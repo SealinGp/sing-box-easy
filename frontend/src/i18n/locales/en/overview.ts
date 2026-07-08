@@ -5,6 +5,7 @@ export default {
   pid: 'PID',
   uptime: 'Uptime',
   lastStarted: 'Last started',
+  version: 'Version',
   refreshStatus: 'Refresh Status',
   logSettings: 'Log settings',
   realtimeLog: 'Real-time log',

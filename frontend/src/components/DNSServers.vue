@@ -106,6 +106,8 @@ const predefinedHostsText = computed<string>({
       .join('\n')
   },
   set(text: string) {
+    const server = currentServer.value
+    if (!server) return
     const map: Record<string, string | string[]> = {}
     for (const raw of text.split('\n')) {
       const line = raw.trim()
@@ -115,14 +117,16 @@ const predefinedHostsText = computed<string>({
       const m = line.match(/^(\S+)\s+(.+)$/)
       if (!m) continue
       const host = m[1]
-      const ips = m[2].split(/[\s,]+/).filter(Boolean)
+      const rawIps = m[2]
+      if (!host || !rawIps) continue
+      const ips = rawIps.split(/[\s,]+/).filter(Boolean)
       if (ips.length === 0) continue
-      map[host] = ips.length === 1 ? ips[0] : ips
+      map[host] = ips.length === 1 ? ips[0]! : ips
     }
     // Drop the field entirely when no entries remain, matching the
     // `omitempty` behaviour on the backend's HostsDNSServerOptions.
-    if (Object.keys(map).length === 0) delete currentServer.value.predefined
-    else currentServer.value.predefined = map
+    if (Object.keys(map).length === 0) delete server.predefined
+    else server.predefined = map
   },
 })
 

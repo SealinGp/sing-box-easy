@@ -20,7 +20,6 @@
 // We keep the wrapper's exported name as `Chips` (via index.ts) so existing
 // call sites do not need to change.
 import InputChips, {
-    type InputChipsPassThroughOptions,
     type InputChipsProps,
 } from 'primevue/inputchips';
 import { ptViewMerge } from './utils';
@@ -28,8 +27,8 @@ import { ptViewMerge } from './utils';
 interface Props extends /* @vue-ignore */ InputChipsProps {}
 defineProps<Props>();
 
-const theme: InputChipsPassThroughOptions = {
-    root: ({ props }) => ({
+const theme = {
+    root: ({ props }: { props: any }) => ({
         class: `w-full p-2
             bg-white dark:bg-gray-700
             border border-gray-300 dark:border-gray-600

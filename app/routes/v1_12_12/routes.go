@@ -8,148 +8,164 @@ import (
 func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1 := h.Group("/api/1.12.12")
 
+	// Public APIs
+	v1.POST("/user/login", handler.Login)
+
+	// Authenticated APIs Group
+	auth := v1.Group("", AuthMiddleware(handler.userManager))
+	auth.POST("/user/logout", handler.Logout)
+	auth.GET("/user/me", handler.GetMe)
+	auth.PUT("/users/:id", handler.UpdateUser) // Handled inside to allow self-update
+
+	// Admin-only APIs Group
+	admin := v1.Group("", AuthMiddleware(handler.userManager), RequireAdmin())
+	admin.GET("/users", handler.ListUsers)
+	admin.POST("/users", handler.CreateUser)
+	admin.DELETE("/users/:id", handler.DeleteUser)
+
 	// Configuration Management APIs
-	v1.GET("/config", handler.GetConfig)
-	v1.PUT("/config", handler.UpdateConfig)
-	v1.POST("/config/validate", handler.ValidateConfig)
-	v1.GET("/config/backup", handler.GetBackupConfig)
-	v1.POST("/config/rollback", handler.RollbackConfig)
+	auth.GET("/config", handler.GetConfig)
+	auth.PUT("/config", handler.UpdateConfig)
+	auth.POST("/config/validate", handler.ValidateConfig)
+	auth.GET("/config/backup", handler.GetBackupConfig)
+	auth.POST("/config/rollback", handler.RollbackConfig)
 
 	// Config version history
-	v1.GET("/config/versions", handler.ListConfigVersions)
-	v1.DELETE("/config/versions/batch", handler.DeleteConfigVersionsBatch)
-	v1.GET("/config/versions/:id", handler.GetConfigVersion)
-	v1.POST("/config/versions/:id/rollback", handler.RollbackToConfigVersion)
-	v1.DELETE("/config/versions/:id", handler.DeleteConfigVersion)
+	auth.GET("/config/versions", handler.ListConfigVersions)
+	auth.DELETE("/config/versions/batch", handler.DeleteConfigVersionsBatch)
+	auth.GET("/config/versions/:id", handler.GetConfigVersion)
+	auth.POST("/config/versions/:id/rollback", handler.RollbackToConfigVersion)
+	auth.DELETE("/config/versions/:id", handler.DeleteConfigVersion)
 
 	// Application settings
-	v1.GET("/settings", handler.GetSettings)
-	v1.PUT("/settings", handler.UpdateSettings)
+	auth.GET("/settings", handler.GetSettings)
+	auth.PUT("/settings", handler.UpdateSettings)
 
 	// Node Parsing API
-	v1.POST("/nodes/parse", handler.ParseNodes)
+	auth.POST("/nodes/parse", handler.ParseNodes)
 
 	// Outbound Management APIs
-	v1.GET("/outbounds", handler.GetOutbounds)
-	v1.POST("/outbounds", handler.AddOutbound)
-	v1.POST("/outbounds/batch", handler.AddOutboundsBatch)
-	v1.DELETE("/outbounds/batch", handler.DeleteOutboundsBatch)
-	v1.GET("/outbounds/groups", handler.GetOutboundGroups)
-	v1.GET("/outbounds/:tag", handler.GetOutboundByTag)
-	v1.PUT("/outbounds/:tag", handler.UpdateOutbound)
-	v1.DELETE("/outbounds/:tag", handler.DeleteOutbound)
-	v1.PUT("/outbounds/:tag/members", handler.UpdateOutboundMembers)
+	auth.GET("/outbounds", handler.GetOutbounds)
+	auth.POST("/outbounds", handler.AddOutbound)
+	auth.POST("/outbounds/batch", handler.AddOutboundsBatch)
+	auth.DELETE("/outbounds/batch", handler.DeleteOutboundsBatch)
+	auth.GET("/outbounds/groups", handler.GetOutboundGroups)
+	auth.GET("/outbounds/:tag", handler.GetOutboundByTag)
+	auth.PUT("/outbounds/:tag", handler.UpdateOutbound)
+	auth.DELETE("/outbounds/:tag", handler.DeleteOutbound)
+	auth.PUT("/outbounds/:tag/members", handler.UpdateOutboundMembers)
 
 	// DNS Management APIs
-	v1.GET("/dns", handler.GetDNS)
-	v1.PUT("/dns", handler.UpdateDNS)
+	auth.GET("/dns", handler.GetDNS)
+	auth.PUT("/dns", handler.UpdateDNS)
 
-	v1.GET("/dns/servers", handler.GetDNSServers)
-	v1.POST("/dns/servers", handler.AddDNSServer)
-	v1.GET("/dns/servers/:tag", handler.GetDNSServerByTag)
-	v1.PUT("/dns/servers/:tag", handler.UpdateDNSServer)
-	v1.DELETE("/dns/servers/:tag", handler.DeleteDNSServer)
+	auth.GET("/dns/servers", handler.GetDNSServers)
+	auth.POST("/dns/servers", handler.AddDNSServer)
+	auth.GET("/dns/servers/:tag", handler.GetDNSServerByTag)
+	auth.PUT("/dns/servers/:tag", handler.UpdateDNSServer)
+	auth.DELETE("/dns/servers/:tag", handler.DeleteDNSServer)
 
-	v1.GET("/dns/hosts", handler.GetDNSHosts)
-	v1.PUT("/dns/hosts", handler.UpdateDNSHosts)
+	auth.GET("/dns/hosts", handler.GetDNSHosts)
+	auth.PUT("/dns/hosts", handler.UpdateDNSHosts)
 
-	v1.GET("/dns/rules", handler.GetDNSRules)
-	v1.POST("/dns/rules", handler.AddDNSRule)
-	v1.PUT("/dns/rules/:index", handler.UpdateDNSRule)
-	v1.DELETE("/dns/rules/:index", handler.DeleteDNSRule)
+	auth.GET("/dns/rules", handler.GetDNSRules)
+	auth.POST("/dns/rules", handler.AddDNSRule)
+	auth.PUT("/dns/rules/:index", handler.UpdateDNSRule)
+	auth.DELETE("/dns/rules/:index", handler.DeleteDNSRule)
 
 	// Inbound Management APIs
-	v1.GET("/inbounds", handler.GetInbounds)
-	v1.POST("/inbounds", handler.AddInbound)
-	v1.GET("/inbounds/:tag", handler.GetInboundByTag)
-	v1.PUT("/inbounds/:tag", handler.UpdateInbound)
-	v1.DELETE("/inbounds/:tag", handler.DeleteInbound)
+	auth.GET("/inbounds", handler.GetInbounds)
+	auth.POST("/inbounds", handler.AddInbound)
+	auth.GET("/inbounds/:tag", handler.GetInboundByTag)
+	auth.PUT("/inbounds/:tag", handler.UpdateInbound)
+	auth.DELETE("/inbounds/:tag", handler.DeleteInbound)
 
 	// Route Management APIs
-	v1.GET("/route/rules", handler.GetRouteRules)
-	v1.POST("/route/rules", handler.AddRouteRule)
-	v1.PUT("/route/rules/:index", handler.UpdateRouteRule)
-	v1.DELETE("/route/rules/:index", handler.DeleteRouteRule)
+	auth.GET("/route/rules", handler.GetRouteRules)
+	auth.POST("/route/rules", handler.AddRouteRule)
+	auth.PUT("/route/rules/:index", handler.UpdateRouteRule)
+	auth.DELETE("/route/rules/:index", handler.DeleteRouteRule)
 
-	v1.GET("/route/rule-sets", handler.GetRuleSets)
-	v1.POST("/route/rule-sets", handler.AddRuleSet)
-	v1.GET("/route/rule-sets/:tag", handler.GetRuleSetByTag)
-	v1.GET("/route/rule-sets/:tag/references", handler.GetRuleSetReferences)
-	v1.PUT("/route/rule-sets/:tag", handler.UpdateRuleSet)
-	v1.DELETE("/route/rule-sets/:tag", handler.DeleteRuleSet)
+	// Route Rule-sets
+	auth.GET("/route/rule-sets", handler.GetRuleSets)
+	auth.POST("/route/rule-sets", handler.AddRuleSet)
+	auth.GET("/route/rule-sets/:tag", handler.GetRuleSetByTag)
+	auth.GET("/route/rule-sets/:tag/references", handler.GetRuleSetReferences)
+	auth.PUT("/route/rule-sets/:tag", handler.UpdateRuleSet)
+	auth.DELETE("/route/rule-sets/:tag", handler.DeleteRuleSet)
 
-	v1.GET("/route/final", handler.GetRouteFinal)
-	v1.PUT("/route/final", handler.UpdateRouteFinal)
+	auth.GET("/route/final", handler.GetRouteFinal)
+	auth.PUT("/route/final", handler.UpdateRouteFinal)
 
 	// Log Configuration APIs
-	v1.GET("/log", handler.GetLog)
-	v1.PUT("/log", handler.UpdateLog)
+	auth.GET("/log", handler.GetLog)
+	auth.PUT("/log", handler.UpdateLog)
 
 	// Experimental Configuration APIs
-	v1.GET("/experimental/clash-api", handler.GetClashAPI)
-	v1.PUT("/experimental/clash-api", handler.UpdateClashAPI)
+	auth.GET("/experimental/clash-api", handler.GetClashAPI)
+	auth.PUT("/experimental/clash-api", handler.UpdateClashAPI)
 
-	v1.GET("/experimental/cache-file", handler.GetCacheFile)
-	v1.PUT("/experimental/cache-file", handler.UpdateCacheFile)
+	auth.GET("/experimental/cache-file", handler.GetCacheFile)
+	auth.PUT("/experimental/cache-file", handler.UpdateCacheFile)
 
-	v1.GET("/experimental/v2ray-api", handler.GetV2RayAPI)
-	v1.PUT("/experimental/v2ray-api", handler.UpdateV2RayAPI)
+	auth.GET("/experimental/v2ray-api", handler.GetV2RayAPI)
+	auth.PUT("/experimental/v2ray-api", handler.UpdateV2RayAPI)
 
 	// Service Control APIs
-	v1.GET("/service/status", handler.GetServiceStatus)
-	v1.GET("/service/logs", handler.GetServiceLogs)
-	v1.POST("/service/start", handler.StartService)
-	v1.POST("/service/stop", handler.StopService)
-	v1.POST("/service/restart", handler.RestartService)
+	auth.GET("/service/status", handler.GetServiceStatus)
+	auth.GET("/service/logs", handler.GetServiceLogs)
+	auth.POST("/service/start", handler.StartService)
+	auth.POST("/service/stop", handler.StopService)
+	auth.POST("/service/restart", handler.RestartService)
 
 	// Subscription Management APIs
-	v1.GET("/subscriptions", handler.GetSubscriptions)
-	v1.POST("/subscriptions", handler.AddSubscription)
-	v1.GET("/subscriptions/:id", handler.GetSubscriptionByID)
-	v1.PUT("/subscriptions/:id", handler.UpdateSubscription)
-	v1.DELETE("/subscriptions/:id", handler.DeleteSubscription)
-	v1.POST("/subscriptions/:id/update", handler.UpdateSubscriptionContent)
+	auth.GET("/subscriptions", handler.GetSubscriptions)
+	auth.POST("/subscriptions", handler.AddSubscription)
+	auth.GET("/subscriptions/:id", handler.GetSubscriptionByID)
+	auth.PUT("/subscriptions/:id", handler.UpdateSubscription)
+	auth.DELETE("/subscriptions/:id", handler.DeleteSubscription)
+	auth.POST("/subscriptions/:id/update", handler.UpdateSubscriptionContent)
 
 	// Outbound Node Rules APIs (Filters + Groups, auto-grouping)
-	v1.GET("/node-rules", handler.GetNodeRules)
-	v1.POST("/node-rules/apply", handler.ApplyNodeRules)
-	v1.POST("/node-rules/preview", handler.PreviewNodeRules)
-	v1.GET("/node-rules/keywords", handler.GetNodeRuleKeywords)
-	v1.GET("/node-rules/templates", handler.GetNodeRuleTemplates)
-	v1.POST("/node-rules/templates/:id/apply", handler.ApplyNodeRuleTemplate)
-	v1.GET("/node-rules/filters", handler.GetFilters)
-	v1.POST("/node-rules/filters", handler.CreateFilter)
-	v1.PUT("/node-rules/filters/:id", handler.UpdateFilter)
-	v1.DELETE("/node-rules/filters/:id", handler.DeleteFilter)
-	v1.GET("/node-rules/groups", handler.GetGroups)
-	v1.POST("/node-rules/groups", handler.CreateGroup)
-	v1.PUT("/node-rules/groups/:id", handler.UpdateGroup)
-	v1.DELETE("/node-rules/groups/:id", handler.DeleteGroup)
+	auth.GET("/node-rules", handler.GetNodeRules)
+	auth.POST("/node-rules/apply", handler.ApplyNodeRules)
+	auth.POST("/node-rules/preview", handler.PreviewNodeRules)
+	auth.GET("/node-rules/keywords", handler.GetNodeRuleKeywords)
+	auth.GET("/node-rules/templates", handler.GetNodeRuleTemplates)
+	auth.POST("/node-rules/templates/:id/apply", handler.ApplyNodeRuleTemplate)
+	auth.GET("/node-rules/filters", handler.GetFilters)
+	auth.POST("/node-rules/filters", handler.CreateFilter)
+	auth.PUT("/node-rules/filters/:id", handler.UpdateFilter)
+	auth.DELETE("/node-rules/filters/:id", handler.DeleteFilter)
+	auth.GET("/node-rules/groups", handler.GetGroups)
+	auth.POST("/node-rules/groups", handler.CreateGroup)
+	auth.PUT("/node-rules/groups/:id", handler.UpdateGroup)
+	auth.DELETE("/node-rules/groups/:id", handler.DeleteGroup)
 
 	// Scheduler Management APIs
-	v1.GET("/scheduler/status", handler.schedulerHandler.GetStatus)
-	v1.POST("/scheduler/start", handler.schedulerHandler.Start)
-	v1.POST("/scheduler/stop", handler.schedulerHandler.Stop)
-	v1.POST("/scheduler/trigger", handler.schedulerHandler.Trigger)
-	v1.GET("/scheduler/jobs", handler.schedulerHandler.GetJobs)
+	auth.GET("/scheduler/status", handler.schedulerHandler.GetStatus)
+	auth.POST("/scheduler/start", handler.schedulerHandler.Start)
+	auth.POST("/scheduler/stop", handler.schedulerHandler.Stop)
+	auth.POST("/scheduler/trigger", handler.schedulerHandler.Trigger)
+	auth.GET("/scheduler/jobs", handler.schedulerHandler.GetJobs)
 
 	// Installation APIs
-	v1.POST("/install", handler.InstallSingBox)
-	v1.GET("/install/task/:task_id", handler.GetInstallTask)
-	v1.GET("/install/status", handler.GetInstallStatus)
-	v1.POST("/update", handler.UpdateSingBox)
+	auth.POST("/install", handler.InstallSingBox)
+	auth.GET("/install/task/:task_id", handler.GetInstallTask)
+	auth.GET("/install/status", handler.GetInstallStatus)
+	auth.POST("/update", handler.UpdateSingBox)
 
 	// Dashboard APIs
-	v1.POST("/dashboard/download", handler.DownloadDashboard)
-	v1.POST("/dashboard/upload", handler.UploadDashboard)
-	v1.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
-	v1.GET("/dashboard/status", handler.GetDashboardStatus)
+	auth.POST("/dashboard/download", handler.DownloadDashboard)
+	auth.POST("/dashboard/upload", handler.UploadDashboard)
+	auth.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
+	auth.GET("/dashboard/status", handler.GetDashboardStatus)
 
 	// Initialization APIs
-	v1.GET("/init/status", handler.GetInitStatus)
-	v1.POST("/init/complete", handler.CompleteInit)
-	v1.POST("/init/reset", handler.ResetInit)
+	auth.GET("/init/status", handler.GetInitStatus)
+	auth.POST("/init/complete", handler.CompleteInit)
+	auth.POST("/init/reset", handler.ResetInit)
 
 	// Template APIs
-	v1.GET("/templates/rule-sets", handler.GetDefaultRuleSets)
+	auth.GET("/templates/rule-sets", handler.GetDefaultRuleSets)
 }

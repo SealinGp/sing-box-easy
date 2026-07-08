@@ -9,9 +9,11 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server  ServerConfig  `yaml:"server"`
-	SingBox SingBoxConfig `yaml:"sing_box"`
-	Log     LogConfig     `yaml:"log"`
+	Server    ServerConfig  `yaml:"server"`
+	SingBox   SingBoxConfig `yaml:"sing_box"`
+	Log       LogConfig     `yaml:"log"`
+	AdminUser string        `yaml:"-"`
+	AdminPass string        `yaml:"-"`
 }
 
 // ServerConfig represents server configuration

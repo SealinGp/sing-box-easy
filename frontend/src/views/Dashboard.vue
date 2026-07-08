@@ -15,6 +15,9 @@ import {
   ShieldCheckIcon,
   CogIcon,
   QueueListIcon,
+  UsersIcon,
+  AdjustmentsHorizontalIcon,
+  AdjustmentsVerticalIcon,
 } from "@heroicons/vue/24/outline";
 
 interface MenuItem {
@@ -61,7 +64,7 @@ const menuItems = computed<MenuItem[]>(() => [
   },
   {
     name: t("nav.advanced"),
-    icon: CogIcon,
+    icon: AdjustmentsHorizontalIcon,
     children: [
       {
         name: t("nav.experimental"),
@@ -72,9 +75,25 @@ const menuItems = computed<MenuItem[]>(() => [
     ],
   },
   {
-    name: t("nav.logs"),
-    icon: QueueListIcon,
-    path: "/dashboard/logs",
+    name: t("nav.settings"),
+    icon: CogIcon,
+    children: [
+      {
+        name: t("nav.general"),
+        icon: AdjustmentsVerticalIcon,
+        path: "/dashboard/settings",
+      },
+      {
+        name: t("nav.users"),
+        icon: UsersIcon,
+        path: "/dashboard/users",
+      },
+      {
+        name: t("nav.logs"),
+        icon: QueueListIcon,
+        path: "/dashboard/logs",
+      },
+    ],
   },
 ]);
 </script>

@@ -5,6 +5,7 @@ export default {
   pid: 'PID',
   uptime: '运行时长',
   lastStarted: '上次启动',
+  version: '版本',
   refreshStatus: '刷新状态',
   logSettings: '日志设置',
   realtimeLog: '实时日志',

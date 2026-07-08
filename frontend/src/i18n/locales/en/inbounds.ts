@@ -68,6 +68,11 @@ export default {
     saveFailed: 'Failed to save inbound',
     deletedOk: 'Inbound deleted successfully',
     deleteFailed: 'Failed to delete inbound',
+    copiedOk: 'Client outbound configuration copied to clipboard',
+    copyFailed: 'Failed to copy configuration',
+  },
+  tooltip: {
+    copyConfig: 'Copy client outbound config',
   },
   validation: {
     title: 'Validation Error',

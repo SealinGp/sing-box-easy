@@ -13,6 +13,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
+	"github.com/SealinGp/sing-box-easy/app/pkg/user"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
@@ -35,10 +36,11 @@ type Handler struct {
 	versionCleaner      *configversion.Cleaner
 	settingsManager     *settings.ManagerXORM
 	nodeRulesManager    *noderules.ManagerXORM
+	userManager         user.UserManager
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers
-func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) *Handler {
+func NewHandler(configPath, singBoxPath string, adminUser, adminPass string, sublinkParser *sublink.SubLink) *Handler {
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := service.NewController(configManager, singBoxPath)
 
@@ -67,6 +69,9 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager)
 	schedulerHandler := newSchedulerHandler(autoUpdater)
 
+	// Initialize user manager
+	userManager := user.NewManagerXORM(adminUser, adminPass)
+
 	return &Handler{
 		configManager:       configManager,
 		serviceController:   serviceController,
@@ -81,6 +86,7 @@ func NewHandler(configPath, singBoxPath string, sublinkParser *sublink.SubLink) 
 		versionCleaner:      versionCleaner,
 		settingsManager:     settingsManager,
 		nodeRulesManager:    nodeRulesManager,
+		userManager:         userManager,
 	}
 }
 
@@ -108,6 +114,11 @@ func (h *Handler) Init() error {
 
 	// Initialize node-rules tables + seed the mandatory fallback Filter.
 	if err := h.nodeRulesManager.Init(); err != nil {
+		return err
+	}
+
+	// Initialize user manager (sync tables, seed admin)
+	if err := h.userManager.Init(); err != nil {
 		return err
 	}
 

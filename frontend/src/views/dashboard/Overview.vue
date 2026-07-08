@@ -145,6 +145,10 @@ onMounted(fetchStatus)
             </p>
           </div>
 
+          <div v-if="status.version" class="text-sm text-gray-600 dark:text-gray-400">
+            <p><span class="font-semibold">{{ $t('overview.version') }}:</span> {{ status.version }}</p>
+          </div>
+
           <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-3 gap-2">
               <Button

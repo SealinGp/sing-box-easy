@@ -27,6 +27,7 @@ func (h *Handler) GetServiceStatus(ctx context.Context, c *app.RequestContext) {
 		"pid":        info.PID,
 		"started_at": info.StartedAtUnix,
 		"uptime":     info.Uptime,
+		"version":    info.Version,
 	})
 }
 

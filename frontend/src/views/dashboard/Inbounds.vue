@@ -12,12 +12,13 @@ import type { Inbound } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
+const copiedTag = ref<string | null>(null)
 const toast = useToast()
 const { t } = useI18n()
 
@@ -236,6 +237,66 @@ watch(showDeleteConfirm, (newValue) => {
   }
 })
 
+const copyClientConfig = async (inbound: Inbound) => {
+  const anyInbound = inbound as any
+  const server = !anyInbound.listen || anyInbound.listen === '0.0.0.0' || anyInbound.listen === '::' || anyInbound.listen === '127.0.0.1'
+    ? window.location.hostname || 'YOUR_SERVER_IP'
+    : anyInbound.listen
+
+  const outbound: any = {
+    type: anyInbound.type === 'mixed' ? 'socks' : anyInbound.type,
+    tag: `${anyInbound.tag}-out`,
+    server: server,
+    server_port: anyInbound.listen_port,
+  }
+
+  // Copy standard user credentials if available
+  const firstUser = (inbound as any).users?.[0]
+  if (firstUser) {
+    if (firstUser.uuid) outbound.uuid = firstUser.uuid
+    if (firstUser.password) outbound.password = firstUser.password
+    if (firstUser.username) outbound.username = firstUser.username
+    else if (firstUser.name) outbound.username = firstUser.name
+  }
+
+  // Copy other top level credentials/attributes
+  if ((inbound as any).method) outbound.method = (inbound as any).method
+  if ((inbound as any).password) outbound.password = (inbound as any).password
+  if ((inbound as any).uuid) outbound.uuid = (inbound as any).uuid
+  if ((inbound as any).security) outbound.security = (inbound as any).security
+
+  // Copy TLS settings if present, pruning server-side keys
+  if ((inbound as any).tls) {
+    const tls = { ...((inbound as any).tls) }
+    tls.enabled = true
+    tls.server_name = server
+    delete tls.certificate
+    delete tls.certificate_path
+    delete tls.key
+    delete tls.key_path
+    outbound.tls = tls
+  }
+
+  // Copy transport settings if present
+  if ((inbound as any).transport) {
+    outbound.transport = (inbound as any).transport
+  }
+
+  const jsonText = JSON.stringify(outbound, null, 2)
+
+  try {
+    await navigator.clipboard.writeText(jsonText)
+    copiedTag.value = inbound.tag
+    setTimeout(() => {
+      if (copiedTag.value === inbound.tag) {
+        copiedTag.value = null
+      }
+    }, 2000)
+  } catch (err: any) {
+    console.error('Failed to copy client config:', err)
+  }
+}
+
 onMounted(fetchInbounds)
 </script>
 
@@ -296,6 +357,10 @@ onMounted(fetchInbounds)
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
+                  <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" :title="$t('inbounds.tooltip.copyConfig')">
+                    <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
+                    <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+                  </Button>
                   <Button @click="openEditModal(inbound)" variant="ghost" size="sm">
                     <PencilIcon class="h-4 w-4" />
                   </Button>

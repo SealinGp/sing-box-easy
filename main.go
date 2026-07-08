@@ -17,6 +17,8 @@ func main() {
 
 	// Define command line flags
 	configPath := flag.String("c", "app.yml", "Path to configuration file")
+	adminUser := flag.String("admin_user", "", "Default admin username to seed")
+	adminPass := flag.String("admin_pass", "", "Default admin password to seed")
 	flag.Parse()
 
 	logger.Infof("Starting sing-box-easy with config: %s", *configPath)
@@ -26,6 +28,9 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	config.AdminUser = *adminUser
+	config.AdminPass = *adminPass
 
 	// Re-initialize logger with the configured level now that we have it.
 	// DEBUG=true env var still wins so devs can crank up verbosity without

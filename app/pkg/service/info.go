@@ -23,6 +23,31 @@ type ServiceInfo struct {
 	// Uptime is a coarse human-readable duration (e.g. "14m", "2h3m"), provided
 	// as a server-side fallback. Empty when not running / unknown.
 	Uptime string `json:"uptime"`
+	// Version is the version of the installed sing-box binary.
+	Version string `json:"version"`
+}
+
+// Version returns the version of the installed sing-box binary
+func (c *Controller) Version() string {
+	cmd := exec.Command(c.singBoxPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "unknown"
+	}
+	return parseVersion(string(output))
+}
+
+func parseVersion(output string) string {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "sing-box version") {
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				return parts[2]
+			}
+		}
+	}
+	return "unknown"
 }
 
 // Info returns an enriched status snapshot. It never fails just because the
@@ -34,7 +59,11 @@ func (c *Controller) Info() (ServiceInfo, error) {
 		return ServiceInfo{}, err
 	}
 
-	info := ServiceInfo{Running: running, PID: pid}
+	info := ServiceInfo{
+		Running: running,
+		PID:     pid,
+		Version: c.Version(),
+	}
 	if running && pid > 0 {
 		if started, ok := processStartedAtUnix(pid); ok {
 			info.StartedAtUnix = started

@@ -27,12 +27,20 @@ const NodeRules = () => import(/* webpackChunkName: "node-rules" */ '../views/da
 const Config = () => import(/* webpackChunkName: "config" */ '../views/dashboard/Config.vue')
 const Log = () => import(/* webpackChunkName: "log" */ '../views/dashboard/Log.vue')
 const Logs = () => import(/* webpackChunkName: "logs" */ '../views/dashboard/Logs.vue')
+const Users = () => import(/* webpackChunkName: "users" */ '../views/dashboard/Users.vue')
 const Settings = () => import(/* webpackChunkName: "settings" */ '../views/dashboard/Settings.vue')
+const Login = () => import(/* webpackChunkName: "login" */ '../views/Login.vue')
+const Profile = () => import(/* webpackChunkName: "profile" */ '../views/dashboard/Profile.vue')
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/init',
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
   },
   {
     path: '/init',
@@ -176,9 +184,19 @@ const routes: RouteRecordRaw[] = [
         component: Logs,
       },
       {
+        path: 'users',
+        name: 'DashboardUsers',
+        component: Users,
+      },
+      {
         path: 'settings',
         name: 'DashboardSettings',
         component: Settings,
+      },
+      {
+        path: 'profile',
+        name: 'DashboardProfile',
+        component: Profile,
       },
     ],
   },
@@ -189,8 +207,27 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard to check initialization state
+// Navigation guard to check authentication and initialization state
 router.beforeEach(async (to, _, next) => {
+  const token = localStorage.getItem('sb_token')
+
+  // 1. Allow login page without auth
+  if (to.path === '/login') {
+    if (token) {
+      next('/dashboard')
+    } else {
+      next()
+    }
+    return
+  }
+
+  // 2. Require auth for all other routes
+  if (!token) {
+    next('/login')
+    return
+  }
+
+  // 3. If authenticated, check initialization status
   if (!to.path.startsWith('/init')) {
     try {
       const { data } = await serviceControlService.getInitStatus()

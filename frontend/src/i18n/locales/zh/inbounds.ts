@@ -68,6 +68,11 @@ export default {
     saveFailed: '保存入站失败',
     deletedOk: '入站删除成功',
     deleteFailed: '删除入站失败',
+    copiedOk: '客户端出站配置已复制到剪贴板',
+    copyFailed: '复制配置失败',
+  },
+  tooltip: {
+    copyConfig: '复制客户端出站配置',
   },
   validation: {
     title: '校验错误',

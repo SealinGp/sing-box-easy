@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
-import { ChevronRightIcon, ChevronDownIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { ChevronRightIcon, ChevronDownIcon, Cog6ToothIcon, ArrowLeftOnRectangleIcon } from '@heroicons/vue/24/outline'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import { useServiceStore } from '../stores'
+import { userService } from '../services'
 
 interface MenuItem {
   name: string
@@ -21,6 +22,7 @@ interface Props {
 
 defineProps<Props>()
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 
 // App version, injected at build time (see vite.config.ts `define`).
@@ -31,8 +33,41 @@ const version = __APP_VERSION__
 const serviceStore = useServiceStore()
 let unsubscribe: (() => void) | null = null
 
-onMounted(() => {
+const currentUser = ref<any>(null)
+
+const fetchUser = async () => {
+  try {
+    currentUser.value = await userService.getMe()
+  } catch (err) {
+    console.error('Failed to get current user in sidebar:', err)
+  }
+}
+
+const userInitial = computed(() => {
+  if (!currentUser.value?.username) return 'U'
+  return currentUser.value.username.slice(0, 2).toUpperCase()
+})
+
+const username = computed(() => currentUser.value?.username || 'User')
+const userRole = computed(() => currentUser.value?.role || 'viewer')
+
+const handleLogout = async () => {
+  if (confirm('Are you sure you want to sign out?')) {
+    try {
+      await userService.logout()
+      router.push('/login')
+    } catch (err) {
+      console.error('Logout failed:', err)
+      // Force local clean up on error
+      localStorage.removeItem('sb_token')
+      window.location.href = '/login'
+    }
+  }
+}
+
+onMounted(async () => {
   unsubscribe = serviceStore.startPolling(5000)
+  await fetchUser()
 })
 onUnmounted(() => {
   unsubscribe?.()
@@ -257,14 +292,28 @@ const isParentActive = (item: MenuItem) => {
 
     <!-- Footer/User Section -->
     <div class="p-4 border-t border-gray-100 dark:border-gray-800">
-      <div class="flex items-center gap-3 px-3 py-2">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-          A
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('nav.admin') }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ $t('nav.adminRole') }}</p>
-        </div>
+      <div class="flex items-center justify-between gap-2">
+        <router-link
+          to="/dashboard/profile"
+          class="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition-colors flex-1 min-w-0"
+          :class="{ 'bg-gray-100 dark:bg-gray-800': isActive('/dashboard/profile') }"
+        >
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-sm">
+            {{ userInitial }}
+          </div>
+          <div class="flex-1 min-w-0 text-left">
+            <p class="text-sm font-medium text-gray-900 dark:text-white truncate" :title="username">{{ username }}</p>
+            <p class="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{{ userRole }}</p>
+          </div>
+        </router-link>
+
+        <button
+          @click="handleLogout"
+          class="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+          title="Sign Out"
+        >
+          <ArrowLeftOnRectangleIcon class="h-4.5 w-4.5" />
+        </button>
       </div>
     </div>
   </div>

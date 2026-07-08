@@ -13,6 +13,7 @@ import { ServiceControlService } from './service'
 import { SettingsService } from './settings'
 import { SubscriptionService } from './subscription'
 import { TemplateService } from './template'
+import { UserService } from './user'
 
 // Export all service classes
 export { ApiService } from './api'
@@ -30,6 +31,7 @@ export { ServiceControlService } from './service'
 export { SettingsService } from './settings'
 export { SubscriptionService } from './subscription'
 export { TemplateService } from './template'
+export { UserService } from './user'
 
 // Create singleton instances
 export const configService = new ConfigService(apiService)
@@ -46,6 +48,8 @@ export const serviceControlService = new ServiceControlService(apiService)
 export const settingsService = new SettingsService(apiService)
 export const subscriptionService = new SubscriptionService(apiService)
 export const templateService = new TemplateService(apiService)
+export const userService = new UserService(apiService)
 
 // Re-export the base API service
 export { apiService }
+

@@ -67,6 +67,8 @@ func (r *Route) initEndpoints() error {
 	v1Handler := v1_12_12.NewHandler(
 		r.config.SingBox.ConfigPath,
 		r.config.SingBox.BinaryPath,
+		r.config.AdminUser,
+		r.config.AdminPass,
 		r.sl,
 	)
 

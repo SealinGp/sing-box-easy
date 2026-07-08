@@ -1,6 +1,8 @@
 // 侧边栏品牌/底部 + 仪表盘导航标签。
 export default {
   settings: '设置',
+  general: '通用设置',
+  users: '用户管理',
   admin: '管理员',
   adminRole: '系统管理员',
   overview: '概览',

@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import type { DialerOptions } from '../types/shared'
 import Input from './Input.vue'
 import Select from './Select.vue'
 import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 
-const { t } = useI18n()
 
 interface Props {
   modelValue: any

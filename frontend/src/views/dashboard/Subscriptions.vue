@@ -183,7 +183,7 @@ const saveSubscription = async () => {
     resetForm();
     await loadSubscriptions();
   } catch (error) {
-    notify.apiError(error, t("subscriptions.notify.saveError"), 0);
+    notify.apiError(error, t("subscriptions.notify.saveError"));
   }
 };
 

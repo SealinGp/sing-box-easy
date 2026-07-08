@@ -71,6 +71,7 @@ export interface ServiceStatus {
   uptime?: string
   // Unix seconds when the process started; 0/undefined when unknown or stopped.
   started_at?: number
+  version?: string
 }
 
 // A bounded chunk of recent sing-box logs returned by GET /service/logs.
@@ -352,3 +353,19 @@ export interface DefaultRuleSet {
   format: string
   url: string
 }
+
+// User represents a system user
+export interface User {
+  id: number
+  username: string
+  role: 'admin' | 'viewer'
+  created_at: string
+  updated_at: string
+}
+
+// LoginResponse carries session token and user details
+export interface LoginResponse {
+  token: string
+  user: User
+}
+

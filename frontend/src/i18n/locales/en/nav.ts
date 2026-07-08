@@ -1,6 +1,8 @@
 // Sidebar brand/footer + Dashboard navigation labels.
 export default {
   settings: 'Settings',
+  general: 'General',
+  users: 'Users',
   admin: 'Admin',
   adminRole: 'System Administrator',
   overview: 'Overview',
