@@ -41,5 +41,12 @@ func (p *Parser) Parse() (*node.SubNode, error) {
 		return nil, err
 	}
 
-	return ps.Parse(p.uri)
+	sn, err := ps.Parse(p.uri)
+	if err != nil {
+		return nil, err
+	}
+	if err := ps.Validate(); err != nil {
+		return nil, err
+	}
+	return sn, nil
 }

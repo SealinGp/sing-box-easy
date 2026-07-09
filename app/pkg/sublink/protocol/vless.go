@@ -17,8 +17,9 @@ import (
 // sni, host, path, flow, pbk, sid, fp, alpn, insecure.
 //
 // Examples:
-//   vless://uuid@host:443?type=ws&security=tls&host=h.example&path=%2Fp&sni=s.example&fp=chrome#JP-01
-//   vless://uuid@host:443?type=tcp&security=reality&flow=xtls-rprx-vision&pbk=KEY&sid=ID&sni=s.example&fp=ios#US-01
+//
+//	vless://uuid@host:443?type=ws&security=tls&host=h.example&path=%2Fp&sni=s.example&fp=chrome#JP-01
+//	vless://uuid@host:443?type=tcp&security=reality&flow=xtls-rprx-vision&pbk=KEY&sid=ID&sni=s.example&fp=ios#US-01
 type VLESS struct {
 	Tag string `json:"tag,omitempty"`
 	option.VLESSOutboundOptions
@@ -84,6 +85,19 @@ func (v *VLESS) Parse(uri string) (*node.SubNode, error) {
 		Tag:     v.Tag,
 		Options: v.VLESSOutboundOptions,
 	}, nil
+}
+
+func (v *VLESS) Validate() error {
+	if v.UUID == "" {
+		return fmt.Errorf("vless uuid is required")
+	}
+	if v.Server == "" {
+		return fmt.Errorf("vless server is required")
+	}
+	if v.ServerPort == 0 {
+		return fmt.Errorf("vless server port is required")
+	}
+	return nil
 }
 
 // flowVision is the only VLESS flow sing-box supports (see sing-vmess

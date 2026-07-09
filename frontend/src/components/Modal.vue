@@ -39,7 +39,7 @@ const sizeClasses: Record<string, string> = {
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
+        <div class="fixed inset-0 bg-black/45 dark:bg-black/65 backdrop-blur-sm" />
       </TransitionChild>
 
       <div class="fixed inset-0 overflow-y-auto">
@@ -55,7 +55,7 @@ const sizeClasses: Record<string, string> = {
           >
             <DialogPanel
               :class="[
-                'w-full transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all',
+                'liquid-glass w-full transform overflow-hidden rounded-lg p-6 text-left align-middle shadow-xl transition-all',
                 sizeClasses[size],
               ]"
             >

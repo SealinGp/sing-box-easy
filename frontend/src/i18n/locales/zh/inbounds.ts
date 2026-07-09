@@ -43,6 +43,13 @@ export default {
     generate: '生成',
     ssPasswordHelp2022: 'AEAD-2022 方法需要：{len} 字节 Base64 编码的密钥。',
     ssPasswordHelpOther: '任意密码字符串。',
+    vmessUserName: '用户名称',
+    vmessUserNamePlaceholder: 'sekai',
+    vmessUUID: 'UUID *',
+    vmessUUIDPlaceholder: 'bf000d23-0752-40b4-affe-68f7707a9661',
+    vmessAlterId: 'Alter ID',
+    vmessAlterIdPlaceholder: '0',
+    vmessAlterIdHelp: '除非需要兼容旧版 VMess，否则请使用 0。',
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -86,5 +93,7 @@ export default {
     listenPortRequired: '监听端口为必填项',
     ssMethodRequired: '加密方法为必填项',
     ssPasswordRequired: '密码为必填项',
+    vmessUsersRequired: '至少需要一个 VMess 用户',
+    vmessUUIDRequired: 'VMess 用户 UUID 为必填项',
   },
 }

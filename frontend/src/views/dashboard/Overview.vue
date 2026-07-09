@@ -156,6 +156,7 @@ onMounted(fetchStatus)
                 :disabled="status.status === 'running' || actionLoading"
                 variant="success"
                 size="sm"
+                action
                 class="text-xs"
               >
                 {{ $t('common.start') }}
@@ -166,6 +167,7 @@ onMounted(fetchStatus)
                 :disabled="status.status === 'stopped' || actionLoading"
                 variant="danger"
                 size="sm"
+                action
                 class="text-xs"
               >
                 {{ $t('common.stop') }}
@@ -176,6 +178,7 @@ onMounted(fetchStatus)
                 :disabled="status.status === 'stopped' || actionLoading"
                 variant="primary"
                 size="sm"
+                action
                 class="text-xs"
               >
                 {{ $t('common.restart') }}
@@ -189,6 +192,7 @@ onMounted(fetchStatus)
               :disabled="loading || actionLoading"
               variant="secondary"
               size="sm"
+              action
               class="w-full text-xs"
             >
               {{ $t('overview.refreshStatus') }}

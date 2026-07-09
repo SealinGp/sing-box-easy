@@ -8,6 +8,7 @@ type SubNodeParser interface {
 	TypeName() string
 	Schema() string
 	Parse(uri string) (*SubNode, error)
+	Validate() error
 }
 
 type Options any

@@ -160,6 +160,19 @@ func (v *Vmess) Parse(uri string) (*node.SubNode, error) {
 	return sn, nil
 }
 
+func (v *Vmess) Validate() error {
+	if v.Server == "" {
+		return fmt.Errorf("vmess server is required")
+	}
+	if v.ServerPort == 0 {
+		return fmt.Errorf("vmess server port is required")
+	}
+	if v.UUID == "" {
+		return fmt.Errorf("vmess uuid is required")
+	}
+	return nil
+}
+
 // decodeBase64 tries different base64 encoding variations
 func (v *Vmess) decodeBase64(encoded string) ([]byte, error) {
 	// Try standard base64 encoding

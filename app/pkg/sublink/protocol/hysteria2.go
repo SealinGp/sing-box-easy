@@ -16,7 +16,8 @@ import (
 // Common params: sni, insecure, obfs, obfs-password, mport (port hopping).
 //
 // Example:
-//   hysteria2://pass@host:60000/?insecure=1&sni=s.example&mport=60000-65530#JP-01
+//
+//	hysteria2://pass@host:60000/?insecure=1&sni=s.example&mport=60000-65530#JP-01
 type Hysteria2 struct {
 	Tag string `json:"tag,omitempty"`
 	option.Hysteria2OutboundOptions
@@ -102,6 +103,19 @@ func (h *Hysteria2) Parse(uri string) (*node.SubNode, error) {
 		Tag:     h.Tag,
 		Options: h.Hysteria2OutboundOptions,
 	}, nil
+}
+
+func (h *Hysteria2) Validate() error {
+	if h.Password == "" {
+		return fmt.Errorf("hysteria2 password is required")
+	}
+	if h.Server == "" {
+		return fmt.Errorf("hysteria2 server is required")
+	}
+	if h.ServerPort == 0 {
+		return fmt.Errorf("hysteria2 server port is required")
+	}
+	return nil
 }
 
 func (h *Hysteria2) parseQueryParams(params url.Values) {

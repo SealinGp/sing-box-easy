@@ -43,6 +43,13 @@ export default {
     generate: 'Generate',
     ssPasswordHelp2022: 'Required: {len}-byte base64 encoded key for AEAD-2022 methods.',
     ssPasswordHelpOther: 'Any password string.',
+    vmessUserName: 'User Name',
+    vmessUserNamePlaceholder: 'sekai',
+    vmessUUID: 'UUID *',
+    vmessUUIDPlaceholder: 'bf000d23-0752-40b4-affe-68f7707a9661',
+    vmessAlterId: 'Alter ID',
+    vmessAlterIdPlaceholder: '0',
+    vmessAlterIdHelp: 'Use 0 unless you need legacy VMess compatibility.',
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -86,5 +93,7 @@ export default {
     listenPortRequired: 'Listen port is required',
     ssMethodRequired: 'Encryption method is required',
     ssPasswordRequired: 'Password is required',
+    vmessUsersRequired: 'At least one VMess user is required',
+    vmessUUIDRequired: 'VMess user UUID is required',
   },
 }

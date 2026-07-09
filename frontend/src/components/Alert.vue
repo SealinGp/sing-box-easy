@@ -37,22 +37,22 @@ const icon = computed(() => {
 })
 
 const classes = computed(() => {
-  const base = 'flex items-start p-4 rounded-lg border'
+  const base = 'flex items-start p-4 rounded-lg border shadow-sm backdrop-blur-xl'
   const types = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    info: 'bg-violet-50 border-violet-200 text-violet-800',
+    success: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-800 dark:text-emerald-100',
+    warning: 'bg-amber-500/15 border-amber-500/25 text-amber-800 dark:text-amber-100',
+    error: 'bg-red-500/15 border-red-500/25 text-red-800 dark:text-red-100',
+    info: 'bg-sky-500/15 border-sky-500/25 text-sky-800 dark:text-sky-100',
   }
   return `${base} ${types[props.type]}`
 })
 
 const iconColorClass = computed(() => {
   const colors = {
-    success: 'text-green-500',
+    success: 'text-emerald-500',
     warning: 'text-amber-500',
     error: 'text-red-500',
-    info: 'text-violet-500',
+    info: 'text-sky-500',
   }
   return colors[props.type]
 })

@@ -8,11 +8,11 @@
 
 /* 全局样式主题配置 */
 @theme {
-  /* 主色调 - 蓝色系 */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-primary-light: #60a5fa;
-  --color-primary-dark: #1d4ed8;
+  /* 主色调 - Liquid Glass Blue */
+  --color-primary: #1575ff;
+  --color-primary-hover: #0f63df;
+  --color-primary-light: #6ba5ff;
+  --color-primary-dark: #0f4eb8;
 
   /* 状态色 */
   --color-success: #10b981;
@@ -21,10 +21,10 @@
   --color-info: #06b6d4;
 
   /* 背景色 - Light mode */
-  --color-bg-primary: #f9fafb;
-  --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #f3f4f6;
-  --color-bg-dark: #1f2937;
+  --color-bg-primary: #eef3f8;
+  --color-bg-secondary: rgba(255, 255, 255, 0.76);
+  --color-bg-tertiary: rgba(241, 245, 249, 0.82);
+  --color-bg-dark: #10151b;
 
   /* 文本色 - Light mode */
   --color-text-primary: #111827;
@@ -33,30 +33,42 @@
   --color-text-inverse: #ffffff;
 
   /* 边框色 - Light mode */
-  --color-border: #e5e7eb;
-  --color-border-light: #f3f4f6;
-  --color-border-dark: #d1d5db;
+  --color-border: rgba(148, 163, 184, 0.28);
+  --color-border-light: rgba(255, 255, 255, 0.66);
+  --color-border-dark: rgba(100, 116, 139, 0.34);
 
   /* 圆角 */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
 
   /* 阴影 - Light mode */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 6px 18px rgb(15 23 42 / 0.05);
+  --shadow-md: 0 12px 28px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 24px 70px rgb(15 23 42 / 0.18);
+  --shadow-xl: 0 32px 90px rgb(15 23 42 / 0.24);
+
+  /* Liquid glass tokens */
+  --glass-bg: rgba(255, 255, 255, 0.84);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-bg-muted: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.56);
+  --glass-border-muted: rgba(148, 163, 184, 0.24);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --glass-blur: blur(24px) saturate(1.25);
+  --liquid-blue-shadow: 0 16px 42px rgba(21, 117, 255, 0.28);
+  --surface-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+  --surface-hover-shadow: 0 12px 28px rgba(15, 23, 42, 0.065);
 }
 
 /* Dark mode theme overrides */
 @media (prefers-color-scheme: dark) {
   @theme {
     /* 背景色 - Dark mode */
-    --color-bg-primary: #0f172a;
-    --color-bg-secondary: #1e293b;
-    --color-bg-tertiary: #334155;
+    --color-bg-primary: #06080b;
+    --color-bg-secondary: rgba(14, 20, 28, 0.72);
+    --color-bg-tertiary: rgba(30, 41, 59, 0.62);
 
     /* 文本色 - Dark mode */
     --color-text-primary: #f1f5f9;
@@ -65,15 +77,24 @@
     --color-text-inverse: #0f172a;
 
     /* 边框色 - Dark mode */
-    --color-border: #334155;
-    --color-border-light: #1e293b;
-    --color-border-dark: #475569;
+    --color-border: rgba(255, 255, 255, 0.12);
+    --color-border-light: rgba(255, 255, 255, 0.08);
+    --color-border-dark: rgba(255, 255, 255, 0.22);
 
     /* 阴影 - Dark mode */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+    --shadow-sm: 0 12px 28px rgb(0 0 0 / 0.18);
+    --shadow-md: 0 18px 40px rgb(0 0 0 / 0.24);
+    --shadow-lg: 0 30px 84px rgb(0 0 0 / 0.42);
+    --shadow-xl: 0 38px 108px rgb(0 0 0 / 0.5);
+
+    --glass-bg: rgba(10, 15, 22, 0.84);
+    --glass-bg-strong: rgba(14, 20, 29, 0.94);
+    --glass-bg-muted: rgba(255, 255, 255, 0.11);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-muted: rgba(255, 255, 255, 0.13);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    --surface-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    --surface-hover-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
   }
 }
 
@@ -83,7 +104,7 @@ body {
                'Arial', 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
                'Segoe UI Symbol', 'Noto Color Emoji';
   color: #111827;
-  background-color: #f9fafb;
+  background-color: #eef3f8;
   line-height: 1.5;
 }
 
@@ -91,7 +112,147 @@ body {
 @media (prefers-color-scheme: dark) {
   body {
     color: #f1f5f9;
-    background-color: #0f172a;
+    background-color: #06080b;
+  }
+}
+
+/* Liquid glass dashboard theme */
+.liquid-app {
+  position: relative;
+  isolation: isolate;
+  --glass-bg: rgba(255, 255, 255, 0.84);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-bg-muted: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.56);
+  --glass-border-muted: rgba(148, 163, 184, 0.24);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  background:
+    linear-gradient(115deg, rgba(8, 145, 178, 0.28), transparent 34%),
+    linear-gradient(245deg, rgba(245, 158, 11, 0.18), transparent 38%),
+    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.22), transparent 22%),
+    radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.2), transparent 26%),
+    linear-gradient(135deg, #eef3f8, #dce7f1);
+}
+
+.liquid-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 86px),
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.04) 0 1px, transparent 1px 86px);
+  mask-image: linear-gradient(180deg, black, transparent 80%);
+}
+
+.liquid-app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+}
+
+.liquid-app {
+  color: #111827;
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-app {
+    color: #f8fafc;
+    --glass-bg: rgba(10, 15, 22, 0.84);
+    --glass-bg-strong: rgba(14, 20, 29, 0.94);
+    --glass-bg-muted: rgba(255, 255, 255, 0.11);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-muted: rgba(255, 255, 255, 0.13);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    background:
+      linear-gradient(115deg, rgba(8, 145, 178, 0.62), transparent 31%),
+      linear-gradient(245deg, rgba(245, 158, 11, 0.36), transparent 34%),
+      radial-gradient(circle at 76% 15%, rgba(255, 255, 255, 0.18), transparent 20%),
+      radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.24), transparent 24%),
+      linear-gradient(180deg, rgba(8, 13, 20, 0.16), rgba(8, 10, 14, 0.92)),
+      #06080b;
+  }
+
+  .liquid-app::before {
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.07) 0 1px, transparent 1px 86px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 1px, transparent 1px 86px);
+  }
+}
+
+.liquid-glass,
+.liquid-app div.bg-white,
+.liquid-app section.bg-white,
+.liquid-app article.bg-white,
+.liquid-app aside.bg-white,
+.liquid-app form.bg-white {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+    var(--glass-bg) !important;
+  border: 1px solid var(--glass-border-muted);
+  box-shadow: var(--surface-shadow), var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-app .text-gray-950,
+  .liquid-app .text-gray-900,
+  .liquid-app .text-gray-800 {
+    color: #f8fafc !important;
+  }
+
+  .liquid-app .text-gray-700,
+  .liquid-app .text-gray-600 {
+    color: #dbe4ef !important;
+  }
+
+  .liquid-app .text-gray-500,
+  .liquid-app .text-gray-400 {
+    color: #9fb0c5 !important;
+  }
+
+  .liquid-app .border-gray-100,
+  .liquid-app .border-gray-200,
+  .liquid-app .border-gray-700,
+  .liquid-app .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+  .liquid-app .divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+}
+
+.liquid-app .shadow,
+.liquid-app .shadow-sm {
+  box-shadow: var(--surface-shadow), var(--glass-highlight) !important;
+}
+
+.liquid-app .shadow-md {
+  box-shadow: var(--surface-hover-shadow), var(--glass-highlight) !important;
+}
+
+.liquid-app .rounded-lg {
+  border-radius: var(--radius-lg) !important;
+}
+
+.liquid-app .select,
+.liquid-app input:not([type="checkbox"]):not([type="radio"]),
+.liquid-app textarea {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-muted);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-app .select,
+  .liquid-app input:not([type="checkbox"]):not([type="radio"]),
+  .liquid-app textarea {
+    color: #f8fafc;
   }
 }
 
@@ -188,11 +349,11 @@ body {
 
 /* 卡片阴影 */
 .card-shadow {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--surface-shadow);
 }
 
 .card-shadow:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--surface-hover-shadow);
 }
 
 /* 响应式断点提示（开发时使用） */

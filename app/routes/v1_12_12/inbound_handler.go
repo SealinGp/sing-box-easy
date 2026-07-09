@@ -57,8 +57,8 @@ func (h *Handler) AddInbound(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if inbound.Tag == "" {
-		respErr(ctx, c, CodeBadRequest, "tag is required")
+	if err := validateInbound(inbound); err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
 
@@ -105,6 +105,11 @@ func (h *Handler) UpdateInbound(ctx context.Context, c *app.RequestContext) {
 
 	// Ensure the tag matches
 	inbound.Tag = tag
+
+	if err := validateInbound(inbound); err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
 
 	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		found := false

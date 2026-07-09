@@ -74,6 +74,22 @@ func (s *Shadowsocks) Parse(uri string) (*node.SubNode, error) {
 	return sn, nil
 }
 
+func (s *Shadowsocks) Validate() error {
+	if s.Method == "" {
+		return fmt.Errorf("shadowsocks method is required")
+	}
+	if s.Method != "none" && s.Password == "" {
+		return fmt.Errorf("shadowsocks password is required")
+	}
+	if s.Server == "" {
+		return fmt.Errorf("shadowsocks server is required")
+	}
+	if s.ServerPort == 0 {
+		return fmt.Errorf("shadowsocks server port is required")
+	}
+	return nil
+}
+
 func (s *Shadowsocks) decodeCredentials(credentials string) error {
 	// Decode the credentials (method:password)
 	cri, err := s.decodeBase64(credentials)

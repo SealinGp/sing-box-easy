@@ -95,6 +95,19 @@ func (t *Trojan) Parse(uri string) (*node.SubNode, error) {
 	return sn, nil
 }
 
+func (t *Trojan) Validate() error {
+	if t.Password == "" {
+		return fmt.Errorf("trojan password is required")
+	}
+	if t.Server == "" {
+		return fmt.Errorf("trojan server is required")
+	}
+	if t.ServerPort == 0 {
+		return fmt.Errorf("trojan server port is required")
+	}
+	return nil
+}
+
 // parseServerInfo parses server:port from the server info string
 func (t *Trojan) parseServerInfo(serverInfo string) error {
 	// Handle IPv6 addresses (enclosed in brackets)

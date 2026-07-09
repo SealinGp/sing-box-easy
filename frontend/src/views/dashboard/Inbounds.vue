@@ -15,6 +15,7 @@ import Badge from '../../components/Badge.vue'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
+import { applyInboundTypeDefaults, generateVmessUUID, validateInboundRequiredFields } from '../../utils/inboundRequiredFields'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
@@ -98,6 +99,7 @@ const openEditModal = (inbound: Inbound) => {
   isEditMode.value = true
   editingTag.value = inbound.tag
   currentInbound.value = { ...inbound }
+  applyInboundTypeDefaults(currentInbound.value as any)
   showModal.value = true
 }
 
@@ -112,59 +114,15 @@ const closeModal = () => {
 }
 
 const handleSave = async () => {
-  // Validation
-  if (!currentInbound.value.tag?.trim()) {
+  const validationError = validateInboundRequiredFields(currentInbound.value as any)
+  if (validationError) {
     toast.add({
       severity: 'error',
       summary: t('inbounds.validation.title'),
-      detail: t('inbounds.validation.tagRequired'),
+      detail: t(validationError.key),
       life: 3000
     })
     return
-  }
-
-  if (!currentInbound.value.type) {
-    toast.add({
-      severity: 'error',
-      summary: t('inbounds.validation.title'),
-      detail: t('inbounds.validation.typeRequired'),
-      life: 3000
-    })
-    return
-  }
-
-  // For most inbound types (except TUN), require listen_port
-  if (currentInbound.value.type !== 'tun' && !(currentInbound.value as any).listen_port) {
-    toast.add({
-      severity: 'error',
-      summary: t('inbounds.validation.title'),
-      detail: t('inbounds.validation.listenPortRequired'),
-      life: 3000
-    })
-    return
-  }
-
-  // Shadowsocks validation
-  if (currentInbound.value.type === 'shadowsocks') {
-    const ssInbound = currentInbound.value as any
-    if (!ssInbound.method) {
-      toast.add({
-        severity: 'error',
-        summary: t('inbounds.validation.title'),
-        detail: t('inbounds.validation.ssMethodRequired'),
-        life: 3000
-      })
-      return
-    }
-    if (ssInbound.method !== 'none' && !ssInbound.password) {
-      toast.add({
-        severity: 'error',
-        summary: t('inbounds.validation.title'),
-        detail: t('inbounds.validation.ssPasswordRequired'),
-        life: 3000
-      })
-      return
-    }
   }
 
   loading.value = true
@@ -267,14 +225,18 @@ const generatePassword = () => {
   }
 }
 
+const generateVMessUUID = () => {
+  const inbound = currentInbound.value as any
+  if (!Array.isArray(inbound.users) || inbound.users.length === 0) {
+    inbound.users = [{ name: 'sekai', uuid: '', alterId: 0 }]
+  }
+  inbound.users[0].uuid = generateVmessUUID()
+}
+
 watch(() => currentInbound.value.type, (newType) => {
-  if (newType === 'shadowsocks') {
-    if (!(currentInbound.value as any).method) {
-      ;(currentInbound.value as any).method = '2022-blake3-aes-128-gcm'
-    }
-    if (!(currentInbound.value as any).password) {
-      generatePassword()
-    }
+  applyInboundTypeDefaults(currentInbound.value as any)
+  if (newType === 'shadowsocks' && !(currentInbound.value as any).password) {
+    generatePassword()
   }
 })
 
@@ -420,15 +382,15 @@ onMounted(fetchInbounds)
                 <Badge v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end gap-2">
-                  <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" :title="$t('inbounds.tooltip.copyConfig')">
+                <div class="inbound-table-actions flex items-center justify-end gap-2">
+                  <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" action :title="$t('inbounds.tooltip.copyConfig')">
                     <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
                     <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
                   </Button>
-                  <Button @click="openEditModal(inbound)" variant="ghost" size="sm">
+                  <Button @click="openEditModal(inbound)" variant="ghost" size="sm" action>
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                  <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>
@@ -552,6 +514,42 @@ onMounted(fetchInbounds)
                           : $t('inbounds.form.ssPasswordHelpOther')
                         }}
                       </p>
+                    </div>
+                  </div>
+
+                  <!-- VMess Options -->
+                  <div v-if="currentInbound.type === 'vmess'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUserName') }}</label>
+                      <Input
+                        v-model="(currentInbound as any).users[0].name"
+                        :placeholder="$t('inbounds.form.vmessUserNamePlaceholder')"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUUID') }}</label>
+                      <div class="flex gap-2">
+                        <div class="flex-1">
+                          <Input
+                            v-model="(currentInbound as any).users[0].uuid"
+                            :placeholder="$t('inbounds.form.vmessUUIDPlaceholder')"
+                          />
+                        </div>
+                        <Button type="button" @click="generateVMessUUID" variant="secondary" class="shrink-0 flex items-center justify-center">
+                          {{ $t('inbounds.form.generate') }}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessAlterId') }}</label>
+                      <Input
+                        v-model.number="(currentInbound as any).users[0].alterId"
+                        type="number"
+                        :placeholder="$t('inbounds.form.vmessAlterIdPlaceholder')"
+                      />
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.vmessAlterIdHelp') }}</p>
                     </div>
                   </div>
 

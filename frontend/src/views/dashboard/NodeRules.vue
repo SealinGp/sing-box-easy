@@ -362,7 +362,7 @@ onMounted(async () => {
             {{ t('nodeRules.filters') }}
           </h2>
           <button
-            class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+            class="node-rule-primary-button bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
             @click="startCreateFilter"
           >
             <PlusIcon class="h-3.5 w-3.5" />
@@ -375,7 +375,7 @@ onMounted(async () => {
           <li
             v-for="f in filters"
             :key="f.id"
-            class="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            class="node-rule-card rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 transition-colors duration-200"
           >
               <div class="min-w-0 space-y-2">
                 <div class="flex items-center gap-2 flex-wrap">
@@ -435,7 +435,7 @@ onMounted(async () => {
             {{ t('nodeRules.groups') }}
           </h2>
           <button
-            class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+            class="node-rule-primary-button bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
             @click="startCreateGroup"
           >
             <PlusIcon class="h-3.5 w-3.5" />
@@ -448,7 +448,7 @@ onMounted(async () => {
           <li
             v-for="g in groups"
             :key="g.id"
-            class="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            class="node-rule-card rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 transition-colors duration-200"
           >
               <div class="min-w-0 space-y-2">
                 <div class="flex items-center gap-2">
@@ -497,7 +497,7 @@ onMounted(async () => {
       </h2>
       
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <div v-for="pf in preview.filters" :key="pf.id" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 p-4 self-start shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div v-for="pf in preview.filters" :key="pf.id" class="node-rule-card rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 p-4 self-start transition-colors duration-200">
             <button
               class="w-full flex items-center justify-between gap-2 cursor-pointer focus:outline-none"
               :disabled="!pf.member_count"
@@ -529,7 +529,7 @@ onMounted(async () => {
         </div>
 
         <!-- Unmatched nodes (fall through to the fallback) -->
-        <div v-if="preview.unmatched.length" class="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-4 shadow-sm">
+        <div v-if="preview.unmatched.length" class="node-rule-card rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-4">
           <button class="w-full flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 cursor-pointer focus:outline-none" @click="showUnmatched = !showUnmatched">
             <span class="shrink-0">
               <ChevronDownIcon v-if="showUnmatched" class="h-3.5 w-3.5" />
@@ -552,7 +552,7 @@ onMounted(async () => {
 
     <!-- Create/Edit Filter Modal -->
     <div v-if="editingFilterId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full shadow-2xl animate-scale-up flex flex-col my-8 max-h-[85vh]">
+      <div class="node-rule-modal bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full animate-scale-up flex flex-col my-8 max-h-[85vh]">
         <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -663,7 +663,7 @@ onMounted(async () => {
                 />
                 <div
                   v-if="codeOpen"
-                  class="absolute z-20 mt-1 max-h-48 w-60 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-xl text-xs"
+                  class="node-rule-popover absolute z-20 mt-1 max-h-48 w-60 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 text-xs"
                 >
                   <button
                     v-for="kw in filteredCodeKeywords"
@@ -736,7 +736,7 @@ onMounted(async () => {
                 />
                 <div
                   v-if="excludeOpen"
-                  class="absolute z-20 mt-1 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-xl text-xs"
+                  class="node-rule-popover absolute z-20 mt-1 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 text-xs"
                 >
                   <button
                     v-for="tag in filteredExcludeNodes"
@@ -804,7 +804,7 @@ onMounted(async () => {
           <button
             type="button"
             @click="saveFilter"
-            class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
+            class="node-rule-primary-button bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer"
           >
             {{ t('nodeRules.save') }}
           </button>
@@ -814,7 +814,7 @@ onMounted(async () => {
 
     <!-- Create/Edit Group Modal -->
     <div v-if="editingGroupId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full shadow-2xl animate-scale-up flex flex-col my-8 max-h-[85vh]">
+      <div class="node-rule-modal bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full animate-scale-up flex flex-col my-8 max-h-[85vh]">
         <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -859,7 +859,7 @@ onMounted(async () => {
                 @click="toggleGroupFilter(f.id)"
                 class="px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer"
                 :class="groupForm.filter_ids.includes(f.id)
-                  ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                  ? 'bg-violet-600 border-violet-600 text-white'
                   : 'bg-gray-55 dark:bg-slate-800 border-gray-200 dark:border-gray-700 text-gray-750 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'"
               >
                 {{ f.name }}
@@ -883,7 +883,7 @@ onMounted(async () => {
           <button
             type="button"
             @click="saveGroup"
-            class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
+            class="node-rule-primary-button bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer"
           >
             {{ t('nodeRules.save') }}
           </button>
@@ -892,3 +892,33 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.node-rule-card {
+  box-shadow:
+    0 8px 22px rgba(15, 23, 42, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.node-rule-card:hover {
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.065),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.node-rule-modal {
+  box-shadow:
+    0 20px 48px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.node-rule-popover {
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.node-rule-primary-button {
+  box-shadow: none;
+}
+</style>

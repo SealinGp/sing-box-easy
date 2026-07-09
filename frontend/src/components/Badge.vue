@@ -14,16 +14,16 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const classes = computed(() => {
-  const base = 'inline-flex items-center font-medium rounded-full'
+  const base = 'inline-flex items-center font-semibold rounded-full border'
 
   const variants = {
-    primary: 'bg-violet-100 text-violet-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-amber-100 text-amber-800',
-    danger: 'bg-red-100 text-red-800',
-    info: 'bg-purple-100 text-purple-800',
-    secondary: 'bg-gray-100 text-gray-800',
-    gray: 'bg-gray-100 text-gray-800',
+    primary: 'bg-blue-500/15 text-blue-700 dark:text-blue-200 border-blue-500/25',
+    success: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/25',
+    warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-200 border-amber-500/25',
+    danger: 'bg-red-500/15 text-red-700 dark:text-red-200 border-red-500/25',
+    info: 'bg-sky-500/15 text-sky-700 dark:text-sky-200 border-sky-500/25',
+    secondary: 'bg-white/35 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-white/35 dark:border-white/10',
+    gray: 'bg-white/35 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-white/35 dark:border-white/10',
   }
 
   const sizes = {
@@ -37,11 +37,11 @@ const classes = computed(() => {
 
 const dotColorClass = computed(() => {
   const colors = {
-    primary: 'bg-violet-500',
-    success: 'bg-green-500',
+    primary: 'bg-blue-500',
+    success: 'bg-emerald-500',
     warning: 'bg-amber-500',
     danger: 'bg-red-500',
-    info: 'bg-purple-500',
+    info: 'bg-sky-500',
     secondary: 'bg-gray-500',
     gray: 'bg-gray-500',
   }

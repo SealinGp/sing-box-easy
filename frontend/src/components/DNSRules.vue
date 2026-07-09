@@ -359,11 +359,11 @@ onMounted(() => {
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end gap-2">
-                  <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm">
+                <div class="dns-rule-table-actions flex items-center justify-end gap-2">
+                  <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm" action>
                     <PencilIcon class="h-4 w-4" />
                   </Button>
-                  <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                  <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     <TrashIcon class="h-4 w-4" />
                   </Button>
                 </div>

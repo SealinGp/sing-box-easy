@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sing Box Easy - Liquid Glass Design Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-0: #06080b;
+      --bg-1: #10151b;
+      --bg-2: #18202a;
+      --glass-0: rgba(255, 255, 255, 0.07);
+      --glass-1: rgba(255, 255, 255, 0.11);
+      --glass-2: rgba(255, 255, 255, 0.16);
+      --glass-dark: rgba(6, 9, 13, 0.62);
+      --stroke-0: rgba(255, 255, 255, 0.12);
+      --stroke-1: rgba(255, 255, 255, 0.22);
+      --text-0: #f8fafc;
+      --text-1: #dbe4ef;
+      --text-2: #91a0b3;
+      --text-3: #617085;
+      --primary: #1575ff;
+      --primary-2: #6ba5ff;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+      --radius-xs: 10px;
+      --radius-sm: 14px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.38);
+      --shadow-blue: 0 18px 50px rgba(21, 117, 255, 0.28);
+      --blur: blur(28px) saturate(1.3);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg-0);
+      color: var(--text-0);
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background:
+        linear-gradient(115deg, rgba(8, 145, 178, 0.62), transparent 31%),
+        linear-gradient(245deg, rgba(245, 158, 11, 0.42), transparent 34%),
+        linear-gradient(180deg, rgba(8, 13, 20, 0.12), rgba(8, 10, 14, 0.86)),
+        radial-gradient(circle at 76% 15%, rgba(255, 255, 255, 0.22), transparent 20%),
+        radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.24), transparent 24%),
+        #0b0d10;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      opacity: 0.54;
+      background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 86px),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 86px);
+      mask-image: linear-gradient(180deg, black, transparent 78%);
+    }
+
+    .preview-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 284px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .sidebar,
+    .glass,
+    .panel,
+    .modal-card,
+    .table-wrap {
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.055)),
+        var(--glass-dark);
+      border: 1px solid var(--stroke-0);
+      box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding-left: 4px;
+    }
+
+    .traffic span {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.65), 0 8px 18px rgba(0,0,0,0.2);
+    }
+
+    .traffic span:nth-child(1) { background: #ff5f57; }
+    .traffic span:nth-child(2) { background: #ffbd2e; }
+    .traffic span:nth-child(3) { background: #28c840; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--stroke-0);
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.94);
+      color: #0b1017;
+      font-weight: 900;
+      box-shadow: 0 18px 36px rgba(255,255,255,0.16);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .brand p,
+    .mini-label,
+    .muted {
+      margin: 0;
+      color: var(--text-2);
+      font-size: 12px;
+    }
+
+    .mini-label {
+      margin: 22px 0 10px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav-item {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      color: var(--text-1);
+      font-weight: 720;
+      font-size: 14px;
+    }
+
+    .nav-item svg {
+      width: 19px;
+      height: 19px;
+      color: var(--text-2);
+      flex: 0 0 auto;
+    }
+
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(21,117,255,0.98), rgba(60,140,255,0.82));
+      color: white;
+      box-shadow: var(--shadow-blue);
+    }
+
+    .nav-item.active svg {
+      color: white;
+    }
+
+    .badge-pill {
+      margin-left: auto;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: var(--glass-2);
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--stroke-0);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #f4c7bf, #7ba7ff);
+      color: #172033;
+      font-weight: 900;
+      border: 2px solid rgba(255,255,255,0.75);
+    }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      min-height: 76px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+    }
+
+    .topbar h2,
+    .section-title,
+    .card-title {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .topbar h2 {
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1;
+    }
+
+    .topbar-actions,
+    .actions,
+    .button-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      appearance: none;
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-0);
+      background: var(--glass-1);
+      font: 760 14px/1 var(--font);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+    }
+
+    .btn svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary), #4a94ff);
+      color: white;
+      box-shadow: var(--shadow-blue), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    .btn.dark {
+      background: rgba(3, 6, 10, 0.82);
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    .btn.ghost {
+      background: rgba(255,255,255,0.06);
+      border-color: var(--stroke-0);
+    }
+
+    .btn.danger {
+      background: rgba(239, 68, 68, 0.16);
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.32);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .panel {
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .stat-card {
+      min-height: 168px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      right: -50px;
+      bottom: -58px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(21,117,255,0.38), transparent 68%);
+      pointer-events: none;
+    }
+
+    .metric {
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1;
+      margin: 12px 0 0;
+      font-weight: 850;
+    }
+
+    .metric.small {
+      font-size: 28px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 780;
+      color: var(--text-2);
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 840;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 6px rgba(34,197,94,0.12);
+      background: var(--success);
+    }
+
+    .status-dot.warn {
+      background: var(--warning);
+      box-shadow: 0 0 0 6px rgba(245,158,11,0.12);
+    }
+
+    .status-dot.stop {
+      background: var(--danger);
+      box-shadow: 0 0 0 6px rgba(239,68,68,0.12);
+    }
+
+    .component-board {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: var(--text-2);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .input,
+    .select,
+    .textarea {
+      width: 100%;
+      border: 1px solid var(--stroke-0);
+      background: rgba(255,255,255,0.11);
+      color: var(--text-0);
+      border-radius: 999px;
+      min-height: 42px;
+      padding: 0 15px;
+      font: 650 14px/1 var(--font);
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.13);
+    }
+
+    .textarea {
+      min-height: 92px;
+      border-radius: var(--radius-sm);
+      padding: 13px 15px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .input::placeholder,
+    .textarea::placeholder {
+      color: rgba(219,228,239,0.52);
+    }
+
+    .toggle {
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid var(--stroke-0);
+      padding: 3px;
+      display: inline-flex;
+      justify-content: flex-end;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+
+    .toggle::before {
+      content: "";
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip,
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke-0);
+      background: rgba(255,255,255,0.08);
+      color: var(--text-1);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .status-badge.success {
+      color: #bbf7d0;
+      background: rgba(34,197,94,0.15);
+      border-color: rgba(34,197,94,0.25);
+    }
+
+    .status-badge.info {
+      color: #bae6fd;
+      background: rgba(56,189,248,0.14);
+      border-color: rgba(56,189,248,0.24);
+    }
+
+    .status-badge.warning {
+      color: #fde68a;
+      background: rgba(245,158,11,0.14);
+      border-color: rgba(245,158,11,0.26);
+    }
+
+    .table-wrap {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--text-2);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 850;
+      background: rgba(255,255,255,0.04);
+    }
+
+    td {
+      color: var(--text-1);
+      font-size: 13px;
+      font-weight: 620;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #c7d2fe;
+    }
+
+    .log-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .log-item {
+      display: grid;
+      grid-template-columns: 76px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 11px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background: rgba(56,189,248,0.12);
+      border: 1px solid rgba(56,189,248,0.25);
+      color: #e0f2fe;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .modal-preview {
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+        rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .modal-card {
+      width: min(100%, 420px);
+      border-radius: 30px;
+      padding: 22px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .icon-button {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--stroke-0);
+      background: rgba(255,255,255,0.1);
+      color: white;
+      display: grid;
+      place-items: center;
+    }
+
+    .icon-button svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .preview-note {
+      color: var(--text-2);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 1180px) {
+      .preview-shell {
+        grid-template-columns: 92px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        padding: 18px 14px;
+      }
+
+      .brand div:not(.mark),
+      .mini-label,
+      .nav-item span:not(.badge-pill),
+      .sidebar-footer div:not(.avatar) {
+        display: none;
+      }
+
+      .brand {
+        justify-content: center;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 11px;
+      }
+
+      .badge-pill {
+        position: absolute;
+        transform: translate(18px, -12px);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .preview-shell {
+        display: block;
+        padding: 12px;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+        height: auto;
+        margin-bottom: 12px;
+      }
+
+      .brand div:not(.mark),
+      .mini-label,
+      .nav-item span:not(.badge-pill),
+      .sidebar-footer div:not(.avatar) {
+        display: block;
+      }
+
+      .brand {
+        justify-content: flex-start;
+      }
+
+      .nav-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .nav-item {
+        justify-content: flex-start;
+      }
+
+      .badge-pill {
+        position: static;
+        transform: none;
+      }
+
+      .main {
+        gap: 12px;
+      }
+
+      .topbar,
+      .component-board {
+        display: grid;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-7,
+      .span-8,
+      .span-12 {
+        grid-column: auto;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .nav-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .topbar-actions,
+      .button-row {
+        width: 100%;
+      }
+
+      .btn {
+        flex: 1 1 auto;
+      }
+
+      .log-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <aside class="sidebar">
+      <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <h1>Sing Box Easy</h1>
+          <p>Liquid glass system preview</p>
+        </div>
+      </div>
+
+      <p class="mini-label">Menu</p>
+      <nav class="nav-list" aria-label="Preview navigation">
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4v9zM14 20h6V4h-6v16zM4 20h6v-3H4v3z"/></svg>
+          <span>Overview</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
+          <span>Inbounds</span>
+          <span class="badge-pill">3</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 5h16"/></svg>
+          <span>Outbounds</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+          <span>DNS</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          <span>Route</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 1 1-2.97 2.97l-.04-.04A1.8 1.8 0 0 0 14.8 19.6a1.8 1.8 0 0 0-1.1 1.65V21a2.1 2.1 0 1 1-4.2 0v-.06A1.8 1.8 0 0 0 8.4 19.3a1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 1 1-2.97-2.97l.04-.04A1.8 1.8 0 0 0 3.8 14.7a1.8 1.8 0 0 0-1.65-1.1H2a2.1 2.1 0 1 1 0-4.2h.06A1.8 1.8 0 0 0 3.7 8.3a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 1 1 2.97-2.97l.04.04A1.8 1.8 0 0 0 8.3 3.7h.1A1.8 1.8 0 0 0 9.5 2.05V2a2.1 2.1 0 1 1 4.2 0v.06A1.8 1.8 0 0 0 14.8 3.7h.1a1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 1 1 2.97 2.97l-.04.04A1.8 1.8 0 0 0 19.6 8.3v.1A1.8 1.8 0 0 0 21.25 9.5H21a2.1 2.1 0 1 1 0 4.2h-.06A1.8 1.8 0 0 0 19.4 15z"/></svg>
+          <span>Settings</span>
+        </div>
+      </nav>
+
+      <p class="mini-label">Service</p>
+      <div class="panel" style="padding: 12px; border-radius: 20px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <span class="status-badge success"><span class="status-dot"></span>Running</span>
+          <span class="mono" style="font-size:12px;">v1.12.12</span>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="avatar">AD</div>
+        <div>
+          <strong style="font-size:14px;">Admin</strong>
+          <p class="muted">Operator</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="topbar glass">
+        <div>
+          <h2>Dashboard Theme Preview</h2>
+          <p class="preview-note">Static preview artifact. No app state is wired here.</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            Refresh
+          </button>
+          <button class="btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Add Inbound
+          </button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel stat-card span-4">
+          <div>
+            <p class="card-title">Service Status</p>
+            <p class="metric">Running</p>
+          </div>
+          <div class="button-row">
+            <button class="btn primary">Restart</button>
+            <button class="btn danger">Stop</button>
+          </div>
+        </div>
+        <div class="panel stat-card span-4">
+          <div>
+            <p class="card-title">Active Proxy Nodes</p>
+            <p class="metric">42</p>
+          </div>
+          <div class="chips">
+            <span class="chip">Selector</span>
+            <span class="chip">URL Test</span>
+            <span class="chip">Direct</span>
+          </div>
+        </div>
+        <div class="panel stat-card span-4">
+          <div>
+            <p class="card-title">Current Inbounds</p>
+            <p class="metric">6</p>
+          </div>
+          <div class="chips">
+            <span class="status-badge info">Mixed</span>
+            <span class="status-badge success">VMess</span>
+            <span class="status-badge warning">TUN</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="span-8 table-wrap">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 18px 4px;">
+            <div>
+              <h3 class="section-title">Inbounds</h3>
+              <p class="preview-note">Table, badges, action buttons and dense admin rows.</p>
+            </div>
+            <button class="btn ghost">Export</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Type</th>
+                <th>Listen</th>
+                <th>Port</th>
+                <th>Sniff</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">mixed-in</td>
+                <td><span class="status-badge info">Mixed</span></td>
+                <td>127.0.0.1</td>
+                <td class="mono">1080</td>
+                <td><span class="status-badge success">Enabled</span></td>
+                <td><button class="btn ghost">Edit</button></td>
+              </tr>
+              <tr>
+                <td class="mono">vmess-in</td>
+                <td><span class="status-badge success">VMess</span></td>
+                <td>0.0.0.0</td>
+                <td class="mono">10086</td>
+                <td><span class="status-badge">Disabled</span></td>
+                <td><button class="btn ghost">Copy</button></td>
+              </tr>
+              <tr>
+                <td class="mono">ss-in</td>
+                <td><span class="status-badge warning">Shadowsocks</span></td>
+                <td>::</td>
+                <td class="mono">8388</td>
+                <td><span class="status-badge success">Enabled</span></td>
+                <td><button class="btn ghost">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel span-4">
+          <h3 class="section-title">Reusable Controls</h3>
+          <p class="preview-note">Button, input, select, toggle, badges and alert styling.</p>
+          <div class="control-stack" style="margin-top:18px;">
+            <div class="field">
+              <label>Inbound Tag</label>
+              <input class="input" value="vmess-in" />
+            </div>
+            <div class="field">
+              <label>Type</label>
+              <select class="select">
+                <option>VMess</option>
+                <option>Shadowsocks</option>
+                <option>Mixed</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div>
+                <strong>Traffic sniffing</strong>
+                <p class="muted">Override destination enabled</p>
+              </div>
+              <span class="toggle"></span>
+            </div>
+            <div class="alert">
+              <span class="status-dot warn" style="margin-top:4px;"></span>
+              <span>Liquid glass surfaces must keep enough contrast for long-running operations and tables.</span>
+            </div>
+            <div class="button-row">
+              <button class="btn primary">Save</button>
+              <button class="btn ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel span-5">
+          <h3 class="section-title">Protocol Form Panel</h3>
+          <p class="preview-note">Compact form for VMess/Shadowsocks-style options.</p>
+          <div class="control-stack" style="margin-top:18px;">
+            <div class="field">
+              <label>UUID</label>
+              <input class="input mono" value="bf000d23-0752-40b4-affe-68f7707a9661" />
+            </div>
+            <div class="field">
+              <label>Alter ID</label>
+              <input class="input" value="0" />
+            </div>
+            <div class="field">
+              <label>Notes</label>
+              <textarea class="textarea" placeholder="Optional protocol notes..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel span-3">
+          <h3 class="section-title">Logs</h3>
+          <div class="log-list" style="margin-top:18px;">
+            <div class="log-item">
+              <span class="mono">12:08</span>
+              <span>Service restarted</span>
+              <span class="status-badge success">ok</span>
+            </div>
+            <div class="log-item">
+              <span class="mono">12:10</span>
+              <span>VMess inbound ready</span>
+              <span class="status-badge info">info</span>
+            </div>
+            <div class="log-item">
+              <span class="mono">12:11</span>
+              <span>DNS cache updated</span>
+              <span class="status-badge">sync</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="span-4 modal-preview">
+          <div class="modal-card">
+            <div class="modal-head">
+              <div>
+                <h3 class="section-title">Modal Preview</h3>
+                <p class="preview-note">Frosted dialog surface.</p>
+              </div>
+              <button class="icon-button" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="control-stack">
+              <div class="field">
+                <label>Server</label>
+                <input class="input" value="0.0.0.0" />
+              </div>
+              <div class="field">
+                <label>Listen Port</label>
+                <input class="input mono" value="10086" />
+              </div>
+              <button class="btn primary" style="width:100%;">Create Inbound</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

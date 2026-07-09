@@ -14,8 +14,8 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div
     :class="[
-      'bg-white dark:bg-slate-800 rounded-lg transition-shadow',
-      hoverable ? 'hover:shadow-md cursor-pointer' : 'shadow-sm dark:shadow-xl dark:shadow-slate-700/50',
+      'liquid-glass rounded-lg transition-shadow duration-200',
+      hoverable ? 'hover:shadow-md cursor-pointer' : 'shadow-sm',
       {
         'p-0': padding === 'none',
         'p-4': padding === 'sm',
@@ -24,7 +24,7 @@ withDefaults(defineProps<Props>(), {
       },
     ]"
   >
-    <h3 v-if="title" class="text-lg font-semibold text-gray-900 mb-4">
+    <h3 v-if="title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
       {{ title }}
     </h3>
     <slot />

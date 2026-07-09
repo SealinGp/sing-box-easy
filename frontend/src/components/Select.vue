@@ -205,23 +205,23 @@ watch(() => props.searchable, (newVal) => {
 <style scoped>
 /* Override vue-select styles to match project theme */
 :deep(.vue-select-wrapper) {
-  --vs-border-color: #d1d5db;
-  --vs-border-radius: 0.5rem;
-  --vs-state-disabled-bg: #f9fafb;
+  --vs-border-color: rgba(148, 163, 184, 0.28);
+  --vs-border-radius: 9999px;
+  --vs-state-disabled-bg: rgba(255, 255, 255, 0.38);
   --vs-state-disabled-color: #6b7280;
-  --vs-dropdown-option--active-bg: #dbeafe;
-  --vs-dropdown-option--active-color: #1e40af;
+  --vs-dropdown-option--active-bg: rgba(21, 117, 255, 0.16);
+  --vs-dropdown-option--active-color: #0f4eb8;
 }
 
 
 /* Dark mode variables */
 @media (prefers-color-scheme: dark) {
   :deep(.vue-select-wrapper) {
-    --vs-border-color: #4b5563;
-    --vs-state-disabled-bg: #1f2937;
+    --vs-border-color: rgba(255, 255, 255, 0.12);
+    --vs-state-disabled-bg: rgba(255, 255, 255, 0.05);
     --vs-state-disabled-color: #9ca3af;
-    --vs-dropdown-option--active-bg: #1e3a8a;
-    --vs-dropdown-option--active-color: #93c5fd;
+    --vs-dropdown-option--active-bg: rgba(21, 117, 255, 0.22);
+    --vs-dropdown-option--active-color: #bfdbfe;
   }
 }
 
@@ -249,13 +249,16 @@ watch(() => props.searchable, (newVal) => {
   border: 1px solid var(--vs-border-color);
   padding: 0.375rem 0.75rem;
   transition: all 0.15s ease-in-out;
-  background-color: white;
+  background: var(--glass-bg-strong);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 @media (prefers-color-scheme: dark) {
   :deep(.vue-select-wrapper .vs__dropdown-toggle) {
-    background-color: #1f2937 !important;
-    border-color: #4b5563 !important;
+    background: var(--glass-bg-strong) !important;
+    border-color: var(--glass-border-muted) !important;
   }
 }
 
@@ -327,16 +330,18 @@ watch(() => props.searchable, (newVal) => {
 }
 
 :deep(.vue-select-wrapper .vs__dropdown-menu) {
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  background-color: white;
+  border: 1px solid var(--glass-border-muted);
+  box-shadow: var(--shadow-md), var(--glass-highlight);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 @media (prefers-color-scheme: dark) {
   :deep(.vue-select-wrapper .vs__dropdown-menu) {
-    background-color: #1f2937 !important;
-    border-color: #4b5563 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+    background: var(--glass-bg-strong) !important;
+    border-color: var(--glass-border-muted) !important;
+    box-shadow: var(--shadow-md), var(--glass-highlight);
   }
 }
 

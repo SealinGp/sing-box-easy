@@ -2,17 +2,17 @@
 **Project ID:** sing-box-easy-frontend
 
 ## 1. Visual Theme & Atmosphere
-The dashboard is designed with a modern, clean, and airy visual aesthetic that translates information density into structured clarity. It utilizes a dark-first design language that seamlessly adapts to a light mode. Depth is introduced via semi-transparent frosted-glass overlays (`backdrop-blur-sm`), micro-animations for transitions (`animate-slide-up`, `animate-fade-in`), and subtle color gradients that convey premium visual quality.
+The dashboard uses a liquid-glass operational theme: translucent surfaces, blurred layered backdrops, bright blue action states, and compact information density. It is dark-first but keeps a functional light mode. Depth comes from semi-transparent panels, `backdrop-filter` blur, soft highlight strokes, and restrained shadows rather than heavy solid cards.
 
 ## 2. Color Palette & Roles
 
 ### Core Palette
-* **Vibrant Cobalt Blue** (`#3b82f6`): Primary theme color used for call-to-actions, active navigation highlights, and interactive states.
-* **Cobalt Hover Blue** (`#2563eb`): Darker blue variation applied to primary components during cursor hover.
-* **Slate Navy Background** (`#0f172a`): Deep slate dark mode primary background, conveying high-end technology and reducing eye strain.
-* **Frosted Slate Card** (`#1e293b`): Secondary dark mode container color used for cards, sidebars, and elevated UI blocks.
-* **Paper White Background** (`#f9fafb`): Light mode primary body background.
-* **Pure White Card** (`#ffffff`): Light mode secondary container color.
+* **Liquid Blue** (`#1575ff`): Primary theme color used for CTAs, active navigation, and focused controls.
+* **Liquid Blue Hover** (`#0f63df`): Darker blue variation for hover and pressed states.
+* **Deep Glass Background** (`#06080b`): Dark mode foundation with layered cyan, amber, and blue light fields.
+* **Glass Surface** (`rgba(...)` via CSS tokens): Secondary containers use translucent fills with blurred backdrops.
+* **Mist Background** (`#eef3f8`): Light mode foundation, still layered with subtle grid and glow effects.
+* **Highlight Stroke** (`rgba(255,255,255,...)`): One-pixel borders and inset top highlights define edges.
 
 ### Functional & Status Colors
 * **Emerald Green** (`#10b981`): Service running, operations succeeded, or system active states.
@@ -33,21 +33,21 @@ The dashboard is designed with a modern, clean, and airy visual aesthetic that t
 ## 4. Component Stylings
 
 ### Buttons
-* **Shape**: Generously rounded corners (`border-radius: 0.75rem` / `rounded-xl` or `border-radius: 9999px` / `rounded-full`).
-* **Interactive Behavior**: Smooth 200ms ease-out transitions for scale, hover shadows, and background changes. Disabling states drop opacity and enforce `cursor-not-allowed`.
+* **Shape**: Pill-shaped command buttons (`rounded-full`) for primary actions and compact toolbar controls.
+* **Interactive Behavior**: Smooth 200ms ease-out transitions for hover background, blue glow, and disabled opacity.
 
 ### Cards & Containers
-* **Shape**: Generous rounding (`border-radius: 1rem` / `rounded-2xl`).
-* **Borders**: Hairline strokes (`border border-gray-100` / `dark:border-gray-800`).
-* **Shadows & Layers**: Light diffused shadows (`var(--shadow-sm)`) lifting to elevated shadows (`var(--shadow-md)`) on mouse hover.
+* **Shape**: Moderately rounded panels (`1.125rem` to `1.5rem`) to keep dashboards polished but not toy-like.
+* **Borders**: Translucent hairline strokes (`--glass-border`, `--glass-border-muted`) with an inset top highlight.
+* **Shadows & Layers**: Diffused dark shadows plus `backdrop-filter: blur(24px) saturate(1.25)`.
 
 ### Inputs & Forms
-* **Shape**: Uniform rounding (`border-radius: 0.75rem` / `rounded-xl`).
-* **Styling**: Solid background fills (`bg-gray-50` / `dark:bg-slate-800`) with high-contrast text fields, glowing focus rings (`focus:ring-2 focus:ring-violet-500/20`), and clear icon indicators.
+* **Shape**: Pill inputs for single-line fields; rounded rectangle textareas for multiline data.
+* **Styling**: Glass fills with clear contrast, blue focus rings, and stable heights for dense forms.
 
 ---
 
 ## 5. Layout Principles
-* **Structure**: Fixed side navigation bar (`width: 13.75rem` / `w-55`) on the left, with the main content area spanning the remaining width.
+* **Structure**: Fixed glass side navigation bar (`width: 13.75rem` / `w-55`) on the left, with the main content area spanning the remaining width.
 * **Gutter & Spacing**: Standardized margins and padding (`p-6` or `space-y-6`) creating a consistent grid alignment.
 * **Responsive Breakpoints**: Adapts cleanly from mobile viewports (`xs`) to ultra-wide displays (`2xl`).

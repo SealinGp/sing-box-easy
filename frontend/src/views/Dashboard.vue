@@ -100,7 +100,7 @@ const menuItems = computed<MenuItem[]>(() => [
 
 <template>
   <div
-    class="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-slate-900"
+    class="liquid-app flex h-screen"
   >
     <!-- Beautiful Sidebar Component with backdrop -->
     <div class="relative">
