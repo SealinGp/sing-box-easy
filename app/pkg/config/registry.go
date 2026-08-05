@@ -11,6 +11,17 @@ import (
 // Registry provides all necessary registries for sing-box config parsing
 type Registry struct{}
 
+// 编译期断言: 五个 wrapper 必须分别满足对应的 registry 接口。
+// 上游若变更接口签名, 这里会直接编译失败, 而不是等到运行时才报
+// "missing ... fields registry in context"。
+var (
+	_ option.DNSTransportOptionsRegistry = (*dnsRegistryWrapper)(nil)
+	_ option.InboundOptionsRegistry      = (*inboundRegistryWrapper)(nil)
+	_ option.OutboundOptionsRegistry     = (*outboundRegistryWrapper)(nil)
+	_ option.EndpointOptionsRegistry     = (*endpointRegistryWrapper)(nil)
+	_ option.ServiceOptionsRegistry      = (*serviceRegistryWrapper)(nil)
+)
+
 // CreateOptions implements option.DNSTransportOptionsRegistry
 func (r *Registry) CreateDNSOptions(transportType string) (any, bool) {
 	switch transportType {
@@ -34,6 +45,36 @@ func (r *Registry) CreateDNSOptions(transportType string) (any, bool) {
 		return new(option.LocalDNSServerOptions), true
 	case "hosts":
 		return new(option.HostsDNSServerOptions), true
+	default:
+		return nil, false
+	}
+}
+
+// CreateEndpointOptions implements option.EndpointOptionsRegistry
+//
+// Endpoint 是 sing-box 1.11 引入的类型: 同时具备 inbound 与 outbound 行为。
+// 注意 "wireguard" 同时存在于 outbound 表和 endpoint 表, 两者互不相干 ——
+// outbound 侧是已废弃的 LegacyWireGuardOutboundOptions, endpoint 侧才是新式写法。
+func (r *Registry) CreateEndpointOptions(endpointType string) (any, bool) {
+	switch endpointType {
+	case C.TypeWireGuard:
+		return new(option.WireGuardEndpointOptions), true
+	case C.TypeTailscale:
+		return new(option.TailscaleEndpointOptions), true
+	default:
+		return nil, false
+	}
+}
+
+// CreateServiceOptions implements option.ServiceOptionsRegistry
+func (r *Registry) CreateServiceOptions(serviceType string) (any, bool) {
+	switch serviceType {
+	case C.TypeResolved:
+		return new(option.ResolvedServiceOptions), true
+	case C.TypeSSMAPI:
+		return new(option.SSMAPIServiceOptions), true
+	case C.TypeDERP:
+		return new(option.DERPServiceOptions), true
 	default:
 		return nil, false
 	}
@@ -74,6 +115,8 @@ func (r *Registry) CreateInboundOptions(inboundType string) (any, bool) {
 		return new(option.TUICInboundOptions), true
 	case C.TypeShadowTLS:
 		return new(option.ShadowTLSInboundOptions), true
+	case C.TypeAnyTLS:
+		return new(option.AnyTLSInboundOptions), true
 	default:
 		return nil, false
 	}
@@ -118,12 +161,18 @@ func (r *Registry) CreateOutboundOptions(outboundType string) (any, bool) {
 		return new(option.SelectorOutboundOptions), true
 	case C.TypeURLTest:
 		return new(option.URLTestOutboundOptions), true
+	case C.TypeAnyTLS:
+		return new(option.AnyTLSOutboundOptions), true
 	default:
 		return nil, false
 	}
 }
 
-// CreateContext creates a context with all required registries
+// CreateContext creates a context with all required registries.
+//
+// 必须覆盖 option.Options 里所有需要 registry 的字段, 否则该字段一出现就会报
+// "missing <x> fields registry in context"。对照 sing-box include.Context():
+// inbound / outbound / endpoint / dns transport / service 共 5 个。
 func CreateContext(ctx context.Context) context.Context {
 	registry := &Registry{}
 	// Add DNS registry
@@ -132,6 +181,10 @@ func CreateContext(ctx context.Context) context.Context {
 	ctx = service.ContextWith[option.InboundOptionsRegistry](ctx, &inboundRegistryWrapper{registry})
 	// Add Outbound registry
 	ctx = service.ContextWith[option.OutboundOptionsRegistry](ctx, &outboundRegistryWrapper{registry})
+	// Add Endpoint registry (wireguard / tailscale)
+	ctx = service.ContextWith[option.EndpointOptionsRegistry](ctx, &endpointRegistryWrapper{registry})
+	// Add Service registry (resolved / ssm-api / derp)
+	ctx = service.ContextWith[option.ServiceOptionsRegistry](ctx, &serviceRegistryWrapper{registry})
 	return ctx
 }
 
@@ -158,4 +211,20 @@ type outboundRegistryWrapper struct {
 
 func (w *outboundRegistryWrapper) CreateOptions(outboundType string) (any, bool) {
 	return w.Registry.CreateOutboundOptions(outboundType)
+}
+
+type endpointRegistryWrapper struct {
+	*Registry
+}
+
+func (w *endpointRegistryWrapper) CreateOptions(endpointType string) (any, bool) {
+	return w.Registry.CreateEndpointOptions(endpointType)
+}
+
+type serviceRegistryWrapper struct {
+	*Registry
+}
+
+func (w *serviceRegistryWrapper) CreateOptions(serviceType string) (any, bool) {
+	return w.Registry.CreateServiceOptions(serviceType)
 }
