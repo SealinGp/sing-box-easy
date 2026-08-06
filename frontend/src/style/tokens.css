@@ -1,0 +1,222 @@
+/*
+ * Design tokens — the single source of truth for the design system.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * CRITICAL: `@theme` MUST stay at the top level of this file.
+ *
+ * Tailwind v4 hoists every `@theme` block out of its surrounding at-rule and
+ * emits them all at `:root`, in source order. A `@media (prefers-color-scheme:
+ * dark) { @theme { … } }` block therefore does NOT scope to dark mode — it
+ * silently overwrites the light values for every user, in every theme.
+ *
+ * That is why dark-mode overrides below live in a plain `:root` block inside a
+ * media query, NOT in a second `@theme`. Tailwind's generated utilities emit
+ * `var(--token)` rather than the literal value, so re-declaring the variable at
+ * `:root` is enough to re-theme every utility built from it.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+@theme {
+  /*
+   * ── Brand ──────────────────────────────────────────────────────────────
+   *
+   * Liquid Blue. `--color-primary` (== the 600 step) is the brand colour;
+   * the named hover/light/dark aliases are kept because existing component
+   * code refers to them.
+   *
+   * The full 50–950 ramp exists because the app previously hard-coded
+   * Tailwind's `violet-*` palette in ~450 places while the design system
+   * declared blue — so a button rendered blue or violet depending on whether
+   * its author used `<Button>` or a raw `<button>`. Publishing a real ramp
+   * made that migration a safe 1:1 rename (`violet-600` → `primary-600`)
+   * that preserves every shade *and* opacity modifier, instead of collapsing
+   * a 10-step ramp onto a single token and losing the tints.
+   */
+  --color-primary: #1575ff;
+  --color-primary-hover: #0f63df;
+  --color-primary-light: #6ba5ff;
+  --color-primary-dark: #0f4eb8;
+
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #5da3ff;
+  --color-primary-500: #3b87ff;
+  --color-primary-600: #1575ff; /* brand */
+  --color-primary-700: #0f63df;
+  --color-primary-800: #0f4eb8;
+  --color-primary-900: #123f8f;
+  --color-primary-950: #0d2757;
+
+  /* ── Status ────────────────────────────────────────────────────────── */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #06b6d4;
+
+  /* ── Surfaces & text (light mode; dark overrides at :root below) ───── */
+  --color-bg-primary: #eef3f8;
+  --color-bg-secondary: rgba(255, 255, 255, 0.76);
+  --color-bg-tertiary: rgba(241, 245, 249, 0.82);
+  --color-bg-dark: #10151b;
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  --color-border: rgba(148, 163, 184, 0.28);
+  --color-border-light: rgba(255, 255, 255, 0.66);
+  --color-border-dark: rgba(100, 116, 139, 0.34);
+
+  /*
+   * ── Radius ────────────────────────────────────────────────────────────
+   *
+   * Semantic tokens are the API. `--radius-control` and `--radius-surface`
+   * are what component code should reach for (via `rounded-control` /
+   * `rounded-surface`); the numeric t-shirt scale exists only so that stray
+   * `rounded-lg`-style utilities still land on a coherent value.
+   *
+   * The scale is deliberately aligned so the two vocabularies agree:
+   *     rounded-lg  == rounded-control  (10px)
+   *     rounded-2xl == rounded-surface  (16px)
+   *
+   * `--radius-pill` is reserved for badges, status chips, and icon-only
+   * circular buttons. It is NOT for text buttons or input fields.
+   */
+  --radius-control: 0.625rem; /* 10px — buttons, inputs, selects, chips  */
+  --radius-surface: 1rem; /*  16px — cards, panels, modals, popovers */
+  --radius-pill: 9999px; /*        — badges & circular icon buttons  */
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-4xl: 1.5rem;
+
+  /*
+   * PrimeVue reads `--radius-field` for its form controls. Aliasing it to the
+   * control radius keeps volt widgets in step with native ones — without it,
+   * PrimeVue falls back to its own 4px default, which is what made dropdowns
+   * look nearly square next to everything else.
+   */
+  --radius-field: var(--radius-control);
+
+  /*
+   * ── Elevation ─────────────────────────────────────────────────────────
+   *
+   * Two semantic levels. `surface` is for things resting on the page
+   * (cards, panels); `float` is for things genuinely above it (dropdown
+   * panels, modals, toasts). The numeric scale is overridden to match, so a
+   * stray `shadow-xl` cannot punch a hard drop shadow through the glass.
+   */
+  --shadow-surface: 0 8px 22px rgba(15, 23, 42, 0.045);
+  --shadow-surface-hover: 0 12px 28px rgba(15, 23, 42, 0.065);
+  --shadow-float: 0 12px 28px rgba(15, 23, 42, 0.1);
+  --shadow-float-lg: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --shadow-focus: 0 0 0 3px rgba(21, 117, 255, 0.18);
+
+  --shadow-2xs: var(--shadow-surface);
+  --shadow-xs: var(--shadow-surface);
+  --shadow-sm: var(--shadow-surface);
+  --shadow-md: var(--shadow-surface-hover);
+  --shadow-lg: var(--shadow-float);
+  --shadow-xl: var(--shadow-float-lg);
+  --shadow-2xl: var(--shadow-float-lg);
+
+  /* ── Liquid glass ──────────────────────────────────────────────────── */
+  --glass-bg: rgba(255, 255, 255, 0.84);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-bg-muted: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.56);
+  --glass-border-muted: rgba(148, 163, 184, 0.24);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --glass-blur: blur(24px) saturate(1.25);
+  --liquid-blue-shadow: 0 16px 42px rgba(21, 117, 255, 0.28);
+
+  /*
+   * ── Form control surfaces ─────────────────────────────────────────────
+   *
+   * Inputs need their OWN fill and border, distinct from the glass card they
+   * sit on. Previously they inherited `--glass-bg-strong` (0.92 white) and a
+   * `white/40` border — white-on-white against a white card, which is why
+   * fields were effectively invisible in light mode. The fill is now tinted
+   * *away* from the card, and the border carries real contrast.
+   */
+  --control-bg: rgba(255, 255, 255, 0.9);
+  --control-bg-hover: rgba(255, 255, 255, 1);
+  --control-bg-disabled: rgba(226, 232, 240, 0.6);
+  --control-border: rgba(100, 116, 139, 0.35);
+  --control-border-hover: rgba(100, 116, 139, 0.55);
+  --control-border-focus: var(--color-primary);
+  --control-placeholder: #94a3b8;
+  --control-text: #111827;
+}
+
+/*
+ * Dark mode. A plain `:root` override — see the warning at the top of this
+ * file for why this is not a second `@theme` block.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: #06080b;
+    --color-bg-secondary: rgba(14, 20, 28, 0.72);
+    --color-bg-tertiary: rgba(30, 41, 59, 0.62);
+
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #cbd5e1;
+    --color-text-tertiary: #94a3b8;
+    --color-text-inverse: #0f172a;
+
+    --color-border: rgba(255, 255, 255, 0.12);
+    --color-border-light: rgba(255, 255, 255, 0.08);
+    --color-border-dark: rgba(255, 255, 255, 0.22);
+
+    --shadow-surface: 0 10px 24px rgba(0, 0, 0, 0.18);
+    --shadow-surface-hover: 0 14px 32px rgba(0, 0, 0, 0.24);
+    --shadow-float: 0 14px 32px rgba(0, 0, 0, 0.36);
+    --shadow-float-lg: 0 30px 70px rgba(0, 0, 0, 0.46);
+    --shadow-focus: 0 0 0 3px rgba(107, 165, 255, 0.26);
+
+    --glass-bg: rgba(10, 15, 22, 0.84);
+    --glass-bg-strong: rgba(14, 20, 29, 0.94);
+    --glass-bg-muted: rgba(255, 255, 255, 0.11);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-muted: rgba(255, 255, 255, 0.13);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+    --control-bg: rgba(255, 255, 255, 0.06);
+    --control-bg-hover: rgba(255, 255, 255, 0.1);
+    --control-bg-disabled: rgba(255, 255, 255, 0.03);
+    --control-border: rgba(255, 255, 255, 0.22);
+    --control-border-hover: rgba(255, 255, 255, 0.34);
+    --control-placeholder: #64748b;
+    --control-text: #f8fafc;
+  }
+}
+
+/* ── Semantic utilities ──────────────────────────────────────────────── */
+
+@utility rounded-control {
+  border-radius: var(--radius-control);
+}
+
+@utility rounded-surface {
+  border-radius: var(--radius-surface);
+}
+
+@utility rounded-pill {
+  border-radius: var(--radius-pill);
+}
+
+@utility shadow-surface {
+  box-shadow: var(--shadow-surface);
+}
+
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
+}

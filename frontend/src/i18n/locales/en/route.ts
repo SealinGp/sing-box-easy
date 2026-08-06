@@ -220,6 +220,11 @@ export default {
     cascade: {
       title: 'Delete rule set & clean up references?',
       summary: 'Rule set "{tag}" is referenced by {routeCount} route rule(s) and {dnsCount} DNS rule(s). Deleting it will update {stripCount} and remove {deleteCount} of them.',
+      // Shown inside the delete popover, where the tag already appears as its
+      // own chip — so unlike `summary` this line must not repeat it.
+      details:
+        'Referenced by {routeCount} route rule(s) and {dnsCount} DNS rule(s). Deleting will update {stripCount} and remove {deleteCount} of them.',
+      checking: 'Checking references…',
       confirm: 'Delete & clean up',
     },
   },

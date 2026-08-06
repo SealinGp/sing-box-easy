@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 
 interface Props {
   modelValue?: string | number
@@ -7,8 +7,10 @@ interface Props {
   placeholder?: string
   disabled?: boolean
   error?: string
-  // Helper text shown under the input when there is no error,
-  // e.g. format examples for duration fields.
+  /**
+   * Helper text shown under the input when there is no error,
+   * e.g. format examples for duration fields.
+   */
   hint?: string
   label?: string
   required?: boolean
@@ -26,40 +28,62 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | number]
 }>()
 
-const inputClasses = computed(() => {
-  const base = 'block rounded-full border px-4 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors'
-  const state = props.error
-    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-    : 'border-white/40 dark:border-white/10 focus:border-blue-500 focus:ring-blue-500'
-  const width = props.fullWidth ? 'w-full' : ''
+// Ties <label>, the error/hint text, and the control together so the field is
+// announced correctly and clicking the label focuses the input.
+const inputId = useId()
+const describedById = computed(() =>
+  props.error || props.hint ? `${inputId}-desc` : undefined,
+)
 
-  return [base, state, width].join(' ')
-})
-
-const handleInput = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const value = props.type === 'number' ? Number(target.value) : target.value
-  emit('update:modelValue', value)
-}
+/*
+ * Border, fill, focus ring, and radius all come from the shared control layer
+ * in `src/style/controls.css`, keyed off `--control-*`. Deliberately NOT
+ * restated here: this component used to carry `border-white/40` + `rounded-full`
+ * inline, which rendered an invisible edge on a white card and disagreed with
+ * every other control's radius.
+ */
+const inputClasses = computed(() =>
+  ['block px-3.5 py-2 text-sm', props.fullWidth ? 'w-full' : ''].join(' '),
+)
 </script>
 
 <template>
   <div :class="fullWidth ? 'w-full' : ''">
-    <label v-if="label" class="block text-sm font-medium text-gray-700 mb-1">
+    <label
+      v-if="label"
+      :for="inputId"
+      class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+    >
       {{ label }}
-      <span v-if="required" class="text-red-500 ml-1">*</span>
+      <span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>
     </label>
     <input
+      :id="inputId"
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
       :required="required"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="describedById"
       :class="inputClasses"
-      @input="handleInput"
+      @input="
+        emit(
+          'update:modelValue',
+          type === 'number'
+            ? Number(($event.target as HTMLInputElement).value)
+            : ($event.target as HTMLInputElement).value,
+        )
+      "
     />
-    <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
-    <p v-else-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    <p v-if="error" :id="describedById" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
+      {{ error }}
+    </p>
+    <p
+      v-else-if="hint"
+      :id="describedById"
+      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+    >
       {{ hint }}
     </p>
   </div>

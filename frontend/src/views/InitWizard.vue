@@ -117,7 +117,7 @@ const prevStep = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
+  <div class="min-h-screen bg-gradient-to-br from-primary-50 to-indigo-100 py-12 px-4 flex justify-center items-center">
     <div class="mx-auto w-full 2xl:w-3/4 xl:w-2/3 p-3 grid grid-cols-1 gap-y-2">
       <!-- Header -->
       <div class="text-center relative">
@@ -139,11 +139,11 @@ const prevStep = () => {
             <div class="flex items-center">
               <div
                 :class="[
-                  'w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all',
+                  'w-10 h-10 rounded-pill flex items-center justify-center font-semibold transition-all',
                   index < currentStep
                     ? 'bg-green-500 text-white'
                     : index === currentStep
-                    ? 'bg-violet-600 text-white ring-4 ring-violet-200'
+                    ? 'bg-primary-600 text-white ring-4 ring-primary-200'
                     : 'bg-gray-300 text-gray-600',
                 ]"
               >
@@ -162,7 +162,7 @@ const prevStep = () => {
               <p
                 :class="[
                   'text-xs font-medium',
-                  index === currentStep ? 'text-violet-600' : 'text-gray-500',
+                  index === currentStep ? 'text-primary-600' : 'text-gray-500',
                 ]"
               >
                 {{ step.title }}
@@ -173,26 +173,26 @@ const prevStep = () => {
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 p-8 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+      <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-surface shadow-float dark:shadow-float dark:shadow-slate-700/50 p-8 text-center">
+        <div class="inline-block animate-spin rounded-pill h-12 w-12 border-b-2 border-primary-600"></div>
         <p class="mt-4 text-gray-600">{{ $t('wizard.loadingStatus') }}</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-surface p-6">
         <h3 class="text-red-800 font-semibold mb-1">{{ $t('common.error') }}</h3>
         <p class="text-red-600">{{ error }}</p>
       </div>
 
       <!-- Main Content -->
-      <div v-else class="bg-white dark:bg-slate-800 rounded-lg shadow-lg dark:shadow-xl dark:shadow-slate-700/50 mt-9 p-3">
+      <div v-else class="bg-white dark:bg-slate-800 rounded-surface shadow-float dark:shadow-float dark:shadow-slate-700/50 mt-9 p-3">
         <div class="mb-6">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {{ steps[currentStep]?.title }}
           </h2>
-          <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="w-full bg-gray-200 rounded-pill h-2">
             <div
-              class="bg-violet-600 h-2 rounded-full transition-all"
+              class="bg-primary-600 h-2 rounded-pill transition-all"
               :style="{ width: `${((currentStep + 1) / steps.length) * 100}%` }"
             ></div>
           </div>
@@ -213,14 +213,14 @@ const prevStep = () => {
               <button
                 @click="prevStep"
                 :disabled="currentStep === 0"
-                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-6 py-2 border border-gray-300 rounded-control text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ $t('common.previous') }}
               </button>
               <button
                 v-if="currentStep < steps.length - 1"
                 @click="nextStep"
-                class="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+                class="px-6 py-2 bg-primary-600 text-white rounded-control hover:bg-primary-700"
               >
                 {{ $t('common.next') }}
               </button>

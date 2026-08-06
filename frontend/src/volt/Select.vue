@@ -54,7 +54,7 @@ const theme: SelectPassThroughOptions = {
             text-gray-500 dark:text-gray-400`
     }),
     dropdownIcon: `w-4 h-4`,
-    overlay: `volt-select-panel absolute rounded-xl mt-1.5 max-h-80 overflow-hidden z-50`,
+    overlay: `volt-select-panel absolute rounded-surface mt-1.5 max-h-80 overflow-hidden z-50`,
     header: `p-2 border-b border-black/5 dark:border-white/10`,
     pcFilterContainer: {
         root: `relative`
@@ -63,7 +63,7 @@ const theme: SelectPassThroughOptions = {
         root: `w-full px-3 py-1.5 pr-9 text-sm
             bg-black/[0.03] dark:bg-white/5
             border border-transparent
-            rounded-lg
+            rounded-control
             text-gray-900 dark:text-gray-100
             placeholder:text-gray-400 dark:placeholder:text-gray-500
             focus:outline-none focus:border-[var(--color-primary)]
@@ -78,7 +78,7 @@ const theme: SelectPassThroughOptions = {
     optionGroup: `px-2 pt-2 pb-1`,
     optionGroupLabel: `text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500`,
     option: ({ context }) => ({
-        class: `relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm
+        class: `relative flex items-center gap-2 px-3 py-2 rounded-control cursor-pointer text-sm
             text-gray-700 dark:text-gray-200
             transition-colors duration-150
             ${context.focused ? 'volt-select-option-focus' : ''}

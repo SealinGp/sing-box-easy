@@ -53,7 +53,7 @@ const saveSettings = async () => {
 
     <div class="max-w-xl space-y-6">
       <!-- Language -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.language.title') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.language.desc') }}</p>
         <LanguageSwitcher variant="full" />
@@ -66,14 +66,14 @@ const saveSettings = async () => {
       <GitHubAuthCard />
 
       <!-- Config version retention -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.versionHistory.title') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {{ $t('settings.versionHistory.desc', { min: limits.min, max: limits.max }) }}
         </p>
 
         <div v-if="loading" class="h-10 flex items-center">
-          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-600"></div>
+          <div class="animate-spin rounded-pill h-5 w-5 border-b-2 border-primary-600"></div>
         </div>
         <div v-else class="flex items-end gap-3">
           <div>
@@ -83,13 +83,13 @@ const saveSettings = async () => {
               type="number"
               :min="limits.min"
               :max="limits.max"
-              class="w-32 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              class="w-32 rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <button
             @click="saveSettings"
             :disabled="saving"
-            class="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50"
           >
             <span v-if="saving">{{ $t('common.saving') }}</span>
             <span v-else>{{ $t('common.save') }}</span>
@@ -98,7 +98,7 @@ const saveSettings = async () => {
       </div>
 
       <!-- About -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.about.title') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           sing-box-easy <span class="font-mono text-gray-700 dark:text-gray-300">{{ version }}</span>

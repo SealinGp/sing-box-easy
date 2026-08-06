@@ -9,18 +9,14 @@
  * `external_ui_download_url`.
  */
 import { computed, ref, watch } from 'vue'
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from '@headlessui/vue'
-import { CheckIcon, ChevronUpDownIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { useI18n } from 'vue-i18n'
+import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 import {
   CUSTOM_DASHBOARD_ID,
   DASHBOARD_OPTIONS,
   dashboardIdForUrl,
 } from '../constants/dashboards'
+import { Select } from '../volt'
 import Input from './Input.vue'
 
 interface Props {
@@ -36,6 +32,20 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
+
+const { t } = useI18n()
+
+/**
+ * One row of the dropdown. The presets and the "custom URL" escape hatch share
+ * this shape so both render through the same `#option` slot; `icon: null` is
+ * what marks the escape hatch (it draws a pencil glyph instead of an image).
+ */
+interface DashboardRow {
+  id: string
+  name: string
+  descKey: string
+  icon: string | null
+}
 
 /** Which row is highlighted. Local UI state, derived from the bound URL. */
 const selectedId = ref<string>(dashboardIdForUrl(props.modelValue) ?? '')
@@ -73,6 +83,29 @@ const selectedPreset = computed(
   () => DASHBOARD_OPTIONS.find((d) => d.id === selectedId.value) ?? null,
 )
 
+/** Presets + the synthetic "custom URL" row, in dropdown order. */
+const selectOptions = computed<DashboardRow[]>(() => [
+  ...DASHBOARD_OPTIONS.map(({ id, name, descKey, icon }) => ({ id, name, descKey, icon })),
+  {
+    id: CUSTOM_DASHBOARD_ID,
+    name: t('experimental.clash.dashboard.custom'),
+    descKey: 'experimental.clash.dashboard.customHelp',
+    icon: null,
+  },
+])
+
+/**
+ * The `#value` slot hands back the raw bound value (an id, because
+ * `option-value="id"`), so the row has to be looked back up to render it.
+ */
+const optionById = (id: unknown): DashboardRow | null =>
+  selectOptions.value.find((row) => row.id === id) ?? null
+
+/** Hide a broken dashboard icon rather than showing the browser's fallback. */
+const hideBrokenIcon = (event: Event) => {
+  ;(event.target as HTMLImageElement).style.visibility = 'hidden'
+}
+
 const selectOption = (id: string) => {
   selectedId.value = id
 
@@ -89,112 +122,64 @@ const selectOption = (id: string) => {
 
 <template>
   <div class="space-y-2">
-    <Listbox
+    <Select
       :model-value="selectedId"
+      :options="selectOptions"
+      option-label="name"
+      option-value="id"
       :disabled="disabled"
+      :placeholder="placeholder ?? $t('experimental.clash.dashboard.placeholder')"
+      class="w-full"
       @update:model-value="selectOption"
     >
-      <div class="relative">
-        <ListboxButton
-          class="dashboard-select-toggle relative w-full cursor-pointer rounded-full py-2 pl-3 pr-10 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span v-if="selectedPreset" class="flex items-center gap-2">
-            <img
-              :src="selectedPreset.icon"
-              :alt="selectedPreset.name"
-              class="h-5 w-5 flex-shrink-0 rounded"
-              @error="(e) => ((e.target as HTMLImageElement).style.visibility = 'hidden')"
-            />
-            <span class="truncate text-gray-900 dark:text-gray-100">{{ selectedPreset.name }}</span>
+      <!-- Closed trigger: icon + name of whatever id is bound right now. -->
+      <template #value="{ value }">
+        <span v-if="optionById(value)" class="flex items-center gap-2">
+          <img
+            v-if="optionById(value)!.icon"
+            :src="optionById(value)!.icon!"
+            :alt="optionById(value)!.name"
+            class="h-5 w-5 flex-shrink-0 rounded"
+            @error="hideBrokenIcon"
+          />
+          <PencilSquareIcon
+            v-else
+            class="h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-400"
+          />
+          <span class="truncate text-gray-900 dark:text-gray-100">
+            {{
+              optionById(value)!.icon
+                ? optionById(value)!.name
+                : (customPlaceholder ?? $t('experimental.clash.dashboard.custom'))
+            }}
           </span>
-          <span v-else-if="isCustom" class="flex items-center gap-2">
-            <PencilSquareIcon class="h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-            <span class="truncate text-gray-900 dark:text-gray-100">
-              {{ customPlaceholder ?? $t('experimental.clash.dashboard.custom') }}
-            </span>
-          </span>
-          <span v-else class="block truncate text-gray-400 dark:text-gray-500">
-            {{ placeholder ?? $t('experimental.clash.dashboard.placeholder') }}
-          </span>
+        </span>
+        <span v-else class="block truncate text-gray-400 dark:text-gray-500">
+          {{ placeholder ?? $t('experimental.clash.dashboard.placeholder') }}
+        </span>
+      </template>
 
-          <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-            <ChevronUpDownIcon class="h-5 w-5 text-gray-400 dark:text-gray-500" />
+      <!-- Every row — presets and the custom URL escape hatch alike. -->
+      <template #option="{ option }">
+        <img
+          v-if="option.icon"
+          :src="option.icon"
+          :alt="option.name"
+          class="h-6 w-6 flex-shrink-0 rounded"
+          @error="hideBrokenIcon"
+        />
+        <PencilSquareIcon
+          v-else
+          class="h-6 w-6 flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400"
+        />
+        <span class="min-w-0 flex-1">
+          <span class="block truncate">{{ option.name }}</span>
+          <span class="block truncate text-xs font-normal text-gray-500 dark:text-gray-400">
+            {{ $t(option.descKey) }}
           </span>
-        </ListboxButton>
-
-        <Transition
-          leave-active-class="transition duration-100 ease-in"
-          leave-from-class="opacity-100"
-          leave-to-class="opacity-0"
-        >
-          <ListboxOptions
-            class="dashboard-select-panel absolute z-20 mt-1.5 max-h-72 w-full overflow-auto rounded-2xl p-1.5 text-sm focus:outline-none"
-          >
-            <ListboxOption
-              v-for="dashboard in DASHBOARD_OPTIONS"
-              v-slot="{ active, selected }"
-              :key="dashboard.id"
-              :value="dashboard.id"
-              as="template"
-            >
-              <li
-                :class="[
-                  'relative flex cursor-pointer select-none items-center gap-2.5 rounded-xl py-2 pl-3 pr-9',
-                  active ? 'bg-violet-500/12 text-violet-900 dark:text-violet-100' : 'text-gray-700 dark:text-gray-200',
-                ]"
-              >
-                <img
-                  :src="dashboard.icon"
-                  :alt="dashboard.name"
-                  class="h-6 w-6 flex-shrink-0 rounded"
-                  @error="(e) => ((e.target as HTMLImageElement).style.visibility = 'hidden')"
-                />
-                <span class="min-w-0 flex-1">
-                  <span :class="['block truncate', selected ? 'font-semibold' : 'font-normal']">
-                    {{ dashboard.name }}
-                  </span>
-                  <span class="block truncate text-xs text-gray-500 dark:text-gray-400">
-                    {{ $t(dashboard.descKey) }}
-                  </span>
-                </span>
-                <CheckIcon
-                  v-if="selected"
-                  class="absolute right-3 h-4 w-4 text-violet-600 dark:text-violet-400"
-                />
-              </li>
-            </ListboxOption>
-
-            <!-- Custom URL escape hatch -->
-            <ListboxOption
-              v-slot="{ active, selected }"
-              :value="CUSTOM_DASHBOARD_ID"
-              as="template"
-            >
-              <li
-                :class="[
-                  'relative flex cursor-pointer select-none items-center gap-2.5 rounded-xl py-2 pl-3 pr-9',
-                  active ? 'bg-violet-500/12 text-violet-900 dark:text-violet-100' : 'text-gray-700 dark:text-gray-200',
-                ]"
-              >
-                <PencilSquareIcon class="h-6 w-6 flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400" />
-                <span class="min-w-0 flex-1">
-                  <span :class="['block truncate', selected ? 'font-semibold' : 'font-normal']">
-                    {{ $t('experimental.clash.dashboard.custom') }}
-                  </span>
-                  <span class="block truncate text-xs text-gray-500 dark:text-gray-400">
-                    {{ $t('experimental.clash.dashboard.customHelp') }}
-                  </span>
-                </span>
-                <CheckIcon
-                  v-if="selected"
-                  class="absolute right-3 h-4 w-4 text-violet-600 dark:text-violet-400"
-                />
-              </li>
-            </ListboxOption>
-          </ListboxOptions>
-        </Transition>
-      </div>
-    </Listbox>
+        </span>
+      </template>
+    </Select>
 
     <!-- Free-form URL entry, only when "custom" is chosen -->
     <Input
@@ -214,47 +199,3 @@ const selectOption = (id: string) => {
   </div>
 </template>
 
-<style scoped>
-/* Mirrors the glass treatment used by Select.vue's toggle so the two controls
-   read as the same family. */
-.dashboard-select-toggle {
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: var(--glass-bg-strong);
-  box-shadow: var(--glass-highlight);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-
-.dashboard-select-toggle:hover:not(:disabled) {
-  border-color: #9ca3af;
-}
-
-.dashboard-select-toggle:focus-visible {
-  border-color: #3b82f6;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.dashboard-select-panel {
-  border: 1px solid var(--glass-border-muted);
-  background: var(--glass-bg-strong);
-  box-shadow: var(--shadow-md), var(--glass-highlight);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-
-@media (prefers-color-scheme: dark) {
-  .dashboard-select-toggle {
-    border-color: var(--glass-border-muted);
-  }
-
-  .dashboard-select-toggle:hover:not(:disabled) {
-    border-color: #6b7280;
-  }
-
-  .dashboard-select-toggle:focus-visible {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-  }
-}
-</style>

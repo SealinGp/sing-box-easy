@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  TransitionRoot,
-  TransitionChild,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/vue'
 import type { Inbound } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import Modal from '../../components/Modal.vue'
+import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import { applyInboundTypeDefaults, generateVmessUUID, validateInboundRequiredFields } from '../../utils/inboundRequiredFields'
@@ -336,9 +330,9 @@ onMounted(fetchInbounds)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
       <div v-if="loading && inbounds.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else-if="inbounds.length === 0" class="text-center py-12">
@@ -385,7 +379,7 @@ onMounted(fetchInbounds)
                 <div class="inbound-table-actions flex items-center justify-end gap-2">
                   <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" action :title="$t('inbounds.tooltip.copyConfig')">
                     <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
-                    <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+                    <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-primary-600 dark:text-primary-400" />
                   </Button>
                   <Button @click="openEditModal(inbound)" variant="ghost" size="sm" action>
                     <PencilIcon class="h-4 w-4" />
@@ -402,273 +396,199 @@ onMounted(fetchInbounds)
     </div>
 
     <!-- Add/Edit Modal -->
-    <TransitionRoot appear :show="showModal" as="template">
-      <Dialog as="div" @close="closeModal" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
+    <Modal
+      :model-value="showModal"
+      @update:model-value="(v) => { if (!v) closeModal() }"
+      :title="isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add')"
+      size="md"
+      show-close
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.tag') }}</label>
+          <Input
+            v-model="(currentInbound as any).tag"
+            :placeholder="$t('inbounds.form.tagPlaceholder')"
+            :disabled="isEditMode"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.tagHelp') }}</p>
+        </div>
 
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeModal"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
+          <select class="select" v-model="(currentInbound as any).type" :disabled="isEditMode">
+            <option disabled selected>{{ $t('inbounds.form.typePlaceholder') }}</option>
+            <option v-for="inboundType in inboundTypes" :value="inboundType.value">{{ inboundType.label }}</option>
+          </select>
+        </div>
 
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.tag') }}</label>
-                    <Input
-                      v-model="(currentInbound as any).tag"
-                      :placeholder="$t('inbounds.form.tagPlaceholder')"
-                      :disabled="isEditMode"
-                    />
-                    <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.tagHelp') }}</p>
-                  </div>
+        <div v-if="currentInbound.type !== 'tun'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenAddress') }}</label>
+          <Input
+            v-model="(currentInbound as any).listen"
+            :placeholder="$t('inbounds.form.listenAddressPlaceholder')"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.listenAddressHelp') }}</p>
+        </div>
 
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
-                    <select class="select" v-model="(currentInbound as any).type" :disabled="isEditMode">
-                        <option disabled selected>{{ $t('inbounds.form.typePlaceholder') }}</option>
-                        <option v-for="inboundType in inboundTypes" :value="inboundType.value" >{{ inboundType.label }}</option>
-                      </select>
-                  </div>
+        <div v-if="currentInbound.type !== 'tun'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenPort') }}</label>
+          <Input
+            v-model.number="(currentInbound as any).listen_port"
+            type="number"
+            :placeholder="$t('inbounds.form.listenPortPlaceholder')"
+          />
+        </div>
 
-                  <div v-if="currentInbound.type !== 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenAddress') }}</label>
-                    <Input
-                      v-model="(currentInbound as any).listen"
-                      :placeholder="$t('inbounds.form.listenAddressPlaceholder')"
-                    />
-                    <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.listenAddressHelp') }}</p>
-                  </div>
+        <!-- Shadowsocks Options -->
+        <div v-if="currentInbound.type === 'shadowsocks'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssMethod') }}</label>
+            <select class="select" v-model="(currentInbound as any).method" @change="generatePassword">
+              <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm</option>
+              <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
+              <option value="2022-blake3-chacha20-poly1305">2022-blake3-chacha20-poly1305</option>
+              <option value="none">none</option>
+              <option value="aes-128-gcm">aes-128-gcm</option>
+              <option value="aes-192-gcm">aes-192-gcm</option>
+              <option value="aes-256-gcm">aes-256-gcm</option>
+              <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+              <option value="xchacha20-ietf-poly1305">xchacha20-ietf-poly1305</option>
+            </select>
+          </div>
 
-                  <div v-if="currentInbound.type !== 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenPort') }}</label>
-                    <Input
-                      v-model.number="(currentInbound as any).listen_port"
-                      type="number"
-                      :placeholder="$t('inbounds.form.listenPortPlaceholder')"
-                    />
-                  </div>
-
-                  <!-- Shadowsocks Options -->
-                  <div v-if="currentInbound.type === 'shadowsocks'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssMethod') }}</label>
-                      <select class="select" v-model="(currentInbound as any).method" @change="generatePassword">
-                        <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm</option>
-                        <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
-                        <option value="2022-blake3-chacha20-poly1305">2022-blake3-chacha20-poly1305</option>
-                        <option value="none">none</option>
-                        <option value="aes-128-gcm">aes-128-gcm</option>
-                        <option value="aes-192-gcm">aes-192-gcm</option>
-                        <option value="aes-256-gcm">aes-256-gcm</option>
-                        <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
-                        <option value="xchacha20-ietf-poly1305">xchacha20-ietf-poly1305</option>
-                      </select>
-                    </div>
-
-                    <div v-if="(currentInbound as any).method !== 'none'">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssPassword') }}</label>
-                      <div class="flex gap-2">
-                        <div class="flex-1">
-                          <Input
-                            v-model="(currentInbound as any).password"
-                            placeholder="Password or Key"
-                          />
-                        </div>
-                        <Button type="button" @click="generatePassword" variant="secondary" class="shrink-0 flex items-center justify-center">
-                          {{ $t('inbounds.form.generate') }}
-                        </Button>
-                      </div>
-                      <p class="mt-1 text-xs text-gray-500">
-                        {{ (currentInbound as any).method?.startsWith('2022-blake3-')
-                          ? $t('inbounds.form.ssPasswordHelp2022', { len: (currentInbound as any).method.includes('128') ? 16 : 32 })
-                          : $t('inbounds.form.ssPasswordHelpOther')
-                        }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <!-- VMess Options -->
-                  <div v-if="currentInbound.type === 'vmess'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUserName') }}</label>
-                      <Input
-                        v-model="(currentInbound as any).users[0].name"
-                        :placeholder="$t('inbounds.form.vmessUserNamePlaceholder')"
-                      />
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUUID') }}</label>
-                      <div class="flex gap-2">
-                        <div class="flex-1">
-                          <Input
-                            v-model="(currentInbound as any).users[0].uuid"
-                            :placeholder="$t('inbounds.form.vmessUUIDPlaceholder')"
-                          />
-                        </div>
-                        <Button type="button" @click="generateVMessUUID" variant="secondary" class="shrink-0 flex items-center justify-center">
-                          {{ $t('inbounds.form.generate') }}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessAlterId') }}</label>
-                      <Input
-                        v-model.number="(currentInbound as any).users[0].alterId"
-                        type="number"
-                        :placeholder="$t('inbounds.form.vmessAlterIdPlaceholder')"
-                      />
-                      <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.vmessAlterIdHelp') }}</p>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="sniff"
-                      v-model="(currentInbound as any).sniff"
-                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                    />
-                    <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.enableSniff') }}</label>
-                  </div>
-
-                  <div v-if="(currentInbound as any).sniff" class="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="sniff_override"
-                      v-model="(currentInbound as any).sniff_override_destination"
-                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                    />
-                    <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.overrideDestination') }}</label>
-                  </div>
-
-                  <div v-if="currentInbound.type === 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.interfaceName') }}</label>
-                    <Input
-                      v-model="(currentInbound as any).interface_name"
-                      :placeholder="$t('inbounds.form.interfaceNamePlaceholder')"
-                    />
-                  </div>
-
-                  <div v-if="currentInbound.type === 'tun'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.mtu') }}</label>
-                    <Input
-                      v-model.number="(currentInbound as any).mtu"
-                      type="number"
-                      :placeholder="$t('inbounds.form.mtuPlaceholder')"
-                    />
-                  </div>
-
-                  <div v-if="currentInbound.type === 'tun'" class="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="auto_route"
-                      v-model="(currentInbound as any).auto_route"
-                      class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                    />
-                    <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.autoRoute') }}</label>
-                  </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeModal" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleSave" variant="primary" :disabled="loading">
-                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
+          <div v-if="(currentInbound as any).method !== 'none'">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssPassword') }}</label>
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <Input
+                  v-model="(currentInbound as any).password"
+                  placeholder="Password or Key"
+                />
+              </div>
+              <Button type="button" @click="generatePassword" variant="secondary" class="shrink-0 flex items-center justify-center">
+                {{ $t('inbounds.form.generate') }}
+              </Button>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ (currentInbound as any).method?.startsWith('2022-blake3-')
+                ? $t('inbounds.form.ssPasswordHelp2022', { len: (currentInbound as any).method.includes('128') ? 16 : 32 })
+                : $t('inbounds.form.ssPasswordHelpOther')
+              }}
+            </p>
           </div>
         </div>
-      </Dialog>
-    </TransitionRoot>
+
+        <!-- VMess Options -->
+        <div v-if="currentInbound.type === 'vmess'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUserName') }}</label>
+            <Input
+              v-model="(currentInbound as any).users[0].name"
+              :placeholder="$t('inbounds.form.vmessUserNamePlaceholder')"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUUID') }}</label>
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <Input
+                  v-model="(currentInbound as any).users[0].uuid"
+                  :placeholder="$t('inbounds.form.vmessUUIDPlaceholder')"
+                />
+              </div>
+              <Button type="button" @click="generateVMessUUID" variant="secondary" class="shrink-0 flex items-center justify-center">
+                {{ $t('inbounds.form.generate') }}
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessAlterId') }}</label>
+            <Input
+              v-model.number="(currentInbound as any).users[0].alterId"
+              type="number"
+              :placeholder="$t('inbounds.form.vmessAlterIdPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.vmessAlterIdHelp') }}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="sniff"
+            v-model="(currentInbound as any).sniff"
+            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.enableSniff') }}</label>
+        </div>
+
+        <div v-if="(currentInbound as any).sniff" class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="sniff_override"
+            v-model="(currentInbound as any).sniff_override_destination"
+            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.overrideDestination') }}</label>
+        </div>
+
+        <div v-if="currentInbound.type === 'tun'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.interfaceName') }}</label>
+          <Input
+            v-model="(currentInbound as any).interface_name"
+            :placeholder="$t('inbounds.form.interfaceNamePlaceholder')"
+          />
+        </div>
+
+        <div v-if="currentInbound.type === 'tun'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.mtu') }}</label>
+          <Input
+            v-model.number="(currentInbound as any).mtu"
+            type="number"
+            :placeholder="$t('inbounds.form.mtuPlaceholder')"
+          />
+        </div>
+
+        <div v-if="currentInbound.type === 'tun'" class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="auto_route"
+            v-model="(currentInbound as any).auto_route"
+            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.autoRoute') }}</label>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="closeModal" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleSave" variant="primary" :disabled="loading">
+          {{ isEditMode ? $t('common.update') : $t('common.add') }}
+        </Button>
+      </template>
+    </Modal>
 
     <!-- Delete Confirmation Modal -->
-    <TransitionRoot appear :show="showDeleteConfirm" as="template">
-      <Dialog as="div" @close="closeDeleteConfirm" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
+    <Modal
+      :model-value="showDeleteConfirm"
+      @update:model-value="(v) => { if (!v) closeDeleteConfirm() }"
+      :title="$t('inbounds.del.title')"
+      size="sm"
+      show-close
+    >
+      <p class="text-gray-700 dark:text-gray-300">
+        {{ $t('inbounds.del.confirm', { tag: deletingInbound?.tag }) }}
+      </p>
 
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ $t('inbounds.del.title') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeDeleteConfirm"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <p class="text-gray-700 dark:text-gray-300">
-                  {{ $t('inbounds.del.confirm', { tag: deletingInbound?.tag }) }}
-                </p>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleDelete" variant="danger" :disabled="loading">
-                    {{ $t('common.delete') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </TransitionRoot>
+      <template #footer>
+        <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleDelete" variant="danger" :disabled="loading">
+          {{ $t('common.delete') }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>

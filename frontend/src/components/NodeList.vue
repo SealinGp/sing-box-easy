@@ -38,7 +38,7 @@ const handleClick = (tag: string) => {
 </script>
 
 <template>
-  <div :class="[maxHeight, 'overflow-y-auto border border-gray-200 rounded-lg']">
+  <div :class="[maxHeight, 'overflow-y-auto border border-gray-200 rounded-control']">
     <div
       v-for="node in nodes"
       :key="node.tag"
@@ -52,7 +52,7 @@ const handleClick = (tag: string) => {
         v-if="selectable && selectedTags"
         type="checkbox"
         :checked="selectedTags.has(node.tag)"
-        class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+        class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
         @click.stop="handleClick(node.tag)"
       />
       <div class="flex-1 min-w-0">

@@ -25,7 +25,7 @@ const sizeClasses = {
     ]"
   >
     <svg
-      :class="['animate-spin text-violet-600', sizeClasses[size]]"
+      :class="['animate-spin text-primary-600', sizeClasses[size]]"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

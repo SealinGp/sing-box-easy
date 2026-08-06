@@ -205,7 +205,7 @@ const formatDate = (dateStr: string) => {
     <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <SparklesIcon class="h-6 w-6 text-violet-500" />
+          <SparklesIcon class="h-6 w-6 text-primary-500" />
           {{ $t('profile.title') }}
         </h1>
         <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">
@@ -215,13 +215,13 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Alert Messages -->
-    <div v-if="successMsg" class="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
+    <div v-if="successMsg" class="p-4 rounded-surface bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300 text-sm animate-fade-in flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-pill bg-green-500 animate-ping"></span>
       <span>{{ successMsg }}</span>
     </div>
 
-    <div v-if="errorMsg" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+    <div v-if="errorMsg" class="p-4 rounded-surface bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300 text-sm animate-fade-in flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-pill bg-red-500 animate-ping"></span>
       <span>{{ errorMsg }}</span>
     </div>
 
@@ -230,14 +230,14 @@ const formatDate = (dateStr: string) => {
       <button
         @click="activeTab = 'profile'"
         class="pb-3 text-sm font-semibold border-b-2 transition-all px-2 focus:outline-none cursor-pointer"
-        :class="activeTab === 'profile' ? 'border-violet-600 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+        :class="activeTab === 'profile' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
       >
         {{ $t('profile.tabs.profile') }}
       </button>
       <button
         @click="activeTab = 'users'"
         class="pb-3 text-sm font-semibold border-b-2 transition-all px-2 focus:outline-none cursor-pointer"
-        :class="activeTab === 'users' ? 'border-violet-600 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+        :class="activeTab === 'users' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
       >
         {{ $t('profile.tabs.users') }}
       </button>
@@ -246,14 +246,14 @@ const formatDate = (dateStr: string) => {
     <!-- Tab 1: Profile Details -->
     <div v-if="activeTab === 'profile'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Profile Info Sidebar Card -->
-      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-        <div class="absolute top-0 inset-x-0 h-20 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-10"></div>
-        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-violet-500/20 mt-6 relative z-10">
+      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-6 shadow-surface flex flex-col items-center text-center relative overflow-hidden">
+        <div class="absolute top-0 inset-x-0 h-20 bg-gradient-to-r from-primary-600 to-indigo-600 opacity-10"></div>
+        <div class="w-20 h-20 rounded-pill bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-float shadow-primary-500/20 mt-6 relative z-10">
           {{ currentUser?.username.slice(0, 2).toUpperCase() }}
         </div>
         <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-4">{{ currentUser?.username }}</h2>
-        <span class="px-3 py-1 rounded-full text-xs font-semibold mt-2 inline-flex items-center gap-1.5"
-              :class="currentUser?.role === 'admin' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'">
+        <span class="px-3 py-1 rounded-pill text-xs font-semibold mt-2 inline-flex items-center gap-1.5"
+              :class="currentUser?.role === 'admin' ? 'bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'">
           <ShieldCheckIcon class="h-4.5 w-4.5" />
           {{ currentUser?.role === 'admin' ? $t('profile.roles.admin') : $t('profile.roles.viewer') }}
         </span>
@@ -270,9 +270,9 @@ const formatDate = (dateStr: string) => {
       </div>
 
       <!-- Update Form Card -->
-      <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+      <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-6 shadow-surface">
         <h3 class="text-md font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-          <UserIcon class="h-5 w-5 text-violet-500" />
+          <UserIcon class="h-5 w-5 text-primary-500" />
           {{ $t('profile.profileSection.title') }}
         </h3>
         <form @submit.prevent="handleUpdateProfile" class="space-y-6">
@@ -283,7 +283,7 @@ const formatDate = (dateStr: string) => {
                 type="text"
                 v-model="profileUsername"
                 required
-                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500"
+                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
@@ -295,7 +295,7 @@ const formatDate = (dateStr: string) => {
                 type="password"
                 v-model="profilePassword"
                 placeholder="••••••••"
-                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500"
+                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-primary-500"
               />
             </div>
             <div>
@@ -304,7 +304,7 @@ const formatDate = (dateStr: string) => {
                 type="password"
                 v-model="profileConfirmPassword"
                 placeholder="••••••••"
-                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500"
+                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
@@ -313,9 +313,9 @@ const formatDate = (dateStr: string) => {
             <button
               type="submit"
               :disabled="profileLoading"
-              class="bg-violet-600 hover:bg-violet-500 text-white font-medium text-sm px-6 py-2.5 rounded-xl shadow-md transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+              class="bg-primary-600 hover:bg-primary-500 text-white font-medium text-sm px-6 py-2.5 rounded-control shadow-surface transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center gap-2"
             >
-              <span v-if="profileLoading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+              <span v-if="profileLoading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-pill animate-spin"></span>
               {{ $t('profile.profileSection.saveBtn') }}
             </button>
           </div>
@@ -328,12 +328,12 @@ const formatDate = (dateStr: string) => {
       <!-- Users Table Control Header -->
       <div class="flex items-center justify-between">
         <h3 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <ShieldCheckIcon class="h-5 w-5 text-violet-500" />
+          <ShieldCheckIcon class="h-5 w-5 text-primary-500" />
           {{ $t('profile.usersSection.title') }}
         </h3>
         <button
           @click="showAddUserModal = true"
-          class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+          class="bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold px-4 py-2 rounded-control flex items-center gap-1.5 shadow-surface transition-colors cursor-pointer"
         >
           <PlusIcon class="h-4 w-4" />
           {{ $t('profile.usersSection.addBtn') }}
@@ -341,7 +341,7 @@ const formatDate = (dateStr: string) => {
       </div>
 
       <!-- Users List -->
-      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface shadow-surface overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -354,12 +354,12 @@ const formatDate = (dateStr: string) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm text-gray-800 dark:text-gray-200">
-              <tr v-for="user in users" :key="user.id" class="hover:bg-gray-55/50 dark:hover:bg-slate-800/20 transition-colors">
+              <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50/50 dark:hover:bg-slate-800/20 transition-colors">
                 <td class="px-6 py-4 font-mono text-xs text-gray-400">#{{ user.id }}</td>
                 <td class="px-6 py-4 font-medium">{{ user.username }}</td>
                 <td class="px-6 py-4">
-                  <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                        :class="user.role === 'admin' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-850 dark:text-gray-400'">
+                  <span class="px-2.5 py-0.5 rounded-pill text-xs font-semibold"
+                        :class="user.role === 'admin' ? 'bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'">
                     {{ user.role === 'admin' ? $t('profile.roles.admin') : $t('profile.roles.viewer') }}
                   </span>
                 </td>
@@ -367,7 +367,7 @@ const formatDate = (dateStr: string) => {
                 <td class="px-6 py-4 text-right flex justify-end gap-2">
                   <button
                     @click="startEditUser(user)"
-                    class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                    class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     title="Edit User"
                   >
                     <PencilIcon class="h-4.5 w-4.5" />
@@ -375,7 +375,7 @@ const formatDate = (dateStr: string) => {
                   <button
                     @click="handleDeleteUser(user)"
                     :disabled="user.id === currentUser?.id"
-                    class="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    class="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
                     title="Delete User"
                   >
                     <TrashIcon class="h-4.5 w-4.5" />
@@ -390,7 +390,7 @@ const formatDate = (dateStr: string) => {
 
     <!-- Create User Modal -->
     <div v-if="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-2xl animate-scale-up">
+      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-float animate-scale-up">
         <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.addTitle') }}</h3>
         <form @submit.prevent="handleAddUser" class="space-y-4">
           <div>
@@ -399,7 +399,7 @@ const formatDate = (dateStr: string) => {
               type="text"
               v-model="newUserUsername"
               required
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
             />
           </div>
           <div>
@@ -408,14 +408,14 @@ const formatDate = (dateStr: string) => {
               type="password"
               v-model="newUserPassword"
               required
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
             />
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{{ $t('profile.modals.role') }}</label>
             <select
               v-model="newUserRole"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
             >
               <option value="viewer">{{ $t('profile.modals.roleViewerDesc') }}</option>
               <option value="admin">{{ $t('profile.modals.roleAdminDesc') }}</option>
@@ -425,13 +425,13 @@ const formatDate = (dateStr: string) => {
             <button
               type="button"
               @click="showAddUserModal = false"
-              class="px-4 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-55/10 cursor-pointer"
+              class="px-4 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-control hover:bg-gray-50/10 cursor-pointer"
             >
               {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
-              class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold px-4 py-2 rounded-xl cursor-pointer"
+              class="bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold px-4 py-2 rounded-control cursor-pointer"
             >
               {{ $t('common.create') }}
             </button>
@@ -442,7 +442,7 @@ const formatDate = (dateStr: string) => {
 
     <!-- Edit User Modal -->
     <div v-if="showEditUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-2xl animate-scale-up">
+      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-float animate-scale-up">
         <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.editTitle') }}</h3>
         <form @submit.prevent="handleEditUser" class="space-y-4">
           <div>
@@ -451,7 +451,7 @@ const formatDate = (dateStr: string) => {
               type="text"
               v-model="editingUsername"
               required
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
             />
           </div>
           <div>
@@ -460,7 +460,7 @@ const formatDate = (dateStr: string) => {
               type="password"
               v-model="editingPassword"
               placeholder="••••••••"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
             />
           </div>
           <div>
@@ -468,7 +468,7 @@ const formatDate = (dateStr: string) => {
             <select
               v-model="editingRole"
               :disabled="editingUser?.id === currentUser?.id"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none disabled:opacity-50"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none disabled:opacity-50"
             >
               <option value="viewer">{{ $t('profile.modals.roleViewerDesc') }}</option>
               <option value="admin">{{ $t('profile.modals.roleAdminDesc') }}</option>
@@ -478,13 +478,13 @@ const formatDate = (dateStr: string) => {
             <button
               type="button"
               @click="showEditUserModal = false; editingUser = null"
-              class="px-4 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-55/10 cursor-pointer"
+              class="px-4 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-control hover:bg-gray-50/10 cursor-pointer"
             >
               {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
-              class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold px-4 py-2 rounded-xl cursor-pointer"
+              class="bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold px-4 py-2 rounded-control cursor-pointer"
             >
               {{ $t('common.save') }}
             </button>

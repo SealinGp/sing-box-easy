@@ -4,7 +4,9 @@ import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
 import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
-import { Dialog, Button, Select } from '../volt'
+import { Dialog, Select } from '../volt'
+import Button from './Button.vue'
+import PopConfirm from './PopConfirm.vue'
 import type { RuleSet } from '../types/api'
 import { routeService } from '../services'
 import { useToast } from 'primevue'
@@ -200,37 +202,64 @@ async function handleUpdateRuleSet() {
   }
 }
 
-async function handleDeleteRuleSet(tag: string) {
-  // Discover how many route/dns rules reference this set so we can tell the user
-  // exactly what a cascade delete will change before they confirm.
-  let cascade = false
-  let message = t('route.ruleSets.confirm.delete')
+/**
+ * Per-tag reference lookup backing the delete popovers.
+ *
+ * Deleting a rule set can cascade into route/DNS rules that reference it, and
+ * the user needs to see that before confirming. The lookup used to run *before*
+ * opening a modal; with an anchored popover the panel opens immediately, so it
+ * now runs on open and the confirm button stays disabled until it settles.
+ *
+ * Keyed by tag because every row renders its own <PopConfirm>.
+ */
+interface ReferenceInfo {
+  loading: boolean
+  /** True when rules reference this set, so the delete must clean them up. */
+  cascade: boolean
+  /** Human summary of what the cascade will change. Empty when not cascading. */
+  details: string
+}
+
+const referenceInfo = ref<Record<string, ReferenceInfo>>({})
+
+const IDLE_REFERENCE: ReferenceInfo = { loading: false, cascade: false, details: '' }
+
+// Replaces the map rather than mutating it, per the project's immutability rule.
+function setReferenceInfo(tag: string, info: ReferenceInfo) {
+  referenceInfo.value = { ...referenceInfo.value, [tag]: info }
+}
+
+async function loadRuleSetReferences(tag: string) {
+  setReferenceInfo(tag, { ...IDLE_REFERENCE, loading: true })
   try {
     const { data } = await routeService.getRuleSetReferences(tag)
     const refs = data.references || []
-    if (refs.length) {
-      cascade = true
-      const stripCount = refs.filter((r) => r.action === 'strip').length
-      const deleteCount = refs.filter((r) => r.action === 'delete').length
-      message = t('route.ruleSets.cascade.summary', {
-        tag,
+    if (!refs.length) {
+      setReferenceInfo(tag, IDLE_REFERENCE)
+      return
+    }
+    setReferenceInfo(tag, {
+      loading: false,
+      cascade: true,
+      // `cascade.details` deliberately omits the tag — PopConfirm already shows
+      // it as its own chip, so repeating it here would just be noise.
+      details: t('route.ruleSets.cascade.details', {
         routeCount: data.route_count,
         dnsCount: data.dns_count,
-        stripCount,
-        deleteCount,
-      })
-    }
+        stripCount: refs.filter((r) => r.action === 'strip').length,
+        deleteCount: refs.filter((r) => r.action === 'delete').length,
+      }),
+    })
   } catch {
-    // Reference lookup failed — fall back to a plain delete confirmation.
+    // Reference lookup failed — fall back to a plain, non-cascading delete
+    // rather than blocking the user on a diagnostic call.
+    setReferenceInfo(tag, IDLE_REFERENCE)
   }
+}
 
-  const ok = await confirm({
-    title: cascade ? t('route.ruleSets.cascade.title') : t('common.delete'),
-    message,
-    confirmLabel: cascade ? t('route.ruleSets.cascade.confirm') : t('common.delete'),
-    tone: 'danger',
-  })
-  if (!ok) return
+// Confirmation already happened in the row's <PopConfirm>.
+async function handleDeleteRuleSet(tag: string) {
+  const cascade = referenceInfo.value[tag]?.cascade ?? false
 
   try {
     await routeStore.deleteRuleSet(tag, { cascade })
@@ -265,14 +294,14 @@ onMounted(() => {
         </h3>
         <button
           @click="showAddRuleSetDialog = true"
-          class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
+          class="px-4 py-2 bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
         >
           {{ $t('route.ruleSets.add') }}
         </button>
       </div>
 
       <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="inline-block animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else-if="ruleSets.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -283,7 +312,7 @@ onMounted(() => {
         <div
           v-for="ruleSet in ruleSets"
           :key="ruleSet.tag"
-          class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+          class="border border-gray-200 dark:border-gray-700 rounded-surface p-4"
         >
           <div class="flex justify-between items-start">
             <div class="flex-1">
@@ -313,16 +342,29 @@ onMounted(() => {
             <div class="flex space-x-2 ml-4">
               <button
                 @click="startEditRuleSet(ruleSet)"
-                class="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300"
+                class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
               >
                 {{ $t('common.edit') }}
               </button>
-              <button
-                @click="handleDeleteRuleSet(ruleSet.tag)"
-                class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              <PopConfirm
+                :message="$t('route.ruleSets.confirm.delete')"
+                :target="ruleSet.tag"
+                :details="referenceInfo[ruleSet.tag]?.details"
+                :loading="referenceInfo[ruleSet.tag]?.loading ?? false"
+                :loading-label="$t('route.ruleSets.cascade.checking')"
+                :confirm-label="
+                  referenceInfo[ruleSet.tag]?.cascade
+                    ? $t('route.ruleSets.cascade.confirm')
+                    : $t('common.delete')
+                "
+                tone="danger"
+                align="right"
+                trigger-class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded-control"
+                @open="loadRuleSetReferences(ruleSet.tag)"
+                @confirm="handleDeleteRuleSet(ruleSet.tag)"
               >
                 {{ $t('common.delete') }}
-              </button>
+              </PopConfirm>
             </div>
           </div>
         </div>

@@ -32,10 +32,10 @@ const theme = {
         class: `w-full p-2
             bg-white dark:bg-gray-700
             border border-gray-300 dark:border-gray-600
-            rounded-md
+            rounded-control
             transition-colors duration-200
             ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : ''}
-            focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-violet-500`,
+            focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500`,
     }),
     input: `flex items-center flex-wrap gap-2 list-none m-0 p-0 w-full`,
     // `flex-1 min-w-0` lets the typing area grow to fill the row (and the full
@@ -50,12 +50,12 @@ const theme = {
     }),
     chipItem: `mr-2`,
     pcChip: {
-        root: `inline-flex items-center gap-2 px-3 py-1.5 rounded-md
-            bg-violet-100 dark:bg-violet-900/30
-            text-violet-700 dark:text-violet-300
+        root: `inline-flex items-center gap-2 px-3 py-1.5 rounded-control
+            bg-primary-100 dark:bg-primary-900/30
+            text-primary-700 dark:text-primary-300
             text-sm border-0`,
         label: `text-sm font-medium`,
-        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-violet-900 dark:hover:text-violet-100 transition-colors`,
+        removeIcon: `w-4 h-4 ml-1.5 cursor-pointer hover:text-primary-900 dark:hover:text-primary-100 transition-colors`,
     },
 };
 </script>

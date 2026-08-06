@@ -274,7 +274,7 @@ onUnmounted(() => {
           </div>
 
           <!-- 配置信息 -->
-          <div class="bg-gray-50 rounded-lg p-4">
+          <div class="bg-gray-50 rounded-surface p-4">
             <div class="text-sm">
               <div class="flex justify-between mb-2">
                 <span class="text-gray-600">{{ $t('init.dashboard.installPathLabel') }}</span>
@@ -290,7 +290,7 @@ onUnmounted(() => {
                 @click="activeTab = 'download'"
                 :class="[
                   activeTab === 'download'
-                    ? 'border-violet-500 text-violet-600'
+                    ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
@@ -301,7 +301,7 @@ onUnmounted(() => {
                 @click="activeTab = 'upload'"
                 :class="[
                   activeTab === 'upload'
-                    ? 'border-violet-500 text-violet-600'
+                    ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
                 ]"
@@ -349,13 +349,13 @@ onUnmounted(() => {
                 accept=".zip"
                 @change="handleFileSelect"
                 :disabled="downloading || uploading"
-                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-control cursor-pointer bg-gray-50 focus:outline-none"
               />
               <p class="mt-1 text-xs text-gray-500">
                 {{ $t('init.dashboard.zipFileHint') }}
               </p>
-              <div v-if="uploadFile" class="mt-2 p-2 bg-violet-50 border border-violet-200 rounded">
-                <p class="text-sm text-violet-900">
+              <div v-if="uploadFile" class="mt-2 p-2 bg-primary-50 border border-primary-200 rounded">
+                <p class="text-sm text-primary-900">
                   {{ $t('init.dashboard.selectedFile') }} <span class="font-medium">{{ uploadFile.name }}</span> ({{ (uploadFile.size / 1024 / 1024).toFixed(2) }} MB)
                 </p>
               </div>
@@ -375,30 +375,30 @@ onUnmounted(() => {
           </div>
 
           <!-- 下载进度 -->
-          <Card v-if="downloading && downloadTask" padding="sm" class="bg-violet-50 border-violet-200">
+          <Card v-if="downloading && downloadTask" padding="sm" class="bg-primary-50 border-primary-200">
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-violet-900">{{ $t('init.dashboard.downloadingTitle') }}</p>
+                <p class="text-sm font-semibold text-primary-900">{{ $t('init.dashboard.downloadingTitle') }}</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
                 <pre class="whitespace-pre-wrap break-words">{{ downloadTask.message || $t('init.dashboard.downloadingPrep') }}</pre>
               </div>
-              <p class="text-xs text-violet-600">{{ $t('init.dashboard.downloadingWait') }}</p>
+              <p class="text-xs text-primary-600">{{ $t('init.dashboard.downloadingWait') }}</p>
             </div>
           </Card>
 
           <!-- 上传进度 -->
-          <Card v-if="uploading && uploadTask" padding="sm" class="bg-violet-50 border-violet-200">
+          <Card v-if="uploading && uploadTask" padding="sm" class="bg-primary-50 border-primary-200">
             <div class="space-y-3">
               <div class="flex items-center space-x-2">
                 <Loading size="sm" />
-                <p class="text-sm font-semibold text-violet-900">{{ $t('init.dashboard.uploadingTitle') }}</p>
+                <p class="text-sm font-semibold text-primary-900">{{ $t('init.dashboard.uploadingTitle') }}</p>
               </div>
               <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs">
                 <pre class="whitespace-pre-wrap break-words">{{ uploadTask.message || $t('init.dashboard.uploadingPrep') }}</pre>
               </div>
-              <p class="text-xs text-violet-600">{{ $t('init.dashboard.uploadingWait') }}</p>
+              <p class="text-xs text-primary-600">{{ $t('init.dashboard.uploadingWait') }}</p>
             </div>
           </Card>
 

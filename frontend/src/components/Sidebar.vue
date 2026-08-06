@@ -204,12 +204,12 @@ watch(
 </script>
 
 <template>
-  <div class="w-55 liquid-sidebar h-full flex flex-col shadow-xl m-3 mr-0 rounded-3xl overflow-hidden">
+  <div class="w-55 liquid-sidebar h-full flex flex-col shadow-float m-3 mr-0 rounded-surface overflow-hidden">
     <!-- Logo/Brand with Menu label -->
     <div class="p-5 pb-4">
       <!-- Row 1: icon + name -->
       <div class="flex items-center gap-2">
-        <img src="/logo.jpg" alt="Sing Box Easy" class="h-7 w-7 rounded-lg flex-shrink-0 shadow-sm" />
+        <img src="/logo.jpg" alt="Sing Box Easy" class="h-7 w-7 rounded-surface flex-shrink-0 shadow-surface" />
         <span class="text-sm font-semibold text-gray-900 dark:text-white">Sing Box Easy</span>
       </div>
       <!-- Row 2 (secondary): app version + update affordance -->
@@ -219,12 +219,12 @@ watch(
         <router-link
           v-if="updateOffered"
           to="/dashboard/settings"
-          class="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors"
+          class="flex items-center gap-1 px-1.5 py-0.5 rounded-pill bg-emerald-500/15 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors"
           :title="$t('settings.update.updateTo', { version: latestVersion })"
         >
           <span class="relative flex h-1.5 w-1.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70"></span>
-            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-pill bg-emerald-400 opacity-70"></span>
+            <span class="relative inline-flex rounded-pill h-1.5 w-1.5 bg-emerald-500"></span>
           </span>
           <span>&rarr; {{ latestVersion }}</span>
         </router-link>
@@ -234,7 +234,7 @@ watch(
         <LanguageSwitcher variant="compact" />
         <router-link
           to="/dashboard/settings"
-          class="ml-auto p-1.5 rounded-lg transition-colors"
+          class="ml-auto p-1.5 rounded-control transition-colors"
           :class="
             isActive('/dashboard/settings')
               ? 'liquid-item-active'
@@ -248,15 +248,15 @@ watch(
       <!-- Row 4: live sing-box service status (polled) -->
       <router-link
         to="/dashboard/overview"
-        class="liquid-status-link flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors"
+        class="liquid-status-link flex items-center gap-2 px-2 py-1.5 rounded-control transition-colors"
         :title="$t('nav.serviceStatusHint')"
       >
         <span class="relative flex h-2.5 w-2.5">
           <span
             v-if="serviceStatus === 'running'"
-            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60"
+            class="animate-ping absolute inline-flex h-full w-full rounded-pill bg-green-400 opacity-60"
           ></span>
-          <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="serviceDotClass"></span>
+          <span class="relative inline-flex rounded-pill h-2.5 w-2.5" :class="serviceDotClass"></span>
         </span>
         <span class="text-xs font-semibold liquid-sidebar-text">sing-box</span>
         <span class="text-xs liquid-sidebar-muted ml-auto">{{ serviceLabel }}</span>
@@ -280,7 +280,7 @@ watch(
               :to="item.path || '#'"
               :data-nav-pill="isActive(item.path) ? 'primary' : null"
               :class="[
-                'relative z-[1] flex items-center justify-between px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200',
+                'relative z-[1] flex items-center justify-between px-4 py-2.5 rounded-pill text-sm font-medium transition-colors duration-200',
                 isActive(item.path)
                   ? 'text-white'
                   : 'liquid-sidebar-text hover:bg-white/40 dark:hover:bg-white/10'
@@ -293,7 +293,7 @@ watch(
               <div v-if="item.badge" class="flex items-center">
                 <span
                   :class="[
-                    'px-2.5 py-1 text-xs font-semibold rounded-full',
+                    'px-2.5 py-1 text-xs font-semibold rounded-pill',
                     isActive(item.path)
                       ? 'bg-white/25 text-white'
                       : 'bg-white/40 text-gray-900 dark:bg-white/10 dark:text-white'
@@ -316,7 +316,7 @@ watch(
               @click="toggleExpanded(item.name)"
               :data-nav-pill="isParentActive(item) ? 'primary' : null"
               :class="[
-                'relative z-[1] w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer',
+                'relative z-[1] w-full flex items-center justify-between px-4 py-2.5 rounded-pill text-sm font-medium transition-colors duration-200 cursor-pointer',
                 isParentActive(item)
                   ? 'text-white'
                   : isExpanded(item.name)
@@ -332,7 +332,7 @@ watch(
                 <span
                   v-if="item.badge"
                   :class="[
-                    'px-2 py-0.5 text-xs font-medium rounded-full',
+                    'px-2 py-0.5 text-xs font-medium rounded-pill',
                     isParentActive(item)
                       ? 'bg-white/20 text-white'
                       : 'bg-white/45 text-blue-700 dark:bg-white/10 dark:text-blue-200'
@@ -378,7 +378,7 @@ watch(
                   :to="child.path || '#'"
                   :data-nav-pill="isActive(child.path) ? 'secondary' : null"
                   :class="[
-                    'relative z-[1] flex items-center justify-between px-4 py-2 rounded-full text-sm transition-colors duration-200',
+                    'relative z-[1] flex items-center justify-between px-4 py-2 rounded-pill text-sm transition-colors duration-200',
                     isActive(child.path)
                       ? 'liquid-item-active-text font-semibold'
                       : 'liquid-sidebar-muted hover:text-gray-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/10'
@@ -392,7 +392,7 @@ watch(
                     />
                     <div
                       v-else
-                      class="w-4 h-4 rounded-full border-2 flex-shrink-0"
+                      class="w-4 h-4 rounded-pill border-2 flex-shrink-0"
                       :class="[
                         isActive(child.path)
                           ? 'liquid-item-active-dot'
@@ -403,7 +403,7 @@ watch(
                   </div>
                   <span
                     v-if="child.badge"
-                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-white/35 dark:bg-white/10 liquid-sidebar-muted"
+                    class="px-2 py-0.5 text-xs font-medium rounded-pill bg-white/35 dark:bg-white/10 liquid-sidebar-muted"
                   >
                     {{ child.badge }}
                   </span>
@@ -421,10 +421,10 @@ watch(
       <div class="flex items-center justify-between gap-2">
         <router-link
           to="/dashboard/profile"
-          class="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/35 dark:hover:bg-white/10 transition-colors flex-1 min-w-0"
+          class="flex items-center gap-3 px-2 py-1.5 rounded-control hover:bg-white/35 dark:hover:bg-white/10 transition-colors flex-1 min-w-0"
           :class="{ 'bg-white/45 dark:bg-white/10': isActive('/dashboard/profile') }"
         >
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-300 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-sm">
+          <div class="w-8 h-8 rounded-pill bg-gradient-to-br from-blue-500 to-cyan-300 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-surface">
             {{ userInitial }}
           </div>
           <div class="flex-1 min-w-0 text-left">
@@ -435,7 +435,7 @@ watch(
 
         <button
           @click="handleLogout"
-          class="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+          class="p-2 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
           title="Sign Out"
         >
           <ArrowLeftOnRectangleIcon class="h-4.5 w-4.5" />

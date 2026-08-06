@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 
 interface Props {
   modelValue?: string
   placeholder?: string
   disabled?: boolean
   error?: string
+  hint?: string
   label?: string
   required?: boolean
   fullWidth?: boolean
@@ -23,37 +24,49 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const textareaClasses = computed(() => {
-  const base = 'block rounded-lg border px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors resize-y'
-  const state = props.error
-    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-    : 'border-white/40 dark:border-white/10 focus:border-blue-500 focus:ring-blue-500'
-  const width = props.fullWidth ? 'w-full' : ''
+const textareaId = useId()
+const describedById = computed(() =>
+  props.error || props.hint ? `${textareaId}-desc` : undefined,
+)
 
-  return [base, state, width].join(' ')
-})
-
-const handleInput = (event: Event) => {
-  const target = event.target as HTMLTextAreaElement
-  emit('update:modelValue', target.value)
-}
+// Surface styling (fill, border, focus ring, radius) is inherited from
+// `src/style/controls.css` — see the note in Input.vue.
+const textareaClasses = computed(() =>
+  ['block px-3.5 py-2.5 text-sm resize-y', props.fullWidth ? 'w-full' : ''].join(' '),
+)
 </script>
 
 <template>
   <div :class="fullWidth ? 'w-full' : ''">
-    <label v-if="label" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+    <label
+      v-if="label"
+      :for="textareaId"
+      class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+    >
       {{ label }}
-      <span v-if="required" class="text-red-500 ml-1">*</span>
+      <span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>
     </label>
     <textarea
+      :id="textareaId"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
       :required="required"
       :rows="rows"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="describedById"
       :class="textareaClasses"
-      @input="handleInput"
+      @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
-    <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
+    <p v-if="error" :id="describedById" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
+      {{ error }}
+    </p>
+    <p
+      v-else-if="hint"
+      :id="describedById"
+      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+    >
+      {{ hint }}
+    </p>
   </div>
 </template>

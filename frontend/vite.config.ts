@@ -58,11 +58,6 @@ export default defineConfig({
             return 'primevue-vendor';
           }
 
-          // HeadlessUI components
-          if (id.includes('@headlessui')) {
-            return 'headlessui-vendor';
-          }
-
           // Heroicons
           if (id.includes('@heroicons')) {
             return 'heroicons';
@@ -71,11 +66,6 @@ export default defineConfig({
           // Axios HTTP client
           if (id.includes('axios')) {
             return 'axios';
-          }
-
-          // DaisyUI and Tailwind utilities
-          if (id.includes('daisyui')) {
-            return 'daisyui';
           }
 
           // Other node_modules as vendor chunk

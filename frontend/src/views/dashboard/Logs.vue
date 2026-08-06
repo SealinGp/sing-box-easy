@@ -138,24 +138,24 @@ onUnmounted(stopPolling)
         <button
           @click="jumpToBottom"
           :disabled="autoScroll"
-          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
         >
           {{ $t('logs.jumpToBottom') }}
         </button>
 
         <button
           @click="clearLogs"
-          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           {{ $t('logs.clear') }}
         </button>
 
         <button
           @click="togglePolling"
-          class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+          class="px-4 py-2 text-sm font-medium rounded-control transition-colors"
           :class="polling
             ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-            : 'text-white bg-violet-600 hover:bg-violet-700'"
+            : 'text-white bg-primary-600 hover:bg-primary-700'"
         >
           {{ polling ? $t('logs.pause') : $t('logs.resume') }}
         </button>
@@ -166,7 +166,7 @@ onUnmounted(stopPolling)
     <div class="mb-2 flex items-center gap-3 text-sm shrink-0">
       <span class="flex items-center gap-1.5">
         <span
-          class="w-2 h-2 rounded-full"
+          class="w-2 h-2 rounded-pill"
           :class="polling && !errored ? 'bg-green-500 animate-pulse' : errored ? 'bg-red-500' : 'bg-gray-400'"
         ></span>
         <span class="text-gray-600 dark:text-gray-400">
@@ -180,10 +180,10 @@ onUnmounted(stopPolling)
     <div
       ref="logContainer"
       @scroll="onScroll"
-      class="flex-1 min-h-0 overflow-y-auto bg-gray-900 dark:bg-black rounded-lg shadow-lg p-4 font-mono text-xs leading-relaxed"
+      class="flex-1 min-h-0 overflow-y-auto bg-gray-900 dark:bg-black rounded-surface shadow-float p-4 font-mono text-xs leading-relaxed"
     >
       <div v-if="initialLoading" class="flex items-center justify-center h-full">
-        <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-violet-500"></div>
+        <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-500"></div>
       </div>
       <div v-else-if="lines.length === 0" class="flex items-center justify-center h-full text-gray-500">
         {{ $t('logs.empty') }}

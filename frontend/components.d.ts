@@ -42,7 +42,6 @@ declare module 'vue' {
     RoutingRuleItem: typeof import('./src/components/RoutingRuleItem.vue')['default']
     RoutingRules: typeof import('./src/components/RoutingRules.vue')['default']
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
-    Select: typeof import('./src/components/Select.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     SmartRoutingRuleWizard: typeof import('./src/components/SmartRoutingRuleWizard.vue')['default']
     TabNav: typeof import('./src/components/TabNav.vue')['default']

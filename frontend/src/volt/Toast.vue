@@ -31,19 +31,21 @@ defineProps<Props>();
 // runs — the toast stays visible while the cursor is over it.
 const pauseOnHover = () => {};
 
-// Static PT theme — plain const, not a ref. `aria-label` on `closeButton`
-// is explicit because `unstyled` mode strips PrimeVue's default.
+/*
+ * Static PT theme — plain const, not a ref. `aria-label` on `closeButton`
+ * is explicit because `unstyled` mode strips PrimeVue's default.
+ *
+ * Severity colouring (info/success/warn/error/secondary/contrast) lives in
+ * `src/style/primevue.css`, keyed off the `data-p` attribute PrimeVue already
+ * emits. It used to be expressed with `p-info:`-style variants from the
+ * `tailwindcss-primeui` plugin — this component was that plugin's ONLY
+ * consumer in the entire app, so moving ~70 variant utilities into ~30 lines
+ * of CSS let the dependency go. It also let the palette switch from the
+ * plugin's violet/green/yellow to the design system's own status tokens.
+ */
 const theme: ToastPassThroughOptions = {
-    root: `w-96 rounded-md whitespace-pre-line break-words
-        p-top-center:-translate-x-1/2 p-bottom-center:-translate-x-1/2
-        p-center:min-w-[20vw] p-center:-translate-x-1/2 p-center:-translate-y-1/2`,
-    message: `mb-4 not-p-custom:border not-p-custom:backdrop-blur-sm dark:not-p-custom:backdrop-blur-md not-p-custom:rounded-md
-        p-info:bg-violet-50/95 p-info:border-violet-200 p-info:text-violet-600 dark:p-info:bg-violet-500/15 dark:p-info:border-violet-700/35 dark:p-info:text-violet-500
-        p-success:bg-green-50/95 p-success:border-green-200 p-success:text-green-600 dark:p-success:bg-green-500/15 dark:p-success:border-green-700/35 dark:p-success:text-green-500
-        p-warn:bg-yellow-50/95 p-warn:border-yellow-200 p-warn:text-yellow-600 dark:p-warn:bg-yellow-500/15 dark:p-warn:border-yellow-700/35 dark:p-warn:text-yellow-500
-        p-error:bg-red-50/95 p-error:border-red-200 p-error:text-red-600 dark:p-error:bg-red-500/15 dark:p-error:border-red-700/35 dark:p-error:text-red-500
-        p-secondary:bg-surface-100 p-secondary:border-surface-200 p-secondary:text-surface-600 dark:p-secondary:bg-surface-800 dark:p-secondary:border-surface-700 dark:p-secondary:text-surface-300
-        p-contrast:bg-surface-900 p-contrast:border-surface-950 p-contrast:text-surface-50 dark:p-contrast:bg-surface-0 dark:p-contrast:border-surface-100 dark:p-contrast:text-surface-950`,
+    root: `volt-toast w-96 rounded-surface whitespace-pre-line break-words`,
+    message: `volt-toast-message mb-4 border rounded-surface backdrop-blur-sm dark:backdrop-blur-md`,
     messageContent: `flex items-start p-3 gap-2`,
     messageIcon: `flex-shrink-0 text-lg w-[1.125rem] h-[1.125rem] mt-1`,
     // min-w-0 lets this flex child shrink below its content size so long,
@@ -51,20 +53,13 @@ const theme: ToastPassThroughOptions = {
     // the fixed-width toast and spilling out of the colored background.
     messageText: `flex-auto min-w-0 flex flex-col gap-2`,
     summary: `font-medium text-base break-words`,
-    detail: `font-medium text-sm text-surface-700 dark:text-surface-0 break-words
-        p-contrast:text-surface-0 dark:p-contrast:text-surface-950`,
+    detail: `font-medium text-sm opacity-90 break-words`,
     buttonContainer: ``,
     closeButton: {
         'aria-label': 'Close',
-        class: `flex items-center justify-center overflow-hidden relative cursor-pointer bg-transparent select-none
-        transition-colors duration-200 text-inherit w-7 h-7 rounded-full shrink-0 -mr-1 p-0 border-none
-        focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-        p-info:hover:bg-violet-100 p-info:focus-visible:outline-violet-600 dark:p-info:hover:bg-white/5 dark:p-info:focus-visible:outline-violet-500
-        p-success:hover:bg-green-100 p-success:focus-visible:outline-green-600 dark:p-success:hover:bg-white/5 dark:p-success:focus-visible:outline-green-500
-        p-warn:hover:bg-yellow-100 p-warn:focus-visible:outline-yellow-600 dark:p-warn:hover:bg-white/5 dark:p-warn:focus-visible:outline-yellow-500
-        p-error:hover:bg-red-100 p-error:focus-visible:outline-red-600 dark:p-error:hover:bg-white/5 dark:p-error:focus-visible:outline-red-500
-        p-secondary:hover:bg-surface-200 p-secondary:focus-visible:outline-surface-600 dark:p-secondary:hover:bg-surface-700 dark:p-secondary:focus-visible:outline-surface-300
-        p-contrast:hover:bg-surface-800 p-contrast:focus-visible:outline-surface-50 dark:p-contrast:hover:bg-surface-100 dark:p-contrast:focus-visible:outline-surface-950`,
+        class: `volt-toast-close flex items-center justify-center overflow-hidden relative cursor-pointer bg-transparent select-none
+        transition-colors duration-200 text-inherit w-7 h-7 rounded-pill shrink-0 -mr-1 p-0 border-none
+        focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2`,
     },
     closeIcon: `text-base w-4 h-4`,
     transition: {

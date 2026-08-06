@@ -37,7 +37,7 @@ const icon = computed(() => {
 })
 
 const classes = computed(() => {
-  const base = 'flex items-start p-4 rounded-lg border shadow-sm backdrop-blur-xl'
+  const base = 'flex items-start p-4 rounded-surface border shadow-surface backdrop-blur-xl'
   const types = {
     success: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-800 dark:text-emerald-100',
     warning: 'bg-amber-500/15 border-amber-500/25 text-amber-800 dark:text-amber-100',

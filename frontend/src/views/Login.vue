@@ -44,23 +44,23 @@ const handleLogin = async () => {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 px-4 py-12 relative overflow-hidden font-sans">
     <!-- Atmospheric Background Glows -->
-    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-    <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s"></div>
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-pill blur-3xl animate-pulse"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-pill blur-3xl animate-pulse" style="animation-delay: 1s"></div>
 
     <!-- Login Container -->
-    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl relative z-10 animate-slide-up">
+    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 p-8 rounded-surface shadow-float relative z-10 animate-slide-up">
       <!-- Header -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center p-3 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-2xl shadow-lg shadow-violet-500/20 mb-4 animate-bounce" style="animation-duration: 3s">
-          <img src="/logo.jpg" alt="Logo" class="h-12 w-12 rounded-xl" />
+        <div class="inline-flex items-center justify-center p-3 bg-gradient-to-tr from-primary-600 to-indigo-600 rounded-surface shadow-float shadow-primary-500/20 mb-4 animate-bounce" style="animation-duration: 3s">
+          <img src="/logo.jpg" alt="Logo" class="h-12 w-12 rounded-control" />
         </div>
         <h1 class="text-2xl font-bold text-white tracking-tight">Sing Box Easy</h1>
         <p class="text-slate-400 mt-2 text-sm">Sign in to control your proxy service</p>
       </div>
 
       <!-- Error Alert -->
-      <div v-if="error" class="mb-6 p-4 rounded-xl bg-red-500/15 border border-red-500/30 text-red-200 text-sm flex items-center gap-2 animate-fade-in">
-        <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+      <div v-if="error" class="mb-6 p-4 rounded-surface bg-red-500/15 border border-red-500/30 text-red-200 text-sm flex items-center gap-2 animate-fade-in">
+        <span class="w-1.5 h-1.5 rounded-pill bg-red-400 animate-ping"></span>
         <span>{{ error }}</span>
       </div>
 
@@ -77,7 +77,7 @@ const handleLogin = async () => {
               type="text"
               v-model="username"
               required
-              class="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all duration-200"
+              class="w-full bg-slate-950/50 border border-white/10 rounded-control py-3 pl-11 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
               placeholder="Enter your username"
             />
           </div>
@@ -94,7 +94,7 @@ const handleLogin = async () => {
               :type="showPassword ? 'text' : 'password'"
               v-model="password"
               required
-              class="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-11 pr-12 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all duration-200"
+              class="w-full bg-slate-950/50 border border-white/10 rounded-control py-3 pl-11 pr-12 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
               placeholder="Enter your password"
             />
             <button
@@ -112,12 +112,12 @@ const handleLogin = async () => {
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:from-violet-800 disabled:to-indigo-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed group relative overflow-hidden"
+          class="w-full bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-500 hover:to-indigo-500 disabled:from-primary-800 disabled:to-indigo-800 text-white font-semibold py-3 px-4 rounded-control shadow-float shadow-primary-500/20 hover:shadow-primary-500/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed group relative overflow-hidden"
         >
           <!-- Shiny Hover Effect -->
           <div class="absolute inset-0 w-1/2 h-full bg-white/10 skew-x-[-30deg] -left-1/2 group-hover:animate-[shine_0.75s_ease-in-out]"></div>
 
-          <span v-if="loading" class="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+          <span v-if="loading" class="w-5 h-5 border-2 border-white/20 border-t-white rounded-pill animate-spin"></span>
           <span v-else>Sign In</span>
         </button>
       </form>

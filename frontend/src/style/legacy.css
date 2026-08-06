@@ -1,0 +1,57 @@
+/*
+ * ⚠️  DEPRECATED COMPATIBILITY LAYER — do not add to this file.
+ *
+ * These `!important` rules retrofit dark-mode text and border colours onto
+ * components that hard-code light-mode Tailwind greys (`text-gray-700`,
+ * `border-gray-200`, …) without a `dark:` variant.
+ *
+ * The correct fix is per-component: use the semantic tokens
+ * (`text-text-primary`, `border-border`, …) or add explicit `dark:` variants.
+ * Every component migrated off raw grey utilities shrinks this file. Delete it
+ * once `rg 'text-gray-[0-9]00' src` no longer matches components that need to
+ * respond to the theme.
+ */
+
+/*
+ * NOT scoped under `.liquid-app`. PrimeVue teleports dialogs and overlay panels
+ * to <body>, so an ancestor-scoped version of these rules would stop applying
+ * inside every modal — leaving `text-gray-700` copy rendering near-black on a
+ * dark dialog. Since the whole app already lives inside `.liquid-app`, dropping
+ * the ancestor only ADDS the teleported overlays, which is exactly the gap.
+ */
+@media (prefers-color-scheme: dark) {
+  .text-gray-950,
+  .text-gray-900,
+  .text-gray-800 {
+    color: #f8fafc !important;
+  }
+
+  .text-gray-700,
+  .text-gray-600 {
+    color: #dbe4ef !important;
+  }
+
+  .text-gray-500,
+  .text-gray-400 {
+    color: #9fb0c5 !important;
+  }
+
+  .border-gray-100,
+  .border-gray-200,
+  .border-gray-700,
+  .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+  .divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+}
+
+/*
+ * Card elevation helper. Prefer the `shadow-surface` utility from tokens.css.
+ */
+.card-shadow {
+  box-shadow: var(--shadow-surface);
+}
+
+.card-shadow:hover {
+  box-shadow: var(--shadow-surface-hover);
+}

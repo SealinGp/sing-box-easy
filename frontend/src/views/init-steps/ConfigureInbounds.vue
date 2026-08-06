@@ -265,14 +265,14 @@ const handleSkip = () => {
           <div
             v-for="preset in inboundPresets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
-            :class="{ 'border-violet-500 bg-violet-50': selectedInbounds.has(preset.id) }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-control hover:border-primary-300 hover:bg-primary-50 cursor-pointer transition-colors"
+            :class="{ 'border-primary-500 bg-primary-50': selectedInbounds.has(preset.id) }"
             @click="toggleInbound(preset.id)"
           >
             <input
               type="checkbox"
               :checked="selectedInbounds.has(preset.id)"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 mt-0.5"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="toggleInbound(preset.id)"
             />
@@ -292,7 +292,7 @@ const handleSkip = () => {
         </div>
 
         <!-- 选择统计 -->
-        <div class="bg-gray-50 rounded-lg p-3 text-center">
+        <div class="bg-gray-50 rounded-control p-3 text-center">
           <p class="text-sm text-gray-600">
             <span class="font-semibold text-gray-900">{{ selectedInbounds.size }}</span> {{ $t('setup.inbounds.selectedCount') }}
           </p>
@@ -321,19 +321,19 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-violet-50 border-violet-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-violet-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-primary-900 space-y-2">
           <p class="font-medium">{{ $t('setup.inbounds.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
             <li><strong>{{ $t('setup.inbounds.aboutMixedLabel') }}</strong> {{ $t('setup.inbounds.aboutMixed') }}</li>
             <li><strong>{{ $t('setup.inbounds.aboutHttpLabel') }}</strong> {{ $t('setup.inbounds.aboutHttp') }}</li>
             <li><strong>{{ $t('setup.inbounds.aboutSocksLabel') }}</strong> {{ $t('setup.inbounds.aboutSocks') }}</li>
             <li><strong>{{ $t('setup.inbounds.aboutTunLabel') }}</strong> {{ $t('setup.inbounds.aboutTun') }}</li>
             <li>{{ $t('setup.inbounds.aboutSniff') }}</li>
           </ul>
-          <p class="mt-2 text-xs text-violet-700">
+          <p class="mt-2 text-xs text-primary-700">
             {{ $t('setup.inbounds.tip') }}
           </p>
         </div>

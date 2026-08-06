@@ -220,6 +220,10 @@ export default {
     cascade: {
       title: '删除规则集并清理引用？',
       summary: '规则集「{tag}」被 {routeCount} 条路由规则和 {dnsCount} 条 DNS 规则引用。删除后将更新其中 {stripCount} 条、移除 {deleteCount} 条。',
+      // 用于删除气泡确认框：标签已单独展示为 chip，因此此处不再重复标签名。
+      details:
+        '被 {routeCount} 条路由规则和 {dnsCount} 条 DNS 规则引用。删除后将更新其中 {stripCount} 条、移除 {deleteCount} 条。',
+      checking: '正在检查引用…',
       confirm: '删除并清理',
     },
   },

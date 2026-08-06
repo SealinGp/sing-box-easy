@@ -367,16 +367,16 @@ onMounted(() => {
 
     <!-- Subscriptions List -->
     <div
-      class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden"
+      class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden"
     >
       <div
         v-if="isLoading && subscriptions.length === 0"
         class="p-12 text-center"
       >
         <div
-          class="inline-flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900 rounded-full mb-4"
+          class="inline-flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-pill mb-4"
         >
-          <ServerIcon class="h-8 w-8 text-violet-600 dark:text-violet-400" />
+          <ServerIcon class="h-8 w-8 text-primary-600 dark:text-primary-400" />
         </div>
         <p class="text-gray-500 dark:text-gray-400">
           {{ $t("subscriptions.loading") }}
@@ -385,7 +385,7 @@ onMounted(() => {
 
       <div v-else-if="subscriptions.length === 0" class="p-12 text-center">
         <div
-          class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4"
+          class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-pill mb-4"
         >
           <ServerIcon class="h-8 w-8 text-gray-400" />
         </div>
@@ -450,7 +450,7 @@ onMounted(() => {
                     </span>
                     <button
                       type="button"
-                      class="shrink-0 p-0.5 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                      class="shrink-0 p-0.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                       @click="copyUrl(subscription.url)"
                       :title="$t('subscriptions.tooltip.copy')"
                       :aria-label="$t('subscriptions.tooltip.copy')"
@@ -595,7 +595,7 @@ onMounted(() => {
               <input
                 v-model="formData.auto_update"
                 type="checkbox"
-                class="rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 dark:bg-gray-700"
+                class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
               />
               <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{
                 $t("subscriptions.form.autoUpdate")
@@ -621,7 +621,7 @@ onMounted(() => {
             </label>
             <select
               v-model="formData.fetch_mode"
-              class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm focus:ring-violet-500 focus:border-violet-500"
+              class="w-full rounded-control border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">{{ $t("subscriptions.form.fetchModeDirect") }}</option>
               <option value="clean_dns">{{ $t("subscriptions.form.fetchModeCleanDns") }}</option>
@@ -665,7 +665,7 @@ onMounted(() => {
     >
       <div class="text-center">
         <div
-          class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4"
+          class="mx-auto flex items-center justify-center h-12 w-12 rounded-pill bg-red-100 dark:bg-red-900 mb-4"
         >
           <TrashIcon class="h-6 w-6 text-red-600 dark:text-red-400" />
         </div>

@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  TransitionRoot,
-  TransitionChild,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/vue'
 import type { DNSServer } from '../types/api'
 import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import Modal from './Modal.vue'
+import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
 import { storeToRefs } from 'pinia'
@@ -252,13 +246,13 @@ onMounted(() => {
     </div>
 
     <!-- DNS Servers Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-surface shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.servers.heading') }}</h3>
       </div>
 
       <div v-if="loading && dnsServers.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else-if="dnsServers.length === 0" class="text-center py-12">
@@ -324,233 +318,159 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit DNS Server Modal -->
-    <TransitionRoot appear :show="showServerModal" as="template">
-      <Dialog as="div" @close="closeServerModal" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
+    <Modal
+      :model-value="showServerModal"
+      @update:model-value="(v: boolean) => { if (!v) closeServerModal() }"
+      :title="isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add')"
+      size="md"
+      show-close
+    >
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.tag') }}</label>
+            <Input
+              v-model="currentServer.tag"
+              :placeholder="$t('dns.servers.form.tagPlaceholder')"
+              :disabled="isEditMode"
+            />
+          </div>
 
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeServerModal"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div class="space-y-4">
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.tag') }}</label>
-                      <Input
-                        v-model="currentServer.tag"
-                        :placeholder="$t('dns.servers.form.tagPlaceholder')"
-                        :disabled="isEditMode"
-                      />
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.type') }}</label>
-                      <select class="select" v-model="currentServer.type" :disabled="isEditMode">
-                        <option disabled selected>{{ $t('dns.servers.form.typePlaceholder') }}</option>
-                        <option v-for="serverType in serverTypes" :key="serverType.value" :value="serverType.value">
-                          {{ serverType.label }}
-                        </option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div v-if="needsServerAddress" class="grid grid-cols-3 gap-4">
-                    <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.serverAddress') }}</label>
-                      <Input
-                        v-model="currentServer.server"
-                        :placeholder="$t('dns.servers.form.serverAddressPlaceholder')"
-                      />
-                    </div>
-
-                    <div class="col-span-1">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.port') }}</label>
-                      <Input
-                        v-model.number="currentServer.server_port"
-                        type="number"
-                        :placeholder="$t('dns.servers.form.portPlaceholder')"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-if="needsPath">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.path') }}</label>
-                    <Input
-                      v-model="currentServer.path"
-                      :placeholder="$t('dns.servers.form.pathPlaceholder')"
-                    />
-                    <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.pathHelp') }}</p>
-                  </div>
-
-                  <div v-if="currentServer.type === 'dhcp'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.interface') }}</label>
-                    <Input
-                      v-model="currentServer.interface"
-                      :placeholder="$t('dns.servers.form.interfacePlaceholder')"
-                    />
-                  </div>
-
-                  <div v-if="currentServer.type === 'fakeip'" class="space-y-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet4Range') }}</label>
-                      <Input
-                        v-model="currentServer.inet4_range"
-                        :placeholder="$t('dns.servers.form.inet4RangePlaceholder')"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet6Range') }}</label>
-                      <Input
-                        v-model="currentServer.inet6_range"
-                        :placeholder="$t('dns.servers.form.inet6RangePlaceholder')"
-                      />
-                    </div>
-                  </div>
-
-                  <!--
-                    Editor for type=hosts. Two-way bridged through computed
-                    refs (predefinedHostsText, hostsFilePathsText). Format is
-                    intentionally /etc/hosts-like: one entry per line,
-                    `hostname IP[,IP2,...]`. Multiple IPs per host stay an
-                    array on the wire, matching badoption.Listable on the
-                    backend.
-                  -->
-                  <div v-if="currentServer.type === 'hosts'" class="space-y-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {{ $t('dns.servers.form.predefinedHosts') }}
-                      </label>
-                      <textarea
-                        v-model="predefinedHostsText"
-                        rows="6"
-                        class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        placeholder="home.example.com 192.168.1.10
-nas.example.com 192.168.1.20,192.168.1.21"
-                      />
-                      <p class="mt-1 text-xs text-gray-500">
-                        <i18n-t keypath="dns.servers.form.predefinedHostsHelp" scope="global">
-                          <template #format><code>hostname IP[,IP2,...]</code></template>
-                          <template #hash><code>#</code></template>
-                        </i18n-t>
-                      </p>
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {{ $t('dns.servers.form.hostsFilePaths') }} <span class="font-normal text-gray-500">{{ $t('dns.servers.form.hostsFilePathsOptional') }}</span>
-                      </label>
-                      <textarea
-                        v-model="hostsFilePathsText"
-                        rows="2"
-                        class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        :placeholder="$t('dns.servers.form.hostsFilePathsPlaceholder')"
-                      />
-                      <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.hostsFilePathsHelp') }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeServerModal" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleSaveServer" variant="primary" :disabled="loading">
-                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.type') }}</label>
+            <select class="select" v-model="currentServer.type" :disabled="isEditMode">
+              <option disabled selected>{{ $t('dns.servers.form.typePlaceholder') }}</option>
+              <option v-for="serverType in serverTypes" :key="serverType.value" :value="serverType.value">
+                {{ serverType.label }}
+              </option>
+            </select>
           </div>
         </div>
-      </Dialog>
-    </TransitionRoot>
+
+        <div v-if="needsServerAddress" class="grid grid-cols-3 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.serverAddress') }}</label>
+            <Input
+              v-model="currentServer.server"
+              :placeholder="$t('dns.servers.form.serverAddressPlaceholder')"
+            />
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.port') }}</label>
+            <Input
+              v-model.number="currentServer.server_port"
+              type="number"
+              :placeholder="$t('dns.servers.form.portPlaceholder')"
+            />
+          </div>
+        </div>
+
+        <div v-if="needsPath">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.path') }}</label>
+          <Input
+            v-model="currentServer.path"
+            :placeholder="$t('dns.servers.form.pathPlaceholder')"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.pathHelp') }}</p>
+        </div>
+
+        <div v-if="currentServer.type === 'dhcp'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.interface') }}</label>
+          <Input
+            v-model="currentServer.interface"
+            :placeholder="$t('dns.servers.form.interfacePlaceholder')"
+          />
+        </div>
+
+        <div v-if="currentServer.type === 'fakeip'" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet4Range') }}</label>
+            <Input
+              v-model="currentServer.inet4_range"
+              :placeholder="$t('dns.servers.form.inet4RangePlaceholder')"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet6Range') }}</label>
+            <Input
+              v-model="currentServer.inet6_range"
+              :placeholder="$t('dns.servers.form.inet6RangePlaceholder')"
+            />
+          </div>
+        </div>
+
+        <!--
+          Editor for type=hosts. Two-way bridged through computed
+          refs (predefinedHostsText, hostsFilePathsText). Format is
+          intentionally /etc/hosts-like: one entry per line,
+          `hostname IP[,IP2,...]`. Multiple IPs per host stay an
+          array on the wire, matching badoption.Listable on the
+          backend.
+        -->
+        <div v-if="currentServer.type === 'hosts'" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ $t('dns.servers.form.predefinedHosts') }}
+            </label>
+            <textarea
+              v-model="predefinedHostsText"
+              rows="6"
+              class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-control bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="home.example.com 192.168.1.10
+nas.example.com 192.168.1.20,192.168.1.21"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              <i18n-t keypath="dns.servers.form.predefinedHostsHelp" scope="global">
+                <template #format><code>hostname IP[,IP2,...]</code></template>
+                <template #hash><code>#</code></template>
+              </i18n-t>
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ $t('dns.servers.form.hostsFilePaths') }} <span class="font-normal text-gray-500">{{ $t('dns.servers.form.hostsFilePathsOptional') }}</span>
+            </label>
+            <textarea
+              v-model="hostsFilePathsText"
+              rows="2"
+              class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-control bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              :placeholder="$t('dns.servers.form.hostsFilePathsPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.hostsFilePathsHelp') }}</p>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="closeServerModal" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleSaveServer" variant="primary" :disabled="loading">
+          {{ isEditMode ? $t('common.update') : $t('common.add') }}
+        </Button>
+      </template>
+    </Modal>
 
     <!-- Delete Confirmation Modal -->
-    <TransitionRoot appear :show="showDeleteConfirm" as="template">
-      <Dialog as="div" @close="closeDeleteConfirm" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
+    <Modal
+      :model-value="showDeleteConfirm"
+      @update:model-value="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :title="$t('dns.servers.del.title')"
+      size="sm"
+      show-close
+    >
+      <p class="text-gray-700 dark:text-gray-300">
+        <i18n-t keypath="dns.servers.del.confirm" scope="global">
+          <template #tag><strong>{{ deletingServer?.tag }}</strong></template>
+        </i18n-t>
+      </p>
 
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ $t('dns.servers.del.title') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeDeleteConfirm"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <p class="text-gray-700 dark:text-gray-300">
-                  <i18n-t keypath="dns.servers.del.confirm" scope="global">
-                    <template #tag><strong>{{ deletingServer?.tag }}</strong></template>
-                  </i18n-t>
-                </p>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleDeleteServer" variant="danger" :disabled="loading">
-                    {{ $t('common.delete') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </TransitionRoot>
+      <template #footer>
+        <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleDeleteServer" variant="danger" :disabled="loading">
+          {{ $t('common.delete') }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>

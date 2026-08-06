@@ -393,7 +393,7 @@ onUnmounted(() => {
           <!-- Theme Toggle -->
           <button
             @click="toggleTheme"
-            class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-control transition-colors"
             :title="$t('config.toggleTheme')"
           >
             <svg v-if="editorTheme === 'vs-dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,9 +407,9 @@ onUnmounted(() => {
           <!-- Split View Toggle -->
           <button
             @click="toggleSplit"
-            class="p-2 rounded-lg transition-colors"
+            class="p-2 rounded-control transition-colors"
             :class="isSplit
-              ? 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30'
+              ? 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30'
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
             :title="isSplit ? $t('config.splitOn') : $t('config.splitOff')"
           >
@@ -421,7 +421,7 @@ onUnmounted(() => {
           <!-- Fullscreen Toggle -->
           <button
             @click="toggleFullscreen"
-            class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-control transition-colors"
             :title="isFullscreen ? $t('config.exitFullscreen') : $t('config.enterFullscreen')"
           >
             <svg v-if="!isFullscreen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,7 +436,7 @@ onUnmounted(() => {
           <button
             @click="formatDocument"
             :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             {{ $t('config.format') }}
           </button>
@@ -444,7 +444,7 @@ onUnmounted(() => {
           <button
             @click="validateConfig"
             :disabled="loading || validating || !configContent"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             <span v-if="validating">{{ $t('config.validating') }}</span>
             <span v-else>{{ $t('config.validate') }}</span>
@@ -453,7 +453,7 @@ onUnmounted(() => {
           <button
             @click="restartService"
             :disabled="restarting"
-            class="px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-700 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-700 rounded-control hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
             :title="$t('config.restartTitle')"
           >
             <span v-if="restarting">{{ $t('config.restarting') }}</span>
@@ -463,7 +463,7 @@ onUnmounted(() => {
           <button
             @click="openVersions"
             :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
             :title="$t('config.versionsTitle')"
           >
             {{ $t('config.versions') }}
@@ -472,7 +472,7 @@ onUnmounted(() => {
           <button
             @click="resetChanges"
             :disabled="loading || !hasChanges"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             {{ $t('config.reset') }}
           </button>
@@ -480,7 +480,7 @@ onUnmounted(() => {
           <button
             @click="saveConfig"
             :disabled="loading || saving || !hasChanges"
-            class="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             <span v-if="saving">{{ $t('config.saving') }}</span>
             <span v-else>{{ $t('config.save') }}</span>
@@ -497,9 +497,9 @@ onUnmounted(() => {
         space" behaviour. Setting min-h-0 lets the editor expand AND
         shrink to fit whatever viewport is left after header + status.
       -->
-      <div class="flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+      <div class="flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-surface shadow-float overflow-hidden">
         <div v-if="loading" class="flex items-center justify-center h-full">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+          <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
         <div v-else class="h-full">
           <MonacoEditor
@@ -515,17 +515,17 @@ onUnmounted(() => {
       </div>
 
       <!-- Status Bar -->
-      <div class="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-between text-sm shrink-0">
+      <div class="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-control flex items-center justify-between text-sm shrink-0">
         <div class="flex items-center gap-4">
           <span class="text-gray-600 dark:text-gray-400">
             {{ $t('config.jsonConfig') }}
           </span>
           <span v-if="hasChanges" class="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-            <span class="w-2 h-2 bg-amber-600 dark:bg-amber-400 rounded-full"></span>
+            <span class="w-2 h-2 bg-amber-600 dark:bg-amber-400 rounded-pill"></span>
             {{ $t('config.modified') }}
           </span>
           <span v-else class="flex items-center gap-1 text-green-600 dark:text-green-400">
-            <span class="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
+            <span class="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-pill"></span>
             {{ $t('config.saved') }}
           </span>
         </div>
@@ -540,7 +540,7 @@ onUnmounted(() => {
         class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
         @click.self="closeVersions"
       >
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-[90vw] h-[80vh] flex flex-col overflow-hidden">
+        <div class="bg-white dark:bg-gray-900 rounded-surface shadow-float w-[90vw] h-[80vh] flex flex-col overflow-hidden">
           <!-- Modal header -->
           <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <div class="flex items-center gap-3">
@@ -558,7 +558,7 @@ onUnmounted(() => {
             </div>
             <button
               @click="closeVersions"
-              class="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+              class="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-control"
               :title="$t('common.close')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -570,7 +570,7 @@ onUnmounted(() => {
           <!-- List view -->
           <div v-if="!showDiff" class="flex-1 min-h-0 overflow-y-auto p-5">
             <!-- Retention tip -->
-            <div class="mb-4 flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+            <div class="mb-4 flex items-start gap-2 rounded-control border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
               <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -587,7 +587,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="versionsLoading" class="flex items-center justify-center h-32">
-              <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-violet-600"></div>
+              <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-600"></div>
             </div>
             <div v-else-if="versions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
               {{ $t('config.versionsModal.empty') }}
@@ -601,7 +601,7 @@ onUnmounted(() => {
                 <button
                   @click="batchDeleteVersions"
                   :disabled="selectedVersionIds.size === 0 || batchDeleting || versionsLoading"
-                  class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {{ $t('config.versionsModal.deleteSelected') }}
                   <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
@@ -631,7 +631,7 @@ onUnmounted(() => {
                   v-for="(v, i) in versions"
                   :key="v.id"
                   class="border-b border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200"
-                  :class="selectedVersionIds.has(v.id) ? 'bg-violet-50/60 dark:bg-violet-900/10' : ''"
+                  :class="selectedVersionIds.has(v.id) ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''"
                 >
                   <td class="py-2.5 pr-3">
                     <input
@@ -644,7 +644,7 @@ onUnmounted(() => {
                   </td>
                   <td class="py-2.5 pr-4">
                     #{{ v.id }}
-                    <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">{{ $t('config.versionsModal.latest') }}</span>
+                    <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-pill bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">{{ $t('config.versionsModal.latest') }}</span>
                   </td>
                   <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">
                     {{ formatTime(v.created_at) }}
@@ -655,21 +655,21 @@ onUnmounted(() => {
                     <div class="flex items-center justify-end gap-2">
                       <button
                         @click="openDiff(v)"
-                        class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
                         {{ $t('config.versionsModal.diff') }}
                       </button>
                       <button
                         @click="rollbackTo(v)"
                         :disabled="loading"
-                        class="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+                        class="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
                       >
                         {{ $t('config.versionsModal.rollback') }}
                       </button>
                       <button
                         @click="deleteVersion(v)"
                         :disabled="loading || versionsLoading"
-                        class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                        class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         :title="$t('config.versionsModal.delete')"
                       >
                         {{ $t('config.versionsModal.delete') }}
@@ -688,12 +688,12 @@ onUnmounted(() => {
                  rollback restores the left). -->
             <div class="flex items-center justify-between px-5 py-2 text-xs border-b border-gray-200 dark:border-gray-700 shrink-0">
               <span class="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
-                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="w-2 h-2 rounded-pill bg-amber-500"></span>
                 {{ $t('config.versionsModal.diffLeft', { id: diffVersionId }) }}
               </span>
               <span class="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-400">
                 {{ $t('config.versionsModal.diffRight') }}
-                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                <span class="w-2 h-2 rounded-pill bg-gray-400"></span>
               </span>
             </div>
             <div class="flex-1 min-h-0">
@@ -712,7 +712,7 @@ onUnmounted(() => {
                   v-if="diffVersionId !== null"
                   @click="rollbackTo({ id: diffVersionId, size: 0, created_at: '' })"
                   :disabled="loading"
-                  class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+                  class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
                 >
                   {{ $t('config.versionsModal.rollbackToLeft', { id: diffVersionId }) }}
                 </button>
@@ -722,7 +722,7 @@ onUnmounted(() => {
               </div>
               <button
                 @click="showDiff = false"
-                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {{ $t('config.versionsModal.backToList') }}
               </button>

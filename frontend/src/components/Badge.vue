@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const classes = computed(() => {
-  const base = 'inline-flex items-center font-semibold rounded-full border'
+  const base = 'inline-flex items-center font-semibold rounded-pill border'
 
   const variants = {
     primary: 'bg-blue-500/15 text-blue-700 dark:text-blue-200 border-blue-500/25',
@@ -51,7 +51,7 @@ const dotColorClass = computed(() => {
 
 <template>
   <span :class="classes">
-    <span v-if="dot" :class="['w-1.5 h-1.5 rounded-full mr-1.5', dotColorClass]"></span>
+    <span v-if="dot" :class="['w-1.5 h-1.5 rounded-pill mr-1.5', dotColorClass]"></span>
     <slot />
   </span>
 </template>

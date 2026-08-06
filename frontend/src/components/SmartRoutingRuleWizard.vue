@@ -14,7 +14,8 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue'
 import { storeToRefs } from 'pinia'
-import { Dialog, Button, Select, Chips } from '../volt'
+import { Dialog, Select, Chips } from '../volt'
+import Button from './Button.vue'
 import type { RouteRule, DNSRule } from '../types/api'
 import { routeService, dnsService } from '../services'
 import { useOutboundsStore } from '../stores/outbounds'
@@ -264,10 +265,10 @@ async function submit() {
   >
     <!-- Step indicator -->
     <div class="flex items-center gap-2 mb-5 text-xs">
-      <span :class="['px-2 py-1 rounded', step >= 1 ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">1 · {{ t('route.rules.smart.steps.match') }}</span>
-      <span :class="['px-2 py-1 rounded', step >= 2 ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">2 · {{ t('route.rules.smart.steps.action') }}</span>
-      <span v-if="needsOutbound" :class="['px-2 py-1 rounded', step >= 3 ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">3 · {{ t('route.rules.smart.steps.outbound') }}</span>
-      <span v-if="dnsApplies" :class="['px-2 py-1 rounded', step >= 4 ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">4 · {{ t('route.rules.smart.steps.dns') }}</span>
+      <span :class="['px-2 py-1 rounded', step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">1 · {{ t('route.rules.smart.steps.match') }}</span>
+      <span :class="['px-2 py-1 rounded', step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">2 · {{ t('route.rules.smart.steps.action') }}</span>
+      <span v-if="needsOutbound" :class="['px-2 py-1 rounded', step >= 3 ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">3 · {{ t('route.rules.smart.steps.outbound') }}</span>
+      <span v-if="dnsApplies" :class="['px-2 py-1 rounded', step >= 4 ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">4 · {{ t('route.rules.smart.steps.dns') }}</span>
     </div>
 
     <!-- Step 1 — Match -->
@@ -342,7 +343,7 @@ async function submit() {
 
     <!-- Step 4 — DNS guard -->
     <div v-else-if="step === 4" class="space-y-4">
-      <div class="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
+      <div class="rounded-control bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
         <h4 class="text-sm font-semibold text-amber-800 dark:text-amber-300">{{ t('route.rules.smart.dns.heading') }}</h4>
         <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
           {{ t('route.rules.smart.dns.intro', { outbound }) }}
@@ -350,7 +351,7 @@ async function submit() {
       </div>
 
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input type="checkbox" v-model="dnsEnabled" class="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
+        <input type="checkbox" v-model="dnsEnabled" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
         {{ t('route.rules.smart.dns.enable') }}
       </label>
 
@@ -371,7 +372,7 @@ async function submit() {
       <div class="flex w-full items-center justify-between">
         <button
           type="button"
-          class="text-xs text-gray-500 hover:text-violet-600 dark:text-gray-400"
+          class="text-xs text-gray-500 hover:text-primary-600 dark:text-gray-400"
           @click="openAdvanced"
         >
           {{ t('route.rules.smart.advanced') }}

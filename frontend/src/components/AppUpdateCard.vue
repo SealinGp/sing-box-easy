@@ -124,7 +124,7 @@ const runUpdate = async () => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
     <div class="flex items-start justify-between gap-3 mb-1">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
         {{ $t('settings.update.title') }}
@@ -132,7 +132,7 @@ const runUpdate = async () => {
       <button
         @click="checkAgain"
         :disabled="checking || busy"
-        class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+        class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-control text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
       >
         <ArrowPathIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': checking }" />
         <span>{{ checking ? $t('settings.update.checking') : $t('settings.update.checkAgain') }}</span>
@@ -170,7 +170,7 @@ const runUpdate = async () => {
         v-if="!busy"
         @click="runUpdate"
         :disabled="!canUpdate"
-        class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         <ArrowUpCircleIcon class="h-4 w-4" />
         <span>{{ targetVersion ? $t('settings.update.updateTo', { version: targetVersion }) : $t('settings.update.update') }}</span>
@@ -200,7 +200,7 @@ const runUpdate = async () => {
         <select
           v-model="selectedTag"
           :disabled="loadingReleases"
-          class="min-w-56 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
+          class="min-w-56 rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
         >
           <option value="">
             {{ $t('settings.update.latestOption') }}{{ latestVersion ? ` (${latestVersion})` : '' }}
@@ -217,7 +217,7 @@ const runUpdate = async () => {
       <button
         v-if="selectedNotes"
         @click="showNotes = !showNotes"
-        class="flex items-center gap-1 px-2 py-2 text-sm text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+        class="flex items-center gap-1 px-2 py-2 text-sm text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
       >
         <span>{{ $t('settings.update.releaseNotes') }}</span>
         <ChevronDownIcon class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showNotes }" />
@@ -227,7 +227,7 @@ const runUpdate = async () => {
     <!-- Release notes -->
     <pre
       v-if="showNotes && selectedNotes && !busy"
-      class="mt-3 max-h-64 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300"
+      class="mt-3 max-h-64 overflow-auto rounded-control bg-gray-50 dark:bg-gray-900 p-3 text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300"
     >{{ selectedNotes }}</pre>
 
     <!-- Progress -->
@@ -236,9 +236,9 @@ const runUpdate = async () => {
         <span class="text-sm text-gray-700 dark:text-gray-300">{{ progressLabel }}</span>
         <span class="text-xs font-mono text-gray-500 dark:text-gray-400">{{ progress }}%</span>
       </div>
-      <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+      <div class="h-2 w-full rounded-pill bg-gray-200 dark:bg-gray-700 overflow-hidden">
         <div
-          class="h-full rounded-full bg-violet-600 transition-all duration-300"
+          class="h-full rounded-pill bg-primary-600 transition-all duration-300"
           :class="{ 'animate-pulse': phase === 'restarting' || phase === 'waiting' }"
           :style="{ width: `${progress}%` }"
         ></div>
@@ -251,7 +251,7 @@ const runUpdate = async () => {
     <!-- Failure -->
     <div
       v-if="phase === 'failed'"
-      class="mt-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3"
+      class="mt-3 rounded-control border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3"
     >
       <p class="text-sm font-medium text-red-700 dark:text-red-300">
         {{ $t('settings.update.progress.failed') }}
@@ -259,7 +259,7 @@ const runUpdate = async () => {
       <p class="mt-1 text-xs text-red-600 dark:text-red-400 break-words">{{ errorMessage }}</p>
       <button
         @click="reset"
-        class="mt-2 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
+        class="mt-2 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
       >
         {{ $t('settings.update.retry') }}
       </button>

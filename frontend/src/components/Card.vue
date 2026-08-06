@@ -14,8 +14,8 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div
     :class="[
-      'liquid-glass rounded-lg transition-shadow duration-200',
-      hoverable ? 'hover:shadow-md cursor-pointer' : 'shadow-sm',
+      'liquid-glass rounded-surface transition-shadow duration-200',
+      hoverable ? 'hover:shadow-surface cursor-pointer' : 'shadow-surface',
       {
         'p-0': padding === 'none',
         'p-4': padding === 'sm',

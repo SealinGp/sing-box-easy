@@ -118,7 +118,7 @@ onMounted(() => {
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('dns.settings.heading') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else class="space-y-6">
@@ -155,7 +155,7 @@ onMounted(() => {
                   type="checkbox"
                   id="disable_cache"
                   v-model="settings.disable_cache"
-                  class="w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
               <div class="ml-3">
@@ -174,7 +174,7 @@ onMounted(() => {
                   type="checkbox"
                   id="disable_expire"
                   v-model="settings.disable_expire"
-                  class="w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
               <div class="ml-3">

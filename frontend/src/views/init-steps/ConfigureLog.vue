@@ -125,12 +125,12 @@ const handleSkip = () => {
           </div>
 
           <!-- 启用/禁用日志 -->
-          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
             <input
               v-model="logConfig.disabled"
               type="checkbox"
               id="disable-log"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <label for="disable-log" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">{{ $t('init.log.disableLabel') }}</span>
@@ -161,12 +161,12 @@ const handleSkip = () => {
           />
 
           <!-- 时间戳 -->
-          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
             <input
               v-model="logConfig.timestamp"
               type="checkbox"
               id="enable-timestamp"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               :disabled="logConfig.disabled"
             />
             <label for="enable-timestamp" class="flex-1 cursor-pointer">
@@ -200,19 +200,19 @@ const handleSkip = () => {
       </Card>
 
       <!-- 配置说明 -->
-      <Card padding="sm" class="bg-violet-50 border-violet-200">
+      <Card padding="sm" class="bg-primary-50 border-primary-200">
         <div class="flex items-start space-x-3">
-          <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-violet-900 space-y-2">
+          <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+          <div class="text-sm text-primary-900 space-y-2">
             <p class="font-medium">{{ $t('init.log.guideTitle') }}</p>
-            <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
+            <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
               <li><strong>Trace:</strong> {{ $t('init.log.guide.trace') }}</li>
               <li><strong>Debug:</strong> {{ $t('init.log.guide.debug') }}</li>
               <li><strong>Info:</strong> {{ $t('init.log.guide.info') }}</li>
               <li><strong>Warn:</strong> {{ $t('init.log.guide.warn') }}</li>
               <li><strong>Error:</strong> {{ $t('init.log.guide.error') }}</li>
             </ul>
-            <p class="mt-2 text-xs text-violet-700">
+            <p class="mt-2 text-xs text-primary-700">
               💡 {{ $t('init.log.guideTip') }}
             </p>
           </div>

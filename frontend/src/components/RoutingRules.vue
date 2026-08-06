@@ -2,14 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
-import { Dialog, Button, Select, Chips } from '../volt'
+import { Dialog, Select, Chips } from '../volt'
+import Button from './Button.vue'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
-import { useConfirm } from '../composables/useConfirm'
 
 // sing-box accepts scalar OR array on the wire for every list-like matcher
 // (e.g. "inbound": "dns-in" is equivalent to ["dns-in"]). The backend
@@ -49,7 +49,6 @@ function normalizeRouteRule(rule: RouteRule): RouteRule {
 
 const toast = useToast()
 const { t } = useI18n()
-const { confirm } = useConfirm()
 
 // Local state
 const loading = ref(false)
@@ -149,15 +148,10 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
   }
 }
 
+// Confirmation happens inline, in the <PopConfirm> inside RoutingRuleItem —
+// anchored to the row so the user can see which rule they are deleting. By the
+// time this fires the user has already confirmed.
 const handleDeleteRule = async (index: number) => {
-  const ok = await confirm({
-    title: t('common.delete'),
-    message: t('route.rules.confirm.delete'),
-    confirmLabel: t('common.delete'),
-    tone: 'danger',
-  })
-  if (!ok) return
-
   loading.value = true
   try {
     await routeService.deleteRouteRule(index)
@@ -438,14 +432,14 @@ onMounted(() => {
         </h3>
         <button
           @click="showWizard = true"
-          class="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
+          class="px-4 py-2 bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
         >
           {{ $t('route.rules.add') }}
         </button>
       </div>
 
       <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="inline-block animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else-if="rules.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -534,7 +528,7 @@ onMounted(() => {
               v-model="currentRuleOverrideAddress"
               type="text"
               :placeholder="$t('route.rules.placeholders.overrideAddress')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
@@ -543,7 +537,7 @@ onMounted(() => {
               v-model.number="currentRuleOverridePort"
               type="number"
               :placeholder="$t('route.rules.placeholders.overridePort')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
@@ -575,7 +569,7 @@ onMounted(() => {
               v-model="currentRuleTimeout"
               type="text"
               :placeholder="$t('route.rules.placeholders.timeout')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
         </template>
@@ -588,7 +582,7 @@ onMounted(() => {
               v-model="currentRuleServer"
               type="text"
               :placeholder="$t('route.rules.placeholders.dnsServer')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>

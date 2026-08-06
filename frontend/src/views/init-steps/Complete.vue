@@ -44,7 +44,7 @@ const goToDashboard = () => {
     <!-- 完成祝贺 -->
     <Card class="text-center py-8">
       <div class="flex justify-center mb-4">
-        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+        <div class="w-20 h-20 bg-green-100 rounded-pill flex items-center justify-center">
           <CheckCircleIcon class="w-12 h-12 text-green-600" />
         </div>
       </div>
@@ -61,7 +61,7 @@ const goToDashboard = () => {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- sing-box 安装 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.installTitle') }}</p>
@@ -70,7 +70,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 日志配置 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.logTitle') }}</p>
@@ -79,7 +79,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 实验性功能 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.experimentalTitle') }}</p>
@@ -88,7 +88,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 出站节点 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.outboundTitle') }}</p>
@@ -97,7 +97,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 规则集 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.ruleSetsTitle') }}</p>
@@ -106,7 +106,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- DNS -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.dnsTitle') }}</p>
@@ -115,7 +115,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 入站 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.inboundTitle') }}</p>
@@ -124,7 +124,7 @@ const goToDashboard = () => {
           </div>
 
           <!-- 路由规则 -->
-          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-control">
             <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.summary.routingTitle') }}</p>
@@ -136,13 +136,13 @@ const goToDashboard = () => {
     </Card>
 
     <!-- 下一步操作 -->
-    <Card class="bg-violet-50 border-violet-200">
+    <Card class="bg-primary-50 border-primary-200">
       <div class="space-y-4">
         <div class="flex items-start space-x-3">
-          <RocketLaunchIcon class="w-6 h-6 text-violet-600 flex-shrink-0 mt-0.5" />
+          <RocketLaunchIcon class="w-6 h-6 text-primary-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 class="text-lg font-semibold text-violet-900 mb-2">{{ $t('init.complete.nextStepsTitle') }}</h3>
-            <ul class="space-y-2 text-sm text-violet-800">
+            <h3 class="text-lg font-semibold text-primary-900 mb-2">{{ $t('init.complete.nextStepsTitle') }}</h3>
+            <ul class="space-y-2 text-sm text-primary-800">
               <li class="flex items-start">
                 <span class="mr-2">1.</span>
                 <span>{{ $t('init.complete.nextSteps.start') }}</span>
@@ -173,15 +173,15 @@ const goToDashboard = () => {
           <div class="flex-1">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('init.complete.quickAccessTitle') }}</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div class="p-3 bg-gray-50 rounded-lg">
+              <div class="p-3 bg-gray-50 rounded-control">
                 <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.proxy') }}</p>
                 <code class="text-xs text-gray-600 font-mono">127.0.0.1:7890</code>
               </div>
-              <div class="p-3 bg-gray-50 rounded-lg">
+              <div class="p-3 bg-gray-50 rounded-control">
                 <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.clashApi') }}</p>
                 <code class="text-xs text-gray-600 font-mono">127.0.0.1:9090</code>
               </div>
-              <div class="p-3 bg-gray-50 rounded-lg">
+              <div class="p-3 bg-gray-50 rounded-control">
                 <p class="text-sm font-medium text-gray-900">{{ $t('init.complete.quickAccess.webDashboard') }}</p>
                 <code class="text-xs text-gray-600 font-mono">/ui</code>
               </div>

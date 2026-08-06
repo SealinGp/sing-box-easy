@@ -1,0 +1,147 @@
+/*
+ * Form controls — the shared baseline for every text-entry surface.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * These rules are deliberately NOT scoped under `.liquid-app`.
+ *
+ * PrimeVue teleports dialogs and overlay panels to <body> (`Dialog` defaults to
+ * `appendTo: 'body'`), so ANY ancestor-scoped rule silently stops applying the
+ * moment a control is rendered inside a modal. Scoping this layer to
+ * `.liquid-app` left every input, textarea, and native <select> inside every
+ * dialog with no border, no fill, and no radius at all.
+ *
+ * `src/style/primevue.css` carries the same warning for the teleported select
+ * panel. Treat "is this reachable from inside a teleported overlay?" as a
+ * standing question for any new rule in this codebase.
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * The `:not()` chains exclude DOM we do not own:
+ *   [data-pc-section] — PrimeVue's own internal inputs (the Select/MultiSelect
+ *                       filter box, the Chips entry field). They are themed by
+ *                       their pass-through options in `src/volt/*`; styling them
+ *                       here would double up borders inside a dropdown panel.
+ *   .inputarea        — Monaco's hidden textarea. See the reset at the bottom.
+ *   button-like types — submit/button/reset/image are buttons, not fields.
+ */
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(
+    [type='color']
+  ):not([type='submit']):not([type='button']):not([type='reset']):not([type='image']):not(
+    [data-pc-section]
+  ):not(.inputarea),
+textarea:not([data-pc-section]):not(.inputarea),
+select:not([data-pc-section]),
+.volt-select {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  color: var(--control-text);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  transition:
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background-color 0.15s ease-out;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([data-pc-section]):not(
+    .inputarea
+  ):hover:not(:disabled),
+textarea:not([data-pc-section]):not(.inputarea):hover:not(:disabled),
+select:not([data-pc-section]):hover:not(:disabled),
+.volt-select:hover {
+  border-color: var(--control-border-hover);
+  background: var(--control-bg-hover);
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([data-pc-section]):not(
+    .inputarea
+  ):focus,
+textarea:not([data-pc-section]):not(.inputarea):focus,
+select:not([data-pc-section]):focus,
+.volt-select[data-p~='focus'],
+.volt-select:focus-within {
+  outline: none;
+  border-color: var(--control-border-focus);
+  box-shadow: var(--glass-highlight), var(--shadow-focus);
+}
+
+input:not([data-pc-section]):not(.inputarea):disabled,
+textarea:not([data-pc-section]):not(.inputarea):disabled,
+select:not([data-pc-section]):disabled {
+  background: var(--control-bg-disabled);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+input:not([data-pc-section]):not(.inputarea)::placeholder,
+textarea:not([data-pc-section]):not(.inputarea)::placeholder {
+  color: var(--control-placeholder);
+}
+
+/* Textareas are multi-line data, so they keep the surface radius. */
+textarea:not([data-pc-section]):not(.inputarea) {
+  border-radius: var(--radius-surface);
+}
+
+/*
+ * Invalid state. Driven by `aria-invalid` so the styling follows the same
+ * signal screen readers use, rather than a presentational-only class.
+ */
+input[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+input[aria-invalid='true']:focus,
+textarea[aria-invalid='true']:focus,
+select[aria-invalid='true']:focus {
+  box-shadow: var(--glass-highlight), 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/*
+ * Monaco owns its own DOM and positions a transparent textarea over the
+ * rendered text to capture input. Giving it a fill, border, or radius would
+ * paint a visible box across the editor, so it is reset unconditionally —
+ * belt-and-braces alongside the `.inputarea` exclusions above, since Monaco
+ * has historically renamed that class between major versions.
+ */
+.monaco-editor input,
+.monaco-editor textarea {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/*
+ * Native <select> needs an explicit arrow: `appearance: none` is implied by
+ * setting a custom background, and without a chevron the control reads as a
+ * plain text field. The SVG is inlined so it is theme-independent (it uses
+ * currentColor via the stroke attribute baked into the data URI).
+ */
+select:not([data-pc-section]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1.15em 1.15em;
+  padding-right: 2.25rem;
+}
+
+/*
+ * Shared sizing for controls that are NOT rendered through <Input>/<Textarea>.
+ * `.select` is the app's own class for raw native dropdowns.
+ */
+.select {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 2.25rem 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}

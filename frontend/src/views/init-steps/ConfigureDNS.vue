@@ -330,14 +330,14 @@ const handleSkip = () => {
           <div
             v-for="preset in dnsPresets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
-            :class="{ 'border-violet-500 bg-violet-50': selectedPreset === preset.id }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-control hover:border-primary-300 hover:bg-primary-50 cursor-pointer transition-colors"
+            :class="{ 'border-primary-500 bg-primary-50': selectedPreset === preset.id }"
             @click="selectedPreset = preset.id"
           >
             <input
               type="radio"
               :checked="selectedPreset === preset.id"
-              class="w-4 h-4 text-violet-600 border-gray-300 mt-0.5"
+              class="w-4 h-4 text-primary-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="selectedPreset = preset.id"
             />
@@ -379,12 +379,12 @@ const handleSkip = () => {
           </p>
         </div>
 
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
           <input
             v-model="enableHosts"
             type="checkbox"
             id="enable-hosts"
-            class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+            class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             :disabled="loading || saving || success"
           />
           <label for="enable-hosts" class="flex-1 cursor-pointer">
@@ -397,7 +397,7 @@ const handleSkip = () => {
 
         <div v-if="enableHosts" class="space-y-3">
           <!-- Add new host entry -->
-          <div class="p-4 bg-violet-50 border border-violet-200 rounded-lg">
+          <div class="p-4 bg-primary-50 border border-primary-200 rounded-surface">
             <p class="text-sm font-medium text-gray-900 mb-3">{{ $t('setup.dns.addHostEntry') }}</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -406,7 +406,7 @@ const handleSkip = () => {
                   v-model="newHostDomain"
                   type="text"
                   :placeholder="$t('setup.dns.domainPlaceholder')"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-primary-500 focus:border-primary-500"
                   :disabled="saving || success"
                   @keyup.enter="addHostEntry"
                 />
@@ -421,7 +421,7 @@ const handleSkip = () => {
                     v-model="newHostIP"
                     type="text"
                     :placeholder="$t('setup.dns.ipPlaceholder')"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-violet-500 focus:border-violet-500"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-primary-500 focus:border-primary-500"
                     :disabled="saving || success"
                     @keyup.enter="addHostEntry"
                   />
@@ -445,7 +445,7 @@ const handleSkip = () => {
               <div
                 v-for="(value, domain) in hostEntries"
                 :key="domain"
-                class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+                class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-surface"
               >
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-gray-900 truncate">{{ domain }}</p>
@@ -502,12 +502,12 @@ const handleSkip = () => {
           </p>
         </div>
 
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
           <input
             v-model="enableFakeIP"
             type="checkbox"
             id="enable-fakeip"
-            class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+            class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             :disabled="loading || saving || success"
           />
           <label for="enable-fakeip" class="flex-1 cursor-pointer">
@@ -545,19 +545,19 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-violet-50 border-violet-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-violet-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-primary-900 space-y-2">
           <p class="font-medium">{{ $t('setup.dns.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
             <li><strong>{{ $t('setup.dns.aboutSmartLabel') }}</strong> {{ $t('setup.dns.aboutSmart') }}</li>
             <li><strong>{{ $t('setup.dns.aboutSingleLabel') }}</strong> {{ $t('setup.dns.aboutSingle') }}</li>
             <li><strong>{{ $t('setup.dns.aboutChinaLabel') }}</strong> {{ $t('setup.dns.aboutChina') }}</li>
             <li><strong>{{ $t('setup.dns.aboutFakeipLabel') }}</strong> {{ $t('setup.dns.aboutFakeip') }}</li>
             <li><strong>{{ $t('setup.dns.aboutStrategyLabel') }}</strong> {{ $t('setup.dns.aboutStrategy') }}</li>
           </ul>
-          <p class="mt-2 text-xs text-violet-700">
+          <p class="mt-2 text-xs text-primary-700">
             {{ $t('setup.dns.tip') }}
           </p>
         </div>

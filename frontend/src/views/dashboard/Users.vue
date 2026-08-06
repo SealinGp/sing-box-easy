@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  TransitionRoot,
-  TransitionChild,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/vue'
 import type { User } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import Modal from '../../components/Modal.vue'
+import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { userService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 
@@ -215,9 +209,9 @@ onMounted(fetchUsers)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
       <div v-if="loading && users.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else-if="users.length === 0" class="text-center py-12">
@@ -264,143 +258,69 @@ onMounted(fetchUsers)
     </div>
 
     <!-- Add/Edit Modal -->
-    <TransitionRoot appear :show="showModal" as="template">
-      <Dialog as="div" @close="closeModal" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
-
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ isEditMode ? $t('users.modal.edit') : $t('users.modal.add') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeModal"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.username') }}</label>
-                    <Input
-                      v-model="currentUser.username"
-                      :placeholder="$t('users.form.usernamePlaceholder')"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.password') }}</label>
-                    <Input
-                      v-model="currentUser.password"
-                      type="password"
-                      :placeholder="isEditMode ? $t('users.form.passwordPlaceholder') : $t('users.form.passwordRequiredPlaceholder')"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.role') }}</label>
-                    <select
-                      v-model="currentUser.role"
-                      class="w-full rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 p-2.5 text-gray-900 dark:text-gray-100 text-sm"
-                    >
-                      <option value="admin">{{ $t('users.form.roles.admin') }}</option>
-                      <option value="viewer">{{ $t('users.form.roles.viewer') }}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeModal" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleSave" variant="primary" :disabled="loading">
-                    {{ isEditMode ? $t('common.update') : $t('common.add') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
+    <Modal
+      :model-value="showModal"
+      @update:model-value="(v: boolean) => { if (!v) closeModal() }"
+      :title="isEditMode ? $t('users.modal.edit') : $t('users.modal.add')"
+      size="md"
+      show-close
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.username') }}</label>
+          <Input
+            v-model="currentUser.username"
+            :placeholder="$t('users.form.usernamePlaceholder')"
+          />
         </div>
-      </Dialog>
-    </TransitionRoot>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.password') }}</label>
+          <Input
+            v-model="currentUser.password"
+            type="password"
+            :placeholder="isEditMode ? $t('users.form.passwordPlaceholder') : $t('users.form.passwordRequiredPlaceholder')"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.role') }}</label>
+          <select
+            v-model="currentUser.role"
+            class="w-full rounded-control bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 p-2.5 text-gray-900 dark:text-gray-100 text-sm"
+          >
+            <option value="admin">{{ $t('users.form.roles.admin') }}</option>
+            <option value="viewer">{{ $t('users.form.roles.viewer') }}</option>
+          </select>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="closeModal" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleSave" variant="primary" :disabled="loading">
+          {{ isEditMode ? $t('common.update') : $t('common.add') }}
+        </Button>
+      </template>
+    </Modal>
 
     <!-- Delete Confirmation Modal -->
-    <TransitionRoot appear :show="showDeleteConfirm" as="template">
-      <Dialog as="div" @close="closeDeleteConfirm" class="relative z-50">
-        <TransitionChild
-          as="template"
-          enter="duration-300 ease-out"
-          enter-from="opacity-0"
-          enter-to="opacity-100"
-          leave="duration-200 ease-in"
-          leave-from="opacity-100"
-          leave-to="opacity-0"
-        >
-          <div class="fixed inset-0 bg-black/50 dark:bg-black/70" />
-        </TransitionChild>
+    <Modal
+      :model-value="showDeleteConfirm"
+      @update:model-value="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :title="$t('users.del.title')"
+      size="sm"
+      show-close
+    >
+      <p class="text-gray-700 dark:text-gray-300">
+        {{ $t('users.del.confirm', { username: deletingUser?.username }) }}
+      </p>
 
-        <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="template"
-              enter="duration-300 ease-out"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="duration-200 ease-in"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div class="flex items-center justify-between mb-4">
-                  <DialogTitle as="h3" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ $t('users.del.title') }}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:text-gray-500 transition-colors"
-                    @click="closeDeleteConfirm"
-                  >
-                    <XMarkIcon class="h-6 w-6" />
-                  </button>
-                </div>
-
-                <p class="text-gray-700 dark:text-gray-300">
-                  {{ $t('users.del.confirm', { username: deletingUser?.username }) }}
-                </p>
-
-                <div class="mt-6 flex justify-end gap-3">
-                  <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-                  <Button @click="handleDelete" variant="danger" :disabled="loading">
-                    {{ $t('common.delete') }}
-                  </Button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </TransitionRoot>
+      <template #footer>
+        <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleDelete" variant="danger" :disabled="loading">
+          {{ $t('common.delete') }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>

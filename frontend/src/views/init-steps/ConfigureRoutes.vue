@@ -288,14 +288,14 @@ const handleSkip = () => {
           <div
             v-for="preset in routePresets"
             :key="preset.id"
-            class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-colors"
-            :class="{ 'border-violet-500 bg-violet-50': selectedPreset === preset.id }"
+            class="flex items-start gap-3 p-4 border border-gray-200 rounded-control hover:border-primary-300 hover:bg-primary-50 cursor-pointer transition-colors"
+            :class="{ 'border-primary-500 bg-primary-50': selectedPreset === preset.id }"
             @click="selectedPreset = preset.id"
           >
             <input
               type="radio"
               :checked="selectedPreset === preset.id"
-              class="w-4 h-4 text-violet-600 border-gray-300 mt-0.5"
+              class="w-4 h-4 text-primary-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
               @click.stop="selectedPreset = preset.id"
             />
@@ -336,12 +336,12 @@ const handleSkip = () => {
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-violet-50 border-violet-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200">
       <div class="flex items-start space-x-3">
-        <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-violet-900 space-y-2">
+        <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-primary-900 space-y-2">
           <p class="font-medium">{{ $t('setup.routes.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
             <li><strong>{{ $t('setup.routes.aboutSmartLabel') }}</strong> {{ $t('setup.routes.aboutSmart') }}</li>
             <li><strong>{{ $t('setup.routes.aboutGlobalLabel') }}</strong> {{ $t('setup.routes.aboutGlobal') }}</li>
             <li><strong>{{ $t('setup.routes.aboutDirectLabel') }}</strong> {{ $t('setup.routes.aboutDirect') }}</li>
@@ -349,7 +349,7 @@ const handleSkip = () => {
             <li>{{ $t('setup.routes.aboutOrder') }}</li>
             <li>{{ $t('setup.routes.aboutFinal') }}</li>
           </ul>
-          <p class="mt-2 text-xs text-violet-700">
+          <p class="mt-2 text-xs text-primary-700">
             {{ $t('setup.routes.tip') }}
           </p>
         </div>

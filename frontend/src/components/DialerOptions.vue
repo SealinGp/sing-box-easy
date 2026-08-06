@@ -137,7 +137,7 @@ const fallbackDelay = computed({
           :filterPlaceholder="$t('dialer.detour.searchPlaceholder')"
           :emptyFilterMessage="$t('dialer.detour.noOptions')"
         />
-        <div v-else class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div v-else class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-control bg-gray-50 dark:bg-gray-800">
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('dialer.detour.none') }}</p>
         </div>
         <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.detour.help') }}</p>
@@ -261,7 +261,7 @@ const fallbackDelay = computed({
             <input
               type="checkbox"
               v-model="reuseAddr"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
               {{ $t('dialer.reuseAddr.label') }}
@@ -273,7 +273,7 @@ const fallbackDelay = computed({
             <input
               type="checkbox"
               v-model="tcpFastOpen"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
               {{ $t('dialer.tcpFastOpen.label') }}
@@ -285,7 +285,7 @@ const fallbackDelay = computed({
             <input
               type="checkbox"
               v-model="tcpMultiPath"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">
               {{ $t('dialer.tcpMultiPath.label') }}

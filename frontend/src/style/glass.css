@@ -1,0 +1,119 @@
+/*
+ * Liquid glass — the app backdrop and the translucent surface treatment.
+ *
+ * NOTE: `.liquid-app` no longer re-declares the --glass-* tokens locally.
+ * It used to, as a workaround for the `@theme`-inside-`@media` hoisting bug
+ * (see the header of tokens.css). That bug is fixed at the source now, so the
+ * tokens are correct at `:root` in both themes and the local copies would only
+ * be a second place to forget to update.
+ */
+
+.liquid-app {
+  position: relative;
+  isolation: isolate;
+  color: var(--color-text-primary);
+  background:
+    linear-gradient(115deg, rgba(8, 145, 178, 0.28), transparent 34%),
+    linear-gradient(245deg, rgba(245, 158, 11, 0.18), transparent 38%),
+    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.22), transparent 22%),
+    radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.2), transparent 26%),
+    linear-gradient(135deg, #eef3f8, #dce7f1);
+}
+
+.liquid-app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 86px),
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.04) 0 1px, transparent 1px 86px);
+  mask-image: linear-gradient(180deg, black, transparent 80%);
+}
+
+.liquid-app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-app {
+    background:
+      linear-gradient(115deg, rgba(8, 145, 178, 0.62), transparent 31%),
+      linear-gradient(245deg, rgba(245, 158, 11, 0.36), transparent 34%),
+      radial-gradient(circle at 76% 15%, rgba(255, 255, 255, 0.18), transparent 20%),
+      radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.24), transparent 24%),
+      linear-gradient(180deg, rgba(8, 13, 20, 0.16), rgba(8, 10, 14, 0.92)), #06080b;
+  }
+
+  .liquid-app::before {
+    background:
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 86px),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 86px);
+  }
+}
+
+/*
+ * The glass surface itself.
+ *
+ * `.liquid-glass` is the supported, explicit way to opt in.
+ *
+ * The bare `bg-white` selectors below are a DEPRECATED COMPATIBILITY SHIM.
+ * Any `<div class="bg-white">` inside `.liquid-app` silently acquires a full
+ * panel treatment — border, drop shadow, and a 24px backdrop blur — purely
+ * from wanting a white background. That implicit capture is a big part of why
+ * surface styling feels unpredictable.
+ *
+ * It is retained because ~30 files currently depend on it for their panels
+ * while only 2 use `.liquid-glass` explicitly; deleting it in the same change
+ * as the token refactor would flatten most of the app. Migrate call sites to
+ * `class="liquid-glass"` and delete this shim once
+ *     rg 'bg-white(?![-/\w])' src --pcre2
+ * comes back empty for card-like elements.
+ *
+ * Note the shim only ever matches the *bare* `bg-white` token — opacity
+ * variants such as `bg-white/55` are a different class and are unaffected.
+ */
+/*
+ * The `.liquid-app` ancestor on the shim selectors is REQUIRED, and is the one
+ * place in this codebase where ancestor-scoping is the correct call rather than
+ * the teleport bug described in controls.css.
+ *
+ * Dropping it would extend the shim to PrimeVue's teleported overlays, whose
+ * pass-through themes use bare `bg-white` on internal <div>s (MultiSelect's
+ * listContainer, header, emptyMessage, checkbox boxes). Each would then acquire
+ * a full panel border, drop shadow, and 24px blur *inside* a dropdown — the
+ * exact bug documented at the top of src/volt/Select.vue.
+ *
+ * Modals are safe: neither Modal.vue nor volt/Dialog.vue uses bare `bg-white`.
+ */
+.liquid-glass,
+.liquid-app div.bg-white,
+.liquid-app section.bg-white,
+.liquid-app article.bg-white,
+.liquid-app aside.bg-white,
+.liquid-app form.bg-white {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+    var(--glass-bg);
+  border: 1px solid var(--glass-border-muted);
+  box-shadow: var(--shadow-surface), var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* A floating variant for popovers, dropdown panels, and dialogs. */
+.liquid-glass-float {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+    var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-muted);
+  box-shadow: var(--shadow-float), var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}

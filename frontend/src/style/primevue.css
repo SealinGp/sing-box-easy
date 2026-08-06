@@ -1,0 +1,122 @@
+/*
+ * PrimeVue (volt) overlay surfaces.
+ *
+ * PrimeVue teleports overlays to <body>, so anything targeting them must NOT
+ * be scoped under `.liquid-app` — a descendant selector would never match and
+ * the panel would render unstyled.
+ *
+ * These rules may now use the --glass-* / --shadow-* tokens directly. They
+ * previously had to hard-code literal colours because the dark-mode `@theme`
+ * block leaked into `:root` for all themes (see the header of tokens.css);
+ * with that bug fixed, `:root` reports the correct values everywhere.
+ */
+
+.volt-select-panel,
+.volt-multiselect-panel {
+  border-radius: var(--radius-surface);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-muted);
+  box-shadow: var(--shadow-float), var(--glass-highlight);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/*
+ * Option rows are tinted with the primary colour, matching the sidebar's
+ * active state rather than introducing a second accent hue.
+ */
+.volt-select-option-focus {
+  background: rgba(21, 117, 255, 0.09);
+}
+
+.volt-select-option-selected {
+  background: rgba(21, 117, 255, 0.16);
+  color: var(--color-primary-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  .volt-select-option-focus {
+    background: rgba(107, 165, 255, 0.12);
+  }
+
+  .volt-select-option-selected {
+    background: rgba(107, 165, 255, 0.22);
+    color: #cfe2ff;
+  }
+}
+
+/*
+ * ── Toast severities ──────────────────────────────────────────────────────
+ *
+ * PrimeVue stamps the severity onto `data-p` (e.g. data-p="info center").
+ * `~=` matches one whitespace-separated token, so it selects the severity
+ * without depending on the rest of the attribute's contents.
+ *
+ * Previously expressed as `p-info:`-style Tailwind variants supplied by the
+ * `tailwindcss-primeui` plugin. Toast was that plugin's only consumer app-wide;
+ * expressing it here removes the dependency and puts toast theming next to the
+ * other teleported-overlay theming.
+ *
+ * Colours come from the status tokens, so a toast now matches its Alert and
+ * Badge counterparts instead of using a separate violet/green/yellow ramp.
+ */
+.volt-toast-message {
+  color: var(--color-text-primary);
+  border-color: var(--glass-border-muted);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-float);
+}
+
+.volt-toast-message[data-p~='info'] {
+  color: var(--color-info);
+  border-color: color-mix(in srgb, var(--color-info) 32%, transparent);
+  background: color-mix(in srgb, var(--color-info) 12%, var(--glass-bg-strong));
+}
+
+.volt-toast-message[data-p~='success'] {
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--glass-bg-strong));
+}
+
+.volt-toast-message[data-p~='warn'] {
+  color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--glass-bg-strong));
+}
+
+.volt-toast-message[data-p~='error'] {
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--glass-bg-strong));
+}
+
+.volt-toast-message[data-p~='contrast'] {
+  color: var(--color-text-inverse);
+  border-color: transparent;
+  background: var(--color-text-primary);
+}
+
+/* The close button tints with whatever severity colour it inherits. */
+.volt-toast-close:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.volt-toast-close:focus-visible {
+  outline-color: currentColor;
+}
+
+/*
+ * Positional offsets. PrimeVue centres a toast by translating it, and the
+ * translate must be applied for the `top-center` / `bottom-center` / `center`
+ * positions only.
+ */
+.volt-toast[data-p~='top-center'],
+.volt-toast[data-p~='bottom-center'] {
+  transform: translateX(-50%);
+}
+
+.volt-toast[data-p~='center'] {
+  min-width: 20vw;
+  transform: translate(-50%, -50%);
+}

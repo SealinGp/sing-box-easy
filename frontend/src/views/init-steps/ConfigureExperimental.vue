@@ -261,12 +261,12 @@ const handleSkip = () => {
           </div>
 
           <!-- 启用 Clash API -->
-          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
             <input
               v-model="enableClashAPI"
               type="checkbox"
               id="enable-clash-api"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <label for="enable-clash-api" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.enableClashLabel') }}</span>
@@ -276,7 +276,7 @@ const handleSkip = () => {
             </label>
           </div>
 
-          <div v-if="enableClashAPI" class="space-y-4 pl-4 border-l-2 border-violet-200">
+          <div v-if="enableClashAPI" class="space-y-4 pl-4 border-l-2 border-primary-200">
             <Input
               v-model="clashAPIConfig.external_controller"
               :label="$t('init.experimental.controllerLabel')"
@@ -297,7 +297,7 @@ const handleSkip = () => {
               </label>
 
               <!-- 当前选择的 URL 显示 -->
-              <div v-if="clashAPIConfig.external_ui_download_url" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div v-if="clashAPIConfig.external_ui_download_url" class="p-3 bg-green-50 border border-green-200 rounded-control">
                 <div class="flex items-start space-x-2">
                   <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -316,10 +316,10 @@ const handleSkip = () => {
                   :key="dashboard.id"
                   @click="selectDashboard(dashboard.id)"
                   :class="[
-                    'relative border-2 rounded-lg p-3 cursor-pointer transition-all',
+                    'relative border-2 rounded-control p-3 cursor-pointer transition-all',
                     selectedDashboard === dashboard.id
-                      ? 'border-violet-500 bg-violet-50'
-                      : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
                   ]"
                 >
                   <div class="flex items-start space-x-3">
@@ -337,7 +337,7 @@ const handleSkip = () => {
                         :href="dashboard.link"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-sm font-semibold text-violet-600 hover:text-violet-800 hover:underline"
+                        class="text-sm font-semibold text-primary-600 hover:text-primary-800 hover:underline"
                         @click.stop
                       >
                         {{ dashboard.name }}
@@ -347,7 +347,7 @@ const handleSkip = () => {
                     <!-- 选中标记 -->
                     <div
                       v-if="selectedDashboard === dashboard.id"
-                      class="absolute top-2 right-2 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
+                      class="absolute top-2 right-2 w-5 h-5 bg-primary-500 rounded-pill flex items-center justify-center"
                     >
                       <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -371,17 +371,17 @@ const handleSkip = () => {
               <div
                 @click="selectedDashboard = CUSTOM_DASHBOARD_ID"
                 :class="[
-                  'border-2 rounded-lg p-4 cursor-pointer transition-all',
+                  'border-2 rounded-control p-4 cursor-pointer transition-all',
                   selectedDashboard === CUSTOM_DASHBOARD_ID
-                    ? 'border-violet-500 bg-violet-50'
-                    : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
                 ]"
               >
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm font-semibold text-gray-900">{{ $t('init.experimental.customLabel') }}</span>
                   <div
                     v-if="selectedDashboard === CUSTOM_DASHBOARD_ID"
-                    class="w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
+                    class="w-5 h-5 bg-primary-500 rounded-pill flex items-center justify-center"
                   >
                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -432,12 +432,12 @@ const handleSkip = () => {
           </div>
 
           <!-- 启用 Cache File -->
-          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
             <input
               v-model="enableCacheFile"
               type="checkbox"
               id="enable-cache-file"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <label for="enable-cache-file" class="flex-1 cursor-pointer">
               <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.enableCacheLabel') }}</span>
@@ -461,12 +461,12 @@ const handleSkip = () => {
             />
 
             <!-- Store FakeIP -->
-            <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-control">
               <input
                 v-model="cacheFileConfig.store_fakeip"
                 type="checkbox"
                 id="store-fakeip"
-                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
               <label for="store-fakeip" class="flex-1 cursor-pointer">
                 <span class="text-sm font-medium text-gray-900">{{ $t('init.experimental.storeFakeipLabel') }}</span>
@@ -500,18 +500,18 @@ const handleSkip = () => {
       </div>
 
       <!-- 说明信息 -->
-      <Card padding="sm" class="bg-violet-50 border-violet-200">
+      <Card padding="sm" class="bg-primary-50 border-primary-200">
         <div class="flex items-start space-x-3">
-          <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-violet-900 space-y-2">
+          <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+          <div class="text-sm text-primary-900 space-y-2">
             <p class="font-medium">{{ $t('init.experimental.aboutTitle') }}</p>
-            <ul class="list-disc list-inside space-y-1 ml-2 text-violet-800">
+            <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
               <li><strong>Clash API:</strong> {{ $t('init.experimental.about.clash') }}</li>
               <li><strong>External Controller:</strong> {{ $t('init.experimental.about.controller') }}</li>
               <li><strong>External UI:</strong> {{ $t('init.experimental.about.externalUI') }}</li>
               <li><strong>Cache File:</strong> {{ $t('init.experimental.about.cache') }}</li>
             </ul>
-            <p class="mt-2 text-xs text-violet-700">
+            <p class="mt-2 text-xs text-primary-700">
               💡 {{ $t('init.experimental.aboutTip') }}
             </p>
           </div>
@@ -540,7 +540,7 @@ const handleSkip = () => {
           <img
             :src="previewImage"
             :alt="$t('init.experimental.previewAlt')"
-            class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            class="max-w-full max-h-[90vh] object-contain rounded-surface shadow-float"
             @click.stop
           />
         </div>

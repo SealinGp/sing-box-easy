@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Dialog, Button } from '../volt'
+import { Dialog } from '../volt'
+import Button from './Button.vue'
 import { useConfirm } from '../composables/useConfirm'
 
 /**

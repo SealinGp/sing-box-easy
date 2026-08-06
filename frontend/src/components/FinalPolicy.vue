@@ -128,7 +128,7 @@ onMounted(() => {
       </p>
 
       <div v-if="loading" class="text-center py-4">
-        <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
+        <div class="inline-block animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else class="space-y-5">

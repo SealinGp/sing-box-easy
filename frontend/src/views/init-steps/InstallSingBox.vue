@@ -158,7 +158,7 @@ onUnmounted(() => {
               <input
                 v-model="beta"
                 type="checkbox"
-                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                 :disabled="installing || alreadyInstalled"
               />
               <span class="text-sm font-medium text-gray-700">{{ $t('init.install.betaLabel') }}</span>
@@ -172,16 +172,16 @@ onUnmounted(() => {
         </Alert>
 
         <!-- 安装进度 -->
-        <Card v-if="installing && installTask" padding="sm" class="bg-violet-50 border-violet-200">
+        <Card v-if="installing && installTask" padding="sm" class="bg-primary-50 border-primary-200">
           <div class="space-y-3">
             <div class="flex items-center space-x-2">
               <Loading size="sm" />
-              <p class="text-sm font-semibold text-violet-900">{{ $t('init.install.progressTitle') }}</p>
+              <p class="text-sm font-semibold text-primary-900">{{ $t('init.install.progressTitle') }}</p>
             </div>
             <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs overflow-auto max-h-32">
               <pre class="whitespace-pre-wrap break-words">{{ installTask.message || $t('init.install.progressStarting') }}</pre>
             </div>
-            <p class="text-xs text-violet-600">{{ $t('init.install.progressWait') }}</p>
+            <p class="text-xs text-primary-600">{{ $t('init.install.progressWait') }}</p>
           </div>
         </Card>
 

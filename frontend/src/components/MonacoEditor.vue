@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
 
     <div
       v-show="split"
-      class="w-1 shrink-0 cursor-col-resize bg-gray-300 dark:bg-gray-700 hover:bg-violet-500 transition-colors"
+      class="w-1 shrink-0 cursor-col-resize bg-gray-300 dark:bg-gray-700 hover:bg-primary-500 transition-colors"
       :title="$t('config.dragResize')"
       @mousedown="onDividerMouseDown"
     ></div>

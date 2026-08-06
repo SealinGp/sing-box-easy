@@ -115,11 +115,11 @@ onMounted(fetchStatus)
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Service Status Card -->
-      <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow dark:shadow-xl dark:shadow-slate-700/50">
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
         <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">{{ $t('overview.serviceStatus') }}</h3>
 
         <div v-if="loading" class="flex items-center justify-center py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+          <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
 
         <div v-else-if="status" class="space-y-4">
@@ -202,14 +202,14 @@ onMounted(fetchStatus)
           <div class="pt-1 flex items-center gap-4">
             <RouterLink
               :to="{ name: 'DashboardLog' }"
-              class="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
             >
               <DocumentTextIcon class="h-4 w-4" />
               {{ $t('overview.logSettings') }}
             </RouterLink>
             <RouterLink
               :to="{ name: 'DashboardLogs' }"
-              class="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
             >
               <CommandLineIcon class="h-4 w-4" />
               {{ $t('overview.realtimeLog') }}

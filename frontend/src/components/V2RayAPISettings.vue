@@ -134,7 +134,7 @@ onMounted(() => {
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('experimental.v2ray.title') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <div v-else class="space-y-6">
@@ -164,7 +164,7 @@ onMounted(() => {
                   type="checkbox"
                   id="stats_enabled"
                   v-model="settings.stats!.enabled"
-                  class="w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
               <div class="ml-3">
@@ -225,7 +225,7 @@ onMounted(() => {
         </div>
 
         <!-- Info Box -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-surface p-4">
           <p class="text-sm text-blue-700 dark:text-blue-300">
             <strong>{{ $t('experimental.v2ray.note') }}</strong> {{ $t('experimental.v2ray.noteText') }}
           </p>

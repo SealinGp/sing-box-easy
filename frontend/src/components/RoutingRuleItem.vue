@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { RouteRule } from '../types/api'
+import PopConfirm from './PopConfirm.vue'
 
 interface Props {
   rule: RouteRule
@@ -38,10 +40,62 @@ function handleEdit() {
 function handleDelete() {
   emit('delete', props.index)
 }
+
+/*
+ * A routing rule has no user-assigned name, so the delete confirmation would
+ * otherwise say only "delete this rule?" with nothing to check it against.
+ * Build a short identity from the rule's most distinctive matcher plus its
+ * destination — e.g. `#2 · rule_set: geosite-cn → direct`.
+ *
+ * Order matters: the earlier keys are the ones a human actually recognises a
+ * rule by, so the first one present wins.
+ */
+const IDENTIFYING_MATCHERS = [
+  'rule_set',
+  'geosite',
+  'geoip',
+  'domain',
+  'domain_suffix',
+  'domain_keyword',
+  'domain_regex',
+  'ip_cidr',
+  'source_ip_cidr',
+  'port',
+  'source_port',
+  'protocol',
+  'network',
+  'inbound',
+] as const
+
+// Keeps the summary to roughly two lines in the popover. The destination is
+// appended after this, and it must survive the clip — it is the half of the
+// summary that says what the rule actually does.
+const MAX_MATCHER_CHARS = 24
+
+const ruleSummary = computed(() => {
+  const rule = props.rule as Record<string, unknown>
+  // `action` defaults to "route" when omitted — mirror that here so a rule
+  // without an explicit action still reads sensibly.
+  const destination = props.rule.outbound || props.rule.action || 'route'
+  const position = `#${props.index + 1}`
+
+  for (const key of IDENTIFYING_MATCHERS) {
+    if (!hasValue(rule[key])) continue
+    const rendered = formatList(rule[key])
+    const clipped =
+      rendered.length > MAX_MATCHER_CHARS
+        ? `${rendered.slice(0, MAX_MATCHER_CHARS)}…`
+        : rendered
+    return `${position} · ${key}: ${clipped} → ${destination}`
+  }
+
+  // A rule with no matchers at all still needs to be distinguishable.
+  return `${position} · → ${destination}`
+})
 </script>
 
 <template>
-  <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+  <div class="border border-gray-200 dark:border-gray-700 rounded-surface p-4">
     <div class="flex justify-between items-start">
       <div class="flex-1">
         <div class="grid grid-cols-2 gap-4 text-sm">
@@ -110,16 +164,21 @@ function handleDelete() {
       <div class="flex space-x-2 ml-4">
         <button
           @click="handleEdit"
-          class="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300"
+          class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ $t('common.edit') }}
         </button>
-        <button
-          @click="handleDelete"
-          class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+        <PopConfirm
+          :message="$t('route.rules.confirm.delete')"
+          :target="ruleSummary"
+          :confirm-label="$t('common.delete')"
+          tone="danger"
+          align="right"
+          trigger-class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded-control"
+          @confirm="handleDelete"
         >
           {{ $t('common.delete') }}
-        </button>
+        </PopConfirm>
       </div>
     </div>
   </div>

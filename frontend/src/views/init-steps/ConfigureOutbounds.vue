@@ -277,16 +277,16 @@ onMounted(() => {
             </p>
           </div>
 
-          <div class="bg-violet-50 rounded-lg p-4">
+          <div class="bg-primary-50 rounded-surface p-4">
             <div class="flex items-start space-x-3">
-              <InformationCircleIcon class="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
-              <div class="text-sm text-violet-900">
+              <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+              <div class="text-sm text-primary-900">
                 <p class="font-medium mb-1">{{ $t('setup.outbounds.basicWillBeAdded') }}</p>
-                <ul class="list-disc list-inside ml-2 text-violet-800">
+                <ul class="list-disc list-inside ml-2 text-primary-800">
                   <li><strong>direct</strong>: {{ $t('setup.outbounds.basicDirect') }}</li>
                   <li><strong>block</strong>: {{ $t('setup.outbounds.basicBlock') }}</li>
                 </ul>
-                <p class="mt-2 text-xs text-violet-700">
+                <p class="mt-2 text-xs text-primary-700">
                   {{ $t('setup.outbounds.addProxyLater') }}
                 </p>
               </div>
@@ -343,7 +343,7 @@ onMounted(() => {
       <!-- Loading state for current outbounds - shown inline on smaller screens -->
       <Card v-if="loadingOutbounds" class="2xl:hidden">
         <div class="flex items-center justify-center py-4">
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
+          <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
           <span class="ml-2 text-sm text-gray-600">{{ $t('setup.outbounds.loadingCurrent') }}</span>
         </div>
       </Card>
@@ -395,7 +395,7 @@ onMounted(() => {
         <!-- Loading state for current outbounds -->
         <Card v-if="loadingOutbounds">
           <div class="flex items-center justify-center py-4">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600"></div>
+            <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
             <span class="ml-2 text-sm text-gray-600">{{ $t('setup.outbounds.loadingCurrent') }}</span>
           </div>
         </Card>
