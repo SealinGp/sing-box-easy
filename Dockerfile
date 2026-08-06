@@ -1,25 +1,27 @@
 # Stage 1: Build Frontend
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
+# The frontend is a bun project (see CLAUDE.md): bun.lock is the lockfile and
+# there is no package-lock.json, so this stage cannot use `npm ci`.
+FROM --platform=$BUILDPLATFORM oven/bun:1.3.10-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy frontend package files
-COPY frontend/package*.json ./frontend/
+# Copy manifest + lockfile first so dependency install stays cached when only
+# application source changes.
+COPY frontend/package.json frontend/bun.lock ./frontend/
 
 # Install dependencies
 WORKDIR /app/frontend
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Copy frontend source
 COPY frontend/ ./
 
-# Set NODE_OPTIONS to increase memory limit and disable certain optimizations
-# This helps prevent esbuild crashes in container environments
+# Raise the heap ceiling for the type-check + bundle step. vue-tsc and esbuild
+# are both memory-hungry and default container limits can OOM them.
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Build frontend with increased memory and single-threaded mode to avoid concurrency issues
-# This will output to /app/dist (../dist from /app/frontend)
-RUN npm run build
+# Build frontend. Outputs to /app/dist (../dist from /app/frontend).
+RUN bun run build
 
 # Stage 2: Build Backend
 FROM --platform=$BUILDPLATFORM golang:alpine AS backend-builder

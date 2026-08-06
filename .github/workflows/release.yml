@@ -56,12 +56,22 @@ jobs:
           go-version: '1.25.3'
           cache: true
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # The frontend is a bun project (see CLAUDE.md) — there is no
+      # package-lock.json, so setup-node's npm cache has nothing to key on and
+      # `npm ci` has no lockfile to install from.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          bun-version: '1.3.10'
+
+      # setup-bun does not cache the module store itself, and bun.lock is the
+      # only input that changes what gets installed.
+      - name: Cache bun install store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
 
       - name: Build frontend
         working-directory: frontend
@@ -69,11 +79,12 @@ jobs:
           # Stamps the displayed app version (sidebar) with the release tag.
           VITE_APP_VERSION: ${{ steps.meta.outputs.tag }}
         run: |
-          npm ci
-          # Run vite directly. The package.json `build` script also runs
-          # `vue-tsc -b`, which currently fails on a pre-existing type error in
-          # a vendored component; the bundle itself builds fine.
-          npx vite build
+          bun install --frozen-lockfile
+          # `bun run build` is `vue-tsc -b && vite build`. It used to be split
+          # so vite ran alone, because vue-tsc failed on a pre-existing type
+          # error; that error is gone, so the type check is back in the release
+          # path and a type regression now fails the build instead of shipping.
+          bun run build
 
       - name: Verify frontend build
         run: |

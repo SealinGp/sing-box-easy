@@ -10,10 +10,13 @@ This repository contains a Go backend and a Vue 3 frontend for managing sing-box
 - `./dev.sh`: run the backend with `DEBUG=true` and `bin/app.yml`.
 - `go test ./...`: run all Go unit and integration tests.
 - `go build -o bin/sing-box-easy ./main.go`: build the backend binary.
-- `cd frontend && npm install`: install frontend dependencies.
-- `cd frontend && npm run dev`: start the Vite development server.
-- `cd frontend && npm run build`: type-check with `vue-tsc` and build the frontend bundle.
-- `cd frontend && npm run preview`: preview the production frontend build.
+- `cd frontend && bun install`: install frontend dependencies.
+- `cd frontend && bun run dev`: start the Vite development server.
+- `cd frontend && bun run build`: type-check with `vue-tsc` and build the frontend bundle.
+- `cd frontend && bun run preview`: preview the production frontend build.
+
+The frontend uses **bun**, not npm — `bun.lock` is the lockfile and there is no
+`package-lock.json`. Do not run `npm`/`npx`/`yarn`/`pnpm` here.
 
 ## Coding Style & Naming Conventions
 
