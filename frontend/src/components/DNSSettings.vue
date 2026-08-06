@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { DNS } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
-import Select from './Select.vue'
+import { Select } from '../volt'
 import { dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
@@ -127,7 +127,7 @@ onMounted(() => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('dns.settings.strategy') }}
           </label>
-          <Select v-model="settings.strategy" :options="strategyOptions" />
+          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.strategy" :options="strategyOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {{ $t('dns.settings.strategyHelp') }}
           </p>
@@ -138,7 +138,7 @@ onMounted(() => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('dns.settings.finalServer') }}
           </label>
-          <Select v-model="settings.final" :options="serverOptions" />
+          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.final" :options="serverOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {{ $t('dns.settings.finalServerHelp') }}
           </p>
@@ -191,7 +191,9 @@ onMounted(() => {
 
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button @click="handleSave" variant="primary" :disabled="loading">
+          <!-- `action` drops the drop shadow: the footer sits inside the panel,
+               so a raised pill reads as floating above it. -->
+          <Button @click="handleSave" variant="primary" action :disabled="loading">
             {{ $t('dns.settings.save') }}
           </Button>
         </div>

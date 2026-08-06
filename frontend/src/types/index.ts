@@ -14,3 +14,6 @@ export * from './inbound'
 
 // Re-export all Outbound types from outbound.ts
 export * from './outbound'
+
+// Re-export app version / self-update types
+export * from './version'

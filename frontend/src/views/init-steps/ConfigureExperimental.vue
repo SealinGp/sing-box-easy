@@ -2,11 +2,15 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ClashAPI, CacheFile } from '../../types/api'
-import { Button, Input, Select, Alert, Card, Loading } from '../../components'
+import { Button, Input, Alert, Card, Loading } from '../../components'
+import { Select } from '../../volt'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
-import zashboardIcon from '../../assets/zashboard.svg'
-import yacdIcon from '../../assets/yacd.ico'
 import { experimentalService } from '../../services'
+import {
+  CUSTOM_DASHBOARD_ID,
+  DASHBOARD_OPTIONS,
+  dashboardIdForUrl,
+} from '../../constants/dashboards'
 
 const { t } = useI18n()
 
@@ -46,27 +50,9 @@ const defaultModeOptions = computed(() => [
   { label: t('init.experimental.modeOptions.direct'), value: 'direct' },
 ])
 
-// Dashboard 预设选项（descKey 对应 init.experimental.dashboards.*，name/url 为技术值保持不变）
-const dashboardOptions = [
-  {
-    id: 'zashboard',
-    name: 'Zashboard',
-    url: 'https://github.com/Zephyruso/zashboard/archive/gh-pages.zip',
-    link: 'https://github.com/Zephyruso/zashboard',
-    icon: zashboardIcon,
-    preview: 'https://raw.githubusercontent.com/Zephyruso/zashboard/refs/heads/main/readme/pc.png',
-    descKey: 'init.experimental.dashboards.zashboard',
-  },
-  {
-    id: 'yacd',
-    name: 'Yacd',
-    url: 'https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip',
-    link: 'https://github.com/haishanh/yacd',
-    icon: yacdIcon,
-    preview: 'https://user-images.githubusercontent.com/1166872/47954055-97e6cb80-dfc0-11e8-991f-230fd40481e5.png',
-    descKey: 'init.experimental.dashboards.yacd',
-  },
-]
+// Dashboard 预设选项来自共享列表（src/constants/dashboards.ts），
+// 与 Clash API 设置页的下拉选择器保持一致。
+const dashboardOptions = DASHBOARD_OPTIONS
 
 // 选中的 dashboard
 const selectedDashboard = ref('')
@@ -109,7 +95,7 @@ const selectDashboard = (dashboardId: string) => {
 
 // 监听自定义 URL 变化
 watch(customDownloadUrl, (newValue) => {
-  if (selectedDashboard.value === 'custom' && newValue) {
+  if (selectedDashboard.value === CUSTOM_DASHBOARD_ID && newValue) {
     clashAPIConfig.value.external_ui_download_url = newValue
   }
 })
@@ -148,13 +134,11 @@ const loadConfigs = async () => {
       }
 
       // 检测是否匹配预设的 dashboard
-      if (clashAPI.external_ui_download_url) {
-        const matchedDashboard = dashboardOptions.find(d => d.url === clashAPI.external_ui_download_url)
-        if (matchedDashboard) {
-          selectedDashboard.value = matchedDashboard.id
-        } else {
-          selectedDashboard.value = 'custom'
-          customDownloadUrl.value = clashAPI.external_ui_download_url
+      const matchedId = dashboardIdForUrl(clashAPI.external_ui_download_url)
+      if (matchedId) {
+        selectedDashboard.value = matchedId
+        if (matchedId === CUSTOM_DASHBOARD_ID) {
+          customDownloadUrl.value = clashAPI.external_ui_download_url ?? ''
         }
       }
     }
@@ -385,10 +369,10 @@ const handleSkip = () => {
 
               <!-- 自定义 URL 选项 -->
               <div
-                @click="selectedDashboard = 'custom'"
+                @click="selectedDashboard = CUSTOM_DASHBOARD_ID"
                 :class="[
                   'border-2 rounded-lg p-4 cursor-pointer transition-all',
-                  selectedDashboard === 'custom'
+                  selectedDashboard === CUSTOM_DASHBOARD_ID
                     ? 'border-violet-500 bg-violet-50'
                     : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
                 ]"
@@ -396,7 +380,7 @@ const handleSkip = () => {
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm font-semibold text-gray-900">{{ $t('init.experimental.customLabel') }}</span>
                   <div
-                    v-if="selectedDashboard === 'custom'"
+                    v-if="selectedDashboard === CUSTOM_DASHBOARD_ID"
                     class="w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
                   >
                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -408,7 +392,7 @@ const handleSkip = () => {
                   v-model="customDownloadUrl"
                   :placeholder="$t('init.experimental.customPlaceholder')"
                   @click.stop
-                  @focus="selectedDashboard = 'custom'"
+                  @focus="selectedDashboard = CUSTOM_DASHBOARD_ID"
                 />
               </div>
             </div>
@@ -420,10 +404,13 @@ const handleSkip = () => {
               :placeholder="$t('init.experimental.secretPlaceholder')"
             />
 
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('init.experimental.modeLabel') }}</label>
             <Select
+              class="w-full"
               v-model="clashAPIConfig.default_mode"
               :options="defaultModeOptions"
-              :label="$t('init.experimental.modeLabel')"
+              optionLabel="label"
+              optionValue="value"
             />
 
             <!-- Dashboard 下载提示 -->

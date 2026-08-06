@@ -2,7 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { LogConfig } from '../../types/api'
-import { Button, Input, Select, Alert, Card, Loading } from '../../components'
+import { Button, Input, Alert, Card, Loading } from '../../components'
+import { Select } from '../../volt'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { logService } from '../../services'
 
@@ -140,10 +141,13 @@ const handleSkip = () => {
           </div>
 
           <!-- 日志级别 -->
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('init.log.levelLabel') }}</label>
           <Select
+            class="w-full"
             v-model="logConfig.level"
             :options="logLevelOptions"
-            :label="$t('init.log.levelLabel')"
+            optionLabel="label"
+            optionValue="value"
             :disabled="logConfig.disabled"
             :placeholder="$t('init.log.levelPlaceholder')"
           />

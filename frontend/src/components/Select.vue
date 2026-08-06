@@ -329,12 +329,32 @@ watch(() => props.searchable, (newVal) => {
   }
 }
 
+/*
+ * The toggle is a pill (--vs-border-radius: 9999px), but vue-select reuses that
+ * same variable for the dropdown panel:
+ *   .vs__dropdown-menu { border-radius: 0 0 var(--vs-border-radius) ... }
+ * which turns the panel's bottom into a giant semicircle. The panel needs its
+ * own, much smaller radius — it is a popover, not a pill.
+ */
 :deep(.vue-select-wrapper .vs__dropdown-menu) {
   border: 1px solid var(--glass-border-muted);
+  /* Detached popover: restore the top border vue-select removes when the menu
+     is glued to the toggle. */
+  border-top-style: solid;
+  border-radius: 1rem;
+  margin-top: 0.375rem;
+  padding: 0.375rem;
   box-shadow: var(--shadow-md), var(--glass-highlight);
   background: var(--glass-bg-strong);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* The open toggle keeps its full pill shape now that the menu floats below it
+   instead of being visually fused to its bottom edge. */
+:deep(.vue-select-wrapper.vs--open .vs__dropdown-toggle) {
+  border-radius: var(--vs-border-radius);
+  border-bottom-color: var(--vs-border-color);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -347,6 +367,9 @@ watch(() => props.searchable, (newVal) => {
 
 :deep(.vue-select-wrapper .vs__dropdown-option) {
   padding: 0.5rem 0.75rem;
+  /* Rounded rows so the highlight sits inside the rounded panel instead of
+     poking square corners into it. */
+  border-radius: 0.625rem;
   color: #374151;
 }
 

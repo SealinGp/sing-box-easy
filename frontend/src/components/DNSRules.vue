@@ -10,7 +10,7 @@ import {
 } from '@headlessui/vue'
 import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
-import Select from './Select.vue'
+import { Select } from '../volt'
 import Badge from './Badge.vue'
 import { Chips } from '../volt'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
@@ -418,19 +418,19 @@ onMounted(() => {
                   <!-- Action -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.action') }}</label>
-                    <Select v-model="currentRule.action" :options="actionTypes" />
+                    <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.action" :options="actionTypes" />
                   </div>
 
                   <!-- Server (for route action) -->
                   <div v-if="currentRule.action === 'route'">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.server') }}</label>
-                    <Select v-model="currentRule.server" :options="serverOptions" />
+                    <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.server" :options="serverOptions" />
                   </div>
 
                   <!-- Reject Method (for reject action) -->
                   <div v-if="currentRule.action === 'reject'">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.rejectMethod') }}</label>
-                    <Select v-model="currentRule.method" :options="rejectMethods" />
+                    <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.method" :options="rejectMethods" />
                     <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.rejectMethodHelp') }}</p>
                   </div>
 
@@ -442,14 +442,14 @@ onMounted(() => {
                       <!-- Rule Set -->
                       <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.ruleSet') }}</label>
-                        <Select
+                        <Select class="w-full" optionLabel="label" optionValue="value"
                           v-model="currentRule.rule_set"
                           :options="ruleSetOptions"
-                          :searchable="true"
-                          :clearable="true"
+                          :filter="true"
+                          :showClear="true"
                           :placeholder="$t('dns.rules.form.ruleSetSelect')"
-                          :search-placeholder="$t('dns.rules.form.ruleSetSearch')"
-                          :no-options-text="$t('dns.rules.form.ruleSetNoOptions')"
+                          :filterPlaceholder="$t('dns.rules.form.ruleSetSearch')"
+                          :emptyFilterMessage="$t('dns.rules.form.ruleSetNoOptions')"
                         />
                         <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.ruleSetHelp') }}</p>
                       </div>

@@ -2,7 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RouteRule, Outbound } from '../../types/api'
-import { Button, Alert, Card, Badge, Select } from '../../components'
+import { Button, Alert, Card, Badge } from '../../components'
+import { Select } from '../../volt'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { outboundService, routeService } from '../../services';
 
@@ -260,10 +261,13 @@ const handleSkip = () => {
           </p>
         </div>
 
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('setup.routes.proxyOutbound') }}</label>
         <Select
+          class="w-full"
           v-model="selectedProxyOutbound"
           :options="proxyOutboundOptions"
-          :label="$t('setup.routes.proxyOutbound')"
+          optionLabel="label"
+          optionValue="value"
           :disabled="loading || saving || success"
         />
       </div>

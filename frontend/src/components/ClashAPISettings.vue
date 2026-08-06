@@ -4,7 +4,9 @@ import type { ClashAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import Input from './Input.vue'
-import Select from './Select.vue'
+import { Select } from '../volt'
+import DashboardUrlSelect from './DashboardUrlSelect.vue'
+import DashboardDownloader from './DashboardDownloader.vue'
 import { experimentalService } from '../services'
 import { useToast } from 'primevue'
 import { useI18n } from 'vue-i18n'
@@ -163,9 +165,12 @@ onMounted(() => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.externalUiDownloadUrl') }}
           </label>
-          <Input
-            v-model="settings.external_ui_download_url"
-            placeholder="https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip"
+          <DashboardUrlSelect v-model="settings.external_ui_download_url" />
+          <!-- Fetch the chosen dashboard into `external_ui` without leaving the page. -->
+          <DashboardDownloader
+            class="mt-3"
+            :target-dir="settings.external_ui"
+            :download-url="settings.external_ui_download_url"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {{ $t('experimental.clash.externalUiDownloadUrlHelp') }}
@@ -206,7 +211,7 @@ onMounted(() => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.defaultMode') }}
           </label>
-          <Select v-model="settings.default_mode" :options="modeOptions" />
+          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.default_mode" :options="modeOptions" />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {{ $t('experimental.clash.defaultModeHelp') }}
           </p>
@@ -255,7 +260,9 @@ onMounted(() => {
 
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button @click="handleSave" variant="primary" :disabled="loading">
+          <!-- `action` drops the drop shadow: the footer sits inside the panel,
+               so a raised pill reads as floating above it. -->
+          <Button @click="handleSave" variant="primary" action :disabled="loading">
             {{ $t('experimental.clash.save') }}
           </Button>
         </div>

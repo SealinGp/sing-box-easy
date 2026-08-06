@@ -239,6 +239,7 @@ body {
 }
 
 .liquid-app .select,
+.liquid-app .volt-select,
 .liquid-app input:not([type="checkbox"]):not([type="radio"]),
 .liquid-app textarea {
   background: var(--glass-bg-strong);
@@ -246,6 +247,88 @@ body {
   box-shadow: var(--glass-highlight);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/*
+ * PrimeVue (volt) Select field.
+ *
+ * Listed alongside the native `.select` above so the two spellings of a
+ * dropdown stay pixel-identical — the inset highlight is the ONLY shadow, which
+ * is what keeps the control flat against a card. Border/radius are repeated here
+ * because the volt root is a bare <div> with no daisyUI base styles.
+ *
+ * The class name matters: a bare `bg-white` utility on a <div> would be
+ * captured by the `.liquid-app div.bg-white` card rule above and pick up a full
+ * panel drop shadow.
+ */
+.liquid-app .volt-select {
+  border: 1px solid var(--glass-border-muted);
+  border-radius: var(--radius-field, 0.25rem);
+}
+
+/* Open state mirrors the native focus treatment. */
+.liquid-app .volt-select[data-p~="focus"],
+.liquid-app .volt-select:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--glass-highlight), 0 0 0 3px rgba(21, 117, 255, 0.14);
+}
+
+/* Option rows: tinted with the primary colour, matching the sidebar's
+   secondary active state rather than introducing a second accent hue. */
+.volt-select-option-focus {
+  background: rgba(21, 117, 255, 0.09);
+}
+
+.volt-select-option-selected {
+  background: rgba(21, 117, 255, 0.16);
+  color: var(--color-primary-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  .volt-select-option-focus {
+    background: rgba(107, 165, 255, 0.12);
+  }
+
+  .volt-select-option-selected {
+    background: rgba(107, 165, 255, 0.22);
+    color: #cfe2ff;
+  }
+}
+
+/*
+ * Dropdown panel. A popover legitimately floats, so it keeps a real shadow —
+ * unlike the field itself.
+ *
+ * NOT scoped under `.liquid-app`: PrimeVue teleports the overlay to <body>, so a
+ * descendant selector would never match and the panel would render transparent.
+ */
+.volt-select-panel {
+  /*
+   * Literal colours, NOT the --glass-* tokens.
+   *
+   * Tailwind v4 hoists `@theme` out of `@media`, so the dark-mode @theme block
+   * above overwrites the light values at :root unconditionally — :root reports
+   * rgba(14,20,29,.94) even in light mode. `.liquid-app` redefines the tokens
+   * locally so the app looks correct, which hides the problem; but this panel is
+   * teleported to <body>, outside `.liquid-app`, and would render dark-on-light.
+   */
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  .volt-select-panel {
+    background: rgba(14, 20, 29, 0.96);
+    border-color: rgba(255, 255, 255, 0.13);
+    box-shadow:
+      0 14px 32px rgba(0, 0, 0, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
 }
 
 @media (prefers-color-scheme: dark) {

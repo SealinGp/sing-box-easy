@@ -233,7 +233,9 @@ onMounted(() => {
 
         <!-- Save Button -->
         <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button @click="handleSave" variant="primary" :disabled="loading">
+          <!-- `action` drops the drop shadow: the footer sits inside the panel,
+               so a raised pill reads as floating above it. -->
+          <Button @click="handleSave" variant="primary" action :disabled="loading">
             {{ $t('experimental.v2ray.save') }}
           </Button>
         </div>

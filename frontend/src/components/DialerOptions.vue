@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { DialerOptions } from '../types/shared'
 import Input from './Input.vue'
-import Select from './Select.vue'
+import { Select } from '../volt'
 import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 
@@ -127,15 +127,15 @@ const fallbackDelay = computed({
           {{ $t('dialer.detour.label') }}
           <span class="text-xs text-gray-500 ml-1">{{ $t('dialer.detour.hint') }}</span>
         </label>
-        <Select
+        <Select class="w-full" optionLabel="label" optionValue="value"
           v-if="detourOptions.length > 0"
           v-model="detour"
           :options="detourOptions"
-          :searchable="true"
-          :clearable="true"
+          :filter="true"
+          :showClear="true"
           :placeholder="$t('dialer.detour.placeholder')"
-          :search-placeholder="$t('dialer.detour.searchPlaceholder')"
-          :no-options-text="$t('dialer.detour.noOptions')"
+          :filterPlaceholder="$t('dialer.detour.searchPlaceholder')"
+          :emptyFilterMessage="$t('dialer.detour.noOptions')"
         />
         <div v-else class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('dialer.detour.none') }}</p>

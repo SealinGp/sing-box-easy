@@ -2,7 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNS } from '../../types/api'
-import { Button, Alert, Card, Badge, Select } from '../../components'
+import { Button, Alert, Card, Badge } from '../../components'
+import { Select } from '../../volt'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import type { DNSServerOptions, HostsDNSServerOptions, DomainStrategy } from '../../types/dns'
 import { dnsService } from '../../services'
@@ -479,10 +480,13 @@ const handleSkip = () => {
           </p>
         </div>
 
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('setup.dns.queryStrategy') }}</label>
         <Select
+          class="w-full"
           v-model="selectedStrategy"
           :options="strategyOptions"
-          :label="$t('setup.dns.queryStrategy')"
+          optionLabel="label"
+          optionValue="value"
           :disabled="loading || saving || success"
         />
       </div>
