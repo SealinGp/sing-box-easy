@@ -80,8 +80,15 @@ jobs:
           test -f dist/index.html || { echo "::error::frontend build did not produce dist/index.html"; exit 1; }
 
       - name: Build backend (linux/amd64)
+        env:
+          # Stamps the backend's self-reported version. /api/.../version compares
+          # this against the newest GitHub release to decide whether an update
+          # is available, so it must match the release tag exactly.
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o build/sing-box-easy ./main.go
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags="-s -w -X github.com/SealinGp/sing-box-easy/app/pkg/appupdate.Version=${TAG}" \
+            -o build/sing-box-easy ./main.go
           file build/sing-box-easy
 
       - name: Stage release package

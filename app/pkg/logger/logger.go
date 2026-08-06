@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -90,44 +91,71 @@ func Sync() {
 	}
 }
 
+// bootstrapOnce guards the lazy fallback initialization in ensure().
+var bootstrapOnce sync.Once
+
+// ensure returns the global logger, bootstrapping a default one if nothing has
+// initialized it yet.
+//
+// main() always calls InitDefault() first, but library packages (and their
+// tests) can legitimately log before that happens — without this guard those
+// call sites panic on a nil *zap.Logger. Sync() already tolerates a nil logger;
+// these wrappers now do too.
+func ensure() *zap.Logger {
+	if Logger == nil {
+		bootstrapOnce.Do(func() {
+			if Logger == nil {
+				InitDefault()
+			}
+		})
+	}
+	return Logger
+}
+
+// ensureSugar mirrors ensure() for the sugared logger.
+func ensureSugar() *zap.SugaredLogger {
+	ensure()
+	return Sugar
+}
+
 // Convenience functions
 func Debug(msg string, fields ...zap.Field) {
-	Logger.Debug(msg, fields...)
+	ensure().Debug(msg, fields...)
 }
 
 func Info(msg string, fields ...zap.Field) {
-	Logger.Info(msg, fields...)
+	ensure().Info(msg, fields...)
 }
 
 func Warn(msg string, fields ...zap.Field) {
-	Logger.Warn(msg, fields...)
+	ensure().Warn(msg, fields...)
 }
 
 func Error(msg string, fields ...zap.Field) {
-	Logger.Error(msg, fields...)
+	ensure().Error(msg, fields...)
 }
 
 func Fatal(msg string, fields ...zap.Field) {
-	Logger.Fatal(msg, fields...)
+	ensure().Fatal(msg, fields...)
 }
 
 // Sugar variants for easier formatting
 func Debugf(template string, args ...interface{}) {
-	Sugar.Debugf(template, args...)
+	ensureSugar().Debugf(template, args...)
 }
 
 func Infof(template string, args ...interface{}) {
-	Sugar.Infof(template, args...)
+	ensureSugar().Infof(template, args...)
 }
 
 func Warnf(template string, args ...interface{}) {
-	Sugar.Warnf(template, args...)
+	ensureSugar().Warnf(template, args...)
 }
 
 func Errorf(template string, args ...interface{}) {
-	Sugar.Errorf(template, args...)
+	ensureSugar().Errorf(template, args...)
 }
 
 func Fatalf(template string, args ...interface{}) {
-	Sugar.Fatalf(template, args...)
+	ensureSugar().Fatalf(template, args...)
 }
