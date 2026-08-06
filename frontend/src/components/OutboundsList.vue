@@ -9,7 +9,7 @@ import Badge from "./Badge.vue";
 import Textarea from "./Textarea.vue";
 import DialerOptions from "./DialerOptions.vue";
 import Modal from "./Modal.vue";
-import { Chips } from "../volt";
+import { MultiSelect } from "../volt";
 import {
   PlusIcon,
   PencilIcon,
@@ -155,6 +155,40 @@ const needsMethod = computed(
 );
 const needsOutbounds = computed(() => isGroupType(currentOutbound.value.type));
 
+/**
+ * Member options for a selector/urltest group.
+ *
+ * This field used to be a free-text Chips input, which meant retyping every
+ * member tag by hand and getting no feedback on a typo until sing-box rejected
+ * the config. A group can only reference outbounds that already exist, so the
+ * set of valid values is known — it should be picked, not typed.
+ *
+ * The group itself is excluded, mirroring DialerOptions' detour list: an
+ * outbound listing itself is a reference cycle.
+ */
+const groupOutboundOptions = computed(() => {
+  const selfTag = isEditMode.value ? editingTag.value : currentOutbound.value.tag;
+
+  const available = outbounds.value
+    .filter((o) => o.tag && o.tag !== selfTag)
+    .map((o) => ({ label: o.tag, value: o.tag, type: o.type, missing: false }));
+
+  // Preserve already-referenced tags that no longer resolve to a real outbound
+  // (the member was deleted, or renamed). Without them the MultiSelect could
+  // not render the value, and saving would silently drop it from the config —
+  // turning a visible dangling reference into invisible data loss. They are
+  // flagged so the user can see which members are broken.
+  const known = new Set(available.map((o) => o.value));
+  const referenced: string[] = Array.isArray(currentOutbound.value.outbounds)
+    ? currentOutbound.value.outbounds
+    : [];
+  const orphans = referenced
+    .filter((tag) => tag && !known.has(tag))
+    .map((tag) => ({ label: tag, value: tag, type: "", missing: true }));
+
+  return [...available, ...orphans];
+});
+
 const openAddModal = () => {
   isEditMode.value = false;
   currentOutbound.value = {
@@ -168,7 +202,7 @@ const openEditModal = (outbound: Outbound) => {
   isEditMode.value = true;
   editingTag.value = outbound.tag;
   // sing-box accepts scalar OR array for `outbounds` on the wire; coerce to
-  // array so the Chips v-model sees the shape it expects and the save path
+  // array so the MultiSelect v-model sees the shape it expects and the save path
   // round-trips correctly.
   const raw = outbound as Outbound & { outbounds?: string | string[] };
   currentOutbound.value = {
@@ -784,19 +818,47 @@ onMounted(() => {
         </div>
 
         <!-- Group Outbounds (Selector, URLTest) -->
-        <!-- Uses Chips (string[]) so the v-model shape matches the
-             Selector/URLTest schema. sing-box also accepts a scalar
-             string on the wire; openEditModal() coerces to array. -->
+        <!-- Members are picked from the existing outbounds rather than typed:
+             a group can only reference tags that already exist. The model stays
+             string[] to match the Selector/URLTest schema; sing-box also accepts
+             a scalar on the wire, which openEditModal() coerces to an array.
+             PrimeVue appends on select, so the user's ordering is preserved —
+             which matters, because a selector renders its members in order. -->
         <div v-if="needsOutbounds">
           <label
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >{{ $t('outbounds.form.outbounds') }}</label
           >
-          <Chips
+          <MultiSelect
+            v-if="groupOutboundOptions.length > 0"
             v-model="currentOutbound.outbounds"
+            :options="groupOutboundOptions"
+            optionLabel="label"
+            optionValue="value"
+            display="chip"
+            filter
             :placeholder="$t('outbounds.form.outboundsPlaceholder')"
+            :filterPlaceholder="$t('outbounds.form.outboundsSearchPlaceholder')"
+            :emptyFilterMessage="$t('outbounds.form.outboundsNoMatch')"
             class="w-full"
-          />
+          >
+            <!-- Show the member's type alongside its tag so nodes are
+                 distinguishable at a glance, and flag dangling references. -->
+            <template #option="{ option }">
+              <span class="flex min-w-0 flex-1 items-center gap-2">
+                <span class="truncate">{{ option.label }}</span>
+                <Badge v-if="option.missing" variant="danger" size="sm">
+                  {{ $t('outbounds.form.outboundsMissing') }}
+                </Badge>
+                <Badge v-else-if="option.type" variant="secondary" size="sm">
+                  {{ getOutboundTypeLabel(option.type) }}
+                </Badge>
+              </span>
+            </template>
+          </MultiSelect>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400">
+            {{ $t('outbounds.form.outboundsNone') }}
+          </p>
           <p class="mt-1 text-xs text-gray-500">
             {{ $t('outbounds.form.outboundsHelp') }}
           </p>

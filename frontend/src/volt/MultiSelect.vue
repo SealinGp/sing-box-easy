@@ -26,13 +26,28 @@ const theme: MultiSelectPassThroughOptions = {
             ${props.invalid ? 'border-red-500' : ''}`
     }),
     labelContainer: `flex flex-auto overflow-hidden`,
+    /*
+     * In `display="chip"` mode the chips live inside `label`. A single
+     * nowrap/ellipsis line silently hides every selection past the first few —
+     * for an outbound group with dozens of members that means the user can
+     * neither see nor remove them. Chip mode therefore wraps, and caps the
+     * height so a large selection scrolls instead of growing the dialog.
+     *
+     * Plain (comma-joined) mode keeps the single-line ellipsis, which is what
+     * that display is for.
+     */
     label: ({ props, state }) => ({
-        class: `flex-auto block overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer
+        class: `flex-auto cursor-pointer
             px-3 py-2 rounded-l-control
             bg-white dark:bg-gray-800
             border border-r-0 border-gray-300 dark:border-gray-600
             text-gray-900 dark:text-gray-100
             transition-all duration-200
+            ${
+                props.display === 'chip'
+                    ? 'flex flex-wrap items-center gap-y-0.5 max-h-32 overflow-y-auto'
+                    : 'block overflow-hidden text-ellipsis whitespace-nowrap'
+            }
             ${state.focused ? 'border-primary-500 dark:border-primary-400 ring-1 ring-primary-500 dark:ring-primary-400' : ''}
             ${!props.modelValue || (Array.isArray(props.modelValue) && props.modelValue.length === 0) ? 'text-gray-400 dark:text-gray-500' : ''}`
     }),
