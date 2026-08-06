@@ -1,6 +1,9 @@
 package appupdate
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestCompareVersions(t *testing.T) {
 	tests := []struct {
@@ -81,5 +84,50 @@ func TestParseSemverHandlesGarbage(t *testing.T) {
 	got := parseSemver("vfoo.bar.baz")
 	if got.major != 0 || got.minor != 0 || got.patch != 0 {
 		t.Errorf("parseSemver(garbage) = %+v, want all zeros", got)
+	}
+}
+
+// TestCanonicalBinaryName covers the self-healing path for installs corrupted
+// by the pre-fix updater, which left the process running as "<name>.old" (and
+// "<name>.old.old" after a second update).
+func TestCanonicalBinaryName(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"sing-box-easy", "sing-box-easy"},
+		{"sing-box-easy.old", "sing-box-easy"},
+		{"sing-box-easy.old.old", "sing-box-easy"},
+		{"sing-box-easy.old.old.old", "sing-box-easy"},
+		{"my-app", "my-app"},
+		// A name that is nothing but the suffix must not be trimmed to empty.
+		{".old", ".old"},
+		// ".old" only counts as a suffix, never mid-name.
+		{"sing-box-easy.old.bin", "sing-box-easy.old.bin"},
+	}
+	for _, tc := range cases {
+		if got := canonicalBinaryName(tc.in); got != tc.want {
+			t.Errorf("canonicalBinaryName(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestInstalledBinaryPathIgnoresBackupSuffix is the regression guard for the
+// bug that made self-update a no-op: the restart must target the install path,
+// never the ".old" backup that os.Executable() reports after the swap.
+func TestInstalledBinaryPathIgnoresBackupSuffix(t *testing.T) {
+	orig := startupExecutable
+	t.Cleanup(func() { startupExecutable = orig })
+
+	dir := t.TempDir()
+	startupExecutable = filepath.Join(dir, "sing-box-easy.old.old")
+
+	got, err := InstalledBinaryPath()
+	if err != nil {
+		t.Fatalf("InstalledBinaryPath: %v", err)
+	}
+	want := filepath.Join(dir, "sing-box-easy")
+	if got != want {
+		t.Errorf("InstalledBinaryPath() = %q, want %q", got, want)
 	}
 }

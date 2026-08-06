@@ -94,18 +94,15 @@ func installRelease(binaryDir, extractDir string) error {
 	return nil
 }
 
-// currentBinaryName returns the running executable's file name, falling back
-// to the packaged default when it cannot be determined.
+// currentBinaryName returns the file name the binary is installed under.
+//
+// It resolves from the startup-captured executable path with any ".old" backup
+// suffixes stripped — NOT from a live os.Executable() call. After the swap
+// below, os.Executable() reports the displaced backup, so deriving the name
+// from it made each successive update target "<name>.old", "<name>.old.old", …
+// while the real install path was never written again.
 func currentBinaryName() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return defaultBinaryName
-	}
-	name := filepath.Base(exe)
-	if name == "" || name == "." || name == string(os.PathSeparator) {
-		return defaultBinaryName
-	}
-	return name
+	return BinaryName()
 }
 
 // locateNewBinary finds the executable inside the extracted package. The

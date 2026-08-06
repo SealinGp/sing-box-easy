@@ -1,6 +1,7 @@
 package appupdate
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -70,19 +71,87 @@ func writeVersionFile(dir, version string) error {
 	return os.WriteFile(filepath.Join(dir, VersionFileName), []byte(version+"\n"), 0o644)
 }
 
+// backupSuffix is appended to the live binary when it is moved aside during an
+// update. See canonicalBinaryName for why it has to be stripped again.
+const backupSuffix = ".old"
+
+// startupExecutable is os.Executable() captured at process start.
+//
+// This MUST NOT be re-read later. On Linux os.Executable() reads
+// /proc/self/exe, which resolves to the *current* name of the running inode —
+// so once an update renames the live binary to "<name>.old", every later call
+// returns the backup path instead of the install path. Re-reading it after the
+// swap is what previously made the updater re-exec the OLD binary (leaving the
+// version unchanged) and then, on the next update, install to
+// "<name>.old.old" and so on.
+//
+// Package-level initialisation runs before main, and therefore before any
+// update can rename anything, so this is always the true path.
+var startupExecutable = func() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return exe
+}()
+
+// canonicalBinaryName strips any trailing ".old" segments from a binary name.
+//
+// A process started from an already-renamed binary (the state a previously
+// broken update leaves behind: /proc/self/exe -> sing-box-easy.old.old) would
+// otherwise keep installing to ever-deeper backup paths. Stripping the suffixes
+// makes the next update repair the install instead of corrupting it further.
+func canonicalBinaryName(name string) string {
+	for strings.HasSuffix(name, backupSuffix) {
+		trimmed := strings.TrimSuffix(name, backupSuffix)
+		if trimmed == "" {
+			break
+		}
+		name = trimmed
+	}
+	return name
+}
+
+// BinaryName returns the file name the binary is installed under, with any
+// ".old" backup suffixes removed.
+func BinaryName() string {
+	if startupExecutable == "" {
+		return defaultBinaryName
+	}
+	base := canonicalBinaryName(filepath.Base(startupExecutable))
+	if base == "" || base == "." || base == string(os.PathSeparator) {
+		return defaultBinaryName
+	}
+	return base
+}
+
 // InstallDir returns the directory containing the running executable, with
 // symlinks resolved. This is where the binary, dist/ and app.yml live.
 func InstallDir() (string, error) {
-	exe, err := os.Executable()
+	if startupExecutable == "" {
+		return "", errors.New("could not determine the running executable path")
+	}
+	resolved, err := filepath.EvalSymlinks(startupExecutable)
+	if err != nil {
+		// EvalSymlinks fails when the path no longer exists — which is exactly
+		// the case for a binary that a previous update moved aside. The
+		// directory is still correct, so fall back to the raw path.
+		resolved = startupExecutable
+	}
+	return filepath.Dir(resolved), nil
+}
+
+// InstalledBinaryPath returns where the *current* binary lives on disk: the
+// install directory joined with the canonical binary name.
+//
+// This is the path a restart must exec. It deliberately does not use
+// os.Executable(), which after an update points at the displaced backup.
+func InstalledBinaryPath() (string, error) {
+	dir, err := InstallDir()
 	if err != nil {
 		return "", err
 	}
-	resolved, err := filepath.EvalSymlinks(exe)
-	if err != nil {
-		// EvalSymlinks can fail on exotic filesystems; the raw path is still useful.
-		resolved = exe
-	}
-	return filepath.Dir(resolved), nil
+	return filepath.Join(dir, BinaryName()), nil
 }
 
 // semver is a parsed, comparable version. Missing components default to 0 so
