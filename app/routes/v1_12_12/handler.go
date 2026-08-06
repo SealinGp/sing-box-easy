@@ -2,9 +2,13 @@ package v1_13_0
 
 import (
 	"context"
+	"strings"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
+	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/configversion"
+	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installer"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -37,10 +41,17 @@ type Handler struct {
 	settingsManager     *settings.ManagerXORM
 	nodeRulesManager    *noderules.ManagerXORM
 	userManager         user.UserManager
+	updater             *appupdate.Updater
+	githubAuth          *githubauth.Manager
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers
-func NewHandler(configPath, singBoxPath string, adminUser, adminPass string, sublinkParser *sublink.SubLink) *Handler {
+func NewHandler(
+	configPath, singBoxPath string,
+	adminUser, adminPass string,
+	sublinkParser *sublink.SubLink,
+	githubConfig appconfig.GitHubConfig,
+) *Handler {
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := service.NewController(configManager, singBoxPath)
 
@@ -72,6 +83,18 @@ func NewHandler(configPath, singBoxPath string, adminUser, adminPass string, sub
 	// Initialize user manager
 	userManager := user.NewManagerXORM(adminUser, adminPass)
 
+	// Self-update manager (GitHub releases -> binary + frontend swap + restart).
+	// The token is resolved per request from settings, so signing in through
+	// the UI lifts the GitHub rate limit without a restart.
+	updater := appupdate.NewUpdater(githubConfig.Proxy, settingsManager.GetGitHubToken)
+
+	// GitHub sign-in (OAuth device flow) — issues the token the updater reads.
+	githubAuth := githubauth.NewManager(
+		strings.TrimSpace(githubConfig.OAuthClientID),
+		githubConfig.Proxy,
+		settingsManager,
+	)
+
 	return &Handler{
 		configManager:       configManager,
 		serviceController:   serviceController,
@@ -87,6 +110,8 @@ func NewHandler(configPath, singBoxPath string, adminUser, adminPass string, sub
 		settingsManager:     settingsManager,
 		nodeRulesManager:    nodeRulesManager,
 		userManager:         userManager,
+		updater:             updater,
+		githubAuth:          githubAuth,
 	}
 }
 

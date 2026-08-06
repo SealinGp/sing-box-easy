@@ -3,7 +3,9 @@ package settings
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -19,7 +21,26 @@ var ErrSettingNotFound = errors.New("setting not found")
 // Setting keys.
 const (
 	KeyConfigVersionsKeep = "config_versions_keep"
+
+	// KeyGitHubToken holds the GitHub access token issued by the device-flow
+	// sign-in. Anonymous GitHub API calls are capped at 60/hour per IP, which
+	// a shared NAT egress burns through quickly; a user token raises that to
+	// 5000/hour. Written only by the githubauth manager.
+	KeyGitHubToken = "github_token"
+
+	// KeyGitHubLogin is the signed-in account name, kept purely so the UI can
+	// show who is connected.
+	KeyGitHubLogin = "github_login"
 )
+
+// EnvGitHubToken is consulted when no token is stored in the database, so
+// headless deployments can inject a credential without going through sign-in.
+const EnvGitHubToken = "GITHUB_TOKEN"
+
+// SecretKeys are settings whose values must never be returned by the API.
+var SecretKeys = map[string]bool{
+	KeyGitHubToken: true,
+}
 
 // config_versions_keep bounds + default (mirrors config package clamps).
 const (
@@ -143,6 +164,92 @@ func (m *ManagerXORM) SetConfigVersionsKeep(n int) error {
 		return fmt.Errorf("config_versions_keep must be between %d and %d", MinConfigVersionsKeep, MaxConfigVersionsKeep)
 	}
 	return m.Set(KeyConfigVersionsKeep, strconv.Itoa(n))
+}
+
+// GetGitHubToken returns the stored token, falling back to the GITHUB_TOKEN
+// environment variable. An empty result means "call GitHub anonymously".
+//
+// This is read on every GitHub request (it is a TokenFunc), so a token saved
+// from the UI takes effect immediately.
+func (m *ManagerXORM) GetGitHubToken() string {
+	raw, err := m.Get(KeyGitHubToken)
+	if err != nil && !errors.Is(err, ErrSettingNotFound) {
+		logger.Warn("failed to read github_token", zap.Error(err))
+	}
+	if token := strings.TrimSpace(raw); token != "" {
+		return token
+	}
+	return strings.TrimSpace(os.Getenv(EnvGitHubToken))
+}
+
+// SetGitHubToken validates and stores the token issued by device-flow sign-in.
+// An empty value clears it, falling the lookup back to GITHUB_TOKEN (or
+// anonymous access).
+func (m *ManagerXORM) SetGitHubToken(token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return m.Set(KeyGitHubToken, "")
+	}
+	if err := validateGitHubToken(token); err != nil {
+		return err
+	}
+	return m.Set(KeyGitHubToken, token)
+}
+
+// HasGitHubToken reports whether a token is configured, without leaking it.
+func (m *ManagerXORM) HasGitHubToken() bool {
+	return m.GetGitHubToken() != ""
+}
+
+// GetGitHubLogin returns the signed-in GitHub account name, or "" when the
+// connection predates login tracking or was made via GITHUB_TOKEN.
+func (m *ManagerXORM) GetGitHubLogin() string {
+	raw, err := m.Get(KeyGitHubLogin)
+	if err != nil && !errors.Is(err, ErrSettingNotFound) {
+		logger.Warn("failed to read github_login", zap.Error(err))
+	}
+	return strings.TrimSpace(raw)
+}
+
+// SetGitHubLogin stores the signed-in account name. It is display-only, so an
+// empty value simply clears it.
+func (m *ManagerXORM) SetGitHubLogin(login string) error {
+	return m.Set(KeyGitHubLogin, strings.TrimSpace(login))
+}
+
+// maxTokenLen bounds a pasted credential; real GitHub tokens are well under it.
+const maxTokenLen = 512
+
+// validateGitHubToken rejects values that cannot be a usable credential.
+// It deliberately does NOT hard-require a ghp_/github_pat_ prefix: GitHub has
+// changed token formats before, and Actions-minted tokens differ again.
+func validateGitHubToken(token string) error {
+	if len(token) < 8 {
+		return fmt.Errorf("github token looks too short to be valid")
+	}
+	if len(token) > maxTokenLen {
+		return fmt.Errorf("github token exceeds %d characters", maxTokenLen)
+	}
+	for _, r := range token {
+		// A header value must not carry whitespace or control characters —
+		// catching it here beats a confusing http.Header panic later.
+		if r <= ' ' || r == 0x7f {
+			return fmt.Errorf("github token contains whitespace or control characters")
+		}
+	}
+	return nil
+}
+
+// MaskSecret renders a credential for display: only the last 4 characters
+// survive, so the UI can show "configured" without echoing the secret.
+func MaskSecret(s string) string {
+	if s == "" {
+		return ""
+	}
+	if len(s) <= 4 {
+		return "••••"
+	}
+	return "••••••••" + s[len(s)-4:]
 }
 
 func clampKeep(n int) int {

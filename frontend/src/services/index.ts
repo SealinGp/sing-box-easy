@@ -11,9 +11,11 @@ import { OutboundService } from './outbound'
 import { RouteService } from './route'
 import { ServiceControlService } from './service'
 import { SettingsService } from './settings'
+import { GitHubAuthService } from './githubauth'
 import { SubscriptionService } from './subscription'
 import { TemplateService } from './template'
 import { UserService } from './user'
+import { VersionService } from './version'
 
 // Export all service classes
 export { ApiService } from './api'
@@ -29,9 +31,11 @@ export { OutboundService } from './outbound'
 export { RouteService } from './route'
 export { ServiceControlService } from './service'
 export { SettingsService } from './settings'
+export { GitHubAuthService } from './githubauth'
 export { SubscriptionService } from './subscription'
 export { TemplateService } from './template'
 export { UserService } from './user'
+export { VersionService } from './version'
 
 // Create singleton instances
 export const configService = new ConfigService(apiService)
@@ -46,9 +50,11 @@ export const outboundService = new OutboundService(apiService)
 export const routeService = new RouteService(apiService)
 export const serviceControlService = new ServiceControlService(apiService)
 export const settingsService = new SettingsService(apiService)
+export const githubAuthService = new GitHubAuthService(apiService)
 export const subscriptionService = new SubscriptionService(apiService)
 export const templateService = new TemplateService(apiService)
 export const userService = new UserService(apiService)
+export const versionService = new VersionService(apiService)
 
 // Re-export the base API service
 export { apiService }

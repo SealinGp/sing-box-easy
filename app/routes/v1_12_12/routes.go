@@ -161,6 +161,24 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
 	auth.GET("/dashboard/status", handler.GetDashboardStatus)
 
+	// App version / self-update APIs.
+	// Reading is available to any signed-in user; performing the update
+	// replaces the binary on disk and restarts the process, so it is admin-only.
+	auth.GET("/version", handler.GetVersionStatus)
+	auth.GET("/version/releases", handler.ListVersions)
+	auth.GET("/version/task/:task_id", handler.GetVersionUpdateTask)
+	admin.POST("/version/update", handler.StartVersionUpdate)
+
+	// GitHub sign-in (OAuth device flow). The issued token is an instance-wide
+	// credential used for every outbound GitHub call, so everything that
+	// creates or destroys it is admin-only. Status is readable by any signed-in
+	// user so the update card can explain a rate-limited check.
+	auth.GET("/github/auth/status", handler.GetGitHubAuthStatus)
+	admin.POST("/github/auth/device", handler.StartGitHubLogin)
+	admin.GET("/github/auth/device/:session_id", handler.GetGitHubLoginSession)
+	admin.DELETE("/github/auth/device/:session_id", handler.CancelGitHubLogin)
+	admin.DELETE("/github/auth", handler.SignOutGitHub)
+
 	// Initialization APIs
 	auth.GET("/init/status", handler.GetInitStatus)
 	auth.POST("/init/complete", handler.CompleteInit)

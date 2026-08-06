@@ -15,8 +15,19 @@ func (h *Handler) GetSettings(ctx context.Context, c *app.RequestContext) {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
+
+	// Secrets never leave the server. The GitHub token is managed entirely by
+	// the sign-in endpoints under /github/auth; it is never readable here.
+	safe := make(map[string]string, len(all))
+	for k, v := range all {
+		if settings.SecretKeys[k] {
+			continue
+		}
+		safe[k] = v
+	}
+
 	respOK(ctx, c, map[string]any{
-		"settings":             all,
+		"settings":             safe,
 		"config_versions_keep": h.settingsManager.GetConfigVersionsKeep(),
 	})
 }
@@ -25,6 +36,9 @@ func (h *Handler) GetSettings(ctx context.Context, c *app.RequestContext) {
 // config_versions_keep; the new retention is applied to the config manager
 // immediately so subsequent saves prune to the new count.
 func (h *Handler) UpdateSettings(ctx context.Context, c *app.RequestContext) {
+	// The GitHub credential is deliberately NOT writable here — it is only
+	// ever issued by the device-flow sign-in under /github/auth, so there is
+	// no path that accepts a raw token from a client.
 	type Request struct {
 		ConfigVersionsKeep *int `json:"config_versions_keep"`
 	}

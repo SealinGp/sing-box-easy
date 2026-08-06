@@ -59,3 +59,5 @@ sudo systemctl status  sing-box-easy
 sudo systemctl restart sing-box-easy
 sudo journalctl -u sing-box-easy -f
 ```
+
+初始管理员账号密码为: admin/admin,进去后请自行修改密码

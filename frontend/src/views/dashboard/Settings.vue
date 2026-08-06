@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { settingsService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import LanguageSwitcher from '../../components/LanguageSwitcher.vue'
+import AppUpdateCard from '../../components/AppUpdateCard.vue'
+import GitHubAuthCard from '../../components/GitHubAuthCard.vue'
 
 const notify = useNotify()
 const { t } = useI18n()
@@ -56,6 +58,12 @@ const saveSettings = async () => {
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.language.desc') }}</p>
         <LanguageSwitcher variant="full" />
       </div>
+
+      <!-- Application update (current -> latest, version picker, progress) -->
+      <AppUpdateCard />
+
+      <!-- GitHub sign-in (lifts the 60 req/h anonymous API rate limit) -->
+      <GitHubAuthCard />
 
       <!-- Config version retention -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">

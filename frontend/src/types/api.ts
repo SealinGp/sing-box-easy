@@ -92,8 +92,15 @@ export interface ConfigVersion {
 
 // Application settings exposed to the frontend.
 export interface AppSettings {
+  /** Non-secret settings only — secrets are stripped server-side. */
   settings: Record<string, string>
   config_versions_keep: number
+}
+
+/** Response shape of PUT /settings. */
+export interface UpdateSettingsResult {
+  config_versions_keep: number
+  limits: { min: number; max: number }
 }
 
 // Re-export Outbound types from outbound.ts (DialerOptions is from shared.ts)

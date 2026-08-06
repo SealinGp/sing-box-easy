@@ -1,4 +1,5 @@
 # CLAUDE.md
+claude --resume dd747f67-5dd5-4ea0-b4af-9bf313c2a125
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -70,7 +71,8 @@ bunx <tool>
 ### Backend Structure
 
 **Core Packages**:
-- `app/pkg/appconfig/` - Application configuration loading (app.yml)
+- `app/pkg/appconfig/` - Application configuration loading (app.yml), including `github.oauth_client_id` / `github.proxy`
+- `app/pkg/githubauth/` - GitHub sign-in via OAuth Device Flow (RFC 8628): no client secret, no callback URL, so it works at any self-hosted address. `device.go` speaks the protocol; `manager.go` owns login sessions and persists the issued token through the `TokenStore` interface (satisfied by `settings.ManagerXORM`). The device code never leaves the server
 - `app/pkg/config/` - sing-box config management with validation and rollback
 - `app/pkg/configversion/` - DB-backed config version history store (XORM) + retention cleaner (used by `config.Manager` snapshots and the rollback endpoints)
 - `app/pkg/settings/` - Application settings persistence (XORM); served via `GET/PUT /settings`
@@ -82,6 +84,7 @@ bunx <tool>
 - `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching
 - `app/pkg/installer/` - sing-box and dashboard installation (task-based)
+- `app/pkg/appupdate/` - sing-box-easy self-update: GitHub release listing (cached), tarball download + sha256 verification, atomic binary/`dist` swap with rollback, then `execve` restart. Running version comes from the `-X ...appupdate.Version` ldflag stamped by `.github/workflows/release.yml`, falling back to a `.sing-box-easy-version` file written on each update. GitHub calls are authenticated with the token issued by `githubauth` sign-in (or the `GITHUB_TOKEN` env var) — 60 req/h anonymous vs 5000 req/h authenticated — and use ETag/`If-None-Match` conditional requests, which return 304 and cost no rate-limit quota
 - `app/pkg/logger/` - Zap logger setup + Hertz logger adapter
 
 **Protocol Parsers** (`app/pkg/sublink/protocol/`):
@@ -223,9 +226,11 @@ API surface groups (registered in `routes.go`):
 - `/scheduler/{status,start,stop,trigger,jobs}` — cron auto-updater control
 - `/install`, `/install/task/:task_id`, `/install/status`, `/update`
 - `/dashboard/{download,upload}`, `/dashboard/task/:task_id`, `/dashboard/status`
+- `/version`, `/version/releases`, `/version/task/:task_id` (read), `/version/update` (admin-only) — app self-update from GitHub releases
 - `/init/{status,complete,reset}`
 - `/templates/rule-sets`
-- `/settings` (GET/PUT) — application settings
+- `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in
+- `/github/auth/status` (read), `/github/auth/device` POST/GET/DELETE `:session_id`, `/github/auth` DELETE (admin-only) — GitHub sign-in via OAuth device flow
 
 ## Testing Notes
 

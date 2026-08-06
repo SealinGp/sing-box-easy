@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { AppSettings, BasicResponse } from '../types/api'
+import type { AppSettings, BasicResponse, UpdateSettingsResult } from '../types/api'
 
 export class SettingsService {
   private api: ApiService
@@ -13,12 +13,10 @@ export class SettingsService {
     return response.data
   }
 
-  async updateSettings(
-    payload: { config_versions_keep?: number }
-  ): Promise<BasicResponse<{ config_versions_keep: number; limits: { min: number; max: number } }>> {
-    const response = await this.api.put<
-      BasicResponse<{ config_versions_keep: number; limits: { min: number; max: number } }>
-    >('/settings', payload)
+  async updateSettings(payload: {
+    config_versions_keep?: number
+  }): Promise<BasicResponse<UpdateSettingsResult>> {
+    const response = await this.api.put<BasicResponse<UpdateSettingsResult>>('/settings', payload)
     return response.data
   }
 }

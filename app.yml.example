@@ -26,3 +26,23 @@ log:
   # 日志级别: debug | info | warn | error
   # 默认 info。也可通过环境变量 DEBUG=true 强制开启 debug。
   level: "info"
+
+github:
+  # GitHub OAuth App 的 Client ID，用于「使用 GitHub 登录」（OAuth Device Flow）。
+  # 登录后检查更新的 API 速率限制从 每 IP 每小时 60 次 提升到 每小时 5000 次。
+  #
+  # Device Flow 没有 client secret，因此该 ID 是公开的，可以安全地写在配置文件里。
+  #
+  # 获取方式：
+  #   1. https://github.com/settings/developers -> New OAuth App
+  #   2. Application name 随意填写；Homepage URL 填仓库地址即可
+  #      Authorization callback URL 也可随意填写（Device Flow 不会使用它）
+  #   3. 创建后进入该 App 的设置页，勾选 "Enable Device Flow" 并保存
+  #   4. 把页面上的 Client ID（形如 Ov23li...）填到下面
+  #
+  # 留空则不显示登录入口，检查更新回退为受限的匿名访问。
+  # 也可通过环境变量 GITHUB_OAUTH_CLIENT_ID 覆盖。
+  oauth_client_id: ""
+
+  # 访问 GitHub 时使用的代理，例如 "http://127.0.0.1:7890"。留空表示直连。
+  proxy: ""
