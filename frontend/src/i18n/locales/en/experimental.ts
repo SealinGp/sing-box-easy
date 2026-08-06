@@ -10,6 +10,10 @@ export default {
     title: 'Clash API Settings',
     externalController: 'External Controller',
     externalControllerHelp: 'RESTful API listening address',
+    openDashboard: 'Open the dashboard (signs in with the secret automatically)',
+    openController: 'Open the RESTful API',
+    secretBlocksDirectLink:
+      'A secret is set, so the API cannot be opened directly in a browser — it requires an Authorization header. Install a dashboard below to get a working link.',
     externalUi: 'External UI',
     externalUiHelp: 'Path to external UI directory',
     externalUiDownloadUrl: 'External UI Download URL',

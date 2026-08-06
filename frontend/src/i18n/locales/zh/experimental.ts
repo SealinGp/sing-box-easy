@@ -10,6 +10,10 @@ export default {
     title: 'Clash API 设置',
     externalController: '外部控制器',
     externalControllerHelp: 'RESTful API 监听地址',
+    openDashboard: '打开面板（自动携带密钥登录）',
+    openController: '打开 RESTful API',
+    secretBlocksDirectLink:
+      '已设置密钥，浏览器无法直接打开 API —— 它需要 Authorization 请求头。请在下方安装一个面板以获得可用链接。',
     externalUi: '外部界面',
     externalUiHelp: '外部界面目录路径',
     externalUiDownloadUrl: '外部界面下载地址',
