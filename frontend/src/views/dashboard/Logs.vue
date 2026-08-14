@@ -15,7 +15,7 @@ const INITIAL_LINES = 300
 
 const lines = ref<string[]>([])
 const cursor = ref('')
-const source = ref<'journald' | 'file' | 'none' | ''>('')
+const source = ref<'journald' | 'syslog' | 'file' | 'none' | ''>('')
 const polling = ref(true)
 const autoScroll = ref(true)
 const initialLoading = ref(true)
@@ -27,6 +27,7 @@ let timer: ReturnType<typeof setInterval> | null = null
 const sourceNote = computed(() => {
   if (source.value === 'none') return t('logs.sourceNone')
   if (source.value === 'file') return t('logs.sourceFile')
+  if (source.value === 'syslog') return t('logs.sourceSyslog')
   return ''
 })
 

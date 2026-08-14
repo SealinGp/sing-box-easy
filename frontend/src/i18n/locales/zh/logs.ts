@@ -12,6 +12,7 @@ export default {
   empty: '暂无日志。',
   sourceNone: '查看实时日志需要 sing-box 以 systemd（journald）方式运行，或已配置 log.output 日志文件。',
   sourceFile: '正在读取已配置的 log.output 日志文件。',
+  sourceSyslog: '正在从系统日志（logread）读取 sing-box 日志。',
   toast: {
     fetchFailed: '获取日志失败',
   },
