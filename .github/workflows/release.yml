@@ -1,7 +1,8 @@
 name: Release
 
-# Build the Linux x86_64 binary + bundled frontend, package them into a single
-# tarball, and publish it as a GitHub Release asset.
+# Build the frontend once, cross-compile the backend for every supported
+# Linux architecture (frontend embedded via go:embed), and publish per-arch
+# tarballs + OpenWrt ipk packages as GitHub Release assets.
 #
 # Triggers:
 #   - Pushing a tag like `v1.0.0` builds and publishes that release.
@@ -21,16 +22,12 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  # Resolve the tag once and create the release up front so the matrix jobs
+  # only ever upload assets (no create race between parallel jobs).
+  prepare:
     runs-on: ubuntu-latest
-    env:
-      # Target platform. Only linux/amd64 (x86_64) is supported for now.
-      GOOS: linux
-      GOARCH: amd64
-      # Stable asset name (no version) so install.sh can build the URL from the
-      # tag alone: releases/download/<tag>/<ASSET_NAME>.
-      ASSET_NAME: sing-box-easy-linux-amd64.tar.gz
-
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,11 +47,26 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Building release: $TAG"
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.3'
-          cache: true
+      - name: Create GitHub Release (if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating release $TAG"
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          else
+            echo "Release $TAG already exists"
+          fi
+
+  # The frontend build is architecture-independent: build it once and share
+  # the dist with every matrix job.
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       # The frontend is a bun project (see CLAUDE.md) — there is no
       # package-lock.json, so setup-node's npm cache has nothing to key on and
@@ -77,37 +89,101 @@ jobs:
         working-directory: frontend
         env:
           # Stamps the displayed app version (sidebar) with the release tag.
-          VITE_APP_VERSION: ${{ steps.meta.outputs.tag }}
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.tag }}
         run: |
           bun install --frozen-lockfile
-          # `bun run build` is `vue-tsc -b && vite build`. It used to be split
-          # so vite ran alone, because vue-tsc failed on a pre-existing type
-          # error; that error is gone, so the type check is back in the release
-          # path and a type regression now fails the build instead of shipping.
+          # `bun run build` is `vue-tsc -b && vite build`, so a type
+          # regression fails the build instead of shipping.
           bun run build
 
       - name: Verify frontend build
         run: |
           test -f dist/index.html || { echo "::error::frontend build did not produce dist/index.html"; exit 1; }
 
-      - name: Build backend (linux/amd64)
-        env:
-          # Stamps the backend's self-reported version. /api/.../version compares
-          # this against the newest GitHub release to decide whether an update
-          # is available, so it must match the release tag exactly.
-          TAG: ${{ steps.meta.outputs.tag }}
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+          retention-days: 1
+
+  build-and-release:
+    runs-on: ubuntu-latest
+    needs: [prepare, build-frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x86 servers / VMs (the original target).
+          - goarch: amd64
+            openwrt_arch: x86_64
+          # ARMv8 boards and routers (R2S/R4S/RPi 4, many aarch64 routers).
+          - goarch: arm64
+            openwrt_arch: aarch64_generic
+          # 32-bit ARMv7 routers.
+          # NOTE: mips/mipsle (MT7621-class) is NOT buildable: the pure-Go
+          # SQLite driver (modernc.org/sqlite → modernc.org/libc) has no
+          # mips support. Those devices are also too RAM-constrained for
+          # this panel; run it on a capable box instead.
+          - goarch: arm
+            goarm: '7'
+            openwrt_arch: arm_cortex-a7
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      # Stable asset name (no version) so install scripts and the in-app
+      # self-updater can build the URL from tag + GOOS/GOARCH alone:
+      # releases/download/<tag>/sing-box-easy-linux-<goarch>.tar.gz
+      ASSET_NAME: sing-box-easy-linux-${{ matrix.goarch }}.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+          cache: true
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Embed frontend into the backend build
         run: |
-          CGO_ENABLED=0 go build -trimpath \
+          rm -rf app/webui/dist
+          cp -r dist app/webui/dist
+          test -f app/webui/dist/index.html
+
+      - name: Build backend (linux/${{ matrix.goarch }})
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm || '' }}
+          GOMIPS: ${{ matrix.gomips || '' }}
+        run: |
+          # -X appupdate.Version stamps the backend's self-reported version.
+          # /api/.../version compares this against the newest GitHub release
+          # to decide whether an update is available, so it must match the
+          # release tag exactly.
+          go build -trimpath \
             -ldflags="-s -w -X github.com/SealinGp/sing-box-easy/app/pkg/appupdate.Version=${TAG}" \
             -o build/sing-box-easy ./main.go
-          file build/sing-box-easy
+          file build/sing-box-easy || true
+          ls -lh build/sing-box-easy
 
-      - name: Stage release package
+      - name: Stage release tarball
         run: |
           rm -rf stage
           mkdir -p stage
           cp build/sing-box-easy stage/sing-box-easy
           chmod +x stage/sing-box-easy
+          # dist/ stays in the tarball for backward compatibility: updaters
+          # from pre-embed versions refuse packages without it, and on-disk
+          # dist still takes precedence at runtime.
           cp -r dist stage/dist
           cp app.yml.example stage/app.yml.example
           # Flat tarball: extracting it drops sing-box-easy, dist/ and
@@ -118,15 +194,21 @@ jobs:
           tar -tzf "$ASSET_NAME"
           ls -lh "$ASSET_NAME" "$ASSET_NAME.sha256"
 
-      - name: Publish GitHub Release
+      - name: Build OpenWrt ipk
+        run: |
+          VERSION="${TAG#v}"
+          sh packaging/openwrt/build-ipk.sh \
+            build/sing-box-easy "$VERSION" "${{ matrix.openwrt_arch }}" ipk-out
+          IPK_PATH=$(ls ipk-out/*.ipk)
+          sha256sum "$IPK_PATH" > "$IPK_PATH.sha256"
+          echo "IPK_PATH=$IPK_PATH" >> "$GITHUB_ENV"
+          ls -lh ipk-out/
+
+      - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Creating release $TAG"
-            gh release create "$TAG" --title "$TAG" --generate-notes
-          else
-            echo "Release $TAG already exists; uploading assets"
-          fi
-          gh release upload "$TAG" "$ASSET_NAME" "$ASSET_NAME.sha256" --clobber
+          gh release upload "$TAG" \
+            "$ASSET_NAME" "$ASSET_NAME.sha256" \
+            "$IPK_PATH" "$IPK_PATH.sha256" \
+            --clobber
