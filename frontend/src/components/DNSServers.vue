@@ -6,6 +6,7 @@ import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
 import Modal from './Modal.vue'
+import { Select } from '../volt'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
@@ -338,12 +339,15 @@ onMounted(() => {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.type') }}</label>
-            <select class="select" v-model="currentServer.type" :disabled="isEditMode">
-              <option disabled selected>{{ $t('dns.servers.form.typePlaceholder') }}</option>
-              <option v-for="serverType in serverTypes" :key="serverType.value" :value="serverType.value">
-                {{ serverType.label }}
-              </option>
-            </select>
+            <Select
+              class="w-full"
+              v-model="currentServer.type"
+              :options="serverTypes"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('dns.servers.form.typePlaceholder')"
+              :disabled="isEditMode"
+            />
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LanguageIcon } from '@heroicons/vue/24/outline'
 import { useLocale } from '../i18n/useLocale'
+import { Select } from '../volt'
 
 withDefaults(defineProps<{ variant?: 'compact' | 'full' }>(), {
   variant: 'compact',
@@ -23,14 +24,13 @@ const { locale, toggle, shortLabel, availableLocales } = useLocale()
   </button>
 
   <!-- Full: a labeled select, for the Settings page and the wizard. -->
-  <select
+  <Select
     v-else
+    class="w-40"
     v-model="locale"
-    class="w-40 rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+    :options="availableLocales"
+    optionLabel="label"
+    optionValue="code"
     :aria-label="$t('common.language')"
-  >
-    <option v-for="l in availableLocales" :key="l.code" :value="l.code">
-      {{ l.label }}
-    </option>
-  </select>
+  />
 </template>

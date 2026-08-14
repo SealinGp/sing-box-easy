@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { userService } from '../../services'
+import { Select } from '../../volt'
 import type { User } from '../../types/api'
 import {
   UserIcon,
@@ -44,6 +45,13 @@ const editingUser = ref<User | null>(null)
 const editingUsername = ref('')
 const editingPassword = ref('')
 const editingRole = ref<'admin' | 'viewer'>('viewer')
+
+// Role choices for the create/edit user dropdowns. Computed so the labels
+// re-render when the active locale changes.
+const roleOptions = computed<{ value: 'admin' | 'viewer'; label: string }[]>(() => [
+  { value: 'viewer', label: t('profile.modals.roleViewerDesc') },
+  { value: 'admin', label: t('profile.modals.roleAdminDesc') },
+])
 
 const fetchProfile = async () => {
   profileLoading.value = true
@@ -413,13 +421,13 @@ const formatDate = (dateStr: string) => {
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{{ $t('profile.modals.role') }}</label>
-            <select
+            <Select
+              class="w-full"
               v-model="newUserRole"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none"
-            >
-              <option value="viewer">{{ $t('profile.modals.roleViewerDesc') }}</option>
-              <option value="admin">{{ $t('profile.modals.roleAdminDesc') }}</option>
-            </select>
+              :options="roleOptions"
+              optionLabel="label"
+              optionValue="value"
+            />
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button
@@ -465,14 +473,14 @@ const formatDate = (dateStr: string) => {
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{{ $t('profile.modals.role') }}</label>
-            <select
+            <Select
+              class="w-full"
               v-model="editingRole"
+              :options="roleOptions"
+              optionLabel="label"
+              optionValue="value"
               :disabled="editingUser?.id === currentUser?.id"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none disabled:opacity-50"
-            >
-              <option value="viewer">{{ $t('profile.modals.roleViewerDesc') }}</option>
-              <option value="admin">{{ $t('profile.modals.roleAdminDesc') }}</option>
-            </select>
+            />
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button

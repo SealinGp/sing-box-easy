@@ -17,6 +17,7 @@ import { ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon } from '@heroicons/vu
 import { useAppUpdate } from '../composables/useAppUpdate'
 import { useConfirm } from '../composables/useConfirm'
 import { useNotify } from '../composables/useNotify'
+import { Select } from '../volt'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
@@ -106,6 +107,33 @@ const formatDate = (iso: string) => {
   const parsed = new Date(iso)
   return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleDateString()
 }
+
+/**
+ * Version picker entries. The leading empty-value entry is "latest release";
+ * the rest annotate each tag with its state and publication date, exactly as
+ * the previous native <option> markup did.
+ */
+// PrimeVue's Select treats an empty model value as "nothing selected" and shows
+// the placeholder instead of the matching option's label, so the default entry's
+// text has to be BOTH an option (so it can be picked again) and the placeholder
+// (so the collapsed control reads correctly at the default value).
+const latestOptionLabel = computed(
+  () => `${t('settings.update.latestOption')}${latestVersion.value ? ` (${latestVersion.value})` : ''}`,
+)
+
+const releaseOptions = computed(() => [
+  {
+    value: '',
+    label: latestOptionLabel.value,
+  },
+  ...releases.value.map((release) => {
+    let label = release.tag
+    if (release.is_current) label += ` — ${t('settings.update.current')}`
+    else if (release.prerelease) label += ` — ${t('settings.update.prerelease')}`
+    if (release.published_at) label += ` (${formatDate(release.published_at)})`
+    return { value: release.tag, label }
+  }),
+])
 
 const runUpdate = async () => {
   const version = targetVersion.value
@@ -211,21 +239,15 @@ const runUpdate = async () => {
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {{ $t('settings.update.chooseVersion') }}
         </label>
-        <select
+        <Select
+          class="min-w-56"
           v-model="selectedTag"
+          :options="releaseOptions"
+          optionLabel="label"
+          optionValue="value"
+          :placeholder="latestOptionLabel"
           :disabled="loadingReleases"
-          class="min-w-56 rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-        >
-          <option value="">
-            {{ $t('settings.update.latestOption') }}{{ latestVersion ? ` (${latestVersion})` : '' }}
-          </option>
-          <option v-for="release in releases" :key="release.tag" :value="release.tag">
-            {{ release.tag }}
-            <template v-if="release.is_current"> — {{ $t('settings.update.current') }}</template>
-            <template v-else-if="release.prerelease"> — {{ $t('settings.update.prerelease') }}</template>
-            <template v-if="release.published_at"> ({{ formatDate(release.published_at) }})</template>
-          </option>
-        </select>
+        />
       </div>
 
       <button

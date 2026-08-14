@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useNodeRulesStore } from '../../stores/noderules'
 import PopConfirm from '../../components/PopConfirm.vue'
+import { Select } from '../../volt'
 import type { Filter, Group, Matcher, MatcherType, FilterOutboundType } from '../../types/noderules'
 import { URLTEST_DEFAULTS } from '../../types/noderules'
 import {
@@ -36,6 +37,19 @@ function togglePreview(id: string) {
   if (expandedPreview.has(id)) expandedPreview.delete(id)
   else expandedPreview.add(id)
 }
+
+// ---- Select option catalogs ----
+// Static (non-translated) option lists for the volt Select dropdowns.
+const outboundTypeOptions: { value: FilterOutboundType; label: string }[] = [
+  { value: 'urltest', label: 'urltest' },
+  { value: 'selector', label: 'selector' },
+]
+
+const matcherTypeOptions: { value: MatcherType; label: string }[] = [
+  { value: 'keyword', label: 'keyword' },
+  { value: 'code', label: 'code' },
+  { value: 'emoji', label: 'emoji' },
+]
 
 // ---- Filter editor state ----
 const editingFilterId = ref<string | null>(null) // null = not editing; '' = creating
@@ -580,13 +594,13 @@ onMounted(async () => {
               </div>
               <div>
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Outbound Type</label>
-                <select
+                <Select
+                  class="w-full"
                   v-model="filterForm.outbound_type"
-                  class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
-                >
-                  <option value="urltest">urltest</option>
-                  <option value="selector">selector</option>
-                </select>
+                  :options="outboundTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                />
               </div>
             </div>
 
@@ -613,14 +627,13 @@ onMounted(async () => {
             <!-- Existing Matchers list -->
             <div class="space-y-2 max-h-40 overflow-y-auto">
               <div v-for="(m, idx) in filterForm.matchers" :key="idx" class="flex gap-2 items-center bg-gray-50 dark:bg-slate-800/40 p-1.5 rounded-control border border-gray-100 dark:border-gray-800/50">
-                <select
+                <Select
+                  class="w-32 shrink-0"
                   v-model="m.type"
-                  class="bg-transparent text-xs font-bold text-gray-500 dark:text-gray-400 focus:outline-none border-r border-gray-250 dark:border-gray-700 pr-2 cursor-pointer"
-                >
-                  <option value="keyword">keyword</option>
-                  <option value="code">code</option>
-                  <option value="emoji">emoji</option>
-                </select>
+                  :options="matcherTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                />
                 <input
                   v-model="m.value"
                   class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"
@@ -693,14 +706,13 @@ onMounted(async () => {
             <!-- Existing Excludes list -->
             <div class="space-y-2 max-h-40 overflow-y-auto">
               <div v-for="(m, idx) in filterForm.excludes" :key="idx" class="flex gap-2 items-center bg-red-50/20 dark:bg-red-950/5 p-1.5 rounded-control border border-red-100/50 dark:border-red-950/20">
-                <select
+                <Select
+                  class="w-32 shrink-0"
                   v-model="m.type"
-                  class="bg-transparent text-xs font-bold text-red-550 dark:text-red-400 focus:outline-none border-r border-red-200/50 dark:border-red-950/25 pr-2 cursor-pointer"
-                >
-                  <option value="keyword">keyword</option>
-                  <option value="code">code</option>
-                  <option value="emoji">emoji</option>
-                </select>
+                  :options="matcherTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                />
                 <input
                   v-model="m.value"
                   class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"

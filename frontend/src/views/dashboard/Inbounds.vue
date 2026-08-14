@@ -10,6 +10,7 @@ import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } fro
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import { applyInboundTypeDefaults, generateVmessUUID, validateInboundRequiredFields } from '../../utils/inboundRequiredFields'
+import { Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
@@ -50,6 +51,18 @@ const inboundTypes = computed(() => [
   { value: 'naive', label: t('inbounds.types.naive') },
   { value: 'shadowtls', label: t('inbounds.types.shadowtls') },
 ])
+
+const shadowsocksMethods = [
+  '2022-blake3-aes-128-gcm',
+  '2022-blake3-aes-256-gcm',
+  '2022-blake3-chacha20-poly1305',
+  'none',
+  'aes-128-gcm',
+  'aes-192-gcm',
+  'aes-256-gcm',
+  'chacha20-ietf-poly1305',
+  'xchacha20-ietf-poly1305',
+]
 
 const getInboundTypeLabel = (type: string) => {
   return inboundTypes.value.find(it => it.value === type)?.label || type
@@ -416,10 +429,15 @@ onMounted(fetchInbounds)
 
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
-          <select class="select" v-model="(currentInbound as any).type" :disabled="isEditMode">
-            <option disabled selected>{{ $t('inbounds.form.typePlaceholder') }}</option>
-            <option v-for="inboundType in inboundTypes" :value="inboundType.value">{{ inboundType.label }}</option>
-          </select>
+          <Select
+            class="w-full"
+            v-model="(currentInbound as any).type"
+            :options="inboundTypes"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('inbounds.form.typePlaceholder')"
+            :disabled="isEditMode"
+          />
         </div>
 
         <div v-if="currentInbound.type !== 'tun'">
@@ -444,17 +462,12 @@ onMounted(fetchInbounds)
         <div v-if="currentInbound.type === 'shadowsocks'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssMethod') }}</label>
-            <select class="select" v-model="(currentInbound as any).method" @change="generatePassword">
-              <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm</option>
-              <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
-              <option value="2022-blake3-chacha20-poly1305">2022-blake3-chacha20-poly1305</option>
-              <option value="none">none</option>
-              <option value="aes-128-gcm">aes-128-gcm</option>
-              <option value="aes-192-gcm">aes-192-gcm</option>
-              <option value="aes-256-gcm">aes-256-gcm</option>
-              <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
-              <option value="xchacha20-ietf-poly1305">xchacha20-ietf-poly1305</option>
-            </select>
+            <Select
+              class="w-full"
+              v-model="(currentInbound as any).method"
+              :options="shadowsocksMethods"
+              @change="generatePassword"
+            />
           </div>
 
           <div v-if="(currentInbound as any).method !== 'none'">

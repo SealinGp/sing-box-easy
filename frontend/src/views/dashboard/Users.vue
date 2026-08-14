@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { User } from '../../types/api'
 import Button from '../../components/Button.vue'
@@ -9,6 +9,7 @@ import Modal from '../../components/Modal.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { userService } from '../../services'
 import { useToast } from 'primevue/usetoast'
+import { Select } from '../../volt'
 
 const users = ref<User[]>([])
 const loading = ref(false)
@@ -28,6 +29,11 @@ const currentUser = ref<{
   password: '',
   role: 'viewer',
 })
+
+const roleOptions = computed(() => [
+  { value: 'admin', label: t('users.form.roles.admin') },
+  { value: 'viewer', label: t('users.form.roles.viewer') },
+])
 
 // Delete confirmation
 const showDeleteConfirm = ref(false)
@@ -285,13 +291,13 @@ onMounted(fetchUsers)
 
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('users.form.role') }}</label>
-          <select
+          <Select
+            class="w-full"
             v-model="currentUser.role"
-            class="w-full rounded-control bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 p-2.5 text-gray-900 dark:text-gray-100 text-sm"
-          >
-            <option value="admin">{{ $t('users.form.roles.admin') }}</option>
-            <option value="viewer">{{ $t('users.form.roles.viewer') }}</option>
-          </select>
+            :options="roleOptions"
+            optionLabel="label"
+            optionValue="value"
+          />
         </div>
       </div>
 

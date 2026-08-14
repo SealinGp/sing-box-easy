@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { DialerOptions } from '../types/shared'
 import Input from './Input.vue'
 import { Select } from '../volt'
@@ -20,6 +21,24 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: any]
 }>()
+
+const { t } = useI18n()
+
+// Domain strategy choices — same order as the previous native <option> list.
+const domainStrategyOptions = computed(() => [
+  { label: t('dialer.domainStrategy.options.default'), value: '' },
+  { label: t('dialer.domainStrategy.options.preferIpv4'), value: 'prefer_ipv4' },
+  { label: t('dialer.domainStrategy.options.preferIpv6'), value: 'prefer_ipv6' },
+  { label: t('dialer.domainStrategy.options.ipv4Only'), value: 'ipv4_only' },
+  { label: t('dialer.domainStrategy.options.ipv6Only'), value: 'ipv6_only' },
+])
+
+// `undefined` means "leave the field out of the config" — same as before.
+const udpFragmentOptions = computed(() => [
+  { label: t('dialer.udpFragment.options.default'), value: undefined },
+  { label: t('dialer.udpFragment.options.enabled'), value: true },
+  { label: t('dialer.udpFragment.options.disabled'), value: false },
+])
 
 // Get outbounds from store
 const outboundsStore = useOutboundsStore()
@@ -185,13 +204,16 @@ const fallbackDelay = computed({
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
         {{ $t('dialer.domainStrategy.label') }}
       </label>
-      <select class="select" v-model="domainStrategy">
-        <option value="">{{ $t('dialer.domainStrategy.options.default') }}</option>
-        <option value="prefer_ipv4">{{ $t('dialer.domainStrategy.options.preferIpv4') }}</option>
-        <option value="prefer_ipv6">{{ $t('dialer.domainStrategy.options.preferIpv6') }}</option>
-        <option value="ipv4_only">{{ $t('dialer.domainStrategy.options.ipv4Only') }}</option>
-        <option value="ipv6_only">{{ $t('dialer.domainStrategy.options.ipv6Only') }}</option>
-      </select>
+      <!-- The "default" entry's value is empty, which PrimeVue reads as "nothing
+           selected" — so its label doubles as the placeholder. -->
+      <Select
+        class="w-full"
+        v-model="domainStrategy"
+        :options="domainStrategyOptions"
+        optionLabel="label"
+        optionValue="value"
+        :placeholder="$t('dialer.domainStrategy.options.default')"
+      />
       <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.domainStrategy.help') }}</p>
     </div>
 
@@ -299,11 +321,14 @@ const fallbackDelay = computed({
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dialer.udpFragment.label') }}
           </label>
-          <select class="select" v-model="udpFragment">
-            <option :value="undefined">{{ $t('dialer.udpFragment.options.default') }}</option>
-            <option :value="true">{{ $t('dialer.udpFragment.options.enabled') }}</option>
-            <option :value="false">{{ $t('dialer.udpFragment.options.disabled') }}</option>
-          </select>
+          <Select
+            class="w-full"
+            v-model="udpFragment"
+            :options="udpFragmentOptions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('dialer.udpFragment.options.default')"
+          />
           <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.udpFragment.help') }}</p>
         </div>
       </div>

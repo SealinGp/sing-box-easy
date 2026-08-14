@@ -9,7 +9,7 @@ import Badge from "./Badge.vue";
 import Textarea from "./Textarea.vue";
 import DialerOptions from "./DialerOptions.vue";
 import Modal from "./Modal.vue";
-import { MultiSelect } from "../volt";
+import { MultiSelect, Select } from "../volt";
 import {
   PlusIcon,
   PencilIcon,
@@ -738,19 +738,15 @@ onMounted(() => {
               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >{{ $t('outbounds.form.type') }}</label
             >
-            <select
-              class="select"
+            <Select
+              class="w-full"
               v-model="currentOutbound.type"
+              :options="outboundTypes"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('outbounds.form.typePlaceholder')"
               :disabled="isEditMode"
-            >
-              <option disabled selected>{{ $t('outbounds.form.typePlaceholder') }}</option>
-              <option
-                v-for="outboundType in outboundTypes"
-                :value="outboundType.value"
-              >
-                {{ outboundType.label }}
-              </option>
-            </select>
+            />
           </div>
         </div>
 

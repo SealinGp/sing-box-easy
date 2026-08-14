@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { logService } from '../../services'
 import { type LogConfig } from '../../types/api'
 import { useNotify } from '../../composables/useNotify'
+import { Select } from '../../volt'
 
 const { t } = useI18n()
 
@@ -18,6 +19,8 @@ const saving = ref(false)
 const notify = useNotify()
 
 const logLevels = ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic']
+
+const logLevelOptions = logLevels.map((level) => ({ value: level, label: level.toUpperCase() }))
 
 onMounted(async () => {
   await loadLog()
@@ -114,14 +117,13 @@ const resetToDefaults = () => {
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
             {{ $t('log.level.help') }}
           </p>
-          <select
+          <Select
+            class="w-full"
             v-model="logConfig.level"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-control shadow-surface focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
-          >
-            <option v-for="level in logLevels" :key="level" :value="level">
-              {{ level.toUpperCase() }}
-            </option>
-          </select>
+            :options="logLevelOptions"
+            optionLabel="label"
+            optionValue="value"
+          />
         </div>
 
         <!-- Output File -->

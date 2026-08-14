@@ -24,6 +24,7 @@ import {
   ClipboardDocumentIcon,
   TagIcon,
 } from "@heroicons/vue/24/outline";
+import { Select } from "../../volt";
 
 const subscriptionService = new SubscriptionService(apiService);
 const { t } = useI18n();
@@ -58,6 +59,12 @@ const formData = ref<FormData>({
   fetch_mode: "",
   proxy_url: "",
 });
+
+const fetchModeOptions = computed(() => [
+  { value: "", label: t("subscriptions.form.fetchModeDirect") },
+  { value: "clean_dns", label: t("subscriptions.form.fetchModeCleanDns") },
+  { value: "proxy", label: t("subscriptions.form.fetchModeProxy") },
+]);
 
 // Form errors
 const formErrors = ref<Record<string, string>>({});
@@ -620,14 +627,14 @@ onMounted(() => {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {{ $t("subscriptions.form.fetchMode") }}
             </label>
-            <select
+            <Select
+              class="w-full"
               v-model="formData.fetch_mode"
-              class="w-full rounded-control border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">{{ $t("subscriptions.form.fetchModeDirect") }}</option>
-              <option value="clean_dns">{{ $t("subscriptions.form.fetchModeCleanDns") }}</option>
-              <option value="proxy">{{ $t("subscriptions.form.fetchModeProxy") }}</option>
-            </select>
+              :options="fetchModeOptions"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('subscriptions.form.fetchModeDirect')"
+            />
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {{ $t("subscriptions.form.fetchModeHint") }}
             </p>

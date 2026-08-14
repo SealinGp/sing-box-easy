@@ -18,6 +18,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
 import DnsProbeTimeline from './DnsProbeTimeline.vue'
+import { Select } from '../volt'
 import { dnsService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import {
@@ -33,6 +34,10 @@ const emit = defineEmits<{ (e: 'result', result: DnsProbeResult | null): void }>
 
 const { t } = useI18n()
 const notify = useNotify()
+
+// Mutable copy: DNS_QUERY_TYPES is a readonly tuple, which Select's
+// `options` prop (any[]) will not accept.
+const queryTypeOptions = [...DNS_QUERY_TYPES]
 
 const domain = ref('')
 const queryType = ref<string>('A')
@@ -116,13 +121,11 @@ const logStatusMessage = computed(() => {
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="dns-probe-type">
           {{ $t('dnsProbe.type') }}
         </label>
-        <select
+        <Select
           id="dns-probe-type"
           v-model="queryType"
-          class="rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <option v-for="type in DNS_QUERY_TYPES" :key="type" :value="type">{{ type }}</option>
-        </select>
+          :options="queryTypeOptions"
+        />
       </div>
 
       <Button type="submit" :disabled="!canRun" :loading="running">
