@@ -318,7 +318,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
+    <!-- Header: subtitle + actions -->
     <div class="flex items-center justify-between mb-4">
       <p class="text-gray-500 dark:text-gray-400">
         {{ $t("subscriptions.subtitle") }}

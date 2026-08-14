@@ -14,5 +14,5 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <TabNav :title="$t('dns.title')" :tabs="tabs" />
+  <TabNav :tabs="tabs" />
 </template>
