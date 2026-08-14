@@ -158,7 +158,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
     whole subtree into the positioned paint phase. 30 keeps it under the
     app's `z-50` modal overlays.
   -->
-  <header class="liquid-topbar relative z-30 shadow-float m-3 mb-0 rounded-surface px-4 py-2">
+  <header class="liquid-topbar relative z-30 m-3 mb-0 rounded-surface px-4 py-2">
     <div class="flex items-center gap-3">
       <!-- Brand -->
       <router-link to="/dashboard/overview" class="flex items-center gap-2 flex-shrink-0">
@@ -361,7 +361,13 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
     linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
     rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.58);
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.14), var(--glass-highlight);
+  /*
+   * `surface`, not `float` — see the design tokens: float is for things
+   * genuinely above the page (dropdowns, modals). The bar rests on it. The
+   * dropdowns it opens keep `shadow-float`, which is what earns the contrast
+   * between the two.
+   */
+  box-shadow: var(--shadow-surface), var(--glass-highlight);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
 }

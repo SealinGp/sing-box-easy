@@ -128,7 +128,7 @@ watch(
 </script>
 
 <template>
-  <div class="w-55 liquid-sidebar h-full flex flex-col shadow-float m-3 mr-0 rounded-surface overflow-hidden">
+  <div class="w-55 liquid-sidebar h-full flex flex-col m-3 mr-0 rounded-surface overflow-hidden">
     <!-- Logo/Brand with Menu label -->
     <div class="p-5 pb-4">
       <!-- Row 1: icon + name -->
@@ -376,7 +376,13 @@ watch(
     linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
     rgba(255, 255, 255, 0.82) !important;
   border: 1px solid rgba(255, 255, 255, 0.58);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16), var(--glass-highlight);
+  /*
+   * `surface`, not `float`: the sidebar rests on the page, it is not an
+   * overlay above it. The previous bespoke `0 24px 70px / 0.16` sat above even
+   * --shadow-float-lg (the modal tier), which made the bar read as a banner
+   * hovering over the app. Using the token also keeps dark mode in step.
+   */
+  box-shadow: var(--shadow-surface), var(--glass-highlight);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
 }
