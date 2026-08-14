@@ -14,13 +14,15 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue'
 import { storeToRefs } from 'pinia'
-import { Dialog, Select, Chips } from '../volt'
+import { Dialog, Select } from '../volt'
+import ChipsField from './ChipsField.vue'
 import Button from './Button.vue'
 import type { RouteRule, DNSRule } from '../types/api'
 import { routeService, dnsService } from '../services'
 import { useOutboundsStore } from '../stores/outbounds'
 import { useRouteStore } from '../stores/route'
 import { useDNSStore } from '../stores/dns'
+import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 import {
   isProxiedOutbound,
   recommendDnsServer,
@@ -86,7 +88,7 @@ const ruleSetOptions = computed(() =>
 )
 
 const dnsServerOptions = computed(() =>
-  dnsServers.value.map((s) => ({ label: s.tag, value: s.tag })),
+  dnsServers.value.map((s) => ({ label: dnsServerOptionLabel(s), value: s.tag })),
 )
 
 // --- derived ---
@@ -298,16 +300,12 @@ async function submit() {
         />
       </div>
 
-      <div v-else>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {{ matchType === 'domain' ? t('route.rules.smart.values.domain') : t('route.rules.smart.values.domainSuffix') }}
-        </label>
-        <Chips
-          v-model="domainValues"
-          :placeholder="matchType === 'domain' ? t('route.rules.smart.valuesPlaceholder.domain') : t('route.rules.smart.valuesPlaceholder.domainSuffix')"
-          class="w-full"
-        />
-      </div>
+      <ChipsField
+        v-else
+        v-model="domainValues"
+        :label="matchType === 'domain' ? t('route.rules.smart.values.domain') : t('route.rules.smart.values.domainSuffix')"
+        :placeholder="matchType === 'domain' ? t('route.rules.smart.valuesPlaceholder.domain') : t('route.rules.smart.valuesPlaceholder.domainSuffix')"
+      />
     </div>
 
     <!-- Step 2 — Action -->

@@ -125,6 +125,22 @@ export default {
       ruleSetSearch: '输入以筛选规则集...',
       ruleSetNoOptions: '未找到匹配的规则集',
       ruleSetHelp: '为此 DNS 规则使用预定义的规则集',
+      // 规则集与域名条件的取舍提示。sing-box 会把同一条规则内的匹配项按“与”
+      // 处理，混用只会缩小范围 —— 见 components/DNSRuleConditions.vue。
+      // 域名条件下方的“添加条件”一行 —— 见 components/DNSRuleConditions.vue。
+      matchers: {
+        add: '添加条件：',
+      },
+      mixing: {
+        title: '同一条规则内的条件是“与”关系',
+        warning:
+          '同时填写规则集和域名条件时，两者必须同时命中：只有既在规则集内、又符合域名条件的域名才会匹配此规则。若想让规则集内的所有域名生效，请清空域名条件；反之亦然。需要“满足其一”时，请拆成两条规则。',
+        ruleSetCollapsed: '此规则使用域名条件匹配，已隐藏规则集。',
+        matchersCollapsed: '此规则使用规则集匹配，已隐藏域名条件。',
+        show: '仍要显示',
+        hide: '隐藏',
+        matchersGroup: '域名条件',
+      },
       domain: '域名',
       domainPlaceholder: '添加域名（每个输入后按回车）',
       domainHelp: '精确匹配域名',

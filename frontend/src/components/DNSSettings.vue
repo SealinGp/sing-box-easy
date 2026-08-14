@@ -9,6 +9,7 @@ import { dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
 import { storeToRefs } from 'pinia'
+import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -32,7 +33,7 @@ const serverOptions = computed(() => {
   ]
   if (dnsServers.value) {
     dnsServers.value.forEach(server => {
-      options.push({ value: server.tag, label: server.tag })
+      options.push({ value: server.tag, label: dnsServerOptionLabel(server) })
     })
   }
   return options

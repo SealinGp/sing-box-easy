@@ -6,12 +6,13 @@ import Button from './Button.vue'
 import Modal from './Modal.vue'
 import { Select } from '../volt'
 import Badge from './Badge.vue'
-import { Chips } from '../volt'
+import DNSRuleConditions from './DNSRuleConditions.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
+import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
@@ -27,6 +28,9 @@ const dnsRules = ref<DNSRule[]>([])
 
 // Modal state
 const showRuleModal = ref(false)
+// Bumped on every modal open; used as the conditions block's :key so it
+// remounts and re-derives which matcher style this rule uses.
+const conditionsKey = ref(0)
 const isEditMode = ref(false)
 const editingIndex = ref(-1)
 // Form model uses arrays for list fields to match the Chips v-model shape and
@@ -83,7 +87,9 @@ const serverOptions = computed(() => {
   ]
   if (dnsServers.value) {
     dnsServers.value.forEach(server => {
-      options.push({ value: server.tag, label: server.tag })
+      // Label carries the address + transport, not just the tag — picking the
+      // right DNS server for a rule is impossible from a bare tag.
+      options.push({ value: server.tag, label: dnsServerOptionLabel(server) })
     })
   }
   return options
@@ -129,6 +135,7 @@ function emptyRuleForm() {
 const openAddRuleModal = () => {
   isEditMode.value = false
   currentRule.value = emptyRuleForm()
+  conditionsKey.value++
   showRuleModal.value = true
 }
 
@@ -150,6 +157,7 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
     domain_keyword: toArrayField(raw.domain_keyword),
     geosite: toArrayField(raw.geosite),
   }
+  conditionsKey.value++
   showRuleModal.value = true
 }
 
@@ -400,66 +408,17 @@ onMounted(() => {
         <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
           <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">{{ $t('dns.rules.form.conditionsHeading') }}</h4>
 
-          <div class="space-y-3">
-            <!-- Rule Set -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.ruleSet') }}</label>
-              <Select class="w-full" optionLabel="label" optionValue="value"
-                v-model="currentRule.rule_set"
-                :options="ruleSetOptions"
-                :filter="true"
-                :showClear="true"
-                :placeholder="$t('dns.rules.form.ruleSetSelect')"
-                :filterPlaceholder="$t('dns.rules.form.ruleSetSearch')"
-                :emptyFilterMessage="$t('dns.rules.form.ruleSetNoOptions')"
-              />
-              <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.ruleSetHelp') }}</p>
-            </div>
-
-            <!-- Domain -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domain') }}</label>
-              <Chips
-                v-model="currentRule.domain"
-                :placeholder="$t('dns.rules.form.domainPlaceholder')"
-                class="w-full"
-              />
-              <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainHelp') }}</p>
-            </div>
-
-            <!-- Domain Suffix -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domainSuffix') }}</label>
-              <Chips
-                v-model="currentRule.domain_suffix"
-                :placeholder="$t('dns.rules.form.domainSuffixPlaceholder')"
-                class="w-full"
-              />
-              <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainSuffixHelp') }}</p>
-            </div>
-
-            <!-- Domain Keyword -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.domainKeyword') }}</label>
-              <Chips
-                v-model="currentRule.domain_keyword"
-                :placeholder="$t('dns.rules.form.domainKeywordPlaceholder')"
-                class="w-full"
-              />
-              <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.domainKeywordHelp') }}</p>
-            </div>
-
-            <!-- GeoSite -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.geosite') }}</label>
-              <Chips
-                v-model="currentRule.geosite"
-                :placeholder="$t('dns.rules.form.geositePlaceholder')"
-                class="w-full"
-              />
-              <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.geositeHelp') }}</p>
-            </div>
-          </div>
+          <!-- Remounted per modal open (:key) so the collapse state is decided
+               from the rule as loaded, not from the previous edit. -->
+          <DNSRuleConditions
+            :key="conditionsKey"
+            v-model:rule-set="currentRule.rule_set"
+            v-model:domain="currentRule.domain"
+            v-model:domain-suffix="currentRule.domain_suffix"
+            v-model:domain-keyword="currentRule.domain_keyword"
+            v-model:geosite="currentRule.geosite"
+            :rule-set-options="ruleSetOptions"
+          />
         </div>
       </div>
 

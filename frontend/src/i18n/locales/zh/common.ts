@@ -1,12 +1,15 @@
 // 通用、可复用的文案（按钮、通用状态词）。
 export default {
   save: '保存',
+  // 每个多值（标签）输入框下方的提示 —— 见 components/ChipsField.vue。
+  chipsHint: '输入后按回车添加；也可用逗号分隔一次粘贴多个。',
   saving: '保存中...',
   cancel: '取消',
   add: '添加',
   update: '更新',
   edit: '编辑',
   delete: '删除',
+  remove: '移除',
   close: '关闭',
   back: '返回',
   next: '下一步',

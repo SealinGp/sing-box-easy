@@ -1,12 +1,15 @@
 // Shared, reusable strings (buttons, generic status words).
 export default {
   save: 'Save',
+  // Shown under every multi-value (chips) field — see components/ChipsField.vue.
+  chipsHint: 'Type a value and press Enter to add it. Paste several separated by commas.',
   saving: 'Saving...',
   cancel: 'Cancel',
   add: 'Add',
   update: 'Update',
   edit: 'Edit',
   delete: 'Delete',
+  remove: 'Remove',
   close: 'Close',
   back: 'Back',
   next: 'Next',

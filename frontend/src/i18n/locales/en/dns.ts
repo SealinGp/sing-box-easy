@@ -125,6 +125,24 @@ export default {
       ruleSetSearch: 'Type to filter rule sets...',
       ruleSetNoOptions: 'No matching rule sets found',
       ruleSetHelp: 'Use a predefined rule set for this DNS rule',
+      // Rule-set vs domain-condition guidance. sing-box ANDs the matchers
+      // inside one rule, so mixing the two narrows the scope instead of
+      // widening it — see components/DNSRuleConditions.vue.
+      // The "add a matcher" row under the domain conditions — see
+      // components/DNSRuleConditions.vue.
+      matchers: {
+        add: 'Add a condition:',
+      },
+      mixing: {
+        title: 'Conditions are combined with AND',
+        warning:
+          'A rule set and domain conditions in the same rule must BOTH match: only a domain that is in the rule set AND matches the domain condition hits this rule. To let every domain in the rule set through, leave the domain conditions empty — and vice versa. Use a second rule if you meant "either one".',
+        ruleSetCollapsed: 'This rule matches by domain conditions. Rule set hidden.',
+        matchersCollapsed: 'This rule matches by rule set. Domain conditions hidden.',
+        show: 'Show anyway',
+        hide: 'Hide',
+        matchersGroup: 'Domain conditions',
+      },
       domain: 'Domain',
       domainPlaceholder: 'Add domains (press Enter after each)',
       domainHelp: 'Exact domain match',

@@ -2,7 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
-import { Dialog, Select, Chips } from '../volt'
+import { Dialog, Select } from '../volt'
+import ChipsField from './ChipsField.vue'
 import Button from './Button.vue'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
@@ -555,14 +556,11 @@ onMounted(() => {
 
         <!-- Sniff Action -->
         <template v-if="currentAction === 'sniff'">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.sniffer') }}</label>
-            <Chips
-              v-model="currentRuleSniffer"
-              :placeholder="$t('route.rules.placeholders.sniffer')"
-              class="w-full"
-            />
-          </div>
+          <ChipsField
+            v-model="currentRuleSniffer"
+            :label="$t('route.rules.fields.sniffer')"
+            :placeholder="$t('route.rules.placeholders.sniffer')"
+          />
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.timeout') }}</label>
             <input

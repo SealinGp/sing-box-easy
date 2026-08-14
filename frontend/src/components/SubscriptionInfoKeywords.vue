@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n'
 import { XMarkIcon, ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
 import Modal from './Modal.vue'
 import Button from './Button.vue'
+import Input from './Input.vue'
 import Badge from './Badge.vue'
 import { apiService } from '../services/api'
 import { SubscriptionService } from '../services/subscription'
@@ -199,12 +200,15 @@ const save = async () => {
         </span>
       </div>
 
-      <!-- Add -->
+      <!-- Add. Uses the shared Input so the field inherits the app's control
+           styling (border, fill, focus ring, radius) from src/style/controls.css
+           instead of restating a one-off set of classes. The keydown listeners
+           fall through to Input's root element and catch the events as they
+           bubble up from the field. -->
       <div class="flex items-center gap-2">
-        <input
+        <Input
           v-model="draft"
-          type="text"
-          class="flex-1 rounded-control border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm focus:ring-primary-500 focus:border-primary-500"
+          class="flex-1"
           :placeholder="$t('subscriptions.keywords.addPlaceholder')"
           :disabled="isLoading || isFull"
           @keydown.enter.prevent="addDraft"

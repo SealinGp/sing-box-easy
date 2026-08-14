@@ -6,7 +6,8 @@
 // rule object rather than mutating the bound one in place.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Chips, MultiSelect } from '../volt'
+import { MultiSelect } from '../volt'
+import ChipsField from './ChipsField.vue'
 import type { RouteRule } from '../types/api'
 
 const model = defineModel<RouteRule>({ required: true })
@@ -113,14 +114,11 @@ const port = computed({
 
 <template>
   <div class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.inbound') }}</label>
-      <Chips
-        v-model="inbound"
-        :placeholder="t('route.rules.placeholders.inbound')"
-        class="w-full"
-      />
-    </div>
+    <ChipsField
+      v-model="inbound"
+      :label="t('route.rules.fields.inbound')"
+      :placeholder="t('route.rules.placeholders.inbound')"
+    />
 
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.protocol') }}</label>
@@ -148,23 +146,17 @@ const port = computed({
       />
     </div>
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.domain') }}</label>
-      <Chips
-        v-model="domain"
-        :placeholder="t('route.rules.placeholders.domain')"
-        class="w-full"
-      />
-    </div>
+    <ChipsField
+      v-model="domain"
+      :label="t('route.rules.fields.domain')"
+      :placeholder="t('route.rules.placeholders.domain')"
+    />
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.domainSuffix') }}</label>
-      <Chips
-        v-model="domainSuffix"
-        :placeholder="t('route.rules.placeholders.domainSuffix')"
-        class="w-full"
-      />
-    </div>
+    <ChipsField
+      v-model="domainSuffix"
+      :label="t('route.rules.fields.domainSuffix')"
+      :placeholder="t('route.rules.placeholders.domainSuffix')"
+    />
 
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.geosite') }}</label>
@@ -194,22 +186,16 @@ const port = computed({
       />
     </div>
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.ruleSet') }}</label>
-      <Chips
-        v-model="ruleSet"
-        :placeholder="t('route.rules.placeholders.ruleSet')"
-        class="w-full"
-      />
-    </div>
+    <ChipsField
+      v-model="ruleSet"
+      :label="t('route.rules.fields.ruleSet')"
+      :placeholder="t('route.rules.placeholders.ruleSet')"
+    />
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.fields.port') }}</label>
-      <Chips
-        v-model="port"
-        :placeholder="t('route.rules.placeholders.port')"
-        class="w-full"
-      />
-    </div>
+    <ChipsField
+      v-model="port"
+      :label="t('route.rules.fields.port')"
+      :placeholder="t('route.rules.placeholders.port')"
+    />
   </div>
 </template>
