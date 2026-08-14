@@ -162,6 +162,11 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
 	auth.GET("/dashboard/status", handler.GetDashboardStatus)
 
+	// Host details for the Settings "About" card (arch, kernel, distribution,
+	// sing-box + panel versions). Signed-in users only — see
+	// SystemInfoResponse for why the public surface stays coarser.
+	auth.GET("/system/info", handler.GetSystemInfo)
+
 	// App version / self-update APIs.
 	// Reading is available to any signed-in user; performing the update
 	// replaces the binary on disk and restarts the process, so it is admin-only.

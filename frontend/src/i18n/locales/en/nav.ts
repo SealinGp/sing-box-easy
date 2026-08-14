@@ -19,4 +19,5 @@ export default {
   nodeRules: 'Node Rules',
   logs: 'Logs',
   serviceStatusHint: 'Live sing-box service status — click for details',
+  signOut: 'Sign Out',
 }

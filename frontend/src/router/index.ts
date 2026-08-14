@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { serviceControlService } from '../services'
-import { ensureAuthMode } from '../composables/useAuthMode'
+import { ensureDeployment, useDeployment } from '../composables/useDeployment'
 
 // Eagerly load critical components
 import Dashboard from '../views/Dashboard.vue'
@@ -215,8 +215,12 @@ router.beforeEach(async (to, _, next) => {
   // 0. When the deployment has authentication disabled (server.auth:
   //    disabled, or "auto" on OpenWrt) there is no login flow and no
   //    profile/user management — skip the token checks entirely.
-  const authEnabled = await ensureAuthMode()
-  if (!authEnabled) {
+  //    Resolving it here (rather than in the layout) also means the platform
+  //    is already known by the time Dashboard mounts, so the sidebar/top-bar
+  //    choice never flashes the wrong layout.
+  await ensureDeployment()
+  const { authEnabled } = useDeployment()
+  if (!authEnabled.value) {
     if (to.path === '/login' || to.path === '/dashboard/profile') {
       next('/dashboard')
       return

@@ -46,6 +46,9 @@ type Handler struct {
 	// authEnabled is the resolved login requirement (server.auth × platform).
 	// false means every request runs as an administrator.
 	authEnabled bool
+	// systemType is the detected distribution family, probed once at startup.
+	// It drives both the auth default and the frontend's navigation layout.
+	systemType service.SystemType
 }
 
 // NewHandler creates a new v1.12.12 handler using XORM-backed managers.
@@ -100,7 +103,8 @@ func NewHandler(
 		settingsManager,
 	)
 
-	authEnabled := ResolveAuthEnabled(authMode, service.DetectSystemType())
+	systemType := service.DetectSystemType()
+	authEnabled := ResolveAuthEnabled(authMode, systemType)
 	if !authEnabled {
 		logger.Warn("==================================================================")
 		logger.Warn("AUTHENTICATION IS DISABLED — every visitor has admin access.")
@@ -127,6 +131,7 @@ func NewHandler(
 		updater:             updater,
 		githubAuth:          githubAuth,
 		authEnabled:         authEnabled,
+		systemType:          systemType,
 	}
 }
 

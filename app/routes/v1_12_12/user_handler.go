@@ -30,16 +30,29 @@ type UpdateUserRequest struct {
 	Role     string `json:"role"`
 }
 
-// AuthStatusResponse tells the frontend whether login is required. Public:
-// the UI needs it before any session exists to decide whether to show the
-// login page and the profile/user-management views.
+// AuthStatusResponse describes how this deployment is set up, before any
+// session exists. Public by necessity: the UI needs it to decide whether to
+// show the login page and the profile/user-management views, and which
+// navigation layout to render.
+//
+// SystemType is deliberately the only host detail exposed here — it is coarse
+// (three possible values) and already inferable from AuthEnabled under the
+// default "auto" mode. Everything else lives behind auth in /system/info.
 type AuthStatusResponse struct {
 	AuthEnabled bool `json:"auth_enabled"`
+	// SystemType is the distribution family: "openwrt", "debian" or "unknown".
+	// OpenWrt gets a top bar instead of a sidebar, because LuCI already owns
+	// the left edge of the operator's screen.
+	SystemType string `json:"system_type"`
 }
 
-// GetAuthStatus reports whether this deployment requires login.
+// GetAuthStatus reports whether this deployment requires login, and on which
+// platform family it runs.
 func (h *Handler) GetAuthStatus(ctx context.Context, c *app.RequestContext) {
-	respOK(ctx, c, AuthStatusResponse{AuthEnabled: h.authEnabled})
+	respOK(ctx, c, AuthStatusResponse{
+		AuthEnabled: h.authEnabled,
+		SystemType:  string(h.systemType),
+	})
 }
 
 // Login authenticates credentials and returns a session token

@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
 import { ChevronRightIcon, Cog6ToothIcon, ArrowLeftOnRectangleIcon } from '@heroicons/vue/24/outline'
 import LanguageSwitcher from './LanguageSwitcher.vue'
-import { useServiceStore } from '../stores'
-import { userService } from '../services'
-import { useConfirm } from '../composables/useConfirm'
-import { useAppUpdate } from '../composables/useAppUpdate'
-import { useAuthMode } from '../composables/useAuthMode'
+import { useDeployment } from '../composables/useDeployment'
+import { useNavChrome } from '../composables/useNavChrome'
 import { useNavIndicator } from '../composables/useNavIndicator'
 
 interface MenuItem {
@@ -26,104 +23,26 @@ interface Props {
 
 const props = defineProps<Props>()
 const route = useRoute()
-const router = useRouter()
-const { t, locale } = useI18n()
-const { confirm } = useConfirm()
-
-// App version. The bundle carries a build-time stamp (see vite.config.ts
-// `define`), but the backend is the authority once it reports its own version —
-// after a self-update the two agree again.
-const buildVersion = __APP_VERSION__
-const {
-  currentVersion,
-  latestVersion,
-  updateOffered,
-  refreshStatus,
-} = useAppUpdate()
-
-const version = computed(() => currentVersion.value || buildVersion)
-
-// Shared service status, polled here so the running/stopped indicator stays
-// live on every page (e.g. right after restarting from the Config page).
-const serviceStore = useServiceStore()
-let unsubscribe: (() => void) | null = null
+const { locale } = useI18n()
 
 // Hide the profile/logout footer entirely when the deployment has
 // authentication disabled (e.g. OpenWrt) — there is no account to manage.
-const { authEnabled } = useAuthMode()
+const { authEnabled } = useDeployment()
 
-const currentUser = ref<any>(null)
-
-const fetchUser = async () => {
-  try {
-    currentUser.value = await userService.getMe()
-  } catch (err) {
-    console.error('Failed to get current user in sidebar:', err)
-  }
-}
-
-const userInitial = computed(() => {
-  if (!currentUser.value?.username) return 'U'
-  return currentUser.value.username.slice(0, 2).toUpperCase()
-})
-
-const username = computed(() => currentUser.value?.username || 'User')
-const userRole = computed(() => currentUser.value?.role || 'viewer')
-
-const handleLogout = async () => {
-  const ok = await confirm({
-    title: t('common.confirmTitle'),
-    message: locale.value.startsWith('zh') ? '确定要退出登录吗？' : 'Are you sure you want to sign out?',
-    confirmLabel: t('common.confirm'),
-    cancelLabel: t('common.cancel'),
-    tone: 'danger',
-  })
-  if (!ok) return
-
-  try {
-    await userService.logout()
-    router.push('/login')
-  } catch (err) {
-    console.error('Logout failed:', err)
-    // Force local clean up on error
-    localStorage.removeItem('sb_token')
-    window.location.href = '/login'
-  }
-}
-
-onMounted(async () => {
-  unsubscribe = serviceStore.startPolling(5000)
-  await fetchUser()
-  // Cached server-side for a few minutes, so this is cheap and non-blocking.
-  void refreshStatus(false)
-})
-onUnmounted(() => {
-  unsubscribe?.()
-})
-
-const serviceStatus = computed(() => serviceStore.status?.status ?? 'unknown')
-const serviceDotClass = computed(() => {
-  if (serviceStore.error) return 'bg-yellow-500'
-  switch (serviceStatus.value) {
-    case 'running':
-      return 'bg-green-500'
-    case 'stopped':
-      return 'bg-red-500'
-    default:
-      return 'bg-gray-400'
-  }
-})
-const serviceLabel = computed(() => {
-  if (serviceStore.error) return t('overview.status.unknown')
-  switch (serviceStatus.value) {
-    case 'running':
-      return t('overview.status.running')
-    case 'stopped':
-      return t('overview.status.stopped')
-    default:
-      return t('overview.status.unknown')
-  }
-})
+// Version, live service status and the signed-in user — shared with the
+// OpenWrt top bar so both shells report the same facts.
+const {
+  version,
+  latestVersion,
+  updateOffered,
+  userInitial,
+  username,
+  userRole,
+  serviceStatus,
+  serviceDotClass,
+  serviceLabel,
+  handleLogout,
+} = useNavChrome()
 
 // Track expanded states for menu items with children
 const expandedItems = ref<Set<string>>(new Set())

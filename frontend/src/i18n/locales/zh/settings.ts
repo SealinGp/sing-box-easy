@@ -69,6 +69,16 @@ export default {
   },
   about: {
     title: '关于',
+    app: 'sing-box-easy',
+    singBox: 'sing-box',
+    platform: '系统',
+    architecture: '架构',
+    kernel: '内核',
+    hostname: '主机名',
+    serviceBackend: '服务管理器',
+    cores: '{count} 核',
+    notInstalled: '未安装',
+    loadFailed: '加载系统信息失败',
   },
   toast: {
     loadFailed: '加载设置失败',

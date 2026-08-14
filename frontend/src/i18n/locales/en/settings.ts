@@ -69,6 +69,16 @@ export default {
   },
   about: {
     title: 'About',
+    app: 'sing-box-easy',
+    singBox: 'sing-box',
+    platform: 'Platform',
+    architecture: 'Architecture',
+    kernel: 'Kernel',
+    hostname: 'Hostname',
+    serviceBackend: 'Service manager',
+    cores: '{count} core | {count} cores',
+    notInstalled: 'Not installed',
+    loadFailed: 'Failed to load system information',
   },
   toast: {
     loadFailed: 'Failed to load settings',

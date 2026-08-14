@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AboutCard: typeof import('./src/components/AboutCard.vue')['default']
     Alert: typeof import('./src/components/Alert.vue')['default']
     AppUpdateCard: typeof import('./src/components/AppUpdateCard.vue')['default']
     Badge: typeof import('./src/components/Badge.vue')['default']
@@ -46,6 +47,7 @@ declare module 'vue' {
     SmartRoutingRuleWizard: typeof import('./src/components/SmartRoutingRuleWizard.vue')['default']
     TabNav: typeof import('./src/components/TabNav.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
+    Topbar: typeof import('./src/components/Topbar.vue')['default']
     V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
   }
 }

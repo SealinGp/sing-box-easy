@@ -70,6 +70,19 @@ func (c *Controller) validateConfig() error {
 	return nil
 }
 
+// BackendKind reports which init system drives sing-box on this host — one of
+// the Backend* constants. Surfaced in the UI's "About" panel so an operator can
+// tell at a glance whether lifecycle commands go through systemd, procd, or a
+// directly-spawned process.
+func (c *Controller) BackendKind() string {
+	return c.backend.Kind()
+}
+
+// SystemType reports the detected distribution family.
+func (c *Controller) SystemType() SystemType {
+	return c.systemType
+}
+
 // Status returns whether the sing-box service is currently running.
 func (c *Controller) Status() (bool, error) {
 	running, _, err := c.backend.ActiveAndPID()

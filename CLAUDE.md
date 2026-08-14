@@ -156,6 +156,7 @@ The application uses SQLite with XORM ORM for persistent storage:
 - **Editor**: Monaco (via `monaco-editor-vue3`) — kept in its own chunk by `vite.config.ts`
 - **Dev proxy**: `vite.config.ts` proxies `/api/*` to `http://localhost:5100` — match this with `server.port` in `bin/app.yml` when changing dev ports
 - **Components**: Reusable UI components in `src/components/`
+- **Navigation shell**: two layouts share one `menuItems` tree — `Sidebar.vue` everywhere, `Topbar.vue` on OpenWrt (LuCI already owns the left edge of the screen there). `Dashboard.vue` picks between them via `useDeployment`'s `isOpenWrt`, which is resolved by the router guard before the view mounts so the correct layout renders on first paint. Shared chrome (version + update badge, live service dot, signed-in user, logout) lives in `useNavChrome`
 - **Views**:
   - `views/InitWizard.vue` - Multi-step initialization (steps in `views/init-steps/`)
   - `views/Dashboard.vue` - Main dashboard with nested routes
@@ -232,7 +233,8 @@ API surface groups (registered in `routes.go`):
 - `/templates/rule-sets`
 - `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in
 - `/github/auth/status` (read), `/github/auth/device` POST/GET/DELETE `:session_id`, `/github/auth` DELETE (admin-only) — GitHub sign-in via OAuth device flow
-- `/auth/status` (public) — whether this deployment requires login. `server.auth` in app.yml: `auto` (default; login disabled on OpenWrt, enabled elsewhere) / `enabled` / `disabled`. When disabled, `AuthMiddleware` injects a synthetic admin user and the frontend hides login/profile/user management
+- `/auth/status` (public) — whether this deployment requires login, plus `system_type` (`openwrt`/`debian`/`unknown`). `server.auth` in app.yml: `auto` (default; login disabled on OpenWrt, enabled elsewhere) / `enabled` / `disabled`. When disabled, `AuthMiddleware` injects a synthetic admin user and the frontend hides login/profile/user management. Deliberately the only host detail exposed pre-auth — the frontend needs it to pick a navigation layout
+- `/system/info` — host details for the Settings "About" card: arch, CPU cores, kernel, distribution, hostname, service backend, and the sing-box + sing-box-easy versions. Collected by `app/pkg/sysinfo/`, which degrades every field to a zero value rather than failing
 
 ## Testing Notes
 

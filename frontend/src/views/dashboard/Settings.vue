@@ -3,8 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { settingsService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
-import LanguageSwitcher from '../../components/LanguageSwitcher.vue'
-import AppUpdateCard from '../../components/AppUpdateCard.vue'
+import AboutCard from '../../components/AboutCard.vue'
 import GitHubAuthCard from '../../components/GitHubAuthCard.vue'
 
 const notify = useNotify()
@@ -14,7 +13,6 @@ const loading = ref(false)
 const saving = ref(false)
 const keep = ref(10)
 const limits = ref({ min: 1, max: 100 })
-const version = __APP_VERSION__
 
 onMounted(async () => {
   await loadSettings()
@@ -52,15 +50,12 @@ const saveSettings = async () => {
     <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ $t('settings.title') }}</h2>
 
     <div class="max-w-xl space-y-6">
-      <!-- Language -->
-      <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.language.title') }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.language.desc') }}</p>
-        <LanguageSwitcher variant="full" />
-      </div>
-
-      <!-- Application update (current -> latest, version picker, progress) -->
-      <AppUpdateCard />
+      <!--
+        About: what is running and on what, plus the language picker and the
+        self-update controls. Deliberately one card — these are the things an
+        operator checks together when reporting or diagnosing a problem.
+      -->
+      <AboutCard />
 
       <!-- GitHub sign-in (lifts the 60 req/h anonymous API rate limit) -->
       <GitHubAuthCard />
@@ -97,13 +92,6 @@ const saveSettings = async () => {
         </div>
       </div>
 
-      <!-- About -->
-      <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.about.title') }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          sing-box-easy <span class="font-mono text-gray-700 dark:text-gray-300">{{ version }}</span>
-        </p>
-      </div>
     </div>
   </div>
 </template>

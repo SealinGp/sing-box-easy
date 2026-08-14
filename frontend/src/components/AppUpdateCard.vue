@@ -6,6 +6,10 @@
  * pick a version, confirm, watch progress, then reload once the restarted
  * server answers again. All shared state lives in `useAppUpdate`, so the
  * sidebar badge stays in sync with whatever happens here.
+ *
+ * `embedded` drops the standalone card chrome so the panel can live inside the
+ * Settings "About" card, which already states the running version — the
+ * redundant "current version" chip is hidden in that mode.
  */
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -13,6 +17,8 @@ import { ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon } from '@heroicons/vu
 import { useAppUpdate } from '../composables/useAppUpdate'
 import { useConfirm } from '../composables/useConfirm'
 import { useNotify } from '../composables/useNotify'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const { t } = useI18n()
 const notify = useNotify()
@@ -124,9 +130,15 @@ const runUpdate = async () => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+  <div :class="embedded ? '' : 'bg-white dark:bg-gray-800 rounded-surface shadow p-5'">
     <div class="flex items-start justify-between gap-3 mb-1">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <h3
+        :class="
+          embedded
+            ? 'text-sm font-semibold text-gray-900 dark:text-gray-100'
+            : 'text-lg font-semibold text-gray-900 dark:text-gray-100'
+        "
+      >
         {{ $t('settings.update.title') }}
       </h3>
       <button
@@ -142,7 +154,9 @@ const runUpdate = async () => {
 
     <!-- Version summary: current -> latest [Update] -->
     <div class="flex flex-wrap items-center gap-3 mb-3">
-      <div class="flex items-center gap-2">
+      <!-- The About card states the running version right above this panel,
+           so repeating it there would just be noise. -->
+      <div v-if="!embedded" class="flex items-center gap-2">
         <span class="text-xs text-gray-500 dark:text-gray-400">
           {{ $t('settings.update.currentVersion') }}
         </span>
@@ -152,7 +166,7 @@ const runUpdate = async () => {
       </div>
 
       <template v-if="latestVersion && latestVersion !== currentVersion">
-        <span class="text-gray-400 dark:text-gray-500">&rarr;</span>
+        <span v-if="!embedded" class="text-gray-400 dark:text-gray-500">&rarr;</span>
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-500 dark:text-gray-400">
             {{ $t('settings.update.latestVersion') }}

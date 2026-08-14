@@ -13,6 +13,7 @@ import { ServiceControlService } from './service'
 import { SettingsService } from './settings'
 import { GitHubAuthService } from './githubauth'
 import { SubscriptionService } from './subscription'
+import { SystemService } from './system'
 import { TemplateService } from './template'
 import { UserService } from './user'
 import { VersionService } from './version'
@@ -33,6 +34,7 @@ export { ServiceControlService } from './service'
 export { SettingsService } from './settings'
 export { GitHubAuthService } from './githubauth'
 export { SubscriptionService } from './subscription'
+export { SystemService } from './system'
 export { TemplateService } from './template'
 export { UserService } from './user'
 export { VersionService } from './version'
@@ -52,6 +54,7 @@ export const serviceControlService = new ServiceControlService(apiService)
 export const settingsService = new SettingsService(apiService)
 export const githubAuthService = new GitHubAuthService(apiService)
 export const subscriptionService = new SubscriptionService(apiService)
+export const systemService = new SystemService(apiService)
 export const templateService = new TemplateService(apiService)
 export const userService = new UserService(apiService)
 export const versionService = new VersionService(apiService)
