@@ -8,12 +8,17 @@ export const useRouteStore = defineStore('route', () => {
   const ruleSets = ref<RuleSet[]>([])
   const loading = ref(false)
 
+  // Whether a fetch has ever succeeded. Distinguishes "no rule sets configured"
+  // from "not loaded yet", which an empty array alone cannot express.
+  const ruleSetsLoaded = ref(false)
+
   // Actions for Rule Sets (shared across components)
   const fetchRuleSets = async () => {
     loading.value = true
     try {
       const { data } = await routeService.getRuleSets()
       ruleSets.value = data.rule_sets || []
+      ruleSetsLoaded.value = true
       return data.rule_sets
     } catch (err: any) {
       console.error('Failed to fetch rule sets:', err)
@@ -21,6 +26,26 @@ export const useRouteStore = defineStore('route', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  // Load once, for components that only need the list to populate a picker.
+  //
+  // `inFlight` collapses concurrent callers onto one request: the rule-set
+  // picker mounts inside a dialog that can open several times per page visit,
+  // and every mount would otherwise fire its own GET. Errors are swallowed by
+  // the caller's perspective only in that they do not reject here — fetchRuleSets
+  // already logs them, and an empty picker is a survivable degradation.
+  let inFlight: Promise<unknown> | null = null
+
+  const ensureRuleSets = async () => {
+    if (ruleSetsLoaded.value) return ruleSets.value
+    if (!inFlight) {
+      inFlight = fetchRuleSets().catch(() => undefined).finally(() => {
+        inFlight = null
+      })
+    }
+    await inFlight
+    return ruleSets.value
   }
 
   const addRuleSet = async (ruleSet: RuleSet) => {
@@ -65,10 +90,12 @@ export const useRouteStore = defineStore('route', () => {
   return {
     // State
     ruleSets,
+    ruleSetsLoaded,
     loading,
 
     // Actions
     fetchRuleSets,
+    ensureRuleSets,
     addRuleSet,
     updateRuleSet,
     deleteRuleSet

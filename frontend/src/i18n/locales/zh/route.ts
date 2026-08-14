@@ -36,9 +36,31 @@ export default {
       geoip: 'GeoIP',
       port: '端口',
     },
+    // 规则集从 route.rule_sets 中选择，而非手动输入 ——
+    // 见 components/RouteRuleMatchers.vue。
+    ruleSetLabel: '{tag}（{type} - {format}）',
+    ruleSetMissing: '{tag} —— 未配置',
+    ruleSetEmpty: '尚未配置规则集，请先在「规则集」中添加。',
+    ruleSetHelp: '选中的规则集命中任意一个即匹配。（不同类型的条件之间仍是「与」关系。）',
+    // “添加条件”行与 AND 提示 —— 内容条件与范围条件为何区别对待，
+    // 见 components/RouteRuleMatchers.vue。
+    matchers: {
+      addContent: '添加内容条件：',
+      addContext: '进一步限定：',
+    },
+    mixing: {
+      title: '同一规则中的条件是「与」关系',
+      warning:
+        '同一条规则里的规则集和内容条件必须同时满足：只有既在规则集中、又匹配内容条件的流量才会命中这条规则。若想放行规则集中的全部内容，请将内容条件留空，反之亦然。如果想要「满足其一」，请另建一条规则。按入站、协议、网络或端口限定不受影响 —— 规则集无法表达这些条件。',
+      ruleSetCollapsed: '此规则按内容条件匹配，规则集已隐藏。',
+      matchersCollapsed: '此规则按规则集匹配，内容条件已隐藏。',
+      show: '仍要显示',
+      hide: '隐藏',
+      matchersGroup: '内容条件',
+    },
     placeholders: {
       action: '选择动作',
-      ruleSet: '添加规则集标签（如 geosite-cn）',
+      ruleSet: '选择规则集',
       outbound: '选择出站',
       method: '选择方式',
       overrideAddress: '覆盖地址',
@@ -124,7 +146,7 @@ export default {
       valuesPlaceholder: {
         domain: '例如 accounts.google.com',
         domainSuffix: '例如 shopify.com',
-        ruleSet: '选择一个规则集',
+        ruleSet: '选择规则集',
       },
       action: '动作',
       outbound: '出站',

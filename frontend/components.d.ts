@@ -35,6 +35,7 @@ declare module 'vue' {
     FinalPolicy: typeof import('./src/components/FinalPolicy.vue')['default']
     GitHubAuthCard: typeof import('./src/components/GitHubAuthCard.vue')['default']
     Input: typeof import('./src/components/Input.vue')['default']
+    LabeledField: typeof import('./src/components/LabeledField.vue')['default']
     LanguageSwitcher: typeof import('./src/components/LanguageSwitcher.vue')['default']
     Loading: typeof import('./src/components/Loading.vue')['default']
     Modal: typeof import('./src/components/Modal.vue')['default']

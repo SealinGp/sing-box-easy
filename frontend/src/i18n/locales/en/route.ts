@@ -36,9 +36,33 @@ export default {
       geoip: 'GeoIP',
       port: 'Port',
     },
+    // Rule sets are picked from route.rule_sets, never typed — see
+    // components/RouteRuleMatchers.vue.
+    ruleSetLabel: '{tag} ({type} - {format})',
+    ruleSetMissing: '{tag} — not configured',
+    ruleSetEmpty: 'No rule sets configured yet. Add one under Rule Sets first.',
+    ruleSetHelp:
+      'Matches if ANY of the selected rule sets matches. (Different condition types are still combined with AND.)',
+    // The "add a condition" rows and the AND warning — see
+    // components/RouteRuleMatchers.vue for why content and context conditions
+    // are treated differently.
+    matchers: {
+      addContent: 'Add a content condition:',
+      addContext: 'Narrow by:',
+    },
+    mixing: {
+      title: 'Conditions are combined with AND',
+      warning:
+        'A rule set and content conditions in the same rule must BOTH match: only traffic that is in the rule set AND matches the content condition hits this rule. To let everything in the rule set through, leave the content conditions empty — and vice versa. Use a second rule if you meant "either one". Narrowing by inbound, protocol, network or port is unaffected — a rule set cannot express those.',
+      ruleSetCollapsed: 'This rule matches by content conditions. Rule set hidden.',
+      matchersCollapsed: 'This rule matches by rule set. Content conditions hidden.',
+      show: 'Show anyway',
+      hide: 'Hide',
+      matchersGroup: 'Content conditions',
+    },
     placeholders: {
       action: 'Select action',
-      ruleSet: 'Add rule-set tags (e.g., geosite-cn)',
+      ruleSet: 'Select rule sets',
       outbound: 'Select outbound',
       method: 'Select method',
       overrideAddress: 'Override address',
@@ -119,12 +143,12 @@ export default {
       values: {
         domain: 'Domains',
         domainSuffix: 'Domain Suffixes',
-        ruleSet: 'Rule Set',
+        ruleSet: 'Rule Sets',
       },
       valuesPlaceholder: {
         domain: 'e.g. accounts.google.com',
         domainSuffix: 'e.g. shopify.com',
-        ruleSet: 'Select a rule set',
+        ruleSet: 'Select rule sets',
       },
       action: 'Action',
       outbound: 'Outbound',

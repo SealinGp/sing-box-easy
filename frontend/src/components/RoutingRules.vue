@@ -66,8 +66,14 @@ const editingRule = ref<{ index: number; rule: RouteRule } | null>(null)
 const showWizard = ref(false)
 function openLegacyAdd() {
   showWizard.value = false
+  matchersKey.value++
   showAddRuleDialog.value = true
 }
+
+// Bumped on every dialog open; used as the matchers block's :key so it remounts
+// and re-derives which matching style this rule uses. Without it, reopening the
+// Add dialog would inherit the collapse state left behind by the previous rule.
+const matchersKey = ref(0)
 
 // Form data
 const ruleForm = ref<RouteRule>({ action: 'route', outbound: '' })
@@ -400,6 +406,7 @@ function startEditRule(index: number, rule: RouteRule) {
     sniffer: rule.sniffer ? (Array.isArray(rule.sniffer) ? [...rule.sniffer] : rule.sniffer) : undefined,
   }
 
+  matchersKey.value++
   editingRule.value = { index, rule: ruleCopy }
 }
 
@@ -596,8 +603,10 @@ onMounted(() => {
           </div>
         </template>
 
-        <!-- Common matching criteria fields (reusable, renders anywhere) -->
-        <RouteRuleMatchers v-model="activeRule" />
+        <!-- Common matching criteria fields (reusable, renders anywhere).
+             Remounted per dialog open (:key) so the collapse state is decided
+             from the rule as loaded, not from the previous edit. -->
+        <RouteRuleMatchers :key="matchersKey" v-model="activeRule" />
       </div>
 
       <template #footer>

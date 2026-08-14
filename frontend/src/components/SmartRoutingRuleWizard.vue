@@ -14,7 +14,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue'
 import { storeToRefs } from 'pinia'
-import { Dialog, Select } from '../volt'
+import { Dialog, MultiSelect, Select } from '../volt'
 import ChipsField from './ChipsField.vue'
 import Button from './Button.vue'
 import type { RouteRule, DNSRule } from '../types/api'
@@ -57,7 +57,12 @@ const { dnsServers } = storeToRefs(dnsStore)
 const step = ref(1)
 const matchType = ref<SmartMatchType>('domain_suffix')
 const domainValues = ref<string[]>([]) // for domain / domain_suffix (Chips)
-const ruleSetValue = ref<string>('') // for rule_set (single Select)
+// `rule_set` is a list on the wire and matches if ANY entry matches, so this is
+// a multi-select. It used to be a single Select, which quietly made the wizard
+// less capable than the rule it writes: routing "reject ads" normally means
+// naming three or four blocklists in one rule, and a single-value picker forced
+// that into three or four separate rules.
+const ruleSetValues = ref<string[]>([])
 const action = ref<'route' | 'reject'>('route')
 const outbound = ref<string>('')
 const submitting = ref(false)
@@ -83,8 +88,20 @@ const outboundOptions = computed(() =>
   outbounds.value.map((o) => ({ label: o.tag || '', value: o.tag || '' })),
 )
 
+// Same labelling as the edit dialog's picker (RouteRuleMatchers): a bare tag
+// doesn't say whether the set is local or remote, which is the first thing you
+// need when two tags look alike.
 const ruleSetOptions = computed(() =>
-  ruleSets.value.filter((r) => r.tag).map((r) => ({ label: r.tag, value: r.tag })),
+  ruleSets.value
+    .filter((r) => r.tag)
+    .map((r) => ({
+      label: t('route.rules.ruleSetLabel', {
+        tag: r.tag,
+        type: r.type || 'local',
+        format: r.format || 'source',
+      }),
+      value: r.tag,
+    })),
 )
 
 const dnsServerOptions = computed(() =>
@@ -93,9 +110,7 @@ const dnsServerOptions = computed(() =>
 
 // --- derived ---
 const matchValues = computed<string[]>(() =>
-  matchType.value === 'rule_set'
-    ? (ruleSetValue.value ? [ruleSetValue.value] : [])
-    : domainValues.value,
+  matchType.value === 'rule_set' ? ruleSetValues.value : domainValues.value,
 )
 
 const needsOutbound = computed(() => action.value === 'route')
@@ -125,8 +140,10 @@ function resetState() {
   matchType.value = props.seedMatchType ?? 'domain_suffix'
   domainValues.value =
     props.seedMatchType && props.seedMatchType !== 'rule_set' ? [...(props.seedValues ?? [])] : []
-  ruleSetValue.value =
-    props.seedMatchType === 'rule_set' ? (props.seedValues?.[0] ?? '') : ''
+  // Seeding keeps every value now, not just the first — a caller handing over
+  // several rule-set tags used to silently lose all but one.
+  ruleSetValues.value =
+    props.seedMatchType === 'rule_set' ? [...(props.seedValues ?? [])] : []
   action.value = (props.seedAction as 'route' | 'reject') ?? 'route'
   outbound.value = ''
   dnsEnabled.value = true
@@ -165,7 +182,7 @@ watch(visible, (open) => {
 // Reset the value inputs when the user switches match type (keeps union-only).
 watch(matchType, () => {
   domainValues.value = []
-  ruleSetValue.value = ''
+  ruleSetValues.value = []
 })
 
 // When the DNS step becomes relevant, pre-select the recommended clean server.
@@ -289,15 +306,20 @@ async function submit() {
 
       <div v-if="matchType === 'rule_set'">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('route.rules.smart.values.ruleSet') }}</label>
-        <Select
-          v-model="ruleSetValue"
+        <MultiSelect
+          v-model="ruleSetValues"
           :options="ruleSetOptions"
           optionLabel="label"
           optionValue="value"
+          display="chip"
           filter
           :placeholder="t('route.rules.smart.valuesPlaceholder.ruleSet')"
+          :emptyMessage="t('route.rules.ruleSetEmpty')"
           class="w-full"
         />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {{ t('route.rules.ruleSetHelp') }}
+        </p>
       </div>
 
       <ChipsField
