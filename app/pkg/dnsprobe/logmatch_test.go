@@ -247,3 +247,50 @@ func TestNewLines(t *testing.T) {
 		})
 	}
 }
+
+func TestRouteActionServerTag(t *testing.T) {
+	cases := []struct {
+		action string
+		want   string
+	}{
+		{"route(dns_router)", "dns_router"},
+		{"route(dns_google)", "dns_google"},
+		// A predefined or reject action never reaches a server.
+		{"predefined(NOERROR,a.com. 300 IN A 1.2.3.4)", ""},
+		{"reject(default)", ""},
+		{"", ""},
+		{"route-options(...)", ""},
+	}
+
+	for _, c := range cases {
+		if got := routeActionServerTag(c.action); got != c.want {
+			t.Errorf("routeActionServerTag(%q) = %q, want %q", c.action, got, c.want)
+		}
+	}
+}
+
+// sing-box's logged decision is authoritative, so it must win over the offline
+// reconstruction — which may have predicted an entirely different rule.
+func TestEffectiveServerTag(t *testing.T) {
+	attribution := Attribution{Server: "dns_predicted"}
+
+	t.Run("logged route wins over prediction", func(t *testing.T) {
+		got := effectiveServerTag([]LoggedMatch{{Action: "route(dns_logged)"}}, attribution)
+		if got != "dns_logged" {
+			t.Errorf("got %q, want dns_logged", got)
+		}
+	})
+
+	t.Run("logged predefined means no server", func(t *testing.T) {
+		got := effectiveServerTag([]LoggedMatch{{Action: "predefined(NOERROR)"}}, attribution)
+		if got != "" {
+			t.Errorf("got %q, want empty — a predefined answer reaches no server", got)
+		}
+	})
+
+	t.Run("falls back to the prediction", func(t *testing.T) {
+		if got := effectiveServerTag(nil, attribution); got != "dns_predicted" {
+			t.Errorf("got %q, want dns_predicted", got)
+		}
+	})
+}

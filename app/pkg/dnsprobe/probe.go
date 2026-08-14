@@ -49,6 +49,11 @@ type Result struct {
 	// LogError carries the underlying message when LogStatus is "read_error".
 	LogError string `json:"log_error,omitempty"`
 
+	// ResolvedServer is the DNS server the query used, with its address —
+	// the tag alone does not answer "where did this actually go". Nil when a
+	// rule answered locally (predefined/hosts) so no server was involved.
+	ResolvedServer *ServerDetail `json:"resolved_server,omitempty"`
+
 	// Servers holds each directly reachable upstream's answer, for comparison.
 	Servers []ServerResult `json:"servers"`
 	// Disagreement is true when two reachable servers returned different
@@ -135,6 +140,11 @@ func Run(cfg *option.Options, opts Options) (*Result, error) {
 	if opts.Tailer != nil {
 		result.LoggedMatches, result.LogStatus, result.LogError =
 			collectLoggedMatches(opts.Tailer, before, result.Attribution)
+	}
+
+	if dns != nil {
+		result.ResolvedServer = DescribeServer(
+			dns.Servers, effectiveServerTag(result.LoggedMatches, result.Attribution))
 	}
 
 	if opts.CompareServers && dns != nil {

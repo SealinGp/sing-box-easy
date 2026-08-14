@@ -79,12 +79,26 @@ export interface DnsServerResult {
   elapsed_ms: number
 }
 
+/** The DNS server a query was routed to, resolved against the config. */
+export interface DnsServerDetail {
+  tag: string
+  type: string
+  /** host:port; empty for local server types (hosts, fakeip). */
+  address?: string
+  /** Outbound the server is reached through, when set. */
+  detour?: string
+  /** False when the tag matches no configured server. */
+  found: boolean
+}
+
 export interface DnsProbeResult {
   domain: string
   query_type: string
   live?: DnsLiveResult
   live_error?: string
   attribution: DnsAttribution
+  /** Which server the query used, with its address. Absent when answered locally. */
+  resolved_server?: DnsServerDetail
   logged_matches: DnsLoggedMatch[]
   /** Machine-readable note about the log evidence; translated by the UI. */
   log_status?: '' | 'no_lines' | 'ambiguous' | 'read_error'

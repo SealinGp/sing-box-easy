@@ -11,6 +11,8 @@ export default {
   confirmed: 'From sing-box’s own decision log',
   predicted: 'Predicted — an unevaluated rule may have matched first',
   sentToServer: 'Sent to DNS server',
+  serverMissing: 'no server with this tag is configured',
+  viaDetour: 'via {detour}',
   answeredLocally: 'Answered without an upstream',
   answeredLocallyNote: 'The rule produced the answer itself, so no DNS server was queried.',
   answered: 'Answered in {ms} ms',

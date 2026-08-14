@@ -130,14 +130,23 @@ const steps = computed<Step[]>(() => {
       title: t('dnsTimeline.answeredLocally'),
       note: t('dnsTimeline.answeredLocallyNote'),
     })
-  } else if (attribution.server) {
+  } else if (result.resolved_server) {
+    const server = result.resolved_server
+    // The tag alone does not say where the query went, which is the whole
+    // question — so the address is shown beside it.
+    const target = server.address ? `${server.tag}  ${server.type} ${server.address}` : server.tag
+    const notes = [
+      server.found ? '' : t('dnsTimeline.serverMissing'),
+      server.detour ? t('dnsTimeline.viaDetour', { detour: server.detour }) : '',
+      attribution.strategy,
+    ].filter(Boolean)
     list.push({
       key: 'source',
       icon: ServerStackIcon,
-      confidence: 'neutral',
+      confidence: server.found ? 'neutral' : 'problem',
       title: t('dnsTimeline.sentToServer'),
-      detail: attribution.server,
-      note: attribution.strategy || undefined,
+      detail: target,
+      note: notes.join(' · ') || undefined,
     })
   }
 

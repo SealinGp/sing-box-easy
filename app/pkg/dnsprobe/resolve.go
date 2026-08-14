@@ -120,28 +120,13 @@ func QueryServers(servers []option.DNSServerOptions, name, qType string) []Serve
 // would need their own transports for little extra signal.
 func dialTarget(server option.DNSServerOptions) (address string, useTLS bool, detour string, unsupportedType string) {
 	switch server.Type {
-	case "udp", "tcp":
-		options, ok := server.Options.(*option.RemoteDNSServerOptions)
-		if !ok {
+	case "udp", "tcp", "tls":
+		options := remoteOptions(server)
+		address := serverAddress(server.Type, options)
+		if options == nil || address == "" {
 			return "", false, "", server.Type
 		}
-		port := options.ServerPort
-		if port == 0 {
-			port = 53
-		}
-		return net.JoinHostPort(options.Server, fmt.Sprint(port)), false,
-			options.Detour, ""
-	case "tls":
-		options, ok := server.Options.(*option.RemoteTLSDNSServerOptions)
-		if !ok {
-			return "", false, "", server.Type
-		}
-		port := options.ServerPort
-		if port == 0 {
-			port = 853
-		}
-		return net.JoinHostPort(options.Server, fmt.Sprint(port)), true,
-			options.Detour, ""
+		return address, server.Type == "tls", options.Detour, ""
 	default:
 		return "", false, "", server.Type
 	}

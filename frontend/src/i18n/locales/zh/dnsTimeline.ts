@@ -11,6 +11,8 @@ export default {
   confirmed: '来自 sing-box 自身的判定日志',
   predicted: '推测结果——可能有无法判断的规则先行命中',
   sentToServer: '发送到 DNS 服务器',
+  serverMissing: '配置中没有此标签的服务器',
+  viaDetour: '经由 {detour}',
   answeredLocally: '未经上游即已应答',
   answeredLocallyNote: '该规则自行生成了应答，未查询任何 DNS 服务器。',
   answered: '{ms} 毫秒内返回',
