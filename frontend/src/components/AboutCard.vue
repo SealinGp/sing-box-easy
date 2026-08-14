@@ -101,8 +101,9 @@ const rows = computed(() => {
       <div class="animate-spin rounded-pill h-5 w-5 border-b-2 border-primary-600"></div>
     </div>
     <!--
-      One column, not two: at this card's width a two-column split leaves each
-      value about 270px, which truncates hostnames and long kernel strings.
+      One row per fact, label left and value right. A two-column split was
+      tried and rejected: the card sits in a grid column roughly 460px wide, so
+      halving it truncates hostnames and long kernel strings.
     -->
     <dl v-else class="space-y-2">
       <div v-for="row in rows" :key="row.key" class="flex items-baseline justify-between gap-6 min-w-0">
