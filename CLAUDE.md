@@ -76,15 +76,16 @@ bunx <tool>
 - `app/pkg/config/` - sing-box config management with validation and rollback
 - `app/pkg/configversion/` - DB-backed config version history store (XORM) + retention cleaner (used by `config.Manager` snapshots and the rollback endpoints)
 - `app/pkg/settings/` - Application settings persistence (XORM); served via `GET/PUT /settings`
-- `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart)
+- `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart). A `Backend` interface (`backend.go`) abstracts the init system, detected in order: `systemd` (systemctl + journald), `procd` (OpenWrt `/etc/init.d/sing-box` + logread), `process` (direct spawn/signal). The `Controller` owns config validation and delegates lifecycle to the backend
+- `app/webui/` - frontend bundle embedded into the binary via `go:embed` (release builds copy the vite dist in before compiling; a committed placeholder covers dev builds). SPA serving prefers an on-disk `./dist`, falling back to the embedded bundle — single-binary installs (OpenWrt ipk) ship no dist directory
 - `app/pkg/process/` - Process discovery and signaling helpers (pgrep/SIGTERM/SIGHUP)
 - `app/pkg/database/` - SQLite database management, migrations, and JSON import
 - `app/pkg/subscription/` - Subscription CRUD + cron AutoUpdater (database-backed)
 - `app/pkg/noderules/` - Outbound Node Rules: Filters (keyword/tag-matched node buckets) + Groups (sets of Filters). Pure matcher + XORM manager; `BuildSpecs`/`config.BuildGroupOutbounds` materialize selector/urltest groups on each subscription update
 - `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching
-- `app/pkg/installer/` - sing-box and dashboard installation (task-based)
-- `app/pkg/appupdate/` - sing-box-easy self-update: GitHub release listing (cached), tarball download + sha256 verification, atomic binary/`dist` swap with rollback, then `execve` restart. Running version comes from the `-X ...appupdate.Version` ldflag stamped by `.github/workflows/release.yml`, falling back to a `.sing-box-easy-version` file written on each update. GitHub calls are authenticated with the token issued by `githubauth` sign-in (or the `GITHUB_TOKEN` env var) — 60 req/h anonymous vs 5000 req/h authenticated — and use ETag/`If-None-Match` conditional requests, which return 304 and cost no rate-limit quota
+- `app/pkg/installer/` - sing-box and dashboard installation (task-based). `buildInstallCommand` is platform-aware: official install script (curl) on Debian/other Linux, `opkg install sing-box` on OpenWrt (pinned versions download the static release tarball with BusyBox wget)
+- `app/pkg/appupdate/` - sing-box-easy self-update: GitHub release listing (cached), tarball download + sha256 verification, atomic binary/`dist` swap with rollback, then `execve` restart. Binary-only packages (embedded frontend) skip the dist swap. On OpenWrt ipk installs (detected via `/usr/lib/opkg/status`) tarball self-update is refused — updates go through opkg instead. Running version comes from the `-X ...appupdate.Version` ldflag stamped by `.github/workflows/release.yml`, falling back to a `.sing-box-easy-version` file written on each update. GitHub calls are authenticated with the token issued by `githubauth` sign-in (or the `GITHUB_TOKEN` env var) — 60 req/h anonymous vs 5000 req/h authenticated — and use ETag/`If-None-Match` conditional requests, which return 304 and cost no rate-limit quota
 - `app/pkg/logger/` - Zap logger setup + Hertz logger adapter
 
 **Protocol Parsers** (`app/pkg/sublink/protocol/`):
