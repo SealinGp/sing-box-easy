@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -18,6 +19,14 @@ type Controller struct {
 	singBoxPath   string
 	systemType    SystemType
 	backend       Backend
+
+	// lifecycleMu serializes the state-changing operations
+	// (Start/Stop/Restart/Reload/ForceStop) end to end. Without it, two
+	// concurrent Starts can both observe "not running" and both spawn a
+	// process — the second overwriting the first one's handle, leaving an
+	// untracked sing-box behind. Read-only calls (Status/Info/TailLogs) stay
+	// lock-free so a slow stop never blocks the status endpoint.
+	lifecycleMu sync.Mutex
 }
 
 // NewController creates a new service controller.
@@ -69,6 +78,9 @@ func (c *Controller) Status() (bool, error) {
 
 // Start validates the config and starts the sing-box service.
 func (c *Controller) Start() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
+
 	logger.Info("Starting sing-box service",
 		zap.String("system_type", string(c.systemType)),
 		zap.String("backend", c.backend.Kind()),
@@ -94,12 +106,16 @@ func (c *Controller) Start() error {
 // Stop stops the sing-box service. Stopping an already-stopped service is not
 // an error.
 func (c *Controller) Stop() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	return c.backend.Stop()
 }
 
 // Restart validates the config and restarts the sing-box service, starting it
 // if it was stopped.
 func (c *Controller) Restart() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	if err := c.validateConfig(); err != nil {
 		return err
 	}
@@ -110,6 +126,8 @@ func (c *Controller) Restart() error {
 // backend supports it (SIGHUP / ExecReload / procd reload), falling back to a
 // restart otherwise.
 func (c *Controller) Reload() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	if err := c.validateConfig(); err != nil {
 		return err
 	}
@@ -118,6 +136,8 @@ func (c *Controller) Reload() error {
 
 // ForceStop force stops the sing-box service using SIGKILL.
 func (c *Controller) ForceStop() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	return c.backend.ForceStop()
 }
 

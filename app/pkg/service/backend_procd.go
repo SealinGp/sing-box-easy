@@ -83,6 +83,12 @@ func (b *procdBackend) Restart() error {
 // Reload tries the init script's reload action (procd scripts commonly map it
 // to SIGHUP via reload_service), falling back to a full restart when the
 // script does not support it.
+//
+// Reload-while-stopped semantics are delegated to the out-of-tree init
+// script: rc.common's default reload falls back to restart, and the OpenWrt
+// sing-box package's reload_service restarts a stopped instance, so a reload
+// on a stopped service brings it up rather than erroring — matching the
+// systemd backend's reload-or-restart behavior.
 func (b *procdBackend) Reload() error {
 	if err := b.initd("reload"); err != nil {
 		logger.Warn("procd reload failed, falling back to restart", zap.Error(err))

@@ -33,6 +33,8 @@ func mustResolve(p string) string {
 	if err != nil {
 		// Fall back to the cleaned relative path; static serving still works,
 		// but containment checks are slightly weaker.
+		logger.L.Warn("Failed to resolve static root to an absolute path; using relative path",
+			zap.String("path", p), zap.Error(err))
 		return filepath.Clean(p)
 	}
 	return abs

@@ -19,8 +19,10 @@ import (
 // ProcessManager and signals it by PID. Used when neither systemd nor a procd
 // init script manages sing-box.
 //
-// HTTP endpoints can call Start/Stop/Restart/ForceStop concurrently, so all
-// access to pm (the live process handle) is serialized via mu.
+// mu guards only the pm field (the live process handle). Full lifecycle
+// sequences ("is it running → spawn") are NOT serialized here — the
+// Controller's lifecycleMu does that across all backends, so concurrent
+// Start/Stop/Restart calls never interleave.
 type processBackend struct {
 	systemType  SystemType
 	singBoxPath string
