@@ -44,6 +44,8 @@ export interface DnsAttribution {
   matched_index: number
   server: string
   strategy: string
+  /** Which key supplied `strategy`: the matched rule, or dns.strategy. */
+  strategy_source?: 'rule' | 'default'
   final_used: boolean
   /**
    * False when an unevaluated rule sits ahead of the decision — it could have

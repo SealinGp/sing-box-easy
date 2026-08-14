@@ -38,6 +38,15 @@ interface Step {
   icon: any
   confidence: Confidence
   title: string
+  /**
+   * The config key this step came from, e.g. `dns.rules[0]` or `dns.final`.
+   * Not translated — it is a literal path into the user's config.
+   *
+   * This is what makes the timeline stand on its own: the Overview card shows
+   * it without the rule ladder or the flow diagram beside it, so a step that
+   * cannot name its own source leaves the reader with nowhere to look.
+   */
+  source?: string
   /** Primary value, rendered monospace. */
   detail?: string
   /** Secondary explanation. */
@@ -76,6 +85,7 @@ const steps = computed<Step[]>(() => {
     icon: ArrowRightCircleIcon,
     confidence: unevaluated > 0 ? 'predicted' : 'neutral',
     title: t('dnsTimeline.rulesChecked', { count: rules.length }, rules.length),
+    source: 'dns.rules',
     note: unevaluated > 0 ? t('dnsTimeline.someUnevaluated', { count: unevaluated }) : undefined,
   })
 
@@ -89,6 +99,7 @@ const steps = computed<Step[]>(() => {
         logged.config_index >= 0
           ? t('dnsTimeline.matchedRule', { index: logged.config_index })
           : t('dnsTimeline.matchedRuleUnknownIndex'),
+      source: logged.config_index >= 0 ? `dns.rules[${logged.config_index}]` : 'dns.rules',
       detail: logged.description || undefined,
       note: t('dnsTimeline.confirmed'),
     })
@@ -99,6 +110,7 @@ const steps = computed<Step[]>(() => {
       icon: attribution.exact ? CheckCircleIcon : QuestionMarkCircleIcon,
       confidence: attribution.exact ? 'neutral' : 'predicted',
       title: t('dnsTimeline.matchedRule', { index: attribution.matched_index }),
+      source: `dns.rules[${attribution.matched_index}]`,
       detail: rule?.summary,
       note: attribution.exact ? undefined : t('dnsTimeline.predicted'),
     })
@@ -108,7 +120,9 @@ const steps = computed<Step[]>(() => {
       icon: attribution.exact ? ArrowRightCircleIcon : QuestionMarkCircleIcon,
       confidence: attribution.exact ? 'neutral' : 'predicted',
       title: t('dnsTimeline.noRuleMatched'),
-      note: attribution.exact ? t('dnsTimeline.usesFinal') : t('dnsTimeline.predicted'),
+      source: 'dns.final',
+      detail: t('dnsTimeline.usesFinal'),
+      note: attribution.exact ? undefined : t('dnsTimeline.predicted'),
     })
   }
 
@@ -128,6 +142,7 @@ const steps = computed<Step[]>(() => {
       icon: ServerStackIcon,
       confidence: 'neutral',
       title: t('dnsTimeline.answeredLocally'),
+      source: matchedRule ? `dns.rules[${matchedRule.index}].action` : undefined,
       note: t('dnsTimeline.answeredLocallyNote'),
     })
   } else if (result.resolved_server) {
@@ -135,16 +150,23 @@ const steps = computed<Step[]>(() => {
     // The tag alone does not say where the query went, which is the whole
     // question — so the address is shown beside it.
     const target = server.address ? `${server.tag}  ${server.type} ${server.address}` : server.tag
+    // The strategy names the key it came from, so "ipv4_only" is traceable to
+    // either the rule that set it or the global dns.strategy default.
+    const strategyKey =
+      attribution.strategy_source === 'rule' && attribution.matched_index >= 0
+        ? `dns.rules[${attribution.matched_index}].strategy`
+        : 'dns.strategy'
     const notes = [
       server.found ? '' : t('dnsTimeline.serverMissing'),
       server.detour ? t('dnsTimeline.viaDetour', { detour: server.detour }) : '',
-      attribution.strategy,
+      attribution.strategy ? `${strategyKey} = ${attribution.strategy}` : '',
     ].filter(Boolean)
     list.push({
       key: 'source',
       icon: ServerStackIcon,
       confidence: server.found ? 'neutral' : 'problem',
       title: t('dnsTimeline.sentToServer'),
+      source: `dns.servers[${server.tag}]`,
       detail: target,
       note: notes.join(' · ') || undefined,
     })
@@ -224,7 +246,19 @@ const markerClass = (confidence: Confidence) => {
     </template>
 
     <template #content="{ item }">
-      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
+      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
+        <!--
+          The config key this step came from. Literal, never translated: it is
+          a path the reader can search for in their own config.
+        -->
+        <code
+          v-if="item.source"
+          class="px-1.5 py-0.5 rounded-control bg-gray-100 dark:bg-gray-700 text-[11px] font-mono text-gray-500 dark:text-gray-400"
+        >
+          {{ item.source }}
+        </code>
+      </div>
 
       <p v-if="item.detail" class="mt-0.5 text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
         {{ item.detail }}

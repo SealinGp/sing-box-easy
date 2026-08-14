@@ -59,6 +59,11 @@ type Attribution struct {
 	// Strategy the effective domain strategy.
 	Server   string `json:"server"`
 	Strategy string `json:"strategy"`
+	// StrategySource says which config key supplied Strategy: "rule" when the
+	// matched rule set its own, "default" when it came from dns.strategy.
+	// Without this the UI cannot name the key a value came from, which is the
+	// difference between showing a setting and explaining it.
+	StrategySource string `json:"strategy_source,omitempty"`
 	// FinalUsed reports that no rule matched and dns.final applies.
 	FinalUsed bool `json:"final_used"`
 	// Exact is true only when the verdict cannot be wrong: every rule ahead
@@ -98,6 +103,9 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 			result.MatchedIndex = i
 			result.Server = evaluation.Server
 			result.Strategy = evaluation.Strategy
+			if evaluation.Strategy != "" {
+				result.StrategySource = "rule"
+			}
 			decided = true
 		case MatchStateUnevaluated:
 			// Cannot rule it out, so everything after this point is uncertain.
@@ -112,6 +120,9 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 	}
 	if result.Strategy == "" {
 		result.Strategy = dns.Strategy.String()
+		if result.Strategy != "" {
+			result.StrategySource = "default"
+		}
 	}
 
 	return result
