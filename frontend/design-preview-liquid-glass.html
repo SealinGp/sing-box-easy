@@ -3,1012 +3,1673 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sing Box Easy - Liquid Glass Design Preview</title>
+  <title>Sing Box Easy — Liquid Glass Design Preview</title>
+  <!--
+    A static mirror of the shipped design system. Open it in a browser to see
+    every surface, control, and state on one page.
+
+    RULES FOR THIS FILE
+    ───────────────────
+    1. Every value below is copied from `src/style/tokens.css`. If a token
+       changes there, change it here and in DESIGN.md. A preview that disagrees
+       with the app is worse than no preview — an earlier revision of this file
+       showed pill-shaped buttons and inputs while the app shipped 10px
+       controls, and people built new screens from the picture.
+    2. It follows `prefers-color-scheme` in both directions, exactly like the
+       app: light values at `:root`, dark values re-declared at `:root` inside
+       the media query. There is no manual toggle in the app, so there is none
+       here.
+    3. It is hand-written CSS, NOT Tailwind. Class names here are local to the
+       preview; the app spells the same thing as `rounded-control`,
+       `shadow-surface`, and so on. Each block notes the utility it mirrors.
+  -->
   <style>
+    /* ══════════════════════════════════════════════════════════════════════
+       TOKENS — mirrors src/style/tokens.css
+       ══════════════════════════════════════════════════════════════════════ */
     :root {
-      color-scheme: dark;
-      --bg-0: #06080b;
-      --bg-1: #10151b;
-      --bg-2: #18202a;
-      --glass-0: rgba(255, 255, 255, 0.07);
-      --glass-1: rgba(255, 255, 255, 0.11);
-      --glass-2: rgba(255, 255, 255, 0.16);
-      --glass-dark: rgba(6, 9, 13, 0.62);
-      --stroke-0: rgba(255, 255, 255, 0.12);
-      --stroke-1: rgba(255, 255, 255, 0.22);
-      --text-0: #f8fafc;
-      --text-1: #dbe4ef;
-      --text-2: #91a0b3;
-      --text-3: #617085;
-      --primary: #1575ff;
-      --primary-2: #6ba5ff;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --info: #38bdf8;
-      --radius-xs: 10px;
-      --radius-sm: 14px;
-      --radius-md: 18px;
-      --radius-lg: 24px;
-      --radius-xl: 32px;
-      --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.38);
-      --shadow-blue: 0 18px 50px rgba(21, 117, 255, 0.28);
-      --blur: blur(28px) saturate(1.3);
-      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light dark;
+
+      /* ── Brand: Liquid Blue ─────────────────────────────────────────── */
+      --color-primary: #1575ff;
+      --color-primary-hover: #0f63df;
+      --color-primary-light: #6ba5ff;
+      --color-primary-dark: #0f4eb8;
+
+      --color-primary-50: #eff6ff;
+      --color-primary-100: #dbeafe;
+      --color-primary-200: #bfdbfe;
+      --color-primary-300: #93c5fd;
+      --color-primary-400: #5da3ff;
+      --color-primary-500: #3b87ff;
+      --color-primary-600: #1575ff;
+      --color-primary-700: #0f63df;
+      --color-primary-800: #0f4eb8;
+      --color-primary-900: #123f8f;
+      --color-primary-950: #0d2757;
+
+      /* ── Status ─────────────────────────────────────────────────────── */
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-info: #06b6d4;
+
+      /* ── Surfaces & text ────────────────────────────────────────────── */
+      --color-bg-primary: #eef3f8;
+      --color-bg-tertiary: rgba(241, 245, 249, 0.82);
+      --color-text-primary: #111827;
+      --color-text-secondary: #6b7280;
+      --color-text-tertiary: #9ca3af;
+      --color-text-inverse: #ffffff;
+      --color-border: rgba(148, 163, 184, 0.28);
+
+      /* ── Radius: three tokens, no exceptions ────────────────────────── */
+      --radius-control: 0.625rem; /* 10px — buttons, inputs, chips        */
+      --radius-surface: 1rem;     /* 16px — cards, panels, modals         */
+      --radius-pill: 9999px;      /*      — badges, nav rows, icon buttons */
+
+      /* ── Elevation: two levels ──────────────────────────────────────── */
+      --shadow-surface: 0 8px 22px rgba(15, 23, 42, 0.045);
+      --shadow-surface-hover: 0 12px 28px rgba(15, 23, 42, 0.065);
+      --shadow-float: 0 12px 28px rgba(15, 23, 42, 0.1);
+      --shadow-float-lg: 0 24px 60px rgba(15, 23, 42, 0.16);
+      --shadow-focus: 0 0 0 3px rgba(21, 117, 255, 0.18);
+
+      /* ── Liquid glass ───────────────────────────────────────────────── */
+      --glass-bg: rgba(255, 255, 255, 0.84);
+      --glass-bg-strong: rgba(255, 255, 255, 0.92);
+      --glass-border-muted: rgba(148, 163, 184, 0.24);
+      --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+      --glass-blur: blur(24px) saturate(1.25);
+
+      /* ── Form control surfaces: tinted AWAY from the card behind ────── */
+      --control-bg: rgba(255, 255, 255, 0.9);
+      --control-bg-hover: rgba(255, 255, 255, 1);
+      --control-bg-disabled: rgba(226, 232, 240, 0.6);
+      --control-border: rgba(100, 116, 139, 0.35);
+      --control-border-hover: rgba(100, 116, 139, 0.55);
+      --control-placeholder: #94a3b8;
+      --control-text: #111827;
+
+      /* Preview-only helpers (not app tokens). */
+      --nav-text: #172033;
+      --nav-muted: #64748b;
+      --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
+        rgba(255, 255, 255, 0.82);
+      --nav-border: rgba(255, 255, 255, 0.58);
+      --nav-hover: rgba(255, 255, 255, 0.4);
+      --nav-quiet: rgba(255, 255, 255, 0.35);
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+        'Noto Sans', sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --easing: cubic-bezier(0.32, 0.72, 0, 1);
     }
 
-    * {
-      box-sizing: border-box;
+    /*
+     * Dark mode. A plain `:root` override inside the media query — NOT a second
+     * token block. Tailwind v4 hoists `@theme` out of any at-rule, so in the app
+     * a `@media { @theme {} }` silently overwrites the light values for
+     * everyone. Mirroring the structure here keeps the two files comparable.
+     */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg-primary: #06080b;
+        --color-bg-tertiary: rgba(30, 41, 59, 0.62);
+        --color-text-primary: #f1f5f9;
+        --color-text-secondary: #cbd5e1;
+        --color-text-tertiary: #94a3b8;
+        --color-text-inverse: #0f172a;
+        --color-border: rgba(255, 255, 255, 0.12);
+
+        --shadow-surface: 0 10px 24px rgba(0, 0, 0, 0.18);
+        --shadow-surface-hover: 0 14px 32px rgba(0, 0, 0, 0.24);
+        --shadow-float: 0 14px 32px rgba(0, 0, 0, 0.36);
+        --shadow-float-lg: 0 30px 70px rgba(0, 0, 0, 0.46);
+        --shadow-focus: 0 0 0 3px rgba(107, 165, 255, 0.26);
+
+        --glass-bg: rgba(10, 15, 22, 0.84);
+        --glass-bg-strong: rgba(14, 20, 29, 0.94);
+        --glass-border-muted: rgba(255, 255, 255, 0.13);
+        --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+        --control-bg: rgba(255, 255, 255, 0.06);
+        --control-bg-hover: rgba(255, 255, 255, 0.1);
+        --control-bg-disabled: rgba(255, 255, 255, 0.03);
+        --control-border: rgba(255, 255, 255, 0.22);
+        --control-border-hover: rgba(255, 255, 255, 0.34);
+        --control-placeholder: #64748b;
+        --control-text: #f8fafc;
+
+        --nav-text: #f4f8ff;
+        --nav-muted: #a9b8cc;
+        --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
+          rgba(9, 14, 21, 0.94);
+        --nav-border: rgba(255, 255, 255, 0.14);
+        --nav-hover: rgba(255, 255, 255, 0.1);
+        --nav-quiet: rgba(255, 255, 255, 0.08);
+      }
     }
 
-    html,
-    body {
+    * { box-sizing: border-box; }
+
+    html, body {
       min-height: 100%;
       margin: 0;
       font-family: var(--font);
-      background: var(--bg-0);
-      color: var(--text-0);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      line-height: 1.5;
     }
 
-    body {
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -3;
+    /* ══════════════════════════════════════════════════════════════════════
+       BACKDROP — mirrors `.liquid-app` in src/style/glass.css
+       ══════════════════════════════════════════════════════════════════════ */
+    .liquid-app {
+      position: relative;
+      isolation: isolate;
+      min-height: 100vh;
       background:
-        linear-gradient(115deg, rgba(8, 145, 178, 0.62), transparent 31%),
-        linear-gradient(245deg, rgba(245, 158, 11, 0.42), transparent 34%),
-        linear-gradient(180deg, rgba(8, 13, 20, 0.12), rgba(8, 10, 14, 0.86)),
-        radial-gradient(circle at 76% 15%, rgba(255, 255, 255, 0.22), transparent 20%),
-        radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.24), transparent 24%),
-        #0b0d10;
+        linear-gradient(115deg, rgba(8, 145, 178, 0.28), transparent 34%),
+        linear-gradient(245deg, rgba(245, 158, 11, 0.18), transparent 38%),
+        radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.22), transparent 22%),
+        radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.2), transparent 26%),
+        linear-gradient(135deg, #eef3f8, #dce7f1);
     }
 
-    body::after {
-      content: "";
+    .liquid-app::before {
+      content: '';
       position: fixed;
       inset: 0;
       z-index: -2;
-      opacity: 0.54;
+      pointer-events: none;
       background:
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 86px),
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 86px);
-      mask-image: linear-gradient(180deg, black, transparent 78%);
+        repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 86px),
+        repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.04) 0 1px, transparent 1px 86px);
+      mask-image: linear-gradient(180deg, black, transparent 80%);
     }
 
-    .preview-shell {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 284px minmax(0, 1fr);
-      gap: 18px;
-      padding: 18px;
+    @media (prefers-color-scheme: dark) {
+      .liquid-app {
+        background:
+          linear-gradient(115deg, rgba(8, 145, 178, 0.62), transparent 31%),
+          linear-gradient(245deg, rgba(245, 158, 11, 0.36), transparent 34%),
+          radial-gradient(circle at 76% 15%, rgba(255, 255, 255, 0.18), transparent 20%),
+          radial-gradient(circle at 18% 78%, rgba(21, 117, 255, 0.24), transparent 24%),
+          linear-gradient(180deg, rgba(8, 13, 20, 0.16), rgba(8, 10, 14, 0.92)), #06080b;
+      }
+
+      .liquid-app::before {
+        background:
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 86px),
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 86px);
+      }
     }
 
-    .sidebar,
-    .glass,
-    .panel,
-    .modal-card,
-    .table-wrap {
+    /* ══════════════════════════════════════════════════════════════════════
+       GLASS SURFACES — mirrors `.liquid-glass` / `.liquid-glass-float`
+       ══════════════════════════════════════════════════════════════════════ */
+    .liquid-glass {
       background:
-        linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.055)),
-        var(--glass-dark);
-      border: 1px solid var(--stroke-0);
-      box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
+        linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+        var(--glass-bg);
+      border: 1px solid var(--glass-border-muted);
+      box-shadow: var(--shadow-surface), var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
-    .sidebar {
-      position: sticky;
-      top: 18px;
-      height: calc(100vh - 36px);
-      overflow: hidden;
-      border-radius: var(--radius-xl);
-      padding: 22px 18px;
-      display: flex;
-      flex-direction: column;
+    .liquid-glass-float {
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+        var(--glass-bg-strong);
+      border: 1px solid var(--glass-border-muted);
+      box-shadow: var(--shadow-float), var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
-    .traffic {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 22px;
-      padding-left: 4px;
-    }
-
-    .traffic span {
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      box-shadow: inset 0 1px 2px rgba(255,255,255,0.65), 0 8px 18px rgba(0,0,0,0.2);
-    }
-
-    .traffic span:nth-child(1) { background: #ff5f57; }
-    .traffic span:nth-child(2) { background: #ffbd2e; }
-    .traffic span:nth-child(3) { background: #28c840; }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding-bottom: 22px;
-      border-bottom: 1px solid var(--stroke-0);
-    }
-
-    .mark {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
+    /* ── Page scaffolding (preview only) ─────────────────────────────── */
+    .shell {
       display: grid;
-      place-items: center;
-      background: rgba(255,255,255,0.94);
-      color: #0b1017;
-      font-weight: 900;
-      box-shadow: 0 18px 36px rgba(255,255,255,0.16);
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 17px;
-      line-height: 1.1;
-      letter-spacing: 0;
-    }
-
-    .brand p,
-    .mini-label,
-    .muted {
-      margin: 0;
-      color: var(--text-2);
-      font-size: 12px;
-    }
-
-    .mini-label {
-      margin: 22px 0 10px;
-      text-transform: uppercase;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-    }
-
-    .nav-list {
-      display: grid;
-      gap: 6px;
-    }
-
-    .nav-item {
-      min-height: 42px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      color: var(--text-1);
-      font-weight: 720;
-      font-size: 14px;
-    }
-
-    .nav-item svg {
-      width: 19px;
-      height: 19px;
-      color: var(--text-2);
-      flex: 0 0 auto;
-    }
-
-    .nav-item.active {
-      background: linear-gradient(135deg, rgba(21,117,255,0.98), rgba(60,140,255,0.82));
-      color: white;
-      box-shadow: var(--shadow-blue);
-    }
-
-    .nav-item.active svg {
-      color: white;
-    }
-
-    .badge-pill {
-      margin-left: auto;
-      min-width: 24px;
-      height: 24px;
-      padding: 0 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      background: var(--glass-2);
-      color: white;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding-top: 16px;
-      border-top: 1px solid var(--stroke-0);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(145deg, #f4c7bf, #7ba7ff);
-      color: #172033;
-      font-weight: 900;
-      border: 2px solid rgba(255,255,255,0.75);
+      grid-template-columns: 13.75rem minmax(0, 1fr); /* w-55 */
+      align-items: start;
+      gap: 0;
+      padding: 0;
     }
 
     .main {
       min-width: 0;
+      padding: 1.5rem; /* p-6 */
       display: grid;
-      gap: 18px;
+      gap: 1.5rem;     /* gap-6 */
     }
 
-    .topbar {
-      min-height: 76px;
-      border-radius: var(--radius-lg);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 18px;
-    }
-
-    .topbar h2,
-    .section-title,
-    .card-title {
-      margin: 0;
-      letter-spacing: 0;
-    }
-
-    .topbar h2 {
-      font-size: clamp(24px, 3vw, 36px);
-      line-height: 1;
-    }
-
-    .topbar-actions,
-    .actions,
-    .button-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border: 1px solid transparent;
-      appearance: none;
-      min-height: 40px;
-      padding: 0 16px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: var(--text-0);
-      background: var(--glass-1);
-      font: 760 14px/1 var(--font);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
-    }
-
-    .btn svg {
-      width: 17px;
-      height: 17px;
-    }
-
-    .btn.primary {
-      background: linear-gradient(135deg, var(--primary), #4a94ff);
-      color: white;
-      box-shadow: var(--shadow-blue), inset 0 1px 0 rgba(255,255,255,0.3);
-    }
-
-    .btn.dark {
-      background: rgba(3, 6, 10, 0.82);
-      border-color: rgba(255,255,255,0.08);
-    }
-
-    .btn.ghost {
-      background: rgba(255,255,255,0.06);
-      border-color: var(--stroke-0);
-    }
-
-    .btn.danger {
-      background: rgba(239, 68, 68, 0.16);
-      color: #fecaca;
-      border-color: rgba(239, 68, 68, 0.32);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 18px;
-    }
-
-    .span-3 { grid-column: span 3; }
-    .span-4 { grid-column: span 4; }
-    .span-5 { grid-column: span 5; }
-    .span-7 { grid-column: span 7; }
-    .span-8 { grid-column: span 8; }
-    .span-12 { grid-column: span 12; }
-
-    .panel {
-      border-radius: var(--radius-lg);
-      padding: 18px;
+    /* Card — `liquid-glass rounded-surface`, padding md = p-6 */
+    .card {
+      border-radius: var(--radius-surface);
+      padding: 1.5rem;
       min-width: 0;
     }
 
-    .stat-card {
-      min-height: 168px;
+    .card-title {
+      margin: 0 0 0.25rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .card-note {
+      margin: 0 0 1.25rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+    }
+
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
+    .stack { display: grid; gap: 0.875rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+
+    .eyebrow {
+      margin: 0 0 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+    }
+
+    code, .mono { font-family: var(--mono); font-size: 0.8125em; }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       SIDEBAR — mirrors src/components/Sidebar.vue
+       Root: w-55 · m-3 mr-0 · rounded-surface · shadow-surface (NOT float)
+       ══════════════════════════════════════════════════════════════════════ */
+    .sidebar {
+      position: sticky;
+      top: 0.75rem;
+      margin: 0.75rem 0 0.75rem 0.75rem;
+      height: calc(100vh - 1.5rem);
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
       overflow: hidden;
-      position: relative;
+      border-radius: var(--radius-surface);
+      padding: 1rem 0.75rem;
+      background: var(--nav-surface);
+      border: 1px solid var(--nav-border);
+      box-shadow: var(--shadow-surface), var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      color: var(--nav-text);
     }
 
-    .stat-card::after {
-      content: "";
+    .brand { display: flex; align-items: center; gap: 0.75rem; padding: 0 0.5rem 1rem; }
+
+    .brand-mark {
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--radius-pill);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
+    }
+
+    .brand h1 { margin: 0; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
+    .brand p { margin: 0; font-size: 0.6875rem; color: var(--nav-muted); }
+
+    .nav { position: relative; display: grid; gap: 0.25rem; }
+
+    /*
+     * The sliding active pill.
+     *
+     * In the app this element is positioned imperatively by `useNavIndicator`
+     * and animates `transform`/`width`/`height` — a linear-gradient is NOT an
+     * interpolatable CSS value, so a per-row gradient could only ever snap
+     * on/off. Here it is parked over the active row so the shape is visible.
+     */
+    .nav-pill {
       position: absolute;
-      right: -50px;
-      bottom: -58px;
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(21,117,255,0.38), transparent 68%);
+      top: 0;
+      left: 0;
+      height: 2.375rem;
+      width: 100%;
+      border-radius: var(--radius-pill);
+      z-index: 0;
       pointer-events: none;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
+      transition:
+        transform 320ms var(--easing),
+        width 320ms var(--easing),
+        height 320ms var(--easing);
     }
 
-    .metric {
-      font-size: clamp(28px, 4vw, 48px);
-      line-height: 1;
-      margin: 12px 0 0;
-      font-weight: 850;
+    /* Nav rows are PILLS. Buttons are not — see DESIGN.md §3. */
+    .nav-item {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 2.375rem;
+      padding: 0.625rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--nav-text);
+      transition: background-color 200ms ease, color 200ms ease;
     }
 
-    .metric.small {
-      font-size: 28px;
+    .nav-item:hover:not(.is-active) { background: var(--nav-hover); }
+    .nav-item.is-active { color: #fff; }
+    .nav-item.is-active svg { color: #fff; }
+    .nav-item.is-parent-open { background: var(--nav-quiet); }
+    .nav-item svg { width: 1.125rem; height: 1.125rem; color: var(--nav-muted); flex: 0 0 auto; }
+
+    .nav-badge {
+      margin-left: auto;
+      padding: 0.0625rem 0.5rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      background: var(--nav-quiet);
     }
 
-    .card-title {
-      font-size: 13px;
-      font-weight: 780;
-      color: var(--text-2);
+    .nav-item.is-active .nav-badge { background: rgba(255, 255, 255, 0.25); color: #fff; }
+
+    .submenu { display: grid; gap: 0.25rem; margin: 0.25rem 0 0 2rem; }
+
+    .submenu-item {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      color: var(--nav-text);
     }
 
-    .section-title {
-      font-size: 20px;
-      font-weight: 840;
+    .submenu-item.is-active { color: var(--color-primary-dark); font-weight: 600; }
+
+    .submenu-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: var(--radius-pill);
+      border: 2px solid var(--nav-muted);
     }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      box-shadow: 0 0 0 6px rgba(34,197,94,0.12);
-      background: var(--success);
+    .submenu-item.is-active .submenu-dot {
+      border-color: var(--color-primary);
+      background: var(--color-primary);
     }
 
-    .status-dot.warn {
-      background: var(--warning);
-      box-shadow: 0 0 0 6px rgba(245,158,11,0.12);
+    @media (prefers-color-scheme: dark) {
+      .submenu-item.is-active { color: #cfe2ff; }
+      .submenu-item.is-active .submenu-dot {
+        border-color: var(--color-primary-light);
+        background: var(--color-primary-light);
+      }
     }
 
-    .status-dot.stop {
-      background: var(--danger);
-      box-shadow: 0 0 0 6px rgba(239,68,68,0.12);
+    .status-link {
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-control);
+      background: rgba(255, 255, 255, 0.48);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: var(--glass-highlight);
+      font-size: 0.75rem;
+      font-weight: 600;
     }
 
-    .component-board {
+    @media (prefers-color-scheme: dark) {
+      .status-link { background: rgba(255, 255, 255, 0.105); }
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 0.875rem;
+      border-top: 1px solid var(--nav-border);
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+
+    .avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--radius-pill);
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 18px;
+      place-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #3b87ff, #67e8f9);
+      box-shadow: var(--shadow-surface);
     }
 
-    .control-stack {
-      display: grid;
-      gap: 12px;
+    /* ══════════════════════════════════════════════════════════════════════
+       TOPBAR — mirrors src/components/Topbar.vue (OpenWrt layout)
+       ══════════════════════════════════════════════════════════════════════ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      border-radius: var(--radius-surface);
+      padding: 0.5rem 1rem;
+      background: var(--nav-surface);
+      border: 1px solid var(--nav-border);
+      box-shadow: var(--shadow-surface), var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      color: var(--nav-text);
     }
 
-    .field {
-      display: grid;
-      gap: 7px;
+    .topbar-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
     }
 
-    label {
-      color: var(--text-2);
-      font-size: 12px;
-      font-weight: 760;
+    .topbar-item.is-active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
     }
+
+    .topbar-item:hover:not(.is-active) { background: var(--nav-hover); }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       BUTTONS — mirrors src/components/Button.vue
+       rounded-control (10px). `pill` is for ICON-ONLY buttons, never text.
+       ══════════════════════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;              /* size md */
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
+      font: 600 0.875rem/1.25rem var(--font);
+      cursor: pointer;
+      box-shadow: var(--shadow-surface);
+      transition: background-color 200ms ease, border-color 200ms ease;
+    }
+
+    .btn svg { width: 1rem; height: 1rem; }
+    .btn.sm { padding: 0.375rem 0.75rem; font-size: 0.875rem; gap: 0.375rem; }
+    .btn.lg { padding: 0.625rem 1.5rem; font-size: 1rem; }
+
+    .btn.primary { background: var(--color-primary); color: #fff; }
+    .btn.primary:hover { background: var(--color-primary-hover); }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
+    }
+
+    .btn.danger { background: var(--color-danger); color: #fff; }
+    .btn.success { background: var(--color-success); color: #fff; }
+
+    /* ghost drops the resting shadow automatically, like `action` does */
+    .btn.ghost {
+      background: transparent;
+      color: var(--color-text-secondary);
+      box-shadow: none;
+    }
+
+    .btn.ghost:hover { background: rgba(0, 0, 0, 0.05); }
+    .btn.action { box-shadow: none; }
+    .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+    /* Icon-only, circular. The ONLY sanctioned use of pill on a button. */
+    .btn.icon {
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      color: var(--color-text-secondary);
+      box-shadow: none;
+    }
+
+    .btn.icon:hover { background: rgba(0, 0, 0, 0.05); }
+
+    @media (prefers-color-scheme: dark) {
+      .btn.secondary { background: rgba(255, 255, 255, 0.1); }
+      .btn.ghost:hover, .btn.icon:hover { background: rgba(255, 255, 255, 0.1); }
+    }
+
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border-radius: var(--radius-pill);
+      border: 2px solid currentColor;
+      border-bottom-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation: none; }
+      .nav-pill { transition: none; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       CONTROLS — mirrors src/style/controls.css
+       One declaration serves native inputs, `.select`, and volt's
+       `.volt-select`, so all three stay pixel-identical.
+       ══════════════════════════════════════════════════════════════════════ */
+    .field { display: grid; gap: 0.375rem; }
+
+    .field > label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+    }
+
+    .field .hint { font-size: 0.75rem; color: var(--color-text-tertiary); }
+    .field .error { font-size: 0.875rem; color: var(--color-danger); }
 
     .input,
-    .select,
-    .textarea {
+    .textarea,
+    .volt-select {
+      display: block;
       width: 100%;
-      border: 1px solid var(--stroke-0);
-      background: rgba(255,255,255,0.11);
-      color: var(--text-0);
-      border-radius: 999px;
-      min-height: 42px;
-      padding: 0 15px;
-      font: 650 14px/1 var(--font);
+      padding: 0.5rem 0.875rem;
+      font: 400 0.875rem/1.25rem var(--font);
+      color: var(--control-text);
+      background: var(--control-bg);
+      border: 1px solid var(--control-border);
+      border-radius: var(--radius-control);
+      box-shadow: var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      transition: border-color 150ms ease-out, box-shadow 150ms ease-out,
+        background-color 150ms ease-out;
+    }
+
+    .input:hover, .textarea:hover, .volt-select:hover {
+      border-color: var(--control-border-hover);
+      background: var(--control-bg-hover);
+    }
+
+    .input:focus, .textarea:focus, .volt-select.is-focus {
       outline: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.13);
+      border-color: var(--color-primary);
+      box-shadow: var(--glass-highlight), var(--shadow-focus);
     }
 
-    .textarea {
-      min-height: 92px;
-      border-radius: var(--radius-sm);
-      padding: 13px 15px;
-      resize: vertical;
-      line-height: 1.45;
+    .input::placeholder, .textarea::placeholder { color: var(--control-placeholder); }
+    .input[disabled] { background: var(--control-bg-disabled); cursor: not-allowed; opacity: 0.7; }
+
+    /* Textareas are the ONE control on the surface radius — multi-line data. */
+    .textarea { border-radius: var(--radius-surface); min-height: 5.5rem; resize: vertical; }
+
+    /* Invalid is driven by aria-invalid, not a presentational class. */
+    .input[aria-invalid='true'] { border-color: var(--color-danger); }
+    .input[aria-invalid='true']:focus {
+      box-shadow: var(--glass-highlight), 0 0 0 3px rgba(239, 68, 68, 0.2);
     }
 
-    .input::placeholder,
-    .textarea::placeholder {
-      color: rgba(219,228,239,0.52);
+    /* ── volt/Select: field is one surface; label + dropdown are transparent ─ */
+    .volt-select {
+      display: flex;
+      align-items: stretch;
+      padding: 0;
+      cursor: pointer;
+      user-select: none;
     }
 
+    .volt-select .label { flex: 1 1 auto; padding: 0.5rem 0.875rem; }
+    .volt-select .label.is-empty { color: var(--control-placeholder); }
+
+    .volt-select .chevron {
+      display: flex;
+      align-items: center;
+      padding: 0 0.75rem 0 0.25rem;
+      color: var(--color-text-tertiary);
+    }
+
+    .volt-select .chevron svg { width: 1rem; height: 1rem; }
+
+    /*
+     * The open panel. Teleported to <body> in the app, which is why its CSS
+     * lives in primevue.css and must NOT be scoped under `.liquid-app`.
+     * Panel = rounded-surface. Options inside = rounded-control.
+     */
+    .select-panel {
+      margin-top: 0.375rem;
+      border-radius: var(--radius-surface);
+      background: var(--glass-bg-strong);
+      border: 1px solid var(--glass-border-muted);
+      box-shadow: var(--shadow-float), var(--glass-highlight);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      overflow: hidden;
+    }
+
+    .select-panel .panel-header { padding: 0.5rem; border-bottom: 1px solid var(--color-border); }
+
+    .select-panel .filter {
+      width: 100%;
+      padding: 0.375rem 0.75rem;
+      font: 400 0.875rem var(--font);
+      color: var(--control-text);
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .select-panel .filter { background: rgba(255, 255, 255, 0.05); }
+    }
+
+    .select-panel ul { list-style: none; margin: 0; padding: 0.375rem; }
+
+    .select-panel li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-control);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    /* Option tints use the brand colour, not a second accent hue. */
+    .select-panel li.is-focus { background: rgba(21, 117, 255, 0.09); }
+
+    .select-panel li.is-selected {
+      background: rgba(21, 117, 255, 0.16);
+      color: var(--color-primary-dark);
+      font-weight: 600;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .select-panel li.is-focus { background: rgba(107, 165, 255, 0.12); }
+      .select-panel li.is-selected { background: rgba(107, 165, 255, 0.22); color: #cfe2ff; }
+    }
+
+    /* ── ChipsField: the chips box is a control; the chips inside are pills ── */
+    .chips-box {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem;
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--control-bg);
+      border: 1px solid var(--control-border);
+      border-radius: var(--radius-control);
+      box-shadow: var(--glass-highlight);
+    }
+
+    /*
+     * Deliberately small. A DNS rule can hold a dozen domains, and full-size
+     * chips turned the field into a wall of boxes.
+     */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: var(--radius-pill);
+      background: var(--color-primary-100);
+      color: var(--color-primary-700);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .chip { background: rgba(18, 63, 143, 0.4); color: var(--color-primary-200); }
+    }
+
+    .chip .x { cursor: pointer; opacity: 0.6; font-size: 0.875rem; line-height: 1; }
+    .chips-box .entry { flex: 1 1 10rem; border: 0; outline: none; background: transparent;
+      padding: 0.25rem; font: 400 0.875rem var(--font); color: var(--control-text); }
+
+    /* The "add a matcher" affordance — dashed, so it reads as absent-not-empty */
+    .add-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: var(--radius-pill);
+      border: 1px dashed var(--control-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font: 500 0.75rem var(--font);
+      cursor: pointer;
+    }
+
+    .add-field:hover { border-color: var(--color-primary-400); color: var(--color-primary); }
+
+    /* Toggle */
     .toggle {
-      width: 48px;
-      height: 28px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.16);
-      border: 1px solid var(--stroke-0);
-      padding: 3px;
+      width: 2.75rem;
+      height: 1.5rem;
+      border-radius: var(--radius-pill);
+      background: var(--color-primary);
+      padding: 0.1875rem;
       display: inline-flex;
       justify-content: flex-end;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+      flex: 0 0 auto;
     }
 
     .toggle::before {
-      content: "";
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
+      content: '';
+      width: 1.125rem;
+      height: 1.125rem;
+      border-radius: var(--radius-pill);
       background: #fff;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
     }
 
-    .chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .toggle.off { background: var(--control-border); justify-content: flex-start; }
 
-    .chip,
-    .status-badge {
+    /* ══════════════════════════════════════════════════════════════════════
+       BADGES & ALERTS — the shared status tint recipe
+       bg <hue>/15 · border <hue>/25 · text <hue>-800 (dark: -100)
+       ══════════════════════════════════════════════════════════════════════ */
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      min-height: 28px;
-      padding: 0 10px;
-      border-radius: 999px;
-      border: 1px solid var(--stroke-0);
-      background: rgba(255,255,255,0.08);
-      color: var(--text-1);
-      font-size: 12px;
-      font-weight: 760;
+      gap: 0.375rem;
+      padding: 0.125rem 0.625rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid;
+      font-size: 0.875rem;
+      font-weight: 600;
     }
 
-    .status-badge.success {
-      color: #bbf7d0;
-      background: rgba(34,197,94,0.15);
-      border-color: rgba(34,197,94,0.25);
+    .badge .dot { width: 0.375rem; height: 0.375rem; border-radius: var(--radius-pill); }
+
+    .badge.success { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.25); color: #065f46; }
+    .badge.warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); color: #92400e; }
+    .badge.danger  { background: rgba(239, 68, 68, 0.15);  border-color: rgba(239, 68, 68, 0.25);  color: #991b1b; }
+    .badge.info    { background: rgba(6, 182, 212, 0.15);  border-color: rgba(6, 182, 212, 0.25);  color: #155e75; }
+    .badge.gray    { background: rgba(255, 255, 255, 0.35); border-color: rgba(255, 255, 255, 0.35); color: var(--color-text-secondary); }
+
+    .badge.success .dot { background: var(--color-success); }
+    .badge.warning .dot { background: var(--color-warning); }
+    .badge.danger  .dot { background: var(--color-danger); }
+    .badge.info    .dot { background: var(--color-info); }
+    .badge.gray    .dot { background: var(--color-text-tertiary); }
+
+    @media (prefers-color-scheme: dark) {
+      .badge.success { color: #a7f3d0; }
+      .badge.warning { color: #fde68a; }
+      .badge.danger  { color: #fecaca; }
+      .badge.info    { color: #a5f3fc; }
+      .badge.gray    { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); }
     }
 
-    .status-badge.info {
-      color: #bae6fd;
-      background: rgba(56,189,248,0.14);
-      border-color: rgba(56,189,248,0.24);
+    /* Alert — same tints, but rounded-surface + shadow-surface + blur */
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: var(--radius-surface);
+      border: 1px solid;
+      box-shadow: var(--shadow-surface);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      font-size: 0.875rem;
     }
 
-    .status-badge.warning {
-      color: #fde68a;
-      background: rgba(245,158,11,0.14);
-      border-color: rgba(245,158,11,0.26);
+    .alert svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; }
+    .alert .title { font-weight: 500; margin-bottom: 0.25rem; }
+    .alert.warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); color: #92400e; }
+    .alert.warning svg { color: var(--color-warning); }
+    .alert.info { background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.25); color: #155e75; }
+    .alert.info svg { color: var(--color-info); }
+
+    @media (prefers-color-scheme: dark) {
+      .alert.warning { color: #fef3c7; }
+      .alert.info { color: #cffafe; }
     }
 
-    .table-wrap {
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-    }
-
-    table {
+    /* ══════════════════════════════════════════════════════════════════════
+       TOASTS — severity keyed off `data-p~=`, colours via color-mix
+       ══════════════════════════════════════════════════════════════════════ */
+    .toast {
       width: 100%;
-      border-collapse: collapse;
-      min-width: 720px;
+      max-width: 24rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border-radius: var(--radius-surface);
+      border: 1px solid var(--glass-border-muted);
+      background: var(--glass-bg-strong);
+      box-shadow: var(--shadow-float);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      color: var(--color-text-primary);
+      font-size: 0.875rem;
     }
 
-    th,
-    td {
-      padding: 14px 16px;
+    .toast[data-p~='success'] {
+      color: var(--color-success);
+      border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+      background: color-mix(in srgb, var(--color-success) 12%, var(--glass-bg-strong));
+    }
+
+    .toast[data-p~='error'] {
+      color: var(--color-danger);
+      border-color: color-mix(in srgb, var(--color-danger) 32%, transparent);
+      background: color-mix(in srgb, var(--color-danger) 12%, var(--glass-bg-strong));
+    }
+
+    .toast[data-p~='info'] {
+      color: var(--color-info);
+      border-color: color-mix(in srgb, var(--color-info) 32%, transparent);
+      background: color-mix(in srgb, var(--color-info) 12%, var(--glass-bg-strong));
+    }
+
+    .toast .body { flex: 1 1 auto; min-width: 0; }
+    .toast .summary { font-weight: 500; }
+    .toast .detail { font-size: 0.8125rem; opacity: 0.9; word-break: break-word; }
+
+    .toast .close {
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--radius-pill);
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .toast .close:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       TABS · TABLE · TIMELINE
+       ══════════════════════════════════════════════════════════════════════ */
+    .tabs { display: flex; gap: 2rem; border-bottom: 1px solid var(--color-border); margin-bottom: 1.25rem; }
+
+    .tab {
+      padding: 0.5rem 0.25rem;
+      margin-bottom: -1px;
+      border-bottom: 2px solid transparent;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+    }
+
+    .tab.is-active { border-bottom-color: var(--color-primary-500); color: var(--color-primary-600); }
+
+    @media (prefers-color-scheme: dark) {
+      .tab.is-active { color: var(--color-primary-400); }
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td {
+      padding: 0.75rem 1rem;
       text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid var(--color-border);
       white-space: nowrap;
     }
 
     th {
-      color: var(--text-2);
-      font-size: 11px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 850;
-      background: rgba(255,255,255,0.04);
+      color: var(--color-text-tertiary);
     }
 
-    td {
-      color: var(--text-1);
-      font-size: 13px;
-      font-weight: 620;
-    }
+    td { font-size: 0.875rem; }
+    tr:last-child td { border-bottom: 0; }
+    .table-scroll { overflow-x: auto; }
 
-    tr:last-child td {
-      border-bottom: 0;
-    }
+    /* Timeline — the marker is intentionally caller-supplied; its colour
+       carries meaning (confirmed / predicted / failed). */
+    .timeline { display: flex; flex-direction: column; }
+    .tl-event { display: flex; min-height: 2.5rem; }
+    .tl-event:last-child { min-height: 0; }
+    .tl-sep { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+    .tl-marker { width: 0.75rem; height: 0.75rem; border-radius: var(--radius-pill); }
+    /* App spells this `bg-gray-200 dark:bg-gray-700` — more opaque than
+       --color-border, which at 0.28 alpha reads as no line at all. */
+    .tl-connector { flex: 1 1 auto; width: 1px; min-height: 1rem; margin: 0.25rem 0; background: #e5e7eb; }
 
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      color: #c7d2fe;
+    @media (prefers-color-scheme: dark) {
+      .tl-connector { background: #374151; }
     }
+    .tl-content { flex: 1 1 auto; min-width: 0; padding: 0 0 1rem 0.75rem; }
+    .tl-content:last-child { padding-bottom: 0; }
+    .tl-title { font-size: 0.875rem; font-weight: 500; }
+    .tl-sub { font-size: 0.75rem; color: var(--color-text-secondary); }
 
-    .log-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .log-item {
-      display: grid;
-      grid-template-columns: 76px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      padding: 11px 12px;
-      border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .alert {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px;
-      border-radius: var(--radius-md);
-      background: rgba(56,189,248,0.12);
-      border: 1px solid rgba(56,189,248,0.25);
-      color: #e0f2fe;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .modal-preview {
-      min-height: 420px;
+    /* ══════════════════════════════════════════════════════════════════════
+       MODAL & POPCONFIRM — floating tier
+       ══════════════════════════════════════════════════════════════════════ */
+    .modal-stage {
       display: grid;
       place-items: center;
-      padding: 22px;
-      border-radius: var(--radius-lg);
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-        rgba(0,0,0,0.12);
-      border: 1px solid rgba(255,255,255,0.08);
+      padding: 1.5rem;
+      border-radius: var(--radius-surface);
+      background: rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
     }
 
-    .modal-card {
-      width: min(100%, 420px);
-      border-radius: 30px;
-      padding: 22px;
+    .modal {
+      width: 100%;
+      max-width: 28rem; /* size md = max-w-lg */
+      border-radius: var(--radius-surface);
+      overflow: hidden;
     }
 
-    .modal-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
+    .modal-head,
+    .modal-foot { display: flex; align-items: center; padding: 1rem 1.5rem; }
+    .modal-head { justify-content: space-between; border-bottom: 1px solid var(--color-border); }
+    .modal-foot { justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--color-border); }
+    .modal-head h3 { margin: 0; font-size: 1.125rem; font-weight: 600; }
+    .modal-body { padding: 1rem 1.5rem; }
+
+    .popconfirm {
+      width: 20rem;
+      border-radius: var(--radius-surface);
+      padding: 0.75rem;
     }
 
-    .icon-button {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      border: 1px solid var(--stroke-0);
-      background: rgba(255,255,255,0.1);
-      color: white;
+    .popconfirm .target {
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-control);
+      background: rgba(0, 0, 0, 0.05);
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .popconfirm .target { background: rgba(255, 255, 255, 0.1); }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       TOKEN SWATCHES
+       ══════════════════════════════════════════════════════════════════════ */
+    .swatches { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+    .swatch {
+      width: 4.25rem;
+      border-radius: var(--radius-control);
+      overflow: hidden;
+      font-size: 0.625rem;
+      text-align: center;
+      border: 1px solid var(--color-border);
+    }
+
+    .swatch .chipcolor { height: 2.5rem; }
+    .swatch .name { padding: 0.25rem 0; font-family: var(--mono); color: var(--color-text-secondary); }
+
+    .radius-demo { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .radius-box {
+      width: 6rem;
+      height: 4rem;
       display: grid;
       place-items: center;
+      text-align: center;
+      font-size: 0.6875rem;
+      font-family: var(--mono);
+      background: var(--control-bg);
+      border: 1px solid var(--control-border);
+      color: var(--color-text-secondary);
     }
 
-    .icon-button svg {
-      width: 18px;
-      height: 18px;
+    .elev-demo { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+    .elev-box {
+      width: 9rem;
+      height: 4.5rem;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 0.6875rem;
+      font-family: var(--mono);
+      border-radius: var(--radius-surface);
+      background: var(--glass-bg-strong);
+      border: 1px solid var(--glass-border-muted);
+      color: var(--color-text-secondary);
     }
 
-    .preview-note {
-      color: var(--text-2);
-      font-size: 12px;
-      margin-top: 6px;
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
-    @media (max-width: 1180px) {
-      .preview-shell {
-        grid-template-columns: 92px minmax(0, 1fr);
-      }
-
-      .sidebar {
-        padding: 18px 14px;
-      }
-
-      .brand div:not(.mark),
-      .mini-label,
-      .nav-item span:not(.badge-pill),
-      .sidebar-footer div:not(.avatar) {
-        display: none;
-      }
-
-      .brand {
-        justify-content: center;
-      }
-
-      .nav-item {
-        justify-content: center;
-        padding: 11px;
-      }
-
-      .badge-pill {
-        position: absolute;
-        transform: translate(18px, -12px);
-      }
-    }
-
-    @media (max-width: 900px) {
-      .preview-shell {
-        display: block;
-        padding: 12px;
-      }
-
-      .sidebar {
-        position: relative;
-        top: 0;
-        height: auto;
-        margin-bottom: 12px;
-      }
-
-      .brand div:not(.mark),
-      .mini-label,
-      .nav-item span:not(.badge-pill),
-      .sidebar-footer div:not(.avatar) {
-        display: block;
-      }
-
-      .brand {
-        justify-content: flex-start;
-      }
-
-      .nav-list {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-
-      .nav-item {
-        justify-content: flex-start;
-      }
-
-      .badge-pill {
-        position: static;
-        transform: none;
-      }
-
-      .main {
-        gap: 12px;
-      }
-
-      .topbar,
-      .component-board {
-        display: grid;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .span-3,
-      .span-4,
-      .span-5,
-      .span-7,
-      .span-8,
-      .span-12 {
-        grid-column: auto;
-      }
-
-      .table-wrap {
-        overflow-x: auto;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .nav-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .topbar-actions,
-      .button-row {
-        width: 100%;
-      }
-
-      .btn {
-        flex: 1 1 auto;
-      }
-
-      .log-item {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 880px) {
+      .shell { display: block; }
+      .sidebar { position: static; height: auto; margin: 0.75rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .main { padding: 0.75rem; }
     }
   </style>
 </head>
 <body>
-  <div class="preview-shell">
-    <aside class="sidebar">
-      <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="brand">
-        <div class="mark">S</div>
-        <div>
-          <h1>Sing Box Easy</h1>
-          <p>Liquid glass system preview</p>
+  <div class="liquid-app">
+    <div class="shell">
+      <!-- ═════════════════ SIDEBAR (default layout) ═════════════════ -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">S</div>
+          <div>
+            <h1>Sing Box Easy</h1>
+            <p>Design system preview</p>
+          </div>
         </div>
-      </div>
 
-      <p class="mini-label">Menu</p>
-      <nav class="nav-list" aria-label="Preview navigation">
-        <div class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4v9zM14 20h6V4h-6v16zM4 20h6v-3H4v3z"/></svg>
-          <span>Overview</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
-          <span>Inbounds</span>
-          <span class="badge-pill">3</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 5h16"/></svg>
-          <span>Outbounds</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
-          <span>DNS</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-          <span>Route</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 1 1-2.97 2.97l-.04-.04A1.8 1.8 0 0 0 14.8 19.6a1.8 1.8 0 0 0-1.1 1.65V21a2.1 2.1 0 1 1-4.2 0v-.06A1.8 1.8 0 0 0 8.4 19.3a1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 1 1-2.97-2.97l.04-.04A1.8 1.8 0 0 0 3.8 14.7a1.8 1.8 0 0 0-1.65-1.1H2a2.1 2.1 0 1 1 0-4.2h.06A1.8 1.8 0 0 0 3.7 8.3a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 1 1 2.97-2.97l.04.04A1.8 1.8 0 0 0 8.3 3.7h.1A1.8 1.8 0 0 0 9.5 2.05V2a2.1 2.1 0 1 1 4.2 0v.06A1.8 1.8 0 0 0 14.8 3.7h.1a1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 1 1 2.97 2.97l-.04.04A1.8 1.8 0 0 0 19.6 8.3v.1A1.8 1.8 0 0 0 21.25 9.5H21a2.1 2.1 0 1 1 0 4.2h-.06A1.8 1.8 0 0 0 19.4 15z"/></svg>
-          <span>Settings</span>
-        </div>
-      </nav>
+        <p class="eyebrow" style="padding: 0 0.5rem;">Menu</p>
+        <nav class="nav">
+          <!-- One sliding pill, parked over the active row. -->
+          <div class="nav-pill"></div>
 
-      <p class="mini-label">Service</p>
-      <div class="panel" style="padding: 12px; border-radius: 20px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-          <span class="status-badge success"><span class="status-dot"></span>Running</span>
-          <span class="mono" style="font-size:12px;">v1.12.12</span>
-        </div>
-      </div>
+          <div class="nav-item is-active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4v9zM14 20h6V4h-6v16zM4 20h6v-3H4v3z"/></svg>
+            <span>Overview</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
+            <span>Inbounds</span>
+            <span class="nav-badge">3</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 5h16"/></svg>
+            <span>Outbounds</span>
+          </div>
+          <div class="nav-item is-parent-open">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+            <span>DNS</span>
+            <svg style="margin-left:auto; transform: rotate(90deg);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+          <div class="submenu">
+            <div class="submenu-item is-active"><span class="submenu-dot"></span>Rules</div>
+            <div class="submenu-item"><span class="submenu-dot"></span>Servers</div>
+            <div class="submenu-item"><span class="submenu-dot"></span>Diagnostics</div>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            <span>Route</span>
+          </div>
+        </nav>
 
-      <div class="sidebar-footer">
-        <div class="avatar">AD</div>
-        <div>
-          <strong style="font-size:14px;">Admin</strong>
-          <p class="muted">Operator</p>
-        </div>
-      </div>
-    </aside>
+        <a class="status-link" href="#" style="color: inherit; text-decoration: none;">
+          <span class="badge success" style="border:0; background:none; padding:0;">
+            <span class="dot"></span>
+          </span>
+          <span>sing-box</span>
+          <span style="margin-left:auto; color: var(--nav-muted);">Running</span>
+        </a>
 
-    <main class="main">
-      <section class="topbar glass">
-        <div>
-          <h2>Dashboard Theme Preview</h2>
-          <p class="preview-note">Static preview artifact. No app state is wired here.</p>
-        </div>
-        <div class="topbar-actions">
-          <button class="btn ghost">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-            Refresh
-          </button>
-          <button class="btn primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Add Inbound
+        <div class="sidebar-footer">
+          <div class="avatar">AD</div>
+          <div style="min-width:0;">
+            <p style="margin:0; font-size:0.875rem; font-weight:600;">admin</p>
+            <p style="margin:0; font-size:0.625rem; color: var(--nav-muted);">operator</p>
+          </div>
+          <button class="btn icon" aria-label="Sign out" style="margin-left:auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
           </button>
         </div>
-      </section>
+      </aside>
 
-      <section class="grid">
-        <div class="panel stat-card span-4">
-          <div>
-            <p class="card-title">Service Status</p>
-            <p class="metric">Running</p>
-          </div>
-          <div class="button-row">
-            <button class="btn primary">Restart</button>
-            <button class="btn danger">Stop</button>
-          </div>
-        </div>
-        <div class="panel stat-card span-4">
-          <div>
-            <p class="card-title">Active Proxy Nodes</p>
-            <p class="metric">42</p>
-          </div>
-          <div class="chips">
-            <span class="chip">Selector</span>
-            <span class="chip">URL Test</span>
-            <span class="chip">Direct</span>
-          </div>
-        </div>
-        <div class="panel stat-card span-4">
-          <div>
-            <p class="card-title">Current Inbounds</p>
-            <p class="metric">6</p>
-          </div>
-          <div class="chips">
-            <span class="status-badge info">Mixed</span>
-            <span class="status-badge success">VMess</span>
-            <span class="status-badge warning">TUN</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="grid">
-        <div class="span-8 table-wrap">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 18px 4px;">
+      <main class="main">
+        <!-- ═════════════════ HEADER ═════════════════ -->
+        <section class="liquid-glass card">
+          <div class="row" style="justify-content: space-between; align-items: flex-start;">
             <div>
-              <h3 class="section-title">Inbounds</h3>
-              <p class="preview-note">Table, badges, action buttons and dense admin rows.</p>
+              <h2 style="margin:0 0 0.25rem; font-size:1.5rem; font-weight:700; letter-spacing:-0.02em;">
+                Liquid Glass Design Preview
+              </h2>
+              <p class="card-note" style="margin:0;">
+                Static mirror of the shipped system. Values are copied from
+                <code>src/style/tokens.css</code>; rules live in <code>DESIGN.md</code>.
+                Follows your OS light/dark setting, exactly like the app.
+              </p>
             </div>
-            <button class="btn ghost">Export</button>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Tag</th>
-                <th>Type</th>
-                <th>Listen</th>
-                <th>Port</th>
-                <th>Sniff</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="mono">mixed-in</td>
-                <td><span class="status-badge info">Mixed</span></td>
-                <td>127.0.0.1</td>
-                <td class="mono">1080</td>
-                <td><span class="status-badge success">Enabled</span></td>
-                <td><button class="btn ghost">Edit</button></td>
-              </tr>
-              <tr>
-                <td class="mono">vmess-in</td>
-                <td><span class="status-badge success">VMess</span></td>
-                <td>0.0.0.0</td>
-                <td class="mono">10086</td>
-                <td><span class="status-badge">Disabled</span></td>
-                <td><button class="btn ghost">Copy</button></td>
-              </tr>
-              <tr>
-                <td class="mono">ss-in</td>
-                <td><span class="status-badge warning">Shadowsocks</span></td>
-                <td>::</td>
-                <td class="mono">8388</td>
-                <td><span class="status-badge success">Enabled</span></td>
-                <td><button class="btn ghost">Edit</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="panel span-4">
-          <h3 class="section-title">Reusable Controls</h3>
-          <p class="preview-note">Button, input, select, toggle, badges and alert styling.</p>
-          <div class="control-stack" style="margin-top:18px;">
-            <div class="field">
-              <label>Inbound Tag</label>
-              <input class="input" value="vmess-in" />
-            </div>
-            <div class="field">
-              <label>Type</label>
-              <select class="select">
-                <option>VMess</option>
-                <option>Shadowsocks</option>
-                <option>Mixed</option>
-              </select>
-            </div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-              <div>
-                <strong>Traffic sniffing</strong>
-                <p class="muted">Override destination enabled</p>
-              </div>
-              <span class="toggle"></span>
-            </div>
-            <div class="alert">
-              <span class="status-dot warn" style="margin-top:4px;"></span>
-              <span>Liquid glass surfaces must keep enough contrast for long-running operations and tables.</span>
-            </div>
-            <div class="button-row">
-              <button class="btn primary">Save</button>
-              <button class="btn ghost">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="grid">
-        <div class="panel span-5">
-          <h3 class="section-title">Protocol Form Panel</h3>
-          <p class="preview-note">Compact form for VMess/Shadowsocks-style options.</p>
-          <div class="control-stack" style="margin-top:18px;">
-            <div class="field">
-              <label>UUID</label>
-              <input class="input mono" value="bf000d23-0752-40b4-affe-68f7707a9661" />
-            </div>
-            <div class="field">
-              <label>Alter ID</label>
-              <input class="input" value="0" />
-            </div>
-            <div class="field">
-              <label>Notes</label>
-              <textarea class="textarea" placeholder="Optional protocol notes..."></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel span-3">
-          <h3 class="section-title">Logs</h3>
-          <div class="log-list" style="margin-top:18px;">
-            <div class="log-item">
-              <span class="mono">12:08</span>
-              <span>Service restarted</span>
-              <span class="status-badge success">ok</span>
-            </div>
-            <div class="log-item">
-              <span class="mono">12:10</span>
-              <span>VMess inbound ready</span>
-              <span class="status-badge info">info</span>
-            </div>
-            <div class="log-item">
-              <span class="mono">12:11</span>
-              <span>DNS cache updated</span>
-              <span class="status-badge">sync</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="span-4 modal-preview">
-          <div class="modal-card">
-            <div class="modal-head">
-              <div>
-                <h3 class="section-title">Modal Preview</h3>
-                <p class="preview-note">Frosted dialog surface.</p>
-              </div>
-              <button class="icon-button" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <div class="row">
+              <button class="btn ghost">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                Refresh
+              </button>
+              <button class="btn primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Add Inbound
               </button>
             </div>
-            <div class="control-stack">
-              <div class="field">
-                <label>Server</label>
-                <input class="input" value="0.0.0.0" />
+          </div>
+        </section>
+
+        <!-- ═════════════════ TOKENS ═════════════════ -->
+        <section class="liquid-glass card">
+          <h3 class="card-title">Tokens</h3>
+          <p class="card-note">
+            Three radii, two elevations, one brand ramp. Everything else is derived.
+          </p>
+
+          <p class="eyebrow">Brand ramp — <code>--color-primary-*</code></p>
+          <div class="swatches" style="margin-bottom:1.5rem;">
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-50)"></div><div class="name">50</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-100)"></div><div class="name">100</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-200)"></div><div class="name">200</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-300)"></div><div class="name">300</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-400)"></div><div class="name">400</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-500)"></div><div class="name">500</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-600)"></div><div class="name">600 ★</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-700)"></div><div class="name">700</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-800)"></div><div class="name">800</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-900)"></div><div class="name">900</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-primary-950)"></div><div class="name">950</div></div>
+          </div>
+
+          <p class="eyebrow">Status</p>
+          <div class="swatches" style="margin-bottom:1.5rem;">
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-success)"></div><div class="name">success</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-warning)"></div><div class="name">warning</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-danger)"></div><div class="name">danger</div></div>
+            <div class="swatch"><div class="chipcolor" style="background:var(--color-info)"></div><div class="name">info</div></div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <p class="eyebrow">Radius — three, no exceptions</p>
+              <div class="radius-demo">
+                <div class="radius-box" style="border-radius: var(--radius-control);">
+                  rounded-control<br />10px
+                </div>
+                <div class="radius-box" style="border-radius: var(--radius-surface);">
+                  rounded-surface<br />16px
+                </div>
+                <div class="radius-box" style="border-radius: var(--radius-pill);">
+                  rounded-pill<br />9999px
+                </div>
               </div>
-              <div class="field">
-                <label>Listen Port</label>
-                <input class="input mono" value="10086" />
+            </div>
+            <div>
+              <p class="eyebrow">Elevation — two levels</p>
+              <div class="elev-demo">
+                <div class="elev-box" style="box-shadow: var(--shadow-surface), var(--glass-highlight);">
+                  shadow-surface<br />cards · chrome
+                </div>
+                <div class="elev-box" style="box-shadow: var(--shadow-float), var(--glass-highlight);">
+                  shadow-float<br />modals · dropdowns
+                </div>
               </div>
-              <button class="btn primary" style="width:100%;">Create Inbound</button>
             </div>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <!-- ═════════════════ BUTTONS ═════════════════ -->
+        <section class="liquid-glass card">
+          <h3 class="card-title">Buttons</h3>
+          <p class="card-note">
+            One component, five variants. Shape is <code>rounded-control</code> —
+            <strong>never</strong> a pill, unless the button is icon-only.
+          </p>
+
+          <p class="eyebrow">Variants</p>
+          <div class="row" style="margin-bottom:1.25rem;">
+            <button class="btn primary">Primary</button>
+            <button class="btn secondary">Secondary</button>
+            <button class="btn danger">Danger</button>
+            <button class="btn success">Success</button>
+            <button class="btn ghost">Ghost</button>
+          </div>
+
+          <p class="eyebrow">Sizes · states</p>
+          <div class="row">
+            <button class="btn primary sm">Small</button>
+            <button class="btn primary">Medium</button>
+            <button class="btn primary lg">Large</button>
+            <button class="btn primary" disabled><span class="spinner"></span>Loading</button>
+            <button class="btn secondary" disabled>Disabled</button>
+            <button class="btn secondary action">Action (no shadow)</button>
+            <button class="btn icon" aria-label="Edit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <!-- ═════════════════ FORM CONTROLS ═════════════════ -->
+        <section class="grid-2">
+          <div class="liquid-glass card">
+            <h3 class="card-title">Form controls</h3>
+            <p class="card-note">
+              Surface comes from <code>controls.css</code>, not the component — so
+              native fields, <code>&lt;Input&gt;</code> and volt's Select are
+              pixel-identical. Never scope that layer: dialogs teleport to
+              <code>&lt;body&gt;</code>.
+            </p>
+
+            <div class="stack">
+              <div class="field">
+                <label for="p-tag">Inbound tag</label>
+                <input class="input" id="p-tag" value="mixed-in" />
+              </div>
+
+              <div class="field">
+                <label for="p-port">Listen port</label>
+                <input class="input mono" id="p-port" value="1080" />
+                <span class="hint">Ports below 1024 need elevated privileges.</span>
+              </div>
+
+              <div class="field">
+                <label for="p-bad">Server address</label>
+                <input class="input" id="p-bad" value="not a host" aria-invalid="true" />
+                <span class="error">Enter a hostname or IP address.</span>
+              </div>
+
+              <div class="field">
+                <label for="p-note">Notes</label>
+                <textarea class="textarea" id="p-note" placeholder="Optional notes…"></textarea>
+                <span class="hint">
+                  Textareas are the one control on the <em>surface</em> radius — they
+                  hold multi-line data and read as a panel.
+                </span>
+              </div>
+
+              <div class="field">
+                <label>Disabled</label>
+                <input class="input" value="managed by subscription" disabled />
+              </div>
+
+              <div class="row" style="justify-content: space-between;">
+                <div>
+                  <strong style="font-size:0.875rem;">Traffic sniffing</strong>
+                  <p style="margin:0; font-size:0.75rem; color:var(--color-text-secondary);">
+                    Override destination
+                  </p>
+                </div>
+                <span class="toggle"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="liquid-glass card">
+            <h3 class="card-title">Select &amp; chips</h3>
+            <p class="card-note">
+              Every dropdown is <code>volt/Select</code>; there are zero native
+              <code>&lt;select&gt;</code> elements left in the app.
+            </p>
+
+            <div class="stack">
+              <div class="field">
+                <label>DNS server (closed)</label>
+                <div class="volt-select">
+                  <span class="label">dns_router — 192.168.9.2:53 (udp)</span>
+                  <span class="chevron">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>DNS server (empty — shows the placeholder)</label>
+                <div class="volt-select is-focus">
+                  <span class="label is-empty">Select a server…</span>
+                  <span class="chevron">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </span>
+                </div>
+                <span class="hint">
+                  PrimeVue reads an empty model value as "nothing selected", so any
+                  default option with <code>value: ''</code> must repeat its label in
+                  <code>:placeholder</code> — otherwise the field renders blank.
+                </span>
+              </div>
+
+              <div class="field">
+                <label>Open panel</label>
+                <div class="select-panel">
+                  <div class="panel-header">
+                    <input class="filter" placeholder="Search servers…" />
+                  </div>
+                  <ul>
+                    <li class="is-selected">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;"><path d="M20 6 9 17l-5-5"/></svg>
+                      dns_router — 192.168.9.2:53 (udp)
+                    </li>
+                    <li class="is-focus">dns_direct — 223.5.5.5:53 (udp)</li>
+                    <li>dns_proxy — 1.1.1.1 (tls)</li>
+                    <li>dns_fakeip — 198.18.0.0/15 (fakeip)</li>
+                  </ul>
+                </div>
+                <span class="hint">
+                  Panel is <code>rounded-surface</code>; the options inside are
+                  <code>rounded-control</code>. Option tints reuse the brand colour
+                  rather than introducing a second accent hue.
+                </span>
+              </div>
+
+              <div class="field">
+                <label>Domain suffix</label>
+                <div class="chips-box">
+                  <span class="chip">github.com<span class="x">×</span></span>
+                  <span class="chip">githubusercontent.com<span class="x">×</span></span>
+                  <span class="chip">ghcr.io<span class="x">×</span></span>
+                  <input class="entry" placeholder="Add…" />
+                </div>
+                <span class="hint">
+                  Press Enter or comma to add. The hint is mandatory — a bare chips
+                  box gives no clue that Enter commits, which reads as a broken input.
+                </span>
+              </div>
+
+              <div class="row">
+                <span style="font-size:0.75rem; color:var(--color-text-secondary);">Add a matcher:</span>
+                <button class="add-field">+ Domain</button>
+                <button class="add-field">+ Domain keyword</button>
+                <button class="add-field">+ GeoSite</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═════════════════ STATUS ═════════════════ -->
+        <section class="grid-2">
+          <div class="liquid-glass card">
+            <h3 class="card-title">Badges &amp; alerts</h3>
+            <p class="card-note">
+              One tint recipe: <code>bg /15</code>, <code>border /25</code>,
+              deep text in light mode and pale text in dark.
+            </p>
+
+            <p class="eyebrow">Badge</p>
+            <div class="row" style="margin-bottom:1.25rem;">
+              <span class="badge success"><span class="dot"></span>Running</span>
+              <span class="badge warning"><span class="dot"></span>Pending</span>
+              <span class="badge danger"><span class="dot"></span>Stopped</span>
+              <span class="badge info">Mixed</span>
+              <span class="badge gray">Disabled</span>
+            </div>
+
+            <p class="eyebrow">Alert</p>
+            <div class="stack">
+              <div class="alert warning">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                <div>
+                  <div class="title">Rule set and domain matchers are combined with AND</div>
+                  A rule holding both matches only what is in the rule set
+                  <em>and</em> matches the domain — not the union of the two.
+                </div>
+              </div>
+              <div class="alert info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4m0-4h.01"/></svg>
+                <div>Config is validated with <code>sing-box check</code> before it is written.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="liquid-glass card">
+            <h3 class="card-title">Toasts</h3>
+            <p class="card-note">
+              Severity comes from the <code>data-p</code> attribute PrimeVue already
+              emits, and the colour is mixed from the status token — so a toast
+              matches its Alert and Badge counterparts.
+            </p>
+
+            <div class="stack">
+              <div class="toast" data-p="success center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.125rem;height:1.125rem;margin-top:0.25rem;flex:0 0 auto;"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+                <div class="body">
+                  <div class="summary">Service restarted</div>
+                  <div class="detail">sing-box is running with the new configuration.</div>
+                </div>
+                <button class="close" aria-label="Close">×</button>
+              </div>
+
+              <div class="toast" data-p="error center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.125rem;height:1.125rem;margin-top:0.25rem;flex:0 0 auto;"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6m0-6 6 6"/></svg>
+                <div class="body">
+                  <div class="summary">Validation failed</div>
+                  <div class="detail mono">outbound/urltest[proxy]: missing tags</div>
+                </div>
+                <button class="close" aria-label="Close">×</button>
+              </div>
+
+              <div class="toast" data-p="info center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.125rem;height:1.125rem;margin-top:0.25rem;flex:0 0 auto;"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4m0-4h.01"/></svg>
+                <div class="body">
+                  <div class="summary">Subscription updated</div>
+                  <div class="detail">42 nodes imported, 3 info entries skipped.</div>
+                </div>
+                <button class="close" aria-label="Close">×</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═════════════════ TABLE + TIMELINE ═════════════════ -->
+        <section class="grid-2">
+          <div class="liquid-glass card" style="padding-bottom: 0.5rem;">
+            <h3 class="card-title">Tabs &amp; table</h3>
+            <p class="card-note">Dense admin rows on a glass surface.</p>
+
+            <div class="tabs">
+              <span class="tab is-active">Inbounds</span>
+              <span class="tab">Outbounds</span>
+              <span class="tab">Rule sets</span>
+            </div>
+
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>Tag</th><th>Type</th><th>Listen</th><th>Port</th><th>Sniff</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">mixed-in</td>
+                    <td><span class="badge info">Mixed</span></td>
+                    <td class="mono">127.0.0.1</td>
+                    <td class="mono">1080</td>
+                    <td><span class="badge success"><span class="dot"></span>On</span></td>
+                    <td><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">vmess-in</td>
+                    <td><span class="badge info">VMess</span></td>
+                    <td class="mono">0.0.0.0</td>
+                    <td class="mono">10086</td>
+                    <td><span class="badge gray">Off</span></td>
+                    <td><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">tun-in</td>
+                    <td><span class="badge warning">TUN</span></td>
+                    <td class="mono">—</td>
+                    <td class="mono">—</td>
+                    <td><span class="badge success"><span class="dot"></span>On</span></td>
+                    <td><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="liquid-glass card">
+            <h3 class="card-title">Timeline</h3>
+            <p class="card-note">
+              The marker is deliberately left unstyled by the theme — a DNS step's
+              colour carries meaning (confirmed / predicted / failed), and only the
+              caller knows which applies.
+            </p>
+
+            <div class="timeline">
+              <div class="tl-event">
+                <div class="tl-sep">
+                  <span class="tl-marker" style="background: var(--color-success);"></span>
+                  <span class="tl-connector"></span>
+                </div>
+                <div class="tl-content">
+                  <div class="tl-title">hosts</div>
+                  <div class="tl-sub">No entry for <span class="mono">github.com</span></div>
+                </div>
+              </div>
+              <div class="tl-event">
+                <div class="tl-sep">
+                  <span class="tl-marker" style="background: var(--color-success);"></span>
+                  <span class="tl-connector"></span>
+                </div>
+                <div class="tl-content">
+                  <div class="tl-title">dns.rules[2]</div>
+                  <div class="tl-sub">Matched <span class="mono">rule_set: proxy</span> → dns_proxy</div>
+                </div>
+              </div>
+              <div class="tl-event">
+                <div class="tl-sep">
+                  <span class="tl-marker" style="background: var(--color-warning);"></span>
+                  <span class="tl-connector"></span>
+                </div>
+                <div class="tl-content">
+                  <div class="tl-title">predicted</div>
+                  <div class="tl-sub">A rule set sits ahead of this decision — attribution is not exact</div>
+                </div>
+              </div>
+              <div class="tl-event">
+                <div class="tl-sep">
+                  <span class="tl-marker" style="background: var(--color-primary);"></span>
+                </div>
+                <div class="tl-content">
+                  <div class="tl-title">answer</div>
+                  <div class="tl-sub mono">140.82.114.4</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═════════════════ OVERLAYS ═════════════════ -->
+        <section class="grid-2">
+          <div class="modal-stage">
+            <div class="liquid-glass-float modal">
+              <div class="modal-head">
+                <h3>Add inbound</h3>
+                <button class="btn icon" aria-label="Close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.125rem;height:1.125rem;"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="modal-body stack">
+                <div class="field">
+                  <label for="m-listen">Listen</label>
+                  <input class="input" id="m-listen" value="0.0.0.0" />
+                </div>
+                <div class="field">
+                  <label for="m-port">Port</label>
+                  <input class="input mono" id="m-port" value="10086" />
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button class="btn secondary">Cancel</button>
+                <button class="btn primary">Create</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="liquid-glass card">
+            <h3 class="card-title">PopConfirm</h3>
+            <p class="card-note">
+              Anchored, not centred. A centre-screen dialog detaches the question
+              from its subject — "Delete this rule?" gives you no way to check
+              <em>which</em> rule, so the popover names it.
+            </p>
+
+            <div class="liquid-glass-float popconfirm">
+              <div style="font-size:0.875rem; font-weight:500;">Delete this DNS rule?</div>
+              <div class="target">rule_set: proxy → dns_proxy</div>
+              <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--color-text-secondary);">
+                The config is validated and snapshotted before the change is written.
+              </div>
+              <div class="row" style="margin-top:0.75rem; justify-content:flex-end; gap:0.5rem;">
+                <button class="btn ghost sm">Cancel</button>
+                <button class="btn danger sm">Delete</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═════════════════ TOPBAR (OpenWrt layout) ═════════════════ -->
+        <section class="liquid-glass card">
+          <h3 class="card-title">Top bar — the OpenWrt layout</h3>
+          <p class="card-note">
+            Same <code>menuItems</code> tree, different shell. LuCI already owns the
+            left edge of the screen there, so a second vertical menu reads as two
+            apps fighting; top nav also gives config forms the full width on a small
+            router display. Parents become dropdowns instead of collapsible sections.
+          </p>
+
+          <div class="topbar">
+            <div class="row" style="gap:0.5rem; margin-right:0.5rem;">
+              <div class="brand-mark" style="width:1.75rem;height:1.75rem;font-size:0.75rem;">S</div>
+              <strong style="font-size:0.875rem;">Sing Box Easy</strong>
+            </div>
+            <span class="topbar-item is-active">Overview</span>
+            <span class="topbar-item">Inbounds</span>
+            <span class="topbar-item">Outbounds</span>
+            <span class="topbar-item">
+              DNS
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:0.875rem;height:0.875rem;"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+            <span class="topbar-item">Route</span>
+            <span class="badge success" style="margin-left:auto;"><span class="dot"></span>Running</span>
+          </div>
+        </section>
+
+        <!-- ═════════════════ RULES ═════════════════ -->
+        <section class="liquid-glass card">
+          <h3 class="card-title">If you are adding UI</h3>
+          <p class="card-note">The short version. The full checklist is §12 of DESIGN.md.</p>
+          <ul style="margin:0; padding-left:1.25rem; font-size:0.875rem; display:grid; gap:0.5rem;">
+            <li>
+              Radius is <code>rounded-control</code> / <code>rounded-surface</code> /
+              <code>rounded-pill</code>. Never <code>rounded-lg</code>. Nav rows are
+              pills; text buttons are not.
+            </li>
+            <li>
+              Elevation is <code>shadow-surface</code> or <code>shadow-float</code>.
+              Chrome rests on the page — only genuinely floating things float.
+            </li>
+            <li>
+              Buttons are <code>&lt;Button&gt;</code>, fields are
+              <code>&lt;Input&gt;</code>/<code>&lt;Textarea&gt;</code>, multi-value
+              fields are <code>&lt;ChipsField&gt;</code>, dropdowns are
+              <code>volt/Select</code>.
+            </li>
+            <li>
+              Before scoping any CSS under <code>.liquid-app</code>, check the element
+              cannot appear inside a teleported dialog or overlay panel. That
+              mistake has silently unstyled the entire control layer twice.
+            </li>
+            <li>
+              Dark mode is <code>prefers-color-scheme</code> only, and a
+              <code>@theme</code> block inside a media query does <em>not</em> scope —
+              Tailwind v4 hoists it to <code>:root</code> for every theme.
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
   </div>
 </body>
 </html>
