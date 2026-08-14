@@ -58,6 +58,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// DNS Management APIs
 	auth.GET("/dns", handler.GetDNS)
+	// Diagnostics: resolve a domain through sing-box and explain which rule
+	// handled it. POST because it performs live queries.
+	auth.POST("/dns/probe", handler.ProbeDNS)
 	auth.PUT("/dns", handler.UpdateDNS)
 
 	auth.GET("/dns/servers", handler.GetDNSServers)

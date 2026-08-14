@@ -10,6 +10,8 @@ import nodeRules from './nodeRules'
 import inbounds from './inbounds'
 import outbounds from './outbounds'
 import dns from './dns'
+import dnsProbe from './dnsProbe'
+import dnsFlow from './dnsFlow'
 import route from './route'
 import experimental from './experimental'
 import dialer from './dialer'
@@ -32,6 +34,8 @@ export default {
   inbounds,
   outbounds,
   dns,
+  dnsProbe,
+  dnsFlow,
   route,
   experimental,
   dialer,

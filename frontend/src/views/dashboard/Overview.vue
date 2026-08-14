@@ -7,6 +7,7 @@ import { serviceControlService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import { formatRelativeTime } from '../../utils/relativeTime'
 import SubscriptionsOverviewCard from '../../components/SubscriptionsOverviewCard.vue'
+import DnsProbeCard from '../../components/DnsProbeCard.vue'
 import { DocumentTextIcon, CommandLineIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
@@ -221,6 +222,9 @@ onMounted(fetchStatus)
 
       <!-- Subscriptions: quota, expiry and freshness at a glance -->
       <SubscriptionsOverviewCard />
+
+      <!-- "Where does this domain actually go?" without leaving the dashboard -->
+      <DnsProbeCard />
     </div>
   </div>
 </template>

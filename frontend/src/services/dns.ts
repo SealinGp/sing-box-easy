@@ -1,5 +1,6 @@
 import type { ApiService } from './api'
 import type { BasicResponse, DNS, DNSServer, DNSRule } from '../types/api'
+import type { DnsProbeRequest, DnsProbeResult } from '../types/dnsprobe'
 
 export class DNSService {
   private api: ApiService
@@ -91,5 +92,16 @@ export class DNSService {
   async deleteDNSRuleSet(tag: string): Promise<BasicResponse<{ message: string; tag: string }>> {
     const response = await this.api.delete<BasicResponse<{ message: string; tag: string }>>(`/dns/rule-sets/${tag}`)
     return response.data
+  }
+
+  /**
+   * Resolves a domain through sing-box and explains which rule handled it.
+   *
+   * POST because it performs live DNS queries; `compare_servers` additionally
+   * queries every reachable configured upstream.
+   */
+  async probe(request: DnsProbeRequest): Promise<DnsProbeResult> {
+    const response = await this.api.post<BasicResponse<DnsProbeResult>>('/dns/probe', request)
+    return response.data.data
   }
 }

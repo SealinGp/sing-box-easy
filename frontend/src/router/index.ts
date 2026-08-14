@@ -15,6 +15,7 @@ const DNS = () => import(/* webpackChunkName: "dns" */ '../views/dashboard/DNS.v
 const DNSServers = () => import(/* webpackChunkName: "dns-servers" */ '../components/DNSServers.vue')
 const DNSRules = () => import(/* webpackChunkName: "dns-rules" */ '../components/DNSRules.vue')
 const DNSSettings = () => import(/* webpackChunkName: "dns-settings" */ '../components/DNSSettings.vue')
+const DNSDiagnostics = () => import(/* webpackChunkName: "dns-diagnostics" */ '../views/dashboard/DNSDiagnostics.vue')
 const Route = () => import(/* webpackChunkName: "route" */ '../views/dashboard/Route.vue')
 const RoutingRules = () => import(/* webpackChunkName: "routing-rules" */ '../components/RoutingRules.vue')
 const RuleSets = () => import(/* webpackChunkName: "rule-sets" */ '../components/RuleSets.vue')
@@ -110,6 +111,11 @@ const routes: RouteRecordRaw[] = [
             path: 'settings',
             name: 'DNSSettings',
             component: DNSSettings,
+          },
+          {
+            path: 'diagnostics',
+            name: 'DNSDiagnostics',
+            component: DNSDiagnostics,
           },
         ],
       },

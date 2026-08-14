@@ -218,6 +218,7 @@ API surface groups (registered in `routes.go`):
 - `/nodes/parse` — parse subscription link batch
 - `/outbounds`, `/outbounds/batch`, `/outbounds/:tag/members`, `/outbounds/groups`
 - `/dns`, `/dns/servers`, `/dns/hosts`, `/dns/rules`
+- `/dns/probe` (POST) — resolve a domain the way sing-box does and explain the routing. Backed by `app/pkg/dnsprobe/`, which keeps three sources separate: the **live answer** comes from sing-box's own Clash API `/dns/query` (so hosts, `predefined` actions and FakeIP all apply — no `dig`, which BusyBox lacks); **attribution** is reconstructed offline and flagged `exact: false` whenever a `rule_set` or other runtime-only condition sits ahead of the decision; **logged_matches** is sing-box's own `dns: match[N]` debug line, which is authoritative. Note `N` is `2*index+1`, not the rule index (`dns/router.go`) — verified against sing-box 1.13.11. The log window is derived by diffing snapshots because only the systemd backend honours `TailLogs`' cursor
 - `/inbounds`
 - `/route/rules`, `/route/rule-sets`, `/route/final`
 - `/log`
