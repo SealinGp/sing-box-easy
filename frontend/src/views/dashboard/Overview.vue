@@ -6,6 +6,7 @@ import Button from '../../components/Button.vue'
 import { serviceControlService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import { formatRelativeTime } from '../../utils/relativeTime'
+import SubscriptionsOverviewCard from '../../components/SubscriptionsOverviewCard.vue'
 import { DocumentTextIcon, CommandLineIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
@@ -113,7 +114,7 @@ onMounted(fetchStatus)
   <div class="p-8">
     <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ $t('overview.title') }}</h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
       <!-- Service Status Card -->
       <div class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
         <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">{{ $t('overview.serviceStatus') }}</h3>
@@ -217,6 +218,9 @@ onMounted(fetchStatus)
           </div>
         </div>
       </div>
+
+      <!-- Subscriptions: quota, expiry and freshness at a glance -->
+      <SubscriptionsOverviewCard />
     </div>
   </div>
 </template>

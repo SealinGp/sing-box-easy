@@ -45,6 +45,7 @@ declare module 'vue' {
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     SmartRoutingRuleWizard: typeof import('./src/components/SmartRoutingRuleWizard.vue')['default']
+    SubscriptionsOverviewCard: typeof import('./src/components/SubscriptionsOverviewCard.vue')['default']
     TabNav: typeof import('./src/components/TabNav.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
     Topbar: typeof import('./src/components/Topbar.vue')['default']
