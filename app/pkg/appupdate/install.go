@@ -37,12 +37,15 @@ func installRelease(binaryDir, extractDir string) error {
 		distDir = binaryDir
 	}
 
+	// Binary-only packages (frontend embedded via go:embed) ship no dist
+	// directory — skip the dist swap entirely. When a dist IS present it must
+	// be complete, otherwise the package is corrupt.
 	newDist := filepath.Join(extractDir, "dist")
-	if err := requireDir(newDist); err != nil {
-		return fmt.Errorf("release package is missing the frontend bundle: %w", err)
-	}
-	if _, err := os.Stat(filepath.Join(newDist, "index.html")); err != nil {
-		return fmt.Errorf("release package frontend is incomplete (dist/index.html missing): %w", err)
+	hasDist := requireDir(newDist) == nil
+	if hasDist {
+		if _, err := os.Stat(filepath.Join(newDist, "index.html")); err != nil {
+			return fmt.Errorf("release package frontend is incomplete (dist/index.html missing): %w", err)
+		}
 	}
 
 	// ── Swap the binary ────────────────────────────────────────────────────
@@ -77,10 +80,12 @@ func installRelease(binaryDir, extractDir string) error {
 		return fmt.Errorf("failed to mark the new binary executable: %w", err)
 	}
 
-	// ── Swap the frontend bundle ───────────────────────────────────────────
-	if err := swapDir(newDist, filepath.Join(distDir, "dist")); err != nil {
-		restoreBinary()
-		return fmt.Errorf("failed to install the frontend bundle: %w", err)
+	// ── Swap the frontend bundle (when the package ships one) ──────────────
+	if hasDist {
+		if err := swapDir(newDist, filepath.Join(distDir, "dist")); err != nil {
+			restoreBinary()
+			return fmt.Errorf("failed to install the frontend bundle: %w", err)
+		}
 	}
 
 	// Best-effort extras: never fail the update over these.

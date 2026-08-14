@@ -105,20 +105,20 @@ func TestInstallReleaseSwapsBinaryAndFrontend(t *testing.T) {
 	}
 }
 
-// A package missing its frontend must be rejected BEFORE the binary is
-// touched — otherwise the install directory is left with a half-applied update.
-func TestInstallReleaseRejectsPackageWithoutFrontend(t *testing.T) {
+// Binary-only packages (frontend embedded via go:embed) are valid: the binary
+// is swapped and any pre-existing on-disk dist is left untouched.
+func TestInstallReleaseAcceptsBinaryOnlyPackage(t *testing.T) {
 	staged := stageRelease(t, map[string]string{"sing-box-easy": "new-binary"})
 
-	if err := installRelease(staged.installDir, staged.extractDir); err == nil {
-		t.Fatal("installRelease succeeded without a dist/ bundle, want an error")
+	if err := installRelease(staged.installDir, staged.extractDir); err != nil {
+		t.Fatalf("installRelease with a binary-only package failed: %v", err)
 	}
 
-	if got := readFile(t, staged.liveBinary); got != "old-binary" {
-		t.Errorf("live binary = %q, want the original left in place", got)
+	if got := readFile(t, staged.liveBinary); got != "new-binary" {
+		t.Errorf("live binary = %q, want the new binary installed", got)
 	}
 	if got := readFile(t, staged.liveIndex); got != "<old/>" {
-		t.Errorf("dist/index.html = %q, want the original left in place", got)
+		t.Errorf("dist/index.html = %q, want the existing bundle left in place", got)
 	}
 }
 
