@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
@@ -62,5 +63,50 @@ func (h *Handler) UpdateSettings(ctx context.Context, c *app.RequestContext) {
 			"min": settings.MinConfigVersionsKeep,
 			"max": settings.MaxConfigVersionsKeep,
 		},
+	})
+}
+
+// GetSubscriptionInfoKeywords returns the labels that mark a feed entry as
+// account metadata ("剩余流量：4.7 TB") instead of a proxy node: the effective
+// list actually used for matching, the built-in defaults (so the UI can offer a
+// reset), and whether the deployment is still on those defaults.
+func (h *Handler) GetSubscriptionInfoKeywords(ctx context.Context, c *app.RequestContext) {
+	configured := subscription.NormalizeInfoKeywords(h.settingsManager.GetSubscriptionInfoKeywords())
+
+	respOK(ctx, c, map[string]any{
+		"keywords":       subscription.EffectiveInfoKeywords(configured),
+		"defaults":       subscription.DefaultInfoLabelKeywords,
+		"using_defaults": len(configured) == 0,
+		"limits": map[string]int{
+			"max_keywords": settings.MaxInfoKeywords,
+			"max_length":   settings.MaxInfoKeywordLen,
+		},
+	})
+}
+
+// UpdateSubscriptionInfoKeywords replaces the override list. Sending an empty
+// array clears it, restoring the built-in defaults. The list is normalized
+// (trimmed, lowercased, de-duplicated) before it is stored, so matching stays
+// case-insensitive and the UI always reads back what it will actually match on.
+func (h *Handler) UpdateSubscriptionInfoKeywords(ctx context.Context, c *app.RequestContext) {
+	type Request struct {
+		Keywords []string `json:"keywords"`
+	}
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	normalized := subscription.NormalizeInfoKeywords(req.Keywords)
+	if err := h.settingsManager.SetSubscriptionInfoKeywords(normalized); err != nil {
+		respErr(ctx, c, CodeValidationError, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{
+		"keywords":       subscription.EffectiveInfoKeywords(normalized),
+		"defaults":       subscription.DefaultInfoLabelKeywords,
+		"using_defaults": len(normalized) == 0,
 	})
 }

@@ -31,6 +31,12 @@ const (
 	// KeyGitHubLogin is the signed-in account name, kept purely so the UI can
 	// show who is connected.
 	KeyGitHubLogin = "github_login"
+
+	// KeySubscriptionInfoKeywords holds the operator's override for the labels
+	// that mark a feed entry as account metadata ("剩余流量：4.7 TB") rather than
+	// a proxy node. Stored as a JSON array; an empty/absent value means "use the
+	// built-in defaults".
+	KeySubscriptionInfoKeywords = "subscription_info_keywords"
 )
 
 // EnvGitHubToken is consulted when no token is stored in the database, so

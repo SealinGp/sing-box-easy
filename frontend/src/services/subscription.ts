@@ -1,5 +1,10 @@
 import type { ApiService } from './api'
-import type { BasicResponse, Subscription, SubscriptionUpdateResult } from '../types/api'
+import type {
+  BasicResponse,
+  Subscription,
+  SubscriptionInfoKeywords,
+  SubscriptionUpdateResult,
+} from '../types/api'
 
 export class SubscriptionService {
   private api: ApiService
@@ -35,6 +40,25 @@ export class SubscriptionService {
 
   async updateSubscriptionContent(id: string): Promise<BasicResponse<SubscriptionUpdateResult>> {
     const response = await this.api.post<BasicResponse<SubscriptionUpdateResult>>(`/subscriptions/${id}/update`)
+    return response.data
+  }
+
+  // Info-label keywords decide which feed entries are account metadata rather
+  // than proxy nodes. They live under /settings because /subscriptions already
+  // owns a ":id" wildcard at that path position.
+  async getInfoKeywords(): Promise<BasicResponse<SubscriptionInfoKeywords>> {
+    const response = await this.api.get<BasicResponse<SubscriptionInfoKeywords>>(
+      '/settings/subscription-info-keywords',
+    )
+    return response.data
+  }
+
+  // An empty list clears the override and restores the built-in defaults.
+  async updateInfoKeywords(keywords: string[]): Promise<BasicResponse<SubscriptionInfoKeywords>> {
+    const response = await this.api.put<BasicResponse<SubscriptionInfoKeywords>>(
+      '/settings/subscription-info-keywords',
+      { keywords },
+    )
     return response.data
   }
 }

@@ -32,6 +32,7 @@ type AutoUpdater struct {
 	sublinkManager      *sublink.SubLink
 	configManager       *config.Manager
 	nodeRules           NodeRulesProvider
+	infoKeywords        InfoKeywordsProvider
 	cron                *cron.Cron
 	mutex               sync.RWMutex
 	isRunning           bool
@@ -67,14 +68,33 @@ func (r *UpdateResult) Counts() (added, updated, deleted int) {
 // NewAutoUpdater creates a new auto-updater instance. nodeRules may be nil, in
 // which case the legacy "append new nodes into non-group collections" behavior
 // is used; when present, the Outbound Node Rules engine owns node placement.
-func NewAutoUpdater(configManager *config.Manager, subscriptionManager SubscriptionManager, sublinkManager *sublink.SubLink, nodeRules NodeRulesProvider) *AutoUpdater {
+// infoKeywords may also be nil, in which case the built-in
+// DefaultInfoLabelKeywords decide which feed entries are account metadata.
+func NewAutoUpdater(
+	configManager *config.Manager,
+	subscriptionManager SubscriptionManager,
+	sublinkManager *sublink.SubLink,
+	nodeRules NodeRulesProvider,
+	infoKeywords InfoKeywordsProvider,
+) *AutoUpdater {
 	return &AutoUpdater{
 		subscriptionManager: subscriptionManager,
 		sublinkManager:      sublinkManager,
 		configManager:       configManager,
 		nodeRules:           nodeRules,
+		infoKeywords:        infoKeywords,
 		updateStats:         make(map[string]*UpdateStats),
 	}
+}
+
+// infoLabelKeywords resolves the keyword list for this refresh. It is read per
+// update (not cached) so an edit on the Subscriptions page takes effect on the
+// very next refresh without a restart.
+func (au *AutoUpdater) infoLabelKeywords() []string {
+	if au.infoKeywords == nil {
+		return DefaultInfoLabelKeywords
+	}
+	return EffectiveInfoKeywords(au.infoKeywords.GetSubscriptionInfoKeywords())
 }
 
 // Start starts the cron job for automatic updates
@@ -250,7 +270,7 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	// in-feed loopback "info nodes". Header entries come first. Splitting also
 	// keeps info nodes out of the config — any existing loopback outbounds from
 	// this subscription are no longer in `realNodes`, so the diff deletes them.
-	realNodes, nodeInfo := partitionNodes(newNodes)
+	realNodes, nodeInfo := partitionNodes(newNodes, au.infoLabelKeywords())
 	info := parseUserinfo(meta.Userinfo)
 	info = append(info, nodeInfo...)
 
@@ -353,128 +373,6 @@ func subscriptionTagSuffix(subID string) string {
 // since renamed the node in front of the suffix.
 func tagBelongsToSubscription(tag, subID string) bool {
 	return strings.HasSuffix(tag, subscriptionTagSuffix(subID))
-}
-
-// loopbackServers are the non-routable hosts that mark a parsed node as an
-// "info node" rather than a real proxy. A node pointed at one of these can never
-// be a usable exit, so this is a robust, provider/language-agnostic signal —
-// no need to match the (localized) metadata field names themselves.
-var loopbackServers = map[string]struct{}{
-	"127.0.0.1": {},
-	"::1":       {},
-	"localhost": {},
-	"0.0.0.0":   {},
-}
-
-// isInfoNode reports whether a parsed node is an info node (loopback server).
-func isInfoNode(n *node.SubNode) bool {
-	if n == nil {
-		return false
-	}
-	server := config.GetOutboundServer(config.Outbound{Type: n.Type, Options: n.Options})
-	_, ok := loopbackServers[strings.ToLower(strings.TrimSpace(server))]
-	return ok
-}
-
-// parseInfoEntry turns an info-node display name into a generic key/value pair by
-// splitting on the FIRST colon — fullwidth "：" (U+FF1A) or ASCII ":". With no
-// colon the whole name becomes the key and the value is empty. This keeps the
-// feature provider-agnostic: any label ("剩余流量", "Expire", ...) is preserved
-// verbatim rather than matched against a hardcoded set.
-func parseInfoEntry(name string) SubInfo {
-	idx := -1
-	sepLen := 0
-	for i, r := range name {
-		if r == '：' || r == ':' {
-			idx = i
-			sepLen = len(string(r)) // 1 for ASCII ':'; 3 for fullwidth '：'
-			break
-		}
-	}
-	if idx < 0 {
-		return SubInfo{Key: strings.TrimSpace(name)}
-	}
-	key := strings.TrimSpace(name[:idx])
-	value := strings.TrimSpace(name[idx+sepLen:])
-	return SubInfo{Key: key, Value: value}
-}
-
-// partitionNodes splits a fetched feed into real proxy nodes (kept for the
-// config diff) and the metadata entries parsed from its info nodes. Operates on
-// node.Tag, which at this point is the raw provider name (the "<server:port> |
-// <subID>" suffix is only appended later inside diffNodes).
-func partitionNodes(nodes []*node.SubNode) (real []*node.SubNode, info []SubInfo) {
-	for _, n := range nodes {
-		if isInfoNode(n) {
-			info = append(info, parseInfoEntry(n.Tag))
-			continue
-		}
-		real = append(real, n)
-	}
-	return real, info
-}
-
-// parseUserinfo turns a Subscription-Userinfo header into human-readable info
-// entries. The header is the cross-provider standard
-//
-//	upload=<bytes>; download=<bytes>; total=<bytes>; expire=<unix-seconds>
-//
-// (any subset may be present). The four keys are a fixed spec — not localized
-// per-provider labels — so formatting them here is safe. Returns nil for an
-// empty/unparseable header.
-func parseUserinfo(header string) []SubInfo {
-	header = strings.TrimSpace(header)
-	if header == "" {
-		return nil
-	}
-
-	vals := make(map[string]int64)
-	for _, part := range strings.Split(header, ";") {
-		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
-		if len(kv) != 2 {
-			continue
-		}
-		key := strings.ToLower(strings.TrimSpace(kv[0]))
-		n, err := strconv.ParseInt(strings.TrimSpace(kv[1]), 10, 64)
-		if err != nil {
-			continue
-		}
-		vals[key] = n
-	}
-
-	var out []SubInfo
-	used := vals["upload"] + vals["download"]
-	total, hasTotal := vals["total"]
-	if used > 0 || hasTotal {
-		out = append(out, SubInfo{Key: "Used", Value: humanizeBytes(used)})
-	}
-	// total == 0 conventionally means "unlimited" — show neither total nor
-	// remaining in that case.
-	if hasTotal && total > 0 {
-		out = append(out, SubInfo{Key: "Total", Value: humanizeBytes(total)})
-		if rem := total - used; rem >= 0 {
-			out = append(out, SubInfo{Key: "Remaining", Value: humanizeBytes(rem)})
-		}
-	}
-	if exp, ok := vals["expire"]; ok && exp > 0 {
-		out = append(out, SubInfo{Key: "Expires", Value: time.Unix(exp, 0).Format("2006-01-02")})
-	}
-	return out
-}
-
-// humanizeBytes formats a byte count with binary (1024) units, matching how
-// airports report quota (e.g. total=805306368000 → "750.00 GB").
-func humanizeBytes(n int64) string {
-	const unit = 1024
-	if n < unit {
-		return fmt.Sprintf("%d B", n)
-	}
-	div, exp := int64(unit), 0
-	for x := n / unit; x >= unit; x /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.2f %cB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
 // diffNodes compares current outbounds with the freshly fetched nodes and

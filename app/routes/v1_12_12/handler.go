@@ -85,7 +85,7 @@ func NewHandler(
 	nodeRulesManager := noderules.NewManagerXORM()
 
 	// Initialize auto-updater (rules-aware)
-	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager)
+	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager, settingsManager)
 	schedulerHandler := newSchedulerHandler(autoUpdater)
 
 	// Initialize user manager

@@ -145,6 +145,27 @@ The application uses SQLite with XORM ORM for persistent storage:
 6. Auto-update can be configured per subscription
 7. All subscription data persisted in database with ACID guarantees
 
+### Subscription info nodes
+
+Account metadata (traffic left, expiry, reset countdown) arrives through three
+provider-dependent channels, handled in `app/pkg/subscription/info_node.go`:
+
+1. the standard `Subscription-Userinfo` response header (`parseUserinfo`);
+2. "info nodes" pointed at a loopback address (`isLoopbackNode`);
+3. "info nodes" that are ordinary, fully-routable entries — usually clones of the
+   first real node — distinguished only by their display name (`isInfoLabel`),
+   e.g. 良心云's `剩余流量：4.7 TB`.
+
+Case 3 requires **both** a `<label><colon><value>` shape (fullwidth `：` or ASCII
+`:`) and a keyword inside the label, so region names like `🇭🇰香港：01` are never
+swallowed. The keyword list is operator-editable (Subscriptions page → "Info
+Keywords" → `PUT /settings/subscription-info-keywords`, stored as a JSON array in
+`settings` under `subscription_info_keywords`); an empty override falls back to
+`subscription.DefaultInfoLabelKeywords`. The updater reads it per refresh via the
+`InfoKeywordsProvider` interface, so edits apply without a restart. Info nodes are
+kept out of `config.json`: they are not usable exits and their names change every
+refresh, which would otherwise churn the outbound list.
+
 ### Frontend Architecture
 
 - **Framework**: Vue 3 + TypeScript + Vite
@@ -233,6 +254,7 @@ API surface groups (registered in `routes.go`):
 - `/init/{status,complete,reset}`
 - `/templates/rule-sets`
 - `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in
+- `/settings/subscription-info-keywords` (GET/PUT) — the labels that mark a feed entry as account metadata instead of a proxy node (see "Subscription info nodes"). PUT with `{"keywords": []}` clears the override and restores `subscription.DefaultInfoLabelKeywords`. Lives under `/settings` because `/subscriptions` already owns a `:id` wildcard at that path position, which a static sibling would collide with in the Hertz router
 - `/github/auth/status` (read), `/github/auth/device` POST/GET/DELETE `:session_id`, `/github/auth` DELETE (admin-only) — GitHub sign-in via OAuth device flow
 - `/auth/status` (public) — whether this deployment requires login, plus `system_type` (`openwrt`/`debian`/`unknown`). `server.auth` in app.yml: `auto` (default; login disabled on OpenWrt, enabled elsewhere) / `enabled` / `disabled`. When disabled, `AuthMiddleware` injects a synthetic admin user and the frontend hides login/profile/user management. Deliberately the only host detail exposed pre-auth — the frontend needs it to pick a navigation layout
 - `/system/info` — host details for the Settings "About" card: arch, CPU cores, kernel, distribution, hostname, service backend, and the sing-box + sing-box-easy versions. Collected by `app/pkg/sysinfo/`, which degrades every field to a zero value rather than failing

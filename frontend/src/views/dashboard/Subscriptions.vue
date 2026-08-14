@@ -9,6 +9,7 @@ import Button from "../../components/Button.vue";
 import Modal from "../../components/Modal.vue";
 import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
+import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
 import {
@@ -21,6 +22,7 @@ import {
   XCircleIcon,
   ClockIcon,
   ClipboardDocumentIcon,
+  TagIcon,
 } from "@heroicons/vue/24/outline";
 
 const subscriptionService = new SubscriptionService(apiService);
@@ -42,6 +44,9 @@ const isUpdating = ref<string[]>([]);
 const showModal = ref(false);
 const editingSubscription = ref<Subscription | null>(null);
 const showDeleteConfirm = ref(false);
+// Editor for the labels that mark a feed entry as account metadata rather than
+// a proxy node — provider-specific, hence operator-editable.
+const showInfoKeywords = ref(false);
 const deletingSubscriptionId = ref<string>("");
 
 // Form data
@@ -343,6 +348,14 @@ onMounted(() => {
           <ArrowPathIcon class="h-5 w-5" />
           {{ $t("subscriptions.updateAll") }}
         </Button>
+        <Button
+          variant="secondary"
+          @click="showInfoKeywords = true"
+          :title="$t('subscriptions.keywords.tooltip')"
+        >
+          <TagIcon class="h-5 w-5" />
+          {{ $t("subscriptions.keywords.button") }}
+        </Button>
         <Button @click="openAddModal">
           <PlusIcon class="h-5 w-5" />
           {{ $t("subscriptions.add") }}
@@ -553,6 +566,9 @@ onMounted(() => {
         </table>
       </div>
     </div>
+
+    <!-- Info-label keywords editor -->
+    <SubscriptionInfoKeywords v-model="showInfoKeywords" />
 
     <!-- Add/Edit Modal -->
     <Modal v-model="showModal" :title="modalTitle" size="md" show-close>

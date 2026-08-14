@@ -164,6 +164,21 @@ export interface Subscription {
   proxy_url?: string
 }
 
+// Payload of GET/PUT /settings/subscription-info-keywords.
+//
+// `keywords` is the effective list actually used to tell an account-metadata
+// entry ("剩余流量：4.7 TB") apart from a proxy node — it equals `defaults`
+// while `using_defaults` is true, and the operator's override otherwise.
+export interface SubscriptionInfoKeywords {
+  keywords: string[]
+  defaults: string[]
+  using_defaults: boolean
+  limits?: {
+    max_keywords: number
+    max_length: number
+  }
+}
+
 // Response payload for POST /subscriptions/:id/update.
 // Backend computes a 3-way diff (add/update/delete) and returns both the
 // raw tags/keys and pre-computed counts.

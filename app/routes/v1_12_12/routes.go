@@ -41,6 +41,11 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// Application settings
 	auth.GET("/settings", handler.GetSettings)
 	auth.PUT("/settings", handler.UpdateSettings)
+	// Subscription info-label keywords. Registered under /settings rather than
+	// /subscriptions because the latter already owns a ":id" wildcard at that
+	// position, which a static sibling segment would collide with.
+	auth.GET("/settings/subscription-info-keywords", handler.GetSubscriptionInfoKeywords)
+	auth.PUT("/settings/subscription-info-keywords", handler.UpdateSubscriptionInfoKeywords)
 
 	// Node Parsing API
 	auth.POST("/nodes/parse", handler.ParseNodes)
