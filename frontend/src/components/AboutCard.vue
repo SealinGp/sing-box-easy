@@ -55,8 +55,15 @@ const placeholder = '—'
 
 const appVersion = computed(() => currentVersion.value || info.value?.app_version || buildVersion)
 
+/**
+ * "Not installed" is a claim, so it is only made when the backend actually said
+ * so. If the fetch failed there is no information at all — returning the
+ * placeholder drops the row (see `rows`) rather than telling an operator with a
+ * perfectly healthy sing-box that it is missing.
+ */
 const singBoxVersion = computed(() => {
-  const version = info.value?.sing_box_version
+  if (!info.value) return placeholder
+  const version = info.value.sing_box_version
   if (!version || version === 'unknown') return t('settings.about.notInstalled')
   return version
 })

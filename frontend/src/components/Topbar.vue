@@ -65,15 +65,33 @@ const isParentActive = (item: MenuItem) => {
 const openMenu = ref<string | null>(null)
 const navRef = ref<HTMLElement | null>(null)
 
+// Triggers are tracked so focus can be handed back when a menu closes. `v-if`
+// unmounts the open list, and if focus was inside it the browser drops focus to
+// <body> — restarting Tab order from the top of the page.
+const triggers = new Map<string, HTMLButtonElement>()
+
+const registerTrigger = (name: string, el: Element | null) => {
+  if (el) triggers.set(name, el as HTMLButtonElement)
+  else triggers.delete(name)
+}
+
 const toggleMenu = (name: string) => {
   openMenu.value = openMenu.value === name ? null : name
 }
 
-const closeMenu = () => {
+/**
+ * `restoreFocus` is for dismissals the keyboard user initiated (Escape, or
+ * tabbing away is handled separately) — sending focus back to the trigger keeps
+ * them where they were. It must stay off for route changes, where focus
+ * belongs to the newly navigated page, not the menu they just left.
+ */
+const closeMenu = (restoreFocus = false) => {
+  const previous = openMenu.value
   openMenu.value = null
+  if (restoreFocus && previous) triggers.get(previous)?.focus()
 }
 
-watch(() => route.path, closeMenu)
+watch(() => route.path, () => closeMenu())
 
 const handleDocumentClick = (event: MouseEvent) => {
   if (!openMenu.value) return
@@ -83,7 +101,38 @@ const handleDocumentClick = (event: MouseEvent) => {
 }
 
 const handleEscape = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') closeMenu()
+  if (event.key === 'Escape') closeMenu(true)
+}
+
+/**
+ * Closes the menu once focus leaves the navigation entirely. Without this a
+ * keyboard user can Tab out of an open dropdown — even onto a sibling trigger,
+ * which the outside-click guard treats as "inside" — and leave it hanging over
+ * the page with nothing focused in it.
+ */
+const handleNavFocusOut = () => {
+  if (!openMenu.value) return
+  // Deferred rather than reading `event.relatedTarget`: that property is null
+  // whenever the browser cannot name the element receiving focus, which would
+  // silently skip the close. Reading `document.activeElement` on the next frame
+  // — once focus has settled — is what actually holds across browsers.
+  requestAnimationFrame(() => {
+    if (!openMenu.value) return
+    // The window itself lost focus (alt-tab). Keep the menu so it is still
+    // there when the user switches back.
+    if (!document.hasFocus()) return
+    const active = document.activeElement
+    if (active && navRef.value?.contains(active)) return
+    closeMenu()
+  })
+}
+
+/**
+ * Tabbing between top-level triggers should follow focus rather than leave the
+ * previous menu open, since only one may be open at a time.
+ */
+const handleTriggerFocus = (name: string) => {
+  if (openMenu.value && openMenu.value !== name) closeMenu()
 }
 
 onMounted(() => {
@@ -141,7 +190,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
         context, and the dropdowns — absolutely positioned below their parent —
         would be cut off by it.
       -->
-      <nav ref="navRef" class="flex-1 min-w-0">
+      <nav ref="navRef" class="flex-1 min-w-0" @focusout="handleNavFocusOut">
         <ul class="flex flex-wrap items-center gap-1">
           <li v-for="item in menuItems" :key="item.name" class="relative flex-shrink-0">
             <!-- Leaf entry -->
@@ -172,10 +221,21 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 
             <!-- Parent entry: opens a dropdown of its children -->
             <template v-else>
+              <!--
+                A disclosure, not a menu widget. `aria-haspopup="true"` was
+                tried and removed: it is defined as `="menu"`, so screen
+                readers announce "has pop-up menu" and the user reaches for
+                arrow keys that do not exist here — the popup is a plain list
+                of links. `aria-expanded` + `aria-controls` describes what this
+                actually is. Real menu semantics would need role="menu",
+                roving tabindex and Home/End/Up/Down handling.
+              -->
               <button
+                :ref="(el) => registerTrigger(item.name, el as Element | null)"
                 @click="toggleMenu(item.name)"
+                @focus="handleTriggerFocus(item.name)"
                 :aria-expanded="openMenu === item.name"
-                aria-haspopup="true"
+                :aria-controls="`topbar-menu-${item.name}`"
                 :class="[
                   'flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-medium whitespace-nowrap transition-colors cursor-pointer',
                   isParentActive(item)
@@ -203,6 +263,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
               >
                 <ul
                   v-if="openMenu === item.name"
+                  :id="`topbar-menu-${item.name}`"
                   class="topbar-dropdown absolute left-0 top-full mt-2 min-w-48 rounded-surface p-1.5 shadow-float z-50"
                 >
                   <li v-for="child in item.children" :key="child.name">

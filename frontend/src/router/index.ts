@@ -221,7 +221,10 @@ router.beforeEach(async (to, _, next) => {
   await ensureDeployment()
   const { authEnabled } = useDeployment()
   if (!authEnabled.value) {
-    if (to.path === '/login' || to.path === '/dashboard/profile') {
+    // Account-bound routes do not apply without a login flow. `/dashboard/users`
+    // is included because accounts created there could never sign in.
+    const accountRoutes = ['/login', '/dashboard/profile', '/dashboard/users']
+    if (accountRoutes.includes(to.path)) {
       next('/dashboard')
       return
     }

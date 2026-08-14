@@ -37,7 +37,7 @@ const { t } = useI18n();
 // screens do not have, so that platform gets a top bar instead. The platform is
 // resolved by the router guard before this view mounts, so the correct layout
 // renders on the first paint.
-const { isOpenWrt } = useDeployment();
+const { isOpenWrt, authEnabled } = useDeployment();
 
 // Computed so labels re-translate when the locale changes. Icons/paths are
 // static; only the display `name` is localized.
@@ -92,11 +92,19 @@ const menuItems = computed<MenuItem[]>(() => [
         icon: AdjustmentsVerticalIcon,
         path: "/dashboard/settings",
       },
-      {
-        name: t("nav.users"),
-        icon: UsersIcon,
-        path: "/dashboard/users",
-      },
+      // User management is meaningless where there is no login flow (OpenWrt
+      // under `server.auth: auto`): accounts created there could never be used
+      // to sign in, and the UI would not say so. The router guard blocks the
+      // route too, so a bookmark cannot reach it either.
+      ...(authEnabled.value
+        ? [
+            {
+              name: t("nav.users"),
+              icon: UsersIcon,
+              path: "/dashboard/users",
+            },
+          ]
+        : []),
       {
         name: t("nav.logs"),
         icon: QueueListIcon,

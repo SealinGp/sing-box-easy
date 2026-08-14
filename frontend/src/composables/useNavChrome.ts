@@ -49,9 +49,13 @@ export const useNavChrome = () => {
 
   onMounted(async () => {
     unsubscribe = serviceStore.startPolling(5000)
-    await fetchUser()
+    // Started before awaiting the user so it overlaps with the update panel's
+    // own mount-time call and the two collapse into one request. Awaiting first
+    // would let that call finish before this one begins, defeating the
+    // de-duplication whenever /user/me happens to be the slower of the two.
     // Cached server-side for a few minutes, so this is cheap and non-blocking.
     void refreshStatus(false)
+    await fetchUser()
   })
 
   onUnmounted(() => {

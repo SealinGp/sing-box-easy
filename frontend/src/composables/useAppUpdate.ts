@@ -40,6 +40,11 @@ const loadingReleases = ref(false)
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 
+// Shared with the rest of the module-level state above: every caller of
+// useAppUpdate() must see the same in-flight status request, otherwise the
+// de-duplication in refreshStatus() only ever covers a single component.
+let statusInFlight: Promise<VersionStatus | null> | null = null
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const clearPoll = () => {
@@ -86,8 +91,23 @@ export function useAppUpdate() {
   /**
    * Fetch the version status. Never throws — a GitHub outage or rate limit is
    * surfaced through `status.check_error` so the page still renders.
+   *
+   * Unforced calls share one in-flight request. Landing directly on Settings
+   * mounts the navigation shell and the embedded update panel in the same
+   * tick, and both ask for the status: without this they fire two identical
+   * requests, and whichever returns first clears `checking`, stopping the
+   * "Checking…" spinner while the other is still running. An explicit
+   * `force` (the "Check again" button) always issues a fresh request.
    */
-  const refreshStatus = async (force = false): Promise<VersionStatus | null> => {
+  const refreshStatus = (force = false): Promise<VersionStatus | null> => {
+    if (!force && statusInFlight) return statusInFlight
+    statusInFlight = doRefreshStatus(force).finally(() => {
+      statusInFlight = null
+    })
+    return statusInFlight
+  }
+
+  const doRefreshStatus = async (force: boolean): Promise<VersionStatus | null> => {
     checking.value = true
     try {
       const next = await versionService.getStatus(force)
