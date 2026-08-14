@@ -257,6 +257,13 @@ func (u *Updater) RunningTask() *Task {
 // Returns an error when another update is already running, when the tag is
 // malformed, or when the target release does not exist.
 func (u *Updater) StartUpdate(tag string) (*Task, error) {
+	// ipk installs are owned by opkg — a tarball swap would desync its file
+	// registry, so route those updates through the package manager instead.
+	if InstalledViaOpkg() {
+		return nil, fmt.Errorf("this instance was installed via opkg; " +
+			"update it with 'opkg upgrade sing-box-easy' (or install the new .ipk from the GitHub release) instead")
+	}
+
 	tag = strings.TrimSpace(tag)
 	if tag != "" && !tagPattern.MatchString(tag) {
 		return nil, fmt.Errorf("invalid version tag: %q (expected something like v1.2.3)", tag)

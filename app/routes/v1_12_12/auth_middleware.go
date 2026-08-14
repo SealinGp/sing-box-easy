@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
+	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"github.com/SealinGp/sing-box-easy/app/pkg/user"
 	"github.com/SealinGp/sing-box-easy/app/pkg/user/repo"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -13,8 +15,35 @@ const (
 	UserContextKey = "current_user"
 )
 
-// AuthMiddleware creates a middleware that checks the session token
-func AuthMiddleware(userManager user.UserManager) app.HandlerFunc {
+// ResolveAuthEnabled maps the server.auth config mode onto an effective
+// login requirement for this host. "auto" disables login only on OpenWrt
+// (router-LAN deployments); any unknown value fails safe to enabled.
+func ResolveAuthEnabled(mode string, systemType service.SystemType) bool {
+	switch mode {
+	case appconfig.AuthDisabled:
+		return false
+	case appconfig.AuthAuto:
+		return systemType != service.SystemOpenWRT
+	default: // appconfig.AuthEnabled and anything unexpected
+		return true
+	}
+}
+
+// noAuthUser is the synthetic identity injected when login is disabled: every
+// request acts as an administrator so downstream RequireAdmin checks and
+// self-service handlers keep working unchanged.
+var noAuthUser = &repo.User{ID: 0, Username: "admin", Role: "admin"}
+
+// AuthMiddleware creates a middleware that checks the session token. When
+// enabled is false (server.auth: disabled, or "auto" on OpenWrt) the check is
+// bypassed and every request runs as an administrator.
+func AuthMiddleware(userManager user.UserManager, enabled bool) app.HandlerFunc {
+	if !enabled {
+		return func(ctx context.Context, c *app.RequestContext) {
+			c.Set(UserContextKey, noAuthUser)
+			c.Next(ctx)
+		}
+	}
 	return func(ctx context.Context, c *app.RequestContext) {
 		authHeader := string(c.GetHeader("Authorization"))
 		if authHeader == "" {

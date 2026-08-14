@@ -5,6 +5,7 @@ export default {
     servers: 'DNS 服务器',
     rules: 'DNS 规则',
     settings: '设置',
+    diagnostics: '诊断',
   },
   servers: {
     heading: 'DNS 服务器',

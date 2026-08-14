@@ -10,15 +10,16 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Public APIs
 	v1.POST("/user/login", handler.Login)
+	v1.GET("/auth/status", handler.GetAuthStatus)
 
 	// Authenticated APIs Group
-	auth := v1.Group("", AuthMiddleware(handler.userManager))
+	auth := v1.Group("", AuthMiddleware(handler.userManager, handler.authEnabled))
 	auth.POST("/user/logout", handler.Logout)
 	auth.GET("/user/me", handler.GetMe)
 	auth.PUT("/users/:id", handler.UpdateUser) // Handled inside to allow self-update
 
 	// Admin-only APIs Group
-	admin := v1.Group("", AuthMiddleware(handler.userManager), RequireAdmin())
+	admin := v1.Group("", AuthMiddleware(handler.userManager, handler.authEnabled), RequireAdmin())
 	admin.GET("/users", handler.ListUsers)
 	admin.POST("/users", handler.CreateUser)
 	admin.DELETE("/users/:id", handler.DeleteUser)
@@ -57,6 +58,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// DNS Management APIs
 	auth.GET("/dns", handler.GetDNS)
+	// Diagnostics: resolve a domain through sing-box and explain which rule
+	// handled it. POST because it performs live queries.
+	auth.POST("/dns/probe", handler.ProbeDNS)
 	auth.PUT("/dns", handler.UpdateDNS)
 
 	auth.GET("/dns/servers", handler.GetDNSServers)
@@ -160,6 +164,11 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.POST("/dashboard/upload", handler.UploadDashboard)
 	auth.GET("/dashboard/task/:task_id", handler.GetDashboardTask)
 	auth.GET("/dashboard/status", handler.GetDashboardStatus)
+
+	// Host details for the Settings "About" card (arch, kernel, distribution,
+	// sing-box + panel versions). Signed-in users only — see
+	// SystemInfoResponse for why the public surface stays coarser.
+	auth.GET("/system/info", handler.GetSystemInfo)
 
 	// App version / self-update APIs.
 	// Reading is available to any signed-in user; performing the update

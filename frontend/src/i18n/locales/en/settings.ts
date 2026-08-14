@@ -69,6 +69,23 @@ export default {
   },
   about: {
     title: 'About',
+    app: 'sing-box-easy',
+    singBox: 'sing-box',
+    platform: 'Platform',
+    architecture: 'Architecture',
+    kernel: 'Kernel',
+    hostname: 'Hostname',
+    serviceBackend: 'Service manager',
+    cores: '{count} core | {count} cores',
+    notInstalled: 'Not installed',
+    loadFailed: 'Failed to load system information',
+    layout: {
+      title: 'Navigation layout',
+      desc: 'Force a layout to preview it, including how it paints on first load. Development builds only — the choice is remembered across reloads.',
+      auto: 'Auto',
+      sidebar: 'Sidebar',
+      topbar: 'Top bar',
+    },
   },
   toast: {
     loadFailed: 'Failed to load settings',

@@ -7,7 +7,6 @@ interface Tab {
 }
 
 defineProps<{
-  title: string
   tabs: Tab[]
 }>()
 
@@ -21,8 +20,6 @@ const isActiveTab = (path: string) => {
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ title }}</h2>
-
     <!-- Tabs -->
     <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
       <nav class="-mb-px flex space-x-8">

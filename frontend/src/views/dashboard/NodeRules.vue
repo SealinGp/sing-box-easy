@@ -305,7 +305,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6 animate-fade-in">
-    <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
+    <!-- Header: subtitle + actions -->
     <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
       <div class="flex items-center gap-3">

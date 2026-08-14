@@ -14,5 +14,5 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <TabNav :title="$t('experimental.tabs.title')" :tabs="tabs" />
+  <TabNav :tabs="tabs" />
 </template>

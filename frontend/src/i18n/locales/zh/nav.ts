@@ -19,4 +19,5 @@ export default {
   nodeRules: '节点规则',
   logs: '日志',
   serviceStatusHint: 'sing-box 实时运行状态 —— 点击查看详情',
+  signOut: '退出登录',
 }

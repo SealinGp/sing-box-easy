@@ -376,3 +376,29 @@ export interface LoginResponse {
   user: User
 }
 
+// Distribution family detected by the backend.
+export type SystemType = 'openwrt' | 'debian' | 'unknown'
+
+// How this deployment is configured, fetched before any session exists.
+// auth_enabled=false means every request runs as an administrator
+// (e.g. "auto" mode on OpenWrt routers).
+export interface AuthStatus {
+  auth_enabled: boolean
+  system_type: SystemType
+}
+
+// Host details for the Settings "About" card. Requires authentication.
+export interface SystemInfo {
+  system_type: SystemType
+  service_backend: 'systemd' | 'procd' | 'process'
+  os: string
+  arch: string
+  cpu_cores: number
+  hostname: string
+  kernel: string
+  distribution: string
+  app_version: string
+  app_version_known: boolean
+  sing_box_version: string
+}
+

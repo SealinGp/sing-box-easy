@@ -76,15 +76,16 @@ bunx <tool>
 - `app/pkg/config/` - sing-box config management with validation and rollback
 - `app/pkg/configversion/` - DB-backed config version history store (XORM) + retention cleaner (used by `config.Manager` snapshots and the rollback endpoints)
 - `app/pkg/settings/` - Application settings persistence (XORM); served via `GET/PUT /settings`
-- `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart)
+- `app/pkg/service/` - sing-box service lifecycle control (start/stop/restart). A `Backend` interface (`backend.go`) abstracts the init system, detected in order: `systemd` (systemctl + journald), `procd` (OpenWrt `/etc/init.d/sing-box` + logread), `process` (direct spawn/signal). The `Controller` owns config validation and delegates lifecycle to the backend
+- `app/webui/` - frontend bundle embedded into the binary via `go:embed` (release builds copy the vite dist in before compiling; a committed placeholder covers dev builds). SPA serving prefers an on-disk `./dist`, falling back to the embedded bundle — single-binary installs (OpenWrt ipk) ship no dist directory
 - `app/pkg/process/` - Process discovery and signaling helpers (pgrep/SIGTERM/SIGHUP)
 - `app/pkg/database/` - SQLite database management, migrations, and JSON import
 - `app/pkg/subscription/` - Subscription CRUD + cron AutoUpdater (database-backed)
 - `app/pkg/noderules/` - Outbound Node Rules: Filters (keyword/tag-matched node buckets) + Groups (sets of Filters). Pure matcher + XORM manager; `BuildSpecs`/`config.BuildGroupOutbounds` materialize selector/urltest groups on each subscription update
 - `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching
-- `app/pkg/installer/` - sing-box and dashboard installation (task-based)
-- `app/pkg/appupdate/` - sing-box-easy self-update: GitHub release listing (cached), tarball download + sha256 verification, atomic binary/`dist` swap with rollback, then `execve` restart. Running version comes from the `-X ...appupdate.Version` ldflag stamped by `.github/workflows/release.yml`, falling back to a `.sing-box-easy-version` file written on each update. GitHub calls are authenticated with the token issued by `githubauth` sign-in (or the `GITHUB_TOKEN` env var) — 60 req/h anonymous vs 5000 req/h authenticated — and use ETag/`If-None-Match` conditional requests, which return 304 and cost no rate-limit quota
+- `app/pkg/installer/` - sing-box and dashboard installation (task-based). `buildInstallCommand` is platform-aware: official install script (curl) on Debian/other Linux, `opkg install sing-box` on OpenWrt (pinned versions download the static release tarball with BusyBox wget)
+- `app/pkg/appupdate/` - sing-box-easy self-update: GitHub release listing (cached), tarball download + sha256 verification, atomic binary/`dist` swap with rollback, then `execve` restart. Binary-only packages (embedded frontend) skip the dist swap. On OpenWrt ipk installs (detected via `/usr/lib/opkg/status`) tarball self-update is refused — updates go through opkg instead. Running version comes from the `-X ...appupdate.Version` ldflag stamped by `.github/workflows/release.yml`, falling back to a `.sing-box-easy-version` file written on each update. GitHub calls are authenticated with the token issued by `githubauth` sign-in (or the `GITHUB_TOKEN` env var) — 60 req/h anonymous vs 5000 req/h authenticated — and use ETag/`If-None-Match` conditional requests, which return 304 and cost no rate-limit quota
 - `app/pkg/logger/` - Zap logger setup + Hertz logger adapter
 
 **Protocol Parsers** (`app/pkg/sublink/protocol/`):
@@ -155,6 +156,7 @@ The application uses SQLite with XORM ORM for persistent storage:
 - **Editor**: Monaco (via `monaco-editor-vue3`) — kept in its own chunk by `vite.config.ts`
 - **Dev proxy**: `vite.config.ts` proxies `/api/*` to `http://localhost:5100` — match this with `server.port` in `bin/app.yml` when changing dev ports
 - **Components**: Reusable UI components in `src/components/`
+- **Navigation shell**: two layouts share one `menuItems` tree — `Sidebar.vue` everywhere, `Topbar.vue` on OpenWrt (LuCI already owns the left edge of the screen there). `Dashboard.vue` picks between them via `useDeployment`'s `isOpenWrt`, which is resolved by the router guard before the view mounts so the correct layout renders on first paint. Shared chrome (version + update badge, live service dot, signed-in user, logout) lives in `useNavChrome`
 - **Views**:
   - `views/InitWizard.vue` - Multi-step initialization (steps in `views/init-steps/`)
   - `views/Dashboard.vue` - Main dashboard with nested routes
@@ -216,6 +218,7 @@ API surface groups (registered in `routes.go`):
 - `/nodes/parse` — parse subscription link batch
 - `/outbounds`, `/outbounds/batch`, `/outbounds/:tag/members`, `/outbounds/groups`
 - `/dns`, `/dns/servers`, `/dns/hosts`, `/dns/rules`
+- `/dns/probe` (POST) — resolve a domain the way sing-box does and explain the routing. Backed by `app/pkg/dnsprobe/`, which keeps three sources separate: the **live answer** comes from sing-box's own Clash API `/dns/query` (so hosts, `predefined` actions and FakeIP all apply — no `dig`, which BusyBox lacks); **attribution** is reconstructed offline and flagged `exact: false` whenever a `rule_set` or other runtime-only condition sits ahead of the decision; **logged_matches** is sing-box's own `dns: match[N]` debug line, which is authoritative. Note `N` is `2*index+1`, not the rule index (`dns/router.go`) — verified against sing-box 1.13.11. The log window is derived by diffing snapshots because only the systemd backend honours `TailLogs`' cursor
 - `/inbounds`
 - `/route/rules`, `/route/rule-sets`, `/route/final`
 - `/log`
@@ -231,6 +234,8 @@ API surface groups (registered in `routes.go`):
 - `/templates/rule-sets`
 - `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in
 - `/github/auth/status` (read), `/github/auth/device` POST/GET/DELETE `:session_id`, `/github/auth` DELETE (admin-only) — GitHub sign-in via OAuth device flow
+- `/auth/status` (public) — whether this deployment requires login, plus `system_type` (`openwrt`/`debian`/`unknown`). `server.auth` in app.yml: `auto` (default; login disabled on OpenWrt, enabled elsewhere) / `enabled` / `disabled`. When disabled, `AuthMiddleware` injects a synthetic admin user and the frontend hides login/profile/user management. Deliberately the only host detail exposed pre-auth — the frontend needs it to pick a navigation layout
+- `/system/info` — host details for the Settings "About" card: arch, CPU cores, kernel, distribution, hostname, service backend, and the sing-box + sing-box-easy versions. Collected by `app/pkg/sysinfo/`, which degrades every field to a zero value rather than failing
 
 ## Testing Notes
 

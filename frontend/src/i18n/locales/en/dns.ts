@@ -5,6 +5,7 @@ export default {
     servers: 'DNS Servers',
     rules: 'DNS Rules',
     settings: 'Settings',
+    diagnostics: 'Diagnostics',
   },
   servers: {
     heading: 'DNS Servers',

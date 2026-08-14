@@ -45,9 +45,24 @@ const EnvGitHubOAuthClientID = "GITHUB_OAUTH_CLIENT_ID"
 // so a public client ID is exactly what the spec expects.
 const DefaultGitHubOAuthClientID = ""
 
+// Auth mode values for ServerConfig.Auth.
+const (
+	// AuthAuto enables login except on OpenWrt, where the panel is assumed to
+	// sit on a trusted router LAN.
+	AuthAuto = "auto"
+	// AuthEnabled always requires login.
+	AuthEnabled = "enabled"
+	// AuthDisabled never requires login. Every visitor gets admin access —
+	// only for fully trusted networks.
+	AuthDisabled = "disabled"
+)
+
 // ServerConfig represents server configuration
 type ServerConfig struct {
 	Port string `yaml:"port"`
+	// Auth controls the panel's login requirement: "auto" (default —
+	// disabled on OpenWrt, enabled everywhere else), "enabled", "disabled".
+	Auth string `yaml:"auth"`
 }
 
 // SingBoxConfig represents sing-box related configuration
@@ -82,6 +97,15 @@ func LoadConfig(configPath string) (*Config, error) {
 	// Set default values if not specified
 	if config.Server.Port == "" {
 		config.Server.Port = "8080"
+	}
+
+	switch config.Server.Auth {
+	case "":
+		config.Server.Auth = AuthAuto
+	case AuthAuto, AuthEnabled, AuthDisabled:
+		// valid as-is
+	default:
+		return nil, fmt.Errorf("invalid server.auth value %q (expected auto, enabled or disabled)", config.Server.Auth)
 	}
 
 	if config.SingBox.ConfigPath == "" {

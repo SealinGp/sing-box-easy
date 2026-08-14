@@ -43,14 +43,22 @@ type Handler struct {
 	userManager         user.UserManager
 	updater             *appupdate.Updater
 	githubAuth          *githubauth.Manager
+	// authEnabled is the resolved login requirement (server.auth × platform).
+	// false means every request runs as an administrator.
+	authEnabled bool
+	// systemType is the detected distribution family, probed once at startup.
+	// It drives both the auth default and the frontend's navigation layout.
+	systemType service.SystemType
 }
 
-// NewHandler creates a new v1.12.12 handler using XORM-backed managers
+// NewHandler creates a new v1.12.12 handler using XORM-backed managers.
+// authMode is the raw server.auth config value (auto/enabled/disabled).
 func NewHandler(
 	configPath, singBoxPath string,
 	adminUser, adminPass string,
 	sublinkParser *sublink.SubLink,
 	githubConfig appconfig.GitHubConfig,
+	authMode string,
 ) *Handler {
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := service.NewController(configManager, singBoxPath)
@@ -95,6 +103,16 @@ func NewHandler(
 		settingsManager,
 	)
 
+	systemType := service.DetectSystemType()
+	authEnabled := ResolveAuthEnabled(authMode, systemType)
+	if !authEnabled {
+		logger.Warn("==================================================================")
+		logger.Warn("AUTHENTICATION IS DISABLED — every visitor has admin access.")
+		logger.Warn("Anyone who can reach this panel's port can control sing-box.")
+		logger.Warn("Set server.auth: enabled in app.yml to require login.")
+		logger.Warn("==================================================================")
+	}
+
 	return &Handler{
 		configManager:       configManager,
 		serviceController:   serviceController,
@@ -112,6 +130,8 @@ func NewHandler(
 		userManager:         userManager,
 		updater:             updater,
 		githubAuth:          githubAuth,
+		authEnabled:         authEnabled,
+		systemType:          systemType,
 	}
 }
 

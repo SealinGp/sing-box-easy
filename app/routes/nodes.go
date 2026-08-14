@@ -2,7 +2,10 @@ package routes
 
 import (
 	"context"
+	"io/fs"
+	"mime"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -10,6 +13,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	v1_12_12 "github.com/SealinGp/sing-box-easy/app/routes/v1_12_12"
+	"github.com/SealinGp/sing-box-easy/app/webui"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -29,6 +33,8 @@ func mustResolve(p string) string {
 	if err != nil {
 		// Fall back to the cleaned relative path; static serving still works,
 		// but containment checks are slightly weaker.
+		logger.L.Warn("Failed to resolve static root to an absolute path; using relative path",
+			zap.String("path", p), zap.Error(err))
 		return filepath.Clean(p)
 	}
 	return abs
@@ -71,6 +77,7 @@ func (r *Route) initEndpoints() error {
 		r.config.AdminPass,
 		r.sl,
 		r.config.GitHub,
+		r.config.Server.Auth,
 	)
 
 	// Initialize handler components
@@ -95,19 +102,42 @@ func (r *Route) initEndpoints() error {
 
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 
-	// PWA/SPA fallback handler: serve static files if they exist, otherwise index.html
-	// This allows client-side routing to work properly.
+	// PWA/SPA fallback handler: serve static files if they exist, otherwise
+	// index.html so client-side routing works.
 	//
-	// Path traversal hardening: resolve the requested path against staticRoot
-	// and reject anything that escapes the root (e.g. "/../etc/passwd").
-	indexPath := filepath.Join(staticRoot, "index.html")
-	r.hz.NoRoute(func(ctx context.Context, c *app.RequestContext) {
-		requestPath := string(c.Request.URI().Path())
-		candidate := filepath.Join(staticRoot, requestPath)
+	// An on-disk ./dist (dev builds, tarball installs) takes precedence; the
+	// frontend embedded into the binary (webui.FS) serves everything else —
+	// single-binary installs such as the OpenWrt ipk ship no dist directory.
+	if diskDistAvailable(staticRoot) {
+		logger.L.Info("Serving frontend from on-disk dist", zap.String("path", staticRoot))
+		r.hz.NoRoute(diskSPAHandler(staticRoot))
+	} else {
+		logger.L.Info("Serving frontend embedded in the binary")
+		r.hz.NoRoute(embeddedSPAHandler(webui.FS()))
+	}
 
-		// Containment check: candidate must live under staticRoot.
+	return nil
+}
+
+// diskDistAvailable reports whether a usable frontend build exists on disk.
+func diskDistAvailable(root string) bool {
+	info, err := os.Stat(filepath.Join(root, "index.html"))
+	return err == nil && !info.IsDir()
+}
+
+// diskSPAHandler serves static files from the on-disk dist directory.
+//
+// Path traversal hardening: resolve the requested path against staticRoot and
+// reject anything that escapes the root (e.g. "/../etc/passwd").
+func diskSPAHandler(root string) app.HandlerFunc {
+	indexPath := filepath.Join(root, "index.html")
+	return func(ctx context.Context, c *app.RequestContext) {
+		requestPath := string(c.Request.URI().Path())
+		candidate := filepath.Join(root, requestPath)
+
+		// Containment check: candidate must live under root.
 		// filepath.Join already calls Clean, which normalises "../" segments.
-		if candidate != staticRoot && !strings.HasPrefix(candidate, staticRoot+string(os.PathSeparator)) {
+		if candidate != root && !strings.HasPrefix(candidate, root+string(os.PathSeparator)) {
 			c.File(indexPath)
 			return
 		}
@@ -119,9 +149,40 @@ func (r *Route) initEndpoints() error {
 
 		// For directories or non-existent files, serve index.html for client-side routing
 		c.File(indexPath)
-	})
+	}
+}
 
-	return nil
+// embeddedSPAHandler serves static files from the frontend bundle embedded in
+// the binary. fs.FS paths are always slash-separated and rooted, so
+// path.Clean plus the fs.ValidPath check inside ReadFile give the same
+// traversal containment the disk handler enforces with filepath.
+func embeddedSPAHandler(dist fs.FS) app.HandlerFunc {
+	serve := func(c *app.RequestContext, name string) bool {
+		data, err := fs.ReadFile(dist, name)
+		if err != nil {
+			return false
+		}
+		contentType := mime.TypeByExtension(path.Ext(name))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		c.Data(consts.StatusOK, contentType, data)
+		return true
+	}
+
+	return func(ctx context.Context, c *app.RequestContext) {
+		requestPath := path.Clean(strings.TrimPrefix(string(c.Request.URI().Path()), "/"))
+		if requestPath != "." && requestPath != "" && fs.ValidPath(requestPath) {
+			if serve(c, requestPath) {
+				return
+			}
+		}
+		// Directories, non-existent files and the root fall back to index.html
+		// for client-side routing.
+		if !serve(c, "index.html") {
+			c.String(consts.StatusNotFound, "frontend bundle missing")
+		}
+	}
 }
 
 func (r *Route) Start() error {

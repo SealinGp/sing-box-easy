@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AboutCard: typeof import('./src/components/AboutCard.vue')['default']
     Alert: typeof import('./src/components/Alert.vue')['default']
     AppUpdateCard: typeof import('./src/components/AppUpdateCard.vue')['default']
     Badge: typeof import('./src/components/Badge.vue')['default']
@@ -22,6 +23,10 @@ declare module 'vue' {
     DashboardDownloader: typeof import('./src/components/DashboardDownloader.vue')['default']
     DashboardUrlSelect: typeof import('./src/components/DashboardUrlSelect.vue')['default']
     DialerOptions: typeof import('./src/components/DialerOptions.vue')['default']
+    DnsProbeCard: typeof import('./src/components/DnsProbeCard.vue')['default']
+    DnsProbePanel: typeof import('./src/components/DnsProbePanel.vue')['default']
+    DnsProbeTimeline: typeof import('./src/components/DnsProbeTimeline.vue')['default']
+    DnsRuleFlow: typeof import('./src/components/DnsRuleFlow.vue')['default']
     DNSRules: typeof import('./src/components/DNSRules.vue')['default']
     DNSServers: typeof import('./src/components/DNSServers.vue')['default']
     DNSSettings: typeof import('./src/components/DNSSettings.vue')['default']
@@ -44,8 +49,10 @@ declare module 'vue' {
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     SmartRoutingRuleWizard: typeof import('./src/components/SmartRoutingRuleWizard.vue')['default']
+    SubscriptionsOverviewCard: typeof import('./src/components/SubscriptionsOverviewCard.vue')['default']
     TabNav: typeof import('./src/components/TabNav.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
+    Topbar: typeof import('./src/components/Topbar.vue')['default']
     V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
   }
 }

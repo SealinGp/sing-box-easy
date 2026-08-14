@@ -15,5 +15,5 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <TabNav :title="$t('outbounds.title')" :tabs="tabs" />
+  <TabNav :tabs="tabs" />
 </template>

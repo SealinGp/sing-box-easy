@@ -10,6 +10,7 @@ import Modal from "../../components/Modal.vue";
 import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
+import { subscriptionHealth } from "../../utils/subscriptionHealth";
 import {
   PlusIcon,
   PencilIcon,
@@ -283,46 +284,30 @@ const formatDate = (dateString?: string) => {
   return new Date(dateString).toLocaleString();
 };
 
-const getIntervalHours = (interval: string | undefined) => {
-  // Use dayjs parser for more flexible duration parsing
-  const hours = parseDurationToHours(interval);
-  return hours ?? 24; // Default to 24 hours if invalid or undefined
-};
-
+// The freshness rule itself lives in utils/subscriptionHealth so this page and
+// the Overview card cannot drift into disagreeing about the same subscription;
+// only the presentation is decided here.
 const getStatusBadge = (subscription: Subscription) => {
-  if (!subscription.last_update) {
-    return {
-      type: "warning" as const,
-      icon: ClockIcon,
-      text: t("subscriptions.status.notUpdated"),
-    };
-  }
-
-  // "Outdated" only has meaning for auto-updating subscriptions: it mirrors the
-  // backend's own refresh rule (AutoUpdater.shouldUpdate), which considers a
-  // subscription due once time-since-last-update >= its update_interval. When
-  // auto-update is off there is no expected cadence, so we never flag outdated.
-  const autoUpdate = subscription.auto_update ?? false;
-  if (autoUpdate) {
-    const lastUpdate = new Date(subscription.last_update);
-    const hoursSinceUpdate =
-      (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
-    const intervalHours = getIntervalHours(subscription.update_interval); // handles undefined
-
-    if (hoursSinceUpdate >= intervalHours) {
+  switch (subscriptionHealth(subscription)) {
+    case "never":
+      return {
+        type: "warning" as const,
+        icon: ClockIcon,
+        text: t("subscriptions.status.notUpdated"),
+      };
+    case "outdated":
       return {
         type: "warning" as const,
         icon: ClockIcon,
         text: t("subscriptions.status.outdated"),
       };
-    }
+    default:
+      return {
+        type: "success" as const,
+        icon: CheckCircleIcon,
+        text: t("subscriptions.status.updated"),
+      };
   }
-
-  return {
-    type: "success" as const,
-    icon: CheckCircleIcon,
-    text: t("subscriptions.status.updated"),
-  };
 };
 
 // Lifecycle
@@ -333,7 +318,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Header: subtitle + actions (page title is owned by the Outbounds TabNav) -->
+    <!-- Header: subtitle + actions -->
     <div class="flex items-center justify-between mb-4">
       <p class="text-gray-500 dark:text-gray-400">
         {{ $t("subscriptions.subtitle") }}

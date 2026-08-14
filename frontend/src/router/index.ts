@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { serviceControlService } from '../services'
+import { ensureDeployment, useDeployment } from '../composables/useDeployment'
 
 // Eagerly load critical components
 import Dashboard from '../views/Dashboard.vue'
@@ -14,6 +15,7 @@ const DNS = () => import(/* webpackChunkName: "dns" */ '../views/dashboard/DNS.v
 const DNSServers = () => import(/* webpackChunkName: "dns-servers" */ '../components/DNSServers.vue')
 const DNSRules = () => import(/* webpackChunkName: "dns-rules" */ '../components/DNSRules.vue')
 const DNSSettings = () => import(/* webpackChunkName: "dns-settings" */ '../components/DNSSettings.vue')
+const DNSDiagnostics = () => import(/* webpackChunkName: "dns-diagnostics" */ '../views/dashboard/DNSDiagnostics.vue')
 const Route = () => import(/* webpackChunkName: "route" */ '../views/dashboard/Route.vue')
 const RoutingRules = () => import(/* webpackChunkName: "routing-rules" */ '../components/RoutingRules.vue')
 const RuleSets = () => import(/* webpackChunkName: "rule-sets" */ '../components/RuleSets.vue')
@@ -109,6 +111,11 @@ const routes: RouteRecordRaw[] = [
             path: 'settings',
             name: 'DNSSettings',
             component: DNSSettings,
+          },
+          {
+            path: 'diagnostics',
+            name: 'DNSDiagnostics',
+            component: DNSDiagnostics,
           },
         ],
       },
@@ -211,20 +218,38 @@ const router = createRouter({
 router.beforeEach(async (to, _, next) => {
   const token = localStorage.getItem('sb_token')
 
-  // 1. Allow login page without auth
-  if (to.path === '/login') {
-    if (token) {
+  // 0. When the deployment has authentication disabled (server.auth:
+  //    disabled, or "auto" on OpenWrt) there is no login flow and no
+  //    profile/user management — skip the token checks entirely.
+  //    Resolving it here (rather than in the layout) also means the platform
+  //    is already known by the time Dashboard mounts, so the sidebar/top-bar
+  //    choice never flashes the wrong layout.
+  await ensureDeployment()
+  const { authEnabled } = useDeployment()
+  if (!authEnabled.value) {
+    // Account-bound routes do not apply without a login flow. `/dashboard/users`
+    // is included because accounts created there could never sign in.
+    const accountRoutes = ['/login', '/dashboard/profile', '/dashboard/users']
+    if (accountRoutes.includes(to.path)) {
       next('/dashboard')
-    } else {
-      next()
+      return
     }
-    return
-  }
+  } else {
+    // 1. Allow login page without auth
+    if (to.path === '/login') {
+      if (token) {
+        next('/dashboard')
+      } else {
+        next()
+      }
+      return
+    }
 
-  // 2. Require auth for all other routes
-  if (!token) {
-    next('/login')
-    return
+    // 2. Require auth for all other routes
+    if (!token) {
+      next('/login')
+      return
+    }
   }
 
   // 3. If authenticated, check initialization status
