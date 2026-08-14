@@ -12,6 +12,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"go.uber.org/zap"
 )
 
@@ -144,23 +145,19 @@ func (m *Manager) GetTask(taskID string) (*InstallTask, error) {
 	return task, nil
 }
 
-// runInstallScript runs the sing-box installation script with real-time output
+// runInstallScript runs the platform-appropriate sing-box installation
+// command with real-time output.
 func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool) error {
-	// Build install command with more robust curl options
-	var cmdStr string
-	curlOpts := "curl --retry 3 --retry-delay 2 --connect-timeout 30 --max-time 300 -fsSL"
-
-	if beta {
-		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh -s -- --beta", curlOpts)
-	} else if version != "" {
-		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh -s -- --version %s", curlOpts, version)
-	} else {
-		cmdStr = fmt.Sprintf("%s https://sing-box.app/install.sh | sh", curlOpts)
+	systemType := service.DetectSystemType()
+	cmdStr, err := buildInstallCommand(systemType, version, beta)
+	if err != nil {
+		return err
 	}
 
 	// Log command
 	logger.Info("Starting sing-box installation",
 		zap.String("command", cmdStr),
+		zap.String("system_type", string(systemType)),
 		zap.String("version", version),
 		zap.Bool("beta", beta),
 	)
@@ -171,9 +168,15 @@ func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool)
 	// Set working directory to avoid permission issues
 	cmd.Dir = "/tmp"
 	cmd.Env = append(os.Environ(),
-		"DEBIAN_FRONTEND=noninteractive",                    // Avoid interactive prompts
-		"CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt", // Ensure CA bundle is used
+		"DEBIAN_FRONTEND=noninteractive", // Avoid interactive prompts
 	)
+	// Point curl at the CA bundle only where it exists (absent on OpenWrt
+	// unless the ca-bundle package is installed; curl falls back to its
+	// defaults otherwise).
+	const caBundle = "/etc/ssl/certs/ca-certificates.crt"
+	if _, statErr := os.Stat(caBundle); statErr == nil {
+		cmd.Env = append(cmd.Env, "CURL_CA_BUNDLE="+caBundle)
+	}
 
 	logger.Debug("Installation environment",
 		zap.String("workdir", cmd.Dir),
