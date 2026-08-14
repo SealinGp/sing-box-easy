@@ -12,6 +12,17 @@ import (
 	"github.com/sagernet/sing-box/option"
 )
 
+// Reasons a configured server was not queried.
+const (
+	// SkipReasonDetour means the server sits behind a proxy detour. Querying
+	// it directly would bypass that proxy and return an answer sing-box would
+	// never have produced, so it is skipped rather than misreported.
+	SkipReasonDetour = "detour"
+	// SkipReasonUnsupportedType means the server has no comparable upstream
+	// (hosts, fakeip, dhcp) or uses a transport this comparison does not dial.
+	SkipReasonUnsupportedType = "unsupported_type"
+)
+
 // directTimeout bounds one upstream query. Kept short: a comparison across
 // several servers runs them concurrently and a dead server must not stall the
 // whole probe.
@@ -24,10 +35,14 @@ type ServerResult struct {
 	Type string `json:"type"`
 	// Address is the resolver actually dialled, empty when not applicable.
 	Address string `json:"address,omitempty"`
-	// Skipped explains why a server was not queried (unsupported type, or it
-	// is only reachable through a proxy detour this process cannot use).
-	Skipped string `json:"skipped,omitempty"`
-	Error   string `json:"error,omitempty"`
+	// SkipReason says why a server was not queried, as a code the UI
+	// translates: "detour" (only reachable through a proxy this process cannot
+	// use) or "unsupported_type" (nothing comparable upstream). Prose here
+	// would reach the browser in one language regardless of the viewer.
+	SkipReason string `json:"skip_reason,omitempty"`
+	// SkipDetail is the detour name or server type behind SkipReason.
+	SkipDetail string `json:"skip_detail,omitempty"`
+	Error      string `json:"error,omitempty"`
 	// Records holds the comparable payload: the A/AAAA/CNAME values, sorted so
 	// two servers returning the same set in a different order still compare
 	// equal.
@@ -64,12 +79,14 @@ func QueryServers(servers []option.DNSServerOptions, name, qType string) []Serve
 	for i, server := range servers {
 		result := ServerResult{Tag: serverTag(server), Type: server.Type, Records: []string{}}
 
-		address, useTLS, detour, reason := dialTarget(server)
+		address, useTLS, detour, unsupportedType := dialTarget(server)
 		switch {
-		case reason != "":
-			result.Skipped = reason
+		case unsupportedType != "":
+			result.SkipReason = SkipReasonUnsupportedType
+			result.SkipDetail = unsupportedType
 		case detour != "":
-			result.Skipped = "reachable only through detour " + detour
+			result.SkipReason = SkipReasonDetour
+			result.SkipDetail = detour
 		default:
 			result.Address = address
 			jobs = append(jobs, job{index: i, address: address, useTLS: useTLS})
@@ -101,12 +118,12 @@ func QueryServers(servers []option.DNSServerOptions, name, qType string) []Serve
 // Only plain UDP and DNS-over-TLS are dialled. Types like `hosts`, `fakeip`,
 // `dhcp` and `local` have no upstream to compare against, and `https`/`quic`
 // would need their own transports for little extra signal.
-func dialTarget(server option.DNSServerOptions) (address string, useTLS bool, detour string, skip string) {
+func dialTarget(server option.DNSServerOptions) (address string, useTLS bool, detour string, unsupportedType string) {
 	switch server.Type {
 	case "udp", "tcp":
 		options, ok := server.Options.(*option.RemoteDNSServerOptions)
 		if !ok {
-			return "", false, "", "unsupported server options"
+			return "", false, "", server.Type
 		}
 		port := options.ServerPort
 		if port == 0 {
@@ -117,7 +134,7 @@ func dialTarget(server option.DNSServerOptions) (address string, useTLS bool, de
 	case "tls":
 		options, ok := server.Options.(*option.RemoteTLSDNSServerOptions)
 		if !ok {
-			return "", false, "", "unsupported server options"
+			return "", false, "", server.Type
 		}
 		port := options.ServerPort
 		if port == 0 {
@@ -126,7 +143,7 @@ func dialTarget(server option.DNSServerOptions) (address string, useTLS bool, de
 		return net.JoinHostPort(options.Server, fmt.Sprint(port)), true,
 			options.Detour, ""
 	default:
-		return "", false, "", "type " + server.Type + " has no comparable upstream"
+		return "", false, "", server.Type
 	}
 }
 

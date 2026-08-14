@@ -227,7 +227,7 @@ func hasDisagreement(results []ServerResult) bool {
 	found := false
 
 	for _, result := range results {
-		if result.Skipped != "" || result.Error != "" || len(result.Records) == 0 {
+		if result.SkipReason != "" || result.Error != "" || len(result.Records) == 0 {
 			continue
 		}
 		if !found {

@@ -23,6 +23,10 @@ export default {
   inexact:
     'Predicted. {count} earlier rule(s) could not be evaluated here, and any of them may have matched first — enable debug logging for an exact answer.',
   cannotEvaluate: 'needs runtime state: {fields}',
+  skip: {
+    detour: 'only reachable through detour {detail}',
+    unsupported_type: 'type {detail} has no comparable upstream',
+  },
   log: {
     no_lines:
       'sing-box logged no rule decision for this query — either no rule matched, the answer was cached, or log.level is not debug.',

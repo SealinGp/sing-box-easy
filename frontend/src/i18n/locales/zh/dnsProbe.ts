@@ -23,6 +23,10 @@ export default {
   inexact:
     '此为推测结果。有 {count} 条更靠前的规则无法在此评估，其中任意一条都可能先命中——开启 debug 日志可获得确切结果。',
   cannotEvaluate: '需要运行时状态：{fields}',
+  skip: {
+    detour: '仅可通过 detour {detail} 访问',
+    unsupported_type: '{detail} 类型没有可对比的上游',
+  },
   log: {
     no_lines:
       'sing-box 未记录此次查询的规则判定——可能没有规则命中、结果来自缓存，或 log.level 不是 debug。',

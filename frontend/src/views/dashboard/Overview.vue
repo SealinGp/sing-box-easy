@@ -113,7 +113,6 @@ onMounted(fetchStatus)
 
 <template>
   <div class="p-8">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ $t('overview.title') }}</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
       <!-- Service Status Card -->

@@ -70,7 +70,10 @@ export interface DnsServerResult {
   tag: string
   type: string
   address?: string
-  skipped?: string
+  /** Why the server was not queried; translated by the UI. */
+  skip_reason?: 'detour' | 'unsupported_type'
+  /** The detour name or server type behind skip_reason. */
+  skip_detail?: string
   error?: string
   records: string[]
   elapsed_ms: number

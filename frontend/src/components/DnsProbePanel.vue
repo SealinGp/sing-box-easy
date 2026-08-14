@@ -13,15 +13,19 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowPathIcon,
-  CheckBadgeIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
-  QuestionMarkCircleIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
+import DnsProbeTimeline from './DnsProbeTimeline.vue'
 import { dnsService } from '../services'
 import { useNotify } from '../composables/useNotify'
-import { DNS_QUERY_TYPES, type DnsProbeResult, type MatchState } from '../types/dnsprobe'
+import {
+  DNS_QUERY_TYPES,
+  type DnsProbeResult,
+  type DnsServerResult,
+  type MatchState,
+} from '../types/dnsprobe'
 
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 
@@ -58,22 +62,6 @@ const run = async () => {
   }
 }
 
-/** The rule the query is attributed to, if any. */
-const matchedRule = computed(() => {
-  const attribution = result.value?.attribution
-  if (!attribution || attribution.matched_index < 0) return null
-  return attribution.rules[attribution.matched_index] ?? null
-})
-
-/**
- * sing-box's own decision, when debug logging made it available. This is
- * evidence rather than inference, so the UI leads with it when present.
- */
-const verifiedMatch = computed(() => {
-  const matches = result.value?.logged_matches ?? []
-  return matches.length > 0 ? matches[matches.length - 1] : null
-})
-
 const stateClass = (state: MatchState) => {
   switch (state) {
     case 'matched':
@@ -87,7 +75,9 @@ const stateClass = (state: MatchState) => {
 
 const stateLabel = (state: MatchState) => t(`dnsProbe.state.${state}`)
 
-const answersText = computed(() => result.value?.live?.answers ?? [])
+/** Why a configured server was left out of the comparison. */
+const skipLabel = (server: DnsServerResult) =>
+  server.skip_reason ? t(`dnsProbe.skip.${server.skip_reason}`, { detail: server.skip_detail ?? '' }) : ''
 
 /**
  * The backend reports the log situation as a code so it can be translated
@@ -151,85 +141,16 @@ const logStatusMessage = computed(() => {
     </label>
 
     <div v-if="result" class="space-y-4">
-      <!-- Live answer: ground truth from sing-box -->
+      <!--
+        The lookup as a sequence. This replaces separate "answer" and "routing"
+        blocks: read in order they explain how the result was reached, which is
+        the whole question being asked.
+      -->
       <section>
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          {{ $t('dnsProbe.answer') }}
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          {{ $t('dnsTimeline.title') }}
         </h4>
-
-        <p v-if="result.live_error" class="text-sm text-amber-600 dark:text-amber-400">
-          {{ result.live_error }}
-        </p>
-
-        <div v-else-if="answersText.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ $t('dnsProbe.noAnswer') }}
-        </div>
-
-        <ul v-else class="space-y-1">
-          <li
-            v-for="(answer, index) in answersText"
-            :key="index"
-            class="flex flex-wrap items-baseline gap-2 text-sm font-mono"
-          >
-            <span class="px-1.5 py-0.5 rounded-pill bg-gray-100 dark:bg-gray-700 text-xs">{{ answer.type }}</span>
-            <span class="text-gray-900 dark:text-gray-100 font-semibold">{{ answer.data }}</span>
-            <span class="text-xs text-gray-400">ttl {{ answer.ttl }}</span>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Where it was routed -->
-      <section>
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          {{ $t('dnsProbe.routing') }}
-        </h4>
-
-        <!--
-          When sing-box logged its own decision there is no need to guess, so
-          that is shown first and marked as confirmed.
-        -->
-        <div
-          v-if="verifiedMatch"
-          class="rounded-control border border-primary-300 dark:border-primary-800 bg-primary-50 dark:bg-primary-950/40 p-3"
-        >
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 mb-1">
-            <CheckBadgeIcon class="h-4 w-4" />
-            {{ $t('dnsProbe.confirmedBySingBox') }}
-          </div>
-          <p class="text-sm text-gray-800 dark:text-gray-200">
-            <template v-if="verifiedMatch.config_index >= 0">
-              {{ $t('dnsProbe.ruleNumber', { index: verifiedMatch.config_index }) }} —
-            </template>
-            <span class="font-mono">{{ verifiedMatch.description || $t('dnsProbe.noConditions') }}</span>
-          </p>
-          <p class="mt-1 text-sm font-mono text-primary-700 dark:text-primary-300">{{ verifiedMatch.action }}</p>
-        </div>
-
-        <!-- Otherwise the reconstructed answer, honestly labelled. -->
-        <div v-else class="rounded-control border border-gray-200 dark:border-gray-700 p-3">
-          <p v-if="matchedRule" class="text-sm text-gray-800 dark:text-gray-200">
-            {{ $t('dnsProbe.ruleNumber', { index: matchedRule.index }) }} —
-            <span class="font-mono">{{ matchedRule.summary }}</span>
-          </p>
-          <p v-else class="text-sm text-gray-800 dark:text-gray-200">
-            {{ $t('dnsProbe.noRuleMatched') }}
-          </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {{ $t('dnsProbe.server') }}:
-            <span class="font-mono font-semibold">{{ result.attribution.server || '—' }}</span>
-            <span v-if="result.attribution.strategy" class="ml-2 text-xs">
-              {{ result.attribution.strategy }}
-            </span>
-          </p>
-
-          <p
-            v-if="!result.attribution.exact"
-            class="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
-          >
-            <QuestionMarkCircleIcon class="h-4 w-4 flex-shrink-0 mt-px" />
-            <span>{{ $t('dnsProbe.inexact', { count: result.attribution.unevaluated_before }) }}</span>
-          </p>
-        </div>
+        <DnsProbeTimeline :result="result" />
 
         <p v-if="logStatusMessage" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
           {{ logStatusMessage }}
@@ -286,14 +207,14 @@ const logStatusMessage = computed(() => {
                   <span class="ml-1 text-xs text-gray-400">{{ server.type }}</span>
                 </td>
                 <td class="py-1.5 text-gray-600 dark:text-gray-400">
-                  <span v-if="server.skipped" class="text-xs italic">{{ server.skipped }}</span>
+                  <span v-if="server.skip_reason" class="text-xs italic">{{ skipLabel(server) }}</span>
                   <span v-else-if="server.error" class="text-xs text-red-600 dark:text-red-400 break-all">
                     {{ server.error }}
                   </span>
                   <span v-else class="font-mono text-xs break-all">{{ server.records.join(', ') || '—' }}</span>
                 </td>
                 <td class="py-1.5 pl-3 text-right text-xs text-gray-400 whitespace-nowrap">
-                  <span v-if="!server.skipped">{{ server.elapsed_ms }} ms</span>
+                  <span v-if="!server.skip_reason">{{ server.elapsed_ms }} ms</span>
                 </td>
               </tr>
             </tbody>

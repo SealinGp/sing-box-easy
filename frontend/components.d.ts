@@ -25,6 +25,7 @@ declare module 'vue' {
     DialerOptions: typeof import('./src/components/DialerOptions.vue')['default']
     DnsProbeCard: typeof import('./src/components/DnsProbeCard.vue')['default']
     DnsProbePanel: typeof import('./src/components/DnsProbePanel.vue')['default']
+    DnsProbeTimeline: typeof import('./src/components/DnsProbeTimeline.vue')['default']
     DnsRuleFlow: typeof import('./src/components/DnsRuleFlow.vue')['default']
     DNSRules: typeof import('./src/components/DNSRules.vue')['default']
     DNSServers: typeof import('./src/components/DNSServers.vue')['default']

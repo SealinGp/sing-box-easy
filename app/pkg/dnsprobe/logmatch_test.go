@@ -137,7 +137,7 @@ func TestHasDisagreement(t *testing.T) {
 			results: []ServerResult{
 				{Tag: "a", Records: []string{"A 1.1.1.1"}},
 				{Tag: "b", Error: "timeout"},
-				{Tag: "c", Skipped: "behind detour"},
+				{Tag: "c", SkipReason: SkipReasonDetour},
 				{Tag: "d", Records: []string{}},
 			},
 			want: false,
