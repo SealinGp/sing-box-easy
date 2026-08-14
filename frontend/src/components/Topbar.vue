@@ -100,7 +100,16 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 </script>
 
 <template>
-  <header class="liquid-topbar shadow-float m-3 mb-0 rounded-surface px-4 py-2">
+  <!--
+    `relative z-30` is load-bearing, not decoration. `.liquid-topbar` sets
+    `backdrop-filter`, which makes the header a stacking context; while the
+    header stayed unpositioned that context painted with ordinary in-flow
+    content, so the page's cards — later in the DOM — covered the dropdowns no
+    matter how high their own z-index went. Positioning the header lifts the
+    whole subtree into the positioned paint phase. 30 keeps it under the
+    app's `z-50` modal overlays.
+  -->
+  <header class="liquid-topbar relative z-30 shadow-float m-3 mb-0 rounded-surface px-4 py-2">
     <div class="flex items-center gap-3">
       <!-- Brand -->
       <router-link to="/dashboard/overview" class="flex items-center gap-2 flex-shrink-0">

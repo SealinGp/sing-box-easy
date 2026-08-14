@@ -12,6 +12,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { systemService } from '../services'
 import { useAppUpdate } from '../composables/useAppUpdate'
+import { useDeployment, type LayoutOverride } from '../composables/useDeployment'
 import { useNotify } from '../composables/useNotify'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import AppUpdateCard from './AppUpdateCard.vue'
@@ -27,6 +28,16 @@ const loading = ref(true)
 // the self-update flow rewrites. /system/info agrees, but only until an update
 // finishes without a page reload.
 const { currentVersion } = useAppUpdate()
+
+// Dev builds can force the navigation layout to preview the OpenWrt top bar
+// without a router. Absent from release builds entirely.
+const { isDevBuild, layoutOverride, setLayoutOverride } = useDeployment()
+
+const layoutOptions: { value: LayoutOverride; label: string }[] = [
+  { value: 'auto', label: 'settings.about.layout.auto' },
+  { value: 'sidebar', label: 'settings.about.layout.sidebar' },
+  { value: 'topbar', label: 'settings.about.layout.topbar' },
+]
 
 const buildVersion = __APP_VERSION__
 
@@ -130,6 +141,42 @@ const rows = computed(() => {
     <!-- Self-update -->
     <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
       <AppUpdateCard embedded />
+    </div>
+
+    <!--
+      Dev-only: force the navigation layout. `isDevBuild` is a compile-time
+      constant, so this block is dropped from release bundles.
+    -->
+    <div v-if="isDevBuild" class="mt-5 pt-5 border-t border-dashed border-amber-400/60">
+      <div class="flex items-center gap-2 mb-1">
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {{ $t('settings.about.layout.title') }}
+        </h4>
+        <span
+          class="px-1.5 py-0.5 rounded-pill bg-amber-400/20 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
+        >
+          dev
+        </span>
+      </div>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+        {{ $t('settings.about.layout.desc') }}
+      </p>
+      <div class="inline-flex rounded-control border border-gray-300 dark:border-gray-600 overflow-hidden">
+        <button
+          v-for="option in layoutOptions"
+          :key="option.value"
+          @click="setLayoutOverride(option.value)"
+          :aria-pressed="layoutOverride === option.value"
+          class="px-3 py-1.5 text-sm transition-colors cursor-pointer border-r border-gray-300 dark:border-gray-600 last:border-r-0"
+          :class="
+            layoutOverride === option.value
+              ? 'bg-primary-600 text-white font-medium'
+              : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+          "
+        >
+          {{ $t(option.label) }}
+        </button>
+      </div>
     </div>
   </div>
 </template>

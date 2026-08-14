@@ -79,6 +79,13 @@ export default {
     cores: '{count} 核',
     notInstalled: '未安装',
     loadFailed: '加载系统信息失败',
+    layout: {
+      title: '导航布局',
+      desc: '强制使用指定布局以便预览（包括首次加载时的渲染效果）。仅开发版可用，选择会在刷新后保留。',
+      auto: '自动',
+      sidebar: '侧边栏',
+      topbar: '顶栏',
+    },
   },
   toast: {
     loadFailed: '加载设置失败',
