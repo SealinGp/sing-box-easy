@@ -264,7 +264,7 @@ Six wrappers, all the same shape: `<PrimeVueComponent unstyled :pt="theme"
 | Wrapper | Wraps | Surface comes from |
 | --- | --- | --- |
 | `Select` | `primevue/select` | Field: `.volt-select` in `controls.css`. Panel: `.volt-select-panel` in `primevue.css` |
-| `MultiSelect` | `primevue/multiselect` | Its own PT classes (**not yet migrated** — see §11) |
+| `MultiSelect` | `primevue/multiselect` | Field: `.volt-select` in `controls.css`. Panel: `.volt-multiselect-panel` in `primevue.css` |
 | `Chips` | `primevue/inputchips` | Its own PT classes |
 | `Dialog` | `primevue/dialog` | `.liquid-glass-float` |
 | `Toast` | `primevue/toast` | `.volt-toast*` in `primevue.css`, severity via `data-p~=` |
@@ -361,6 +361,7 @@ on ~5rem of content and read as a stutter), and **220ms** for the select panel.
 | Nav pill slide | 320ms | `cubic-bezier(.32,.72,0,1)` |
 | Submenu expand | 300ms | `cubic-bezier(.32,.72,0,1)` |
 | Select panel in / out | 220ms / 150ms | same / `ease-in` |
+| MultiSelect panel | none | Appears instantly — see below |
 | Dialog in / out | 200ms / 150ms | `ease-out` / `ease-in` |
 | Toast in / out | 500ms | height-collapse on leave |
 | Topbar dropdown | 150ms / 100ms | `ease-out` / `ease-in` |
@@ -368,7 +369,10 @@ on ~5rem of content and read as a stutter), and **220ms** for the select panel.
 
 Anything under ~150ms stops reading as motion and just looks like a flicker —
 the select panel was 100ms/75ms and was raised for exactly that reason.
-`MultiSelect` is still on the old 100/75 pair.
+`MultiSelect` had the same 100/75 pair and was given **no** transition instead:
+its panel is a dense list, and a scale transform visibly reflowed the labels on
+the way in. Either fix is valid; what is not valid is leaving a sub-150ms
+scale in place. If it ever gets motion back, it needs Select's 220ms.
 
 `prefers-reduced-motion: reduce` is honoured by `base.css` (the four keyframe
 utilities), the sidebar (pill + submenu drop to a 120ms opacity fade), and the
@@ -412,9 +416,8 @@ Measured against `src/`. Fix a row here before adding a new rule anywhere above.
 | Files relying on the `bg-white` glass shim | 28 `.vue` | vs 3 using `.liquid-glass` explicitly. Blocks deleting the shim in `glass.css`. |
 | Files depending on `legacy.css` dark-mode shims | 67 `.vue` | Every file still using raw `text-gray-N00` without a `dark:` variant. |
 | Raw `<button>` elements | 99 in 28 files | vs 124 `<Button>`. Many are legitimate bespoke affordances (nav rows, chip "add" buttons, icon toggles); a Button variant for them does not exist yet. |
-| `MultiSelect` on pre-token styling | 1 file | Hard-codes `bg-white dark:bg-gray-800`, `border-gray-300`, and the old 100/75ms transition. The largest visible inconsistency in `volt/`. |
 | Status colours with two spellings | — | Tokens (`--color-success`) vs Tailwind scales (`emerald-500/15`) in Alert/Badge. |
-| Volt transitions ignoring reduced-motion | 6 wrappers | PT `transition` classes are not media-guarded. |
+| Volt transitions ignoring reduced-motion | 4 wrappers | PT `transition` classes are not media-guarded. (`MultiSelect` and `Timeline` have no transition at all.) |
 | Stray numeric shadow | 1 site | `DnsRuleFlow.vue:155` uses `shadow-sm`. |
 | `Loading.vue` has no dark mode | 1 file | `fullScreen` uses `bg-white opacity-90`; text is `text-gray-600`. |
 
