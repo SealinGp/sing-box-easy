@@ -65,7 +65,7 @@ export default {
     count: '{n} / {max} 个关键词',
     emptyHint: '暂无关键词——保存后将恢复内置默认。',
     addPlaceholder: '添加关键词，例如：流量',
-    addHint: '按回车添加；可用逗号或换行批量粘贴。匹配不区分大小写，出现在标签任意位置即可命中。',
+    addHint: '匹配不区分大小写，出现在标签任意位置即可命中。',
     restoreDefaults: '恢复默认',
     remove: '移除 {keyword}',
     savedOk: '关键词已保存，将在下次订阅更新时生效。',

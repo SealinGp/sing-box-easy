@@ -14,10 +14,10 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { XMarkIcon, ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
+import { ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
 import Modal from './Modal.vue'
 import Button from './Button.vue'
-import Input from './Input.vue'
+import ChipsField from './ChipsField.vue'
 import Badge from './Badge.vue'
 import { apiService } from '../services/api'
 import { SubscriptionService } from '../services/subscription'
@@ -45,11 +45,8 @@ const defaults = ref<string[]>([])
 const usingDefaults = ref(true)
 const maxKeywords = ref(DEFAULT_MAX_KEYWORDS)
 const maxLength = ref(DEFAULT_MAX_LENGTH)
-const draft = ref('')
 const isLoading = ref(false)
 const isSaving = ref(false)
-
-const isFull = computed(() => keywords.value.length >= maxKeywords.value)
 
 const load = async () => {
   try {
@@ -73,51 +70,44 @@ const load = async () => {
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) {
-      draft.value = ''
-      load()
-    }
+    if (open) load()
   },
   { immediate: true },
 )
 
-// Accepts one keyword or a pasted batch ("流量, 到期" / newline-separated).
-// Always assigns a NEW array so the list stays immutable.
-const addDraft = () => {
-  const parts = draft.value
-    .split(/[,，\n]/)
-    .map((part) => part.trim().toLowerCase())
-    .filter(Boolean)
-  if (parts.length === 0) return
+// The chips control owns entry, removal and pasted batches; this model adds the
+// two rules specific to keywords — matching is case-insensitive (so the list
+// shows what will actually be stored) and the server's bounds are enforced
+// before a save can fail on them. Always assigns a NEW array.
+const keywordsModel = computed({
+  get: () => keywords.value,
+  set: (next: string[]) => {
+    const seen = new Set<string>()
+    const accepted: string[] = []
+    let sawTooLong = false
+    let sawTooMany = false
 
-  const tooLong = parts.find((part) => [...part].length > maxLength.value)
-  if (tooLong) {
-    notify.error(t('subscriptions.keywords.tooLong', { max: maxLength.value }))
-    return
-  }
-
-  const merged = [...keywords.value]
-  for (const part of parts) {
-    if (merged.includes(part)) continue
-    if (merged.length >= maxKeywords.value) {
-      notify.error(t('subscriptions.keywords.tooMany', { max: maxKeywords.value }))
-      break
+    for (const raw of next) {
+      const keyword = raw.trim().toLowerCase()
+      if (keyword === '' || seen.has(keyword)) continue
+      if ([...keyword].length > maxLength.value) {
+        sawTooLong = true
+        continue
+      }
+      if (accepted.length >= maxKeywords.value) {
+        sawTooMany = true
+        break
+      }
+      seen.add(keyword)
+      accepted.push(keyword)
     }
-    merged.push(part)
-  }
-  keywords.value = merged
-  draft.value = ''
-}
 
-const removeKeyword = (keyword: string) => {
-  keywords.value = keywords.value.filter((k) => k !== keyword)
-}
+    if (sawTooLong) notify.error(t('subscriptions.keywords.tooLong', { max: maxLength.value }))
+    if (sawTooMany) notify.error(t('subscriptions.keywords.tooMany', { max: maxKeywords.value }))
 
-// Backspace on an empty input removes the last chip — the usual tag-input idiom.
-const onBackspace = () => {
-  if (draft.value !== '') return
-  keywords.value = keywords.value.slice(0, -1)
-}
+    keywords.value = accepted
+  },
+})
 
 const restoreDefaults = () => {
   keywords.value = [...defaults.value]
@@ -171,55 +161,19 @@ const save = async () => {
         </span>
       </div>
 
-      <!-- Chip list -->
-      <div
-        class="flex flex-wrap gap-2 min-h-[3rem] p-2 rounded-control border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40"
+      <!-- One control for the whole list: the chips ARE the editor, so the
+           separate "text field + Add button" row is gone. -->
+      <ChipsField
+        v-model="keywordsModel"
+        :placeholder="$t('subscriptions.keywords.addPlaceholder')"
+        :hint="$t('subscriptions.keywords.addHint')"
+        :disabled="isLoading"
+      />
+      <p
+        v-if="!isLoading && keywords.length === 0"
+        class="text-xs text-gray-400 dark:text-gray-500"
       >
-        <span v-if="isLoading" class="text-xs text-gray-400">{{ $t('common.loading') }}</span>
-        <span
-          v-else-if="keywords.length === 0"
-          class="text-xs text-gray-400 dark:text-gray-500"
-        >
-          {{ $t('subscriptions.keywords.emptyHint') }}
-        </span>
-        <span
-          v-for="keyword in keywords"
-          :key="keyword"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill bg-primary-100 dark:bg-primary-900 text-xs text-primary-700 dark:text-primary-200"
-        >
-          {{ keyword }}
-          <button
-            type="button"
-            class="shrink-0 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-            @click="removeKeyword(keyword)"
-            :title="$t('subscriptions.keywords.remove', { keyword })"
-            :aria-label="$t('subscriptions.keywords.remove', { keyword })"
-          >
-            <XMarkIcon class="h-3.5 w-3.5" />
-          </button>
-        </span>
-      </div>
-
-      <!-- Add. Uses the shared Input so the field inherits the app's control
-           styling (border, fill, focus ring, radius) from src/style/controls.css
-           instead of restating a one-off set of classes. The keydown listeners
-           fall through to Input's root element and catch the events as they
-           bubble up from the field. -->
-      <div class="flex items-center gap-2">
-        <Input
-          v-model="draft"
-          class="flex-1"
-          :placeholder="$t('subscriptions.keywords.addPlaceholder')"
-          :disabled="isLoading || isFull"
-          @keydown.enter.prevent="addDraft"
-          @keydown.delete="onBackspace"
-        />
-        <Button variant="secondary" :disabled="!draft.trim() || isFull" @click="addDraft">
-          {{ $t('common.add') }}
-        </Button>
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {{ $t('subscriptions.keywords.addHint') }}
+        {{ $t('subscriptions.keywords.emptyHint') }}
       </p>
     </div>
 

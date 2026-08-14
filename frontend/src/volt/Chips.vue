@@ -81,7 +81,7 @@ const theme = {
             ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : ''}
             focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500`,
     }),
-    input: `flex items-center flex-wrap gap-2 list-none m-0 p-0 w-full`,
+    input: `flex items-center flex-wrap gap-1.5 list-none m-0 p-0 w-full`,
     // `flex-1 min-w-0` lets the typing area grow to fill the row (and the full
     // root width when empty); `inline-flex` alone shrank to the input's
     // intrinsic size, leaving a gap to the right of the box.
@@ -96,13 +96,15 @@ const theme = {
     // Spacing between chips comes from the list's `gap-2`; a margin here would
     // double it.
     chipItem: ``,
+    // Compact pills: a rule can hold a dozen domains, and full-size chips turned
+    // the field into a wall of boxes. Small enough to scan, large enough to hit.
     pcChip: {
-        root: `inline-flex items-center gap-1 pl-3 pr-2 py-1 rounded-control
-            bg-primary-100 dark:bg-primary-900/30
-            text-primary-700 dark:text-primary-300
-            text-sm border-0`,
-        label: `text-sm font-medium`,
-        removeIcon: `w-4 h-4 cursor-pointer opacity-60 hover:opacity-100 hover:text-primary-900 dark:hover:text-primary-100 transition`,
+        root: `inline-flex items-center gap-1 px-2 py-0.5 rounded-pill
+            bg-primary-100 dark:bg-primary-900/40
+            text-primary-700 dark:text-primary-200
+            text-xs border-0`,
+        label: `text-xs font-medium`,
+        removeIcon: `w-3.5 h-3.5 shrink-0 cursor-pointer opacity-60 hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 transition`,
     },
 };
 </script>

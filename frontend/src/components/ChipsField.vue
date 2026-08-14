@@ -16,7 +16,8 @@ const props = defineProps<{
   // Optional because several call sites model an absent sing-box field as
   // `undefined` (see RouteRuleMatchers) — an absent list reads as empty.
   modelValue?: string[]
-  label: string
+  /** Omitted when the surrounding modal already names the field. */
+  label?: string
   placeholder?: string
   /** Field-specific explanation, shown before the shared "how to add" hint. */
   hint?: string
@@ -50,7 +51,7 @@ const hintText = computed(() =>
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-1">
+    <div v-if="label || removable" class="flex items-center justify-between mb-1">
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}
       </label>

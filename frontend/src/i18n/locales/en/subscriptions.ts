@@ -65,7 +65,7 @@ export default {
     count: '{n} / {max} keywords',
     emptyHint: 'No keywords — saving will restore the built-in defaults.',
     addPlaceholder: 'Add a keyword, e.g. traffic',
-    addHint: 'Press Enter to add. Paste several separated by commas or newlines. Matching is case-insensitive and matches anywhere in the label.',
+    addHint: 'Keywords are matched case-insensitively, anywhere inside the label.',
     restoreDefaults: 'Restore defaults',
     remove: 'Remove {keyword}',
     savedOk: 'Keywords saved. They apply on the next subscription update.',
