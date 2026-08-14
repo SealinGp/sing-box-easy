@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -54,7 +55,7 @@ func parseVersion(output string) string {
 // start time could not be resolved — those fields degrade to zero values so the
 // caller always learns at least whether the service is running.
 func (c *Controller) Info() (ServiceInfo, error) {
-	running, pid, err := c.runningAndPID()
+	running, pid, err := c.backend.ActiveAndPID()
 	if err != nil {
 		return ServiceInfo{}, err
 	}
@@ -73,68 +74,97 @@ func (c *Controller) Info() (ServiceInfo, error) {
 	return info, nil
 }
 
-// runningAndPID resolves both the running state and the main PID in one pass.
-// Under systemd a single `systemctl show` yields ActiveState + MainPID; without
-// systemd it falls back to the existing pgrep/pidof-based lookup.
-func (c *Controller) runningAndPID() (bool, int, error) {
-	if c.useSystemd {
-		active, pid := c.systemctlActiveAndPID()
-		return active, pid, nil
-	}
+// linuxClockTicksPerSecond is the kernel USER_HZ value used for the
+// /proc/<pid>/stat starttime field. It has been fixed at 100 on Linux for all
+// supported architectures.
+const linuxClockTicksPerSecond = 100
 
-	pidStr, err := c.getPID()
-	if err != nil {
-		return false, 0, fmt.Errorf("failed to check service status: %w", err)
-	}
-	if pidStr == "" {
-		return false, 0, nil
-	}
-	pid, _ := strconv.Atoi(pidStr)
-	return true, pid, nil
-}
-
-// systemctlActiveAndPID parses `systemctl show` for the unit's active state and
-// main pid. A failed/inactive unit reports active=false; MainPID is 0 when the
-// unit is not running.
-func (c *Controller) systemctlActiveAndPID() (bool, int) {
-	out, _ := exec.Command("systemctl", "show", singBoxServiceName,
-		"--property=ActiveState", "--property=MainPID").Output()
-	return parseActiveAndPID(string(out))
-}
-
-// parseActiveAndPID extracts ActiveState/MainPID from `systemctl show` output.
-// Kept pure (no exec) so it is unit-testable. A non-active unit always reports
-// pid 0 regardless of the MainPID line.
-func parseActiveAndPID(out string) (bool, int) {
-	var active bool
-	var pid int
-	for _, line := range strings.Split(out, "\n") {
-		key, val, ok := strings.Cut(strings.TrimSpace(line), "=")
-		if !ok {
-			continue
-		}
-		switch key {
-		case "ActiveState":
-			active = val == "active"
-		case "MainPID":
-			pid, _ = strconv.Atoi(val)
-		}
-	}
-	if !active {
-		return false, 0
-	}
-	return true, pid
-}
-
-// processStartedAtUnix derives a process's wall-clock start time from its
-// elapsed run time via `ps -o etimes=` (whole seconds since start). This avoids
-// parsing systemd's locale-formatted timestamps and works for both the systemd
-// and the directly-managed process paths. Returns ok=false when the value
-// cannot be read (e.g. unsupported `ps`, or the process has exited).
+// processStartedAtUnix derives a process's wall-clock start time.
+//
+// It first reads /proc/<pid>/stat (starttime, ticks since boot) plus
+// /proc/stat's btime — a pure-file approach that works on every Linux
+// including BusyBox userlands (OpenWrt) where `ps` supports no -o flags. On
+// non-procfs systems it falls back to `ps -o etimes=`. Returns ok=false when
+// the value cannot be read (e.g. the process has exited).
 func processStartedAtUnix(pid int) (int64, bool) {
 	if pid <= 0 {
 		return 0, false
 	}
+	if started, ok := procStartedAtUnix(pid); ok {
+		return started, true
+	}
+	return psStartedAtUnix(pid)
+}
+
+// procStartedAtUnix computes start time from procfs: btime (boot time in Unix
+// seconds, from /proc/stat) + starttime (clock ticks after boot, field 22 of
+// /proc/<pid>/stat).
+func procStartedAtUnix(pid int) (int64, bool) {
+	stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if err != nil {
+		return 0, false
+	}
+	startTicks, ok := parseProcStatStartTicks(string(stat))
+	if !ok {
+		return 0, false
+	}
+
+	sysStat, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 0, false
+	}
+	btime, ok := parseBootTimeUnix(string(sysStat))
+	if !ok {
+		return 0, false
+	}
+	return btime + startTicks/linuxClockTicksPerSecond, true
+}
+
+// parseProcStatStartTicks extracts field 22 (starttime) from a
+// /proc/<pid>/stat line. The comm field (2) may contain spaces and is wrapped
+// in parentheses, so fields are counted after the closing paren. Kept pure
+// (no filesystem access) so it is unit-testable.
+func parseProcStatStartTicks(stat string) (int64, bool) {
+	// Everything after the last ')' is a well-defined space-separated list
+	// starting with field 3 (state).
+	idx := strings.LastIndexByte(stat, ')')
+	if idx < 0 {
+		return 0, false
+	}
+	fields := strings.Fields(stat[idx+1:])
+	// starttime is overall field 22 → index 19 relative to field 3.
+	const startTimeIdx = 19
+	if len(fields) <= startTimeIdx {
+		return 0, false
+	}
+	ticks, err := strconv.ParseInt(fields[startTimeIdx], 10, 64)
+	if err != nil || ticks < 0 {
+		return 0, false
+	}
+	return ticks, true
+}
+
+// parseBootTimeUnix extracts the "btime <unix-seconds>" line from /proc/stat.
+// Kept pure (no filesystem access) so it is unit-testable.
+func parseBootTimeUnix(sysStat string) (int64, bool) {
+	for _, line := range strings.Split(sysStat, "\n") {
+		val, ok := strings.CutPrefix(line, "btime ")
+		if !ok {
+			continue
+		}
+		btime, err := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+		if err != nil || btime <= 0 {
+			return 0, false
+		}
+		return btime, true
+	}
+	return 0, false
+}
+
+// psStartedAtUnix derives the start time from a process's elapsed run time
+// via `ps -o etimes=` (whole seconds since start). Fallback for hosts without
+// procfs (e.g. macOS during development).
+func psStartedAtUnix(pid int) (int64, bool) {
 	out, err := exec.Command("ps", "-o", "etimes=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil {
 		return 0, false

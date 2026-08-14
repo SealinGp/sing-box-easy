@@ -18,13 +18,16 @@ const (
 // Log sources reported back to the UI so it can explain an empty view.
 const (
 	LogSourceJournald = "journald"
+	LogSourceSyslog   = "syslog"
 	LogSourceFile     = "file"
 	LogSourceNone     = "none"
 )
 
 // LogChunk is a bounded slice of recent log lines plus an opaque cursor for
-// incremental polling. When Source is "none" the lines are empty and the UI
-// should explain that live logs require systemd (journald) or a configured
+// incremental polling. Only the journald source supports cursors; other
+// sources return an empty cursor and always serve the full tail window. When
+// Source is "none" the lines are empty and the UI should explain that live
+// logs require an init-system log (journald/syslog) or a configured
 // log.output file.
 type LogChunk struct {
 	Lines  []string `json:"lines"`
@@ -42,47 +45,6 @@ func clampLines(n int) int {
 		return maxLogLines
 	}
 	return n
-}
-
-// TailLogs returns the most recent sing-box log lines.
-//
-//   - Under systemd it reads journald via journalctl. Passing a non-empty
-//     afterCursor returns only entries newer than that cursor (incremental
-//     polling); the returned Cursor should be fed back on the next call.
-//   - Without systemd it best-effort tails the configured log.output file.
-//   - When neither source is available it returns Source="none" with no error,
-//     so the UI can render an explanation rather than a failure.
-func (c *Controller) TailLogs(lines int, afterCursor string) (LogChunk, error) {
-	lines = clampLines(lines)
-
-	if c.useSystemd {
-		return c.tailJournald(lines, afterCursor)
-	}
-	return c.tailFile(lines)
-}
-
-// tailJournald shells out to journalctl. `--show-cursor` appends a trailing
-// "-- cursor: <c>" line we parse out; `-n` bounds the result even in the
-// incremental (--after-cursor) case so a chatty proxy can't flood one response.
-func (c *Controller) tailJournald(lines int, afterCursor string) (LogChunk, error) {
-	args := []string{
-		"-u", singBoxServiceName,
-		"--no-pager",
-		"-o", "short-iso",
-		"--show-cursor",
-		"-n", fmt.Sprintf("%d", lines),
-	}
-	if afterCursor != "" {
-		args = append(args, "--after-cursor", afterCursor)
-	}
-
-	out, err := exec.Command("journalctl", args...).Output()
-	if err != nil {
-		return LogChunk{}, fmt.Errorf("failed to read journald logs: %w", err)
-	}
-
-	logLines, cursor := splitJournalOutput(string(out))
-	return LogChunk{Lines: logLines, Cursor: cursor, Source: LogSourceJournald}, nil
 }
 
 // splitJournalOutput separates real log lines from journalctl's noise: the
@@ -109,19 +71,12 @@ func splitJournalOutput(out string) ([]string, string) {
 	return lines, cursor
 }
 
-// tailFile reads the last `lines` lines of the configured log.output file. Used
-// only when sing-box is not managed by systemd. Returns Source="none" when no
-// usable file is configured so the UI can guide the user.
-func (c *Controller) tailFile(lines int) (LogChunk, error) {
-	path := c.logOutputPath()
-	if path == "" {
-		return LogChunk{Lines: []string{}, Source: LogSourceNone}, nil
-	}
-
+// tailFile reads the last `lines` lines of the given log file. Returns
+// Source="none" when the file is missing or unreadable so the viewer shows
+// guidance instead of an error toast.
+func tailFile(path string, lines int) (LogChunk, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		// A missing/unreadable file is not fatal: report "none" so the viewer
-		// shows guidance instead of an error toast.
 		return LogChunk{Lines: []string{}, Source: LogSourceNone}, nil
 	}
 	defer f.Close()
@@ -135,14 +90,34 @@ func (c *Controller) tailFile(lines int) (LogChunk, error) {
 	return LogChunk{Lines: tail.slice(), Source: LogSourceFile}, nil
 }
 
-// logOutputPath returns the configured sing-box log.output file path, or "" when
-// logging goes to stdout (no file to tail).
-func (c *Controller) logOutputPath() string {
-	cfg, err := c.configManager.GetConfig()
-	if err != nil || cfg.Log == nil {
-		return ""
+// tailLogread reads the syslog ring buffer via BusyBox `logread` (OpenWrt)
+// and keeps only sing-box lines. logread prints the whole buffer, so the
+// filter and tail window are applied in-process rather than relying on
+// version-specific logread flags.
+func tailLogread(lines int) (LogChunk, error) {
+	out, err := exec.Command("logread").Output()
+	if err != nil {
+		return LogChunk{}, fmt.Errorf("failed to read syslog via logread: %w", err)
 	}
-	return strings.TrimSpace(cfg.Log.Output)
+	return LogChunk{
+		Lines:  filterSyslogLines(string(out), lines),
+		Source: LogSourceSyslog,
+	}, nil
+}
+
+// filterSyslogLines keeps the last `lines` syslog lines mentioning sing-box.
+// Kept pure (no exec) so it is unit-testable.
+func filterSyslogLines(out string, lines int) []string {
+	tail := newRingBuffer(lines)
+	for _, line := range strings.Split(out, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.Contains(line, "sing-box") {
+			tail.push(line)
+		}
+	}
+	return tail.slice()
 }
 
 // ringBuffer keeps only the most recent n strings pushed into it.
