@@ -10,15 +10,16 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Public APIs
 	v1.POST("/user/login", handler.Login)
+	v1.GET("/auth/status", handler.GetAuthStatus)
 
 	// Authenticated APIs Group
-	auth := v1.Group("", AuthMiddleware(handler.userManager))
+	auth := v1.Group("", AuthMiddleware(handler.userManager, handler.authEnabled))
 	auth.POST("/user/logout", handler.Logout)
 	auth.GET("/user/me", handler.GetMe)
 	auth.PUT("/users/:id", handler.UpdateUser) // Handled inside to allow self-update
 
 	// Admin-only APIs Group
-	admin := v1.Group("", AuthMiddleware(handler.userManager), RequireAdmin())
+	admin := v1.Group("", AuthMiddleware(handler.userManager, handler.authEnabled), RequireAdmin())
 	admin.GET("/users", handler.ListUsers)
 	admin.POST("/users", handler.CreateUser)
 	admin.DELETE("/users/:id", handler.DeleteUser)

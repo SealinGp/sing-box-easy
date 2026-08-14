@@ -77,6 +77,7 @@ func (r *Route) initEndpoints() error {
 		r.config.AdminPass,
 		r.sl,
 		r.config.GitHub,
+		r.config.Server.Auth,
 	)
 
 	// Initialize handler components

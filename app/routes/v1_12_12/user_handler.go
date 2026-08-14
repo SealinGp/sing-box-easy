@@ -30,6 +30,18 @@ type UpdateUserRequest struct {
 	Role     string `json:"role"`
 }
 
+// AuthStatusResponse tells the frontend whether login is required. Public:
+// the UI needs it before any session exists to decide whether to show the
+// login page and the profile/user-management views.
+type AuthStatusResponse struct {
+	AuthEnabled bool `json:"auth_enabled"`
+}
+
+// GetAuthStatus reports whether this deployment requires login.
+func (h *Handler) GetAuthStatus(ctx context.Context, c *app.RequestContext) {
+	respOK(ctx, c, AuthStatusResponse{AuthEnabled: h.authEnabled})
+}
+
 // Login authenticates credentials and returns a session token
 func (h *Handler) Login(ctx context.Context, c *app.RequestContext) {
 	var req LoginRequest

@@ -232,6 +232,7 @@ API surface groups (registered in `routes.go`):
 - `/templates/rule-sets`
 - `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in
 - `/github/auth/status` (read), `/github/auth/device` POST/GET/DELETE `:session_id`, `/github/auth` DELETE (admin-only) — GitHub sign-in via OAuth device flow
+- `/auth/status` (public) — whether this deployment requires login. `server.auth` in app.yml: `auto` (default; login disabled on OpenWrt, enabled elsewhere) / `enabled` / `disabled`. When disabled, `AuthMiddleware` injects a synthetic admin user and the frontend hides login/profile/user management
 
 ## Testing Notes
 

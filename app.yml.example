@@ -8,6 +8,18 @@ server:
   # Ensure this port is open in your cloud provider security group and system firewall to allow external access.
   port: "8080"
 
+  # 登录认证模式 / Login requirement:
+  #   auto     - 默认。OpenWrt 路由器上关闭登录（面板运行在受信任的局域网），
+  #              其他系统上开启登录。
+  #              Default: login disabled on OpenWrt routers (trusted LAN),
+  #              enabled everywhere else.
+  #   enabled  - 始终需要登录 / always require login
+  #   disabled - 永不需要登录。任何能访问此端口的人都拥有管理员权限，
+  #              仅用于完全可信的网络！
+  #              Never require login. Anyone who can reach this port gets
+  #              admin access — trusted networks ONLY!
+  auth: "auto"
+
 sing_box:
   # sing-box 配置文件路径
   # 所有配置管理 API 都会操作此文件

@@ -1,11 +1,17 @@
 import { ApiService } from './api'
-import type { User, LoginResponse, BasicResponse } from '../types/api'
+import type { User, LoginResponse, AuthStatus, BasicResponse } from '../types/api'
 
 export class UserService {
   private api: ApiService
 
   constructor(api: ApiService) {
     this.api = api
+  }
+
+  // Public endpoint — reports whether this deployment requires login at all.
+  async getAuthStatus(): Promise<AuthStatus> {
+    const { data } = await this.api.get<BasicResponse<AuthStatus>>('/auth/status')
+    return data.data
   }
 
   async login(username: string, password: string): Promise<LoginResponse> {

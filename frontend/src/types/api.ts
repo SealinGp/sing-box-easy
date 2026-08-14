@@ -376,3 +376,10 @@ export interface LoginResponse {
   user: User
 }
 
+// Whether this deployment requires login (server.auth × platform).
+// auth_enabled=false means every request runs as an administrator
+// (e.g. "auto" mode on OpenWrt routers).
+export interface AuthStatus {
+  auth_enabled: boolean
+}
+

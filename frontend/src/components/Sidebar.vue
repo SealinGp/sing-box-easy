@@ -9,6 +9,7 @@ import { useServiceStore } from '../stores'
 import { userService } from '../services'
 import { useConfirm } from '../composables/useConfirm'
 import { useAppUpdate } from '../composables/useAppUpdate'
+import { useAuthMode } from '../composables/useAuthMode'
 import { useNavIndicator } from '../composables/useNavIndicator'
 
 interface MenuItem {
@@ -46,6 +47,10 @@ const version = computed(() => currentVersion.value || buildVersion)
 // live on every page (e.g. right after restarting from the Config page).
 const serviceStore = useServiceStore()
 let unsubscribe: (() => void) | null = null
+
+// Hide the profile/logout footer entirely when the deployment has
+// authentication disabled (e.g. OpenWrt) — there is no account to manage.
+const { authEnabled } = useAuthMode()
 
 const currentUser = ref<any>(null)
 
@@ -416,8 +421,8 @@ watch(
       </ul>
     </nav>
 
-    <!-- Footer/User Section -->
-    <div class="p-4 border-t border-white/35 dark:border-white/10">
+    <!-- Footer/User Section (hidden when authentication is disabled) -->
+    <div v-if="authEnabled" class="p-4 border-t border-white/35 dark:border-white/10">
       <div class="flex items-center justify-between gap-2">
         <router-link
           to="/dashboard/profile"

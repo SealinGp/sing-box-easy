@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { serviceControlService } from '../services'
+import { ensureAuthMode } from '../composables/useAuthMode'
 
 // Eagerly load critical components
 import Dashboard from '../views/Dashboard.vue'
@@ -211,20 +212,31 @@ const router = createRouter({
 router.beforeEach(async (to, _, next) => {
   const token = localStorage.getItem('sb_token')
 
-  // 1. Allow login page without auth
-  if (to.path === '/login') {
-    if (token) {
+  // 0. When the deployment has authentication disabled (server.auth:
+  //    disabled, or "auto" on OpenWrt) there is no login flow and no
+  //    profile/user management — skip the token checks entirely.
+  const authEnabled = await ensureAuthMode()
+  if (!authEnabled) {
+    if (to.path === '/login' || to.path === '/dashboard/profile') {
       next('/dashboard')
-    } else {
-      next()
+      return
     }
-    return
-  }
+  } else {
+    // 1. Allow login page without auth
+    if (to.path === '/login') {
+      if (token) {
+        next('/dashboard')
+      } else {
+        next()
+      }
+      return
+    }
 
-  // 2. Require auth for all other routes
-  if (!token) {
-    next('/login')
-    return
+    // 2. Require auth for all other routes
+    if (!token) {
+      next('/login')
+      return
+    }
   }
 
   // 3. If authenticated, check initialization status

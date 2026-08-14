@@ -23,6 +23,12 @@ The package:
 - seeds `/etc/sing-box-easy/app.yml` from the bundled example on first
   install and keeps it across upgrades (conffile)
 
+**Authentication note:** with the default `server.auth: "auto"` the panel
+skips login on OpenWrt — anyone who can reach the panel's port has admin
+access. Keep the port LAN-only (the default firewall does not expose it to
+WAN), or set `server.auth: "enabled"` in `/etc/sing-box-easy/app.yml` to
+require login like on other platforms.
+
 Install sing-box itself with `opkg install sing-box` (OpenWrt ≥ 23.05
 packages feed) or from the panel's init wizard.
 
