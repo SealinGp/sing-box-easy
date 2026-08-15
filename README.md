@@ -5,6 +5,9 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 ## ✨ 主要特性
 
 ### 🖥️ Web 仪表盘
+- **大盘**:
+<img width="3840" height="1750" alt="image" src="https://github.com/user-attachments/assets/d96f04af-66ef-4e1e-9c99-0ab48b477780" />
+
 - **可视化配置管理**：内置 Monaco Editor，支持 JSON 语法高亮、补全与校验。 版本管理
 [![Editor](./doc/images/editor.png)]
 [![Editor](./doc/images/version.png)]
