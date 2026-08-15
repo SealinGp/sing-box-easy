@@ -96,7 +96,7 @@ opkg print-architecture
 
 ```sh
 cd /tmp
-VER=1.2.5        # 改成 Releases 页面的最新版本
+VER=1.2.6        # 改成 Releases 页面的最新版本
 ARCH=x86_64      # 改成上一步查到的架构
 
 curl -fLO "https://github.com/SealinGp/sing-box-easy/releases/download/v${VER}/sing-box-easy_${VER}_${ARCH}.ipk"
@@ -120,7 +120,7 @@ logread | grep 'sing-box-easy\[' | tail -5
 然后浏览器打开 **`http://<路由器IP>:8080`**。
 
 - OpenWrt 上默认**不需要登录**（`server.auth: auto` 判定为可信局域网），界面使用顶栏布局以免和 LuCI 的侧边栏重复。
-- LuCI 里也会出现入口：**服务 → sing-box-easy**。若没看到，执行 `rm -f /tmp/luci-indexcache*` 后刷新页面。
+- LuCI 里也会出现入口：**服务 → sing-box-easy**。若没看到，见 [LuCI 菜单不显示](#luci-菜单不显示)。
 
 ---
 
@@ -141,6 +141,25 @@ logread | grep 'sing-box-easy\[' | tail -5
 | **9 路由** | 第一条规则加 `ip_is_private → direct`；最终出站指向你的节点组 | 没有这条规则时，局域网和 Docker 网段的流量会被送进代理 |
 
 完成后**先不要启动 sing-box**，请继续读下一节。
+
+### 面板会自动完成的两件事
+
+从 v1.2.7 起，**启动 sing-box 时**面板会自动配置好两个 OpenWrt 特有的、sing-box 自己不会碰的东西；**停止时自动还原**：
+
+| 动作 | 原因 |
+| --- | --- |
+| 为 TUN 网卡创建防火墙区域 `sing-box-easy`（`input/output/forward` 均为 `ACCEPT`，并加上 `lan → sing-box-easy` 转发） | TUN 网卡不属于任何 zone 时，fw4 的 `input` 链会落到 `handle_reject`，把从隧道回来的每个包都用 TCP reset 打掉——路由完全正确，连接却瞬间失败 |
+| 把 dnsmasq 的上游指向 sing-box 的 DNS 入站 | 否则局域网仍然走原来的上游，sing-box 的 DNS 规则一条都不生效 |
+
+几个细节：
+
+- **只在需要时执行**：配置里没有 TUN 入站就不建 zone；没有 `hijack-dns` 规则指向某个入站，就不动 dnsmasq。纯代理端口（mixed）配置完全不受影响。
+- **`masq` 保持关闭**。sing-box 是从 tun 文件描述符读包、再自己发起出站连接，因此对 tun0 做 NAT 只会把源地址改写成 tun 网段地址，**丢掉真实客户端 IP**，让基于源地址的路由规则失效。很多教程会让你设 `masq=1`，在这个架构下是错的。
+- **停止时还原**：原来的 dnsmasq 上游会被记录下来并原样写回；若原本就没有配置上游，则删除该选项让它回落到 `resolv.conf`。这样「停掉代理」不会顺带把整个局域网的 DNS 也停掉。
+- 记录文件为 `/etc/sing-box/.openwrt-net-state.json`，面板自身重启不影响还原。
+- 只会删除自己创建的、名为 `sing-box-easy` 的 zone，不会碰你手工建的规则。
+
+如果你在 v1.2.7 之前已经手工建过 zone，请先删掉，避免出现两个功能重复的 zone。
 
 ---
 
@@ -297,8 +316,32 @@ rm -f  /etc/sing-box/sing-box-easy.db
 | 日志页面空白 | `log.output` 应留空，让日志进 syslog |
 | sing-box 启动即 FATAL | 多为规则集下载失败，见第 5 节 |
 | 局域网能上网但代理不生效 | 检查 TUN 是否起来（`ip link show tun0`）、`auto_route` 是否开启 |
+| 连接瞬间失败（`Failed to connect ... after 0 ms`） | TUN 网卡没有防火墙区域。v1.2.7 起会自动创建；更早的版本需手工添加，见上文 |
+| 停掉 sing-box 后整个局域网没有 DNS | dnsmasq 仍指向已关闭的 DNS 端口。v1.2.7 起停止时会自动还原 |
 | 局域网互访异常 / Docker 容器访问不了 | 缺少 `ip_is_private → direct` 路由规则，或 TUN 网段和 Docker 冲突 |
-| LuCI 里没有菜单入口 | `rm -f /tmp/luci-indexcache*` 后刷新 |
+| LuCI 里没有菜单入口 | 见下方「LuCI 菜单不显示」 |
+
+### LuCI 菜单不显示
+
+菜单项声明了 `depends.acl`，而 LuCI **会把「ACL 未满足」这个判断缓存下来**。如果 rpcd 还没加载我们的 `acl.d` 文件，LuCI 重建菜单时就会直接跳过这一项，并且这个结果会一直保留到缓存再次被清除为止。
+
+顺序很重要：**先重载 rpcd，再清缓存**。
+
+```sh
+/etc/init.d/rpcd reload
+rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/*
+```
+
+然后在浏览器里强制刷新（Ctrl+Shift+R），或退出重新登录 LuCI —— 菜单树在客户端也有一份缓存。
+
+验证是否已经注册成功：
+
+```sh
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/luci-static/resources/view/sing-box-easy/panel.js   # 期望 200
+grep -o "admin/services/sing-box-easy" /tmp/luci-indexcache*.json                                              # 有输出即已注册
+```
+
+> v1.2.6 的 postinst 只清了缓存、没有重载 rpcd，因此**从 v1.2.6 升级上来的实例需要手动执行一次上面的命令**。v1.2.7 起已修复。
 
 ---
 

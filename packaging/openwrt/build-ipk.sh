@@ -120,8 +120,14 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		fi
 	fi
 
-	# LuCI caches its menu tree; without this the new entry only appears after
-	# the cache expires or the router reboots.
+	# Order matters here. LuCI omits any menu entry whose depends.acl is not
+	# satisfied, and then caches that decision — so rpcd has to load our new
+	# acl.d file BEFORE the menu tree is rebuilt. Clearing the cache first just
+	# means LuCI rebuilds it while the ACL is still unknown and bakes in the
+	# missing entry, which then survives until the cache is cleared again.
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1
+
+	# Now drop the cached menu so it is rebuilt with the ACL in place.
 	rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
 
 	/etc/init.d/sing-box-easy enable
