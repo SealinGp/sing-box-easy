@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -105,15 +106,45 @@ func tailLogread(lines int) (LogChunk, error) {
 	}, nil
 }
 
-// filterSyslogLines keeps the last `lines` syslog lines mentioning sing-box.
-// Kept pure (no exec) so it is unit-testable.
+// singBoxSyslogTag matches the syslog tag procd writes for the sing-box
+// service: "sing-box[1234]:" or, where the pid is omitted, "sing-box:".
+//
+// Anchoring on the tag rather than looking for the bare substring "sing-box"
+// matters because this panel logs to syslog too — its ipk init script sets
+// procd_set_param stdout/stderr — under the tag "sing-box-easy[<pid>]". A
+// substring match interleaved the panel's own JSON into the sing-box log view.
+// The trailing \s keeps this from matching "sing-box::main" inside a procd
+// message, which is handled deliberately by procdSingBoxInstance below rather
+// than by accident here.
+var singBoxSyslogTag = regexp.MustCompile(`(?:^|\s)sing-box(?:\[\d+\])?:\s`)
+
+// procdSingBoxInstance matches procd's own chatter about the sing-box
+// instance, e.g. "procd: Instance sing-box::main s in a crash loop". These
+// lines are not sing-box output, but they are the most useful thing in the log
+// when sing-box refuses to stay up — a respawn loop is invisible otherwise,
+// because the process dies before it logs anything of its own.
+var procdSingBoxInstance = regexp.MustCompile(`(?:^|\s)sing-box::`)
+
+// panelSyslogTag matches this application's own syslog tag.
+//
+// singBoxSyslogTag already rejects "sing-box-easy[…]" (the "-easy" breaks the
+// tag), but not a panel *message* that happens to read "... sing-box: ...".
+// Excluding our own tag outright closes that case without depending on the
+// message text.
+var panelSyslogTag = regexp.MustCompile(`(?:^|\s)sing-box-easy(?:\[\d+\])?:`)
+
+// filterSyslogLines keeps the last `lines` syslog lines emitted by the
+// sing-box service. Kept pure (no exec) so it is unit-testable.
 func filterSyslogLines(out string, lines int) []string {
 	tail := newRingBuffer(lines)
 	for _, line := range strings.Split(out, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		if strings.Contains(line, "sing-box") {
+		if panelSyslogTag.MatchString(line) {
+			continue
+		}
+		if singBoxSyslogTag.MatchString(line) || procdSingBoxInstance.MatchString(line) {
 			tail.push(line)
 		}
 	}
