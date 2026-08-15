@@ -49,6 +49,7 @@ type Task struct {
 	progress    int
 	fromVersion string
 	toVersion   string
+	plan        *IpkPlan
 }
 
 // TaskSnapshot is an immutable view of a Task, safe to serialize.
@@ -60,6 +61,10 @@ type TaskSnapshot struct {
 	Progress    int    `json:"progress"`
 	FromVersion string `json:"from_version"`
 	ToVersion   string `json:"to_version"`
+	// Plan is set only by an ipk prepare task: the panel has downloaded and
+	// verified the package but deliberately does not install it, so the
+	// finished task carries the command for the operator to run.
+	Plan *IpkPlan `json:"plan,omitempty"`
 }
 
 // Snapshot returns a consistent copy of the task's current state.
@@ -74,6 +79,7 @@ func (t *Task) Snapshot() TaskSnapshot {
 		Progress:    t.progress,
 		FromVersion: t.fromVersion,
 		ToVersion:   t.toVersion,
+		Plan:        t.plan,
 	}
 }
 
@@ -188,6 +194,10 @@ type Status struct {
 	Updating       bool    `json:"updating"`
 	CheckError     string  `json:"check_error"`
 	Task           *string `json:"running_task_id"`
+	// SelfUpdate tells the UI which upgrade path applies here, so an opkg
+	// install is offered a prepare-and-copy flow instead of an Update button
+	// that always fails.
+	SelfUpdate SelfUpdateInfo `json:"self_update"`
 }
 
 // CheckStatus resolves the current version and the newest available release.
@@ -198,6 +208,7 @@ func (u *Updater) CheckStatus(force bool) *Status {
 		CurrentVersion: Current(),
 		CurrentKnown:   IsKnown(),
 		AssetName:      AssetName(),
+		SelfUpdate:     DetectSelfUpdate(),
 	}
 
 	if task := u.RunningTask(); task != nil {
@@ -258,10 +269,19 @@ func (u *Updater) RunningTask() *Task {
 // malformed, or when the target release does not exist.
 func (u *Updater) StartUpdate(tag string) (*Task, error) {
 	// ipk installs are owned by opkg — a tarball swap would desync its file
-	// registry, so route those updates through the package manager instead.
-	if InstalledViaOpkg() {
-		return nil, fmt.Errorf("this instance was installed via opkg; " +
-			"update it with 'opkg upgrade sing-box-easy' (or install the new .ipk from the GitHub release) instead")
+	// registry, so those updates go through the package manager instead.
+	//
+	// The advice is conditional: `opkg upgrade` only works when a configured
+	// feed actually carries the package, which for a GitHub-released ipk it
+	// usually does not. Sending the operator to a command that cannot work is
+	// what the old unconditional message did.
+	if info := DetectSelfUpdate(); info.Method == SelfUpdateOpkg {
+		if info.FeedProvides {
+			return nil, fmt.Errorf("this instance is managed by opkg; update it with %q", feedUpgradeCommand())
+		}
+		return nil, fmt.Errorf("this instance is managed by opkg and no configured feed provides %s; "+
+			"use the prepare-package action to download and verify the %s .ipk, then install it with opkg",
+			opkgPackageName, info.Architecture)
 	}
 
 	tag = strings.TrimSpace(tag)
@@ -496,6 +516,45 @@ func (u *Updater) verifyChecksum(tag, actualSum string) error {
 		return fmt.Errorf("checksum mismatch for %s: expected %s, got %s", tag, expected, actualSum)
 	}
 	return nil
+}
+
+// httpClient builds a client that honours the configured proxy.
+func (u *Updater) httpClient(timeout time.Duration) (*http.Client, error) {
+	client := &http.Client{Timeout: timeout}
+	if u.proxy == "" {
+		return client, nil
+	}
+	proxyURL, err := url.Parse(u.proxy)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %w", err)
+	}
+	client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+	return client, nil
+}
+
+// fetchText GETs a small text resource (a checksum sidecar). The response is
+// length-limited: it is remote input, and nothing legitimate here is large.
+func (u *Updater) fetchText(target string) (string, error) {
+	client, err := u.httpClient(apiTimeout)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.Get(target)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GET %s returned HTTP %d", target, resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", fmt.Errorf("failed to read %s: %w", target, err)
+	}
+	return string(body), nil
 }
 
 // releaseClient returns the shared, cache-bearing GitHub client.

@@ -250,7 +250,8 @@ API surface groups (registered in `routes.go`):
 - `/scheduler/{status,start,stop,trigger,jobs}` — cron auto-updater control
 - `/install`, `/install/task/:task_id`, `/install/status`, `/update`
 - `/dashboard/{download,upload}`, `/dashboard/task/:task_id`, `/dashboard/status`
-- `/version`, `/version/releases`, `/version/task/:task_id` (read), `/version/update` (admin-only) — app self-update from GitHub releases
+- `/version`, `/version/releases`, `/version/task/:task_id` (read), `/version/update` (admin-only) — app self-update from GitHub releases. `GET /version` includes a `self_update` object (`method`: `tarball`/`opkg`, `automatic`, `architecture`, `feed_provides`, `feed_known`) so the UI offers an action that can actually work
+- `/version/prepare-package` (admin-only) — for opkg-managed installs: downloads and sha256-verifies the arch-matched `.ipk` into `/tmp` and returns the install command, **without installing**. Reuses the update Task machinery (poll `/version/task/:id`); the finished task carries a `plan`. The panel deliberately stops short of running opkg because our ipk's `prerm` stops `sing-box-easy` itself — an install driven from inside the process would kill the process group mid-transaction
 - `/init/{status,complete,reset}`
 - `/templates/rule-sets`
 - `/settings` (GET/PUT) — application settings (`config_versions_keep`). Keys listed in `settings.SecretKeys` (the GitHub token) are stripped from GET responses and are **not writable here** — the credential is only ever issued by device-flow sign-in

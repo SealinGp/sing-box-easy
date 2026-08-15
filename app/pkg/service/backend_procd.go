@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"go.uber.org/zap"
@@ -17,9 +18,59 @@ type procdBackend struct {
 	// logPath returns the configured sing-box log.output file path, or ""
 	// when logging goes to stdout/syslog.
 	logPath func() string
+
+	// runInit and probe are seams: nil means "use the real implementation".
+	// Tests substitute them to exercise the lifecycle without an init script
+	// or a process table.
+	runInit func(action string) error
+	probe   func() (bool, int, error)
+	// startTimeout overrides startGracePeriod; zero means use the default.
+	startTimeout time.Duration
 }
 
 func (b *procdBackend) Kind() string { return BackendProcd }
+
+// invoke runs an init-script action through the injected seam when present.
+func (b *procdBackend) invoke(action string) error {
+	if b.runInit != nil {
+		return b.runInit(action)
+	}
+	return b.initd(action)
+}
+
+// status reports whether sing-box is running, through the injected seam when
+// present.
+func (b *procdBackend) status() (bool, int, error) {
+	if b.probe != nil {
+		return b.probe()
+	}
+	return lookupRunningPID(SystemOpenWRT)
+}
+
+func (b *procdBackend) startWait() time.Duration {
+	if b.startTimeout > 0 {
+		return b.startTimeout
+	}
+	return startGracePeriod
+}
+
+// confirmStarted verifies sing-box actually came up after the init script
+// accepted the request.
+//
+// This is not paranoia: OpenWrt's UCI-driven /etc/init.d/sing-box checks
+// `config_get_bool enabled "main" "enabled" "0"` and returns 0 *without
+// starting anything* when the service is disabled in UCI. Treating that exit
+// code as success reports a running service that does not exist.
+func (b *procdBackend) confirmStarted(action string) error {
+	if err := waitForServiceStart(b.status, b.startWait(), startPollInterval); err != nil {
+		return fmt.Errorf(
+			"%s %s exited successfully but sing-box is not running "+
+				"(on OpenWrt check `uci get sing-box.main.enabled` — a value of 0 makes "+
+				"the init script a no-op — then `logread | grep sing-box`): %w",
+			b.initScript, action, err)
+	}
+	return nil
+}
 
 // initd runs `/etc/init.d/sing-box <action>` and wraps failures with the
 // captured output for easier diagnosis.
@@ -33,7 +84,10 @@ func (b *procdBackend) initd(action string) error {
 }
 
 func (b *procdBackend) Start() error {
-	if err := b.initd("start"); err != nil {
+	if err := b.invoke("start"); err != nil {
+		return err
+	}
+	if err := b.confirmStarted("start"); err != nil {
 		return err
 	}
 	logger.Info("Service started via procd")
@@ -73,7 +127,10 @@ func (b *procdBackend) ForceStop() error {
 }
 
 func (b *procdBackend) Restart() error {
-	if err := b.initd("restart"); err != nil {
+	if err := b.invoke("restart"); err != nil {
+		return err
+	}
+	if err := b.confirmStarted("restart"); err != nil {
 		return err
 	}
 	logger.Info("Service restarted via procd")
@@ -90,8 +147,16 @@ func (b *procdBackend) Restart() error {
 // on a stopped service brings it up rather than erroring — matching the
 // systemd backend's reload-or-restart behavior.
 func (b *procdBackend) Reload() error {
-	if err := b.initd("reload"); err != nil {
+	if err := b.invoke("reload"); err != nil {
 		logger.Warn("procd reload failed, falling back to restart", zap.Error(err))
+		return b.Restart()
+	}
+	// A reload that leaves nothing running is the same silent no-op as a
+	// start against a UCI-disabled instance, so escalate to a full restart
+	// rather than reporting success.
+	if err := b.confirmStarted("reload"); err != nil {
+		logger.Warn("procd reload left sing-box stopped, falling back to restart",
+			zap.Error(err))
 		return b.Restart()
 	}
 	logger.Info("Service reloaded via procd")
@@ -102,7 +167,7 @@ func (b *procdBackend) Reload() error {
 // procd bookkeeping: `/etc/init.d/<s> running` requires a procd-tracked
 // instance, whereas pidof also covers manually started processes.
 func (b *procdBackend) ActiveAndPID() (bool, int, error) {
-	return lookupRunningPID(SystemOpenWRT)
+	return b.status()
 }
 
 // TailLogs prefers the configured log.output file (when set, sing-box writes

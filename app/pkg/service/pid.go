@@ -21,6 +21,14 @@ const (
 	stopPollInterval = 100 * time.Millisecond
 )
 
+// Timing for confirming a process actually appeared after a start request.
+// An init system returning 0 only means it accepted the request, not that
+// the service is up.
+const (
+	startGracePeriod  = 3 * time.Second
+	startPollInterval = 100 * time.Millisecond
+)
+
 // lookupPID returns the PID of the sing-box process as a string, or "" if not
 // running. It prefers pidof (native BusyBox applet on OpenWrt) and falls back
 // to pgrep and a POSIX ps pipeline on other systems.
@@ -102,6 +110,30 @@ func signalRunningPID(systemType SystemType, sig string) error {
 		return fmt.Errorf("failed to send %s to pid %d: %w", sig, pidNum, err)
 	}
 	return nil
+}
+
+// waitForServiceStart polls check until it reports the service running, the
+// check itself fails, or the timeout elapses. It is the start-side
+// counterpart to waitForPIDExit.
+//
+// The probe is injected rather than hardcoded to lookupPID so backends can
+// supply their own notion of "running" and tests can drive it without
+// touching the process table.
+func waitForServiceStart(check func() (bool, int, error), timeout, interval time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		running, _, err := check()
+		if err != nil {
+			return err
+		}
+		if running {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("service did not start within %s", timeout)
+		}
+		time.Sleep(interval)
+	}
 }
 
 // waitForPIDExit polls the process table until sing-box has exited or the

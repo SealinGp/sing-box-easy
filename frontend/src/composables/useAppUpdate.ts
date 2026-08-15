@@ -1,6 +1,6 @@
 import { computed, readonly, ref } from 'vue'
 import { versionService } from '../services'
-import type { ReleaseInfo, UpdateTask, VersionStatus } from '../types/version'
+import type { IpkPlan, ReleaseInfo, SelfUpdateInfo, UpdateTask, VersionStatus } from '../types/version'
 
 /**
  * App version / self-update state.
@@ -13,6 +13,8 @@ import type { ReleaseInfo, UpdateTask, VersionStatus } from '../types/version'
 export type UpdatePhase =
   | 'idle'
   | 'updating' // downloading + installing
+  | 'preparing' // downloading + verifying an .ipk for a manual install
+  | 'prepared' // .ipk on disk, waiting for the operator to run the command
   | 'restarting' // files swapped, process re-executing
   | 'waiting' // polling until the server answers again
   | 'done' // about to reload the page
@@ -55,8 +57,28 @@ const clearPoll = () => {
 }
 
 export function useAppUpdate() {
-  /** True while the update is running and the UI must stay locked. */
-  const busy = computed(() => phase.value !== 'idle' && phase.value !== 'failed')
+  /**
+   * True while work is in flight and the UI must stay locked. `prepared` is
+   * excluded: the download finished and the operator now needs the controls
+   * back to pick another version or re-prepare.
+   */
+  const busy = computed(
+    () => phase.value !== 'idle' && phase.value !== 'failed' && phase.value !== 'prepared',
+  )
+
+  /**
+   * How this install can be upgraded. Defaults to the automatic tarball path
+   * so the UI behaves as before until the backend says otherwise.
+   */
+  const selfUpdate = computed<SelfUpdateInfo>(
+    () => status.value?.self_update ?? { method: 'tarball', automatic: true, architecture: '', feed_provides: false, feed_known: false },
+  )
+
+  /** True when opkg owns this install and the panel must not install itself. */
+  const isOpkgManaged = computed(() => selfUpdate.value.method === 'opkg')
+
+  /** The prepared package, once a prepare task has finished. */
+  const plan = computed<IpkPlan | null>(() => task.value?.plan ?? null)
 
   /** Progress percentage for the bar; 100 once we're waiting on the restart. */
   const progress = computed(() => {
@@ -160,6 +182,62 @@ export function useAppUpdate() {
     }
   }
 
+  /**
+   * Download and verify the .ipk for an opkg-managed install. Resolves once
+   * the task is accepted; the file lands on the router and the finished task
+   * carries the command to run.
+   */
+  const preparePackage = async (version?: string): Promise<void> => {
+    clearPoll()
+    errorMessage.value = ''
+    phase.value = 'preparing'
+
+    try {
+      const started = await versionService.preparePackage(version)
+      task.value = started
+      pollPrepare(started.id)
+    } catch (err) {
+      phase.value = 'failed'
+      errorMessage.value = err instanceof Error ? err.message : String(err)
+      throw err
+    }
+  }
+
+  /**
+   * Poll a prepare task. Deliberately separate from `pollTask`: nothing
+   * restarts here, so a transport failure is a real error rather than the
+   * expected restart signal, and completion must not reload the page.
+   */
+  const pollPrepare = (taskId: string) => {
+    const tick = async () => {
+      try {
+        const next = await versionService.getTask(taskId)
+        task.value = next
+
+        if (next.status === 'failed') {
+          phase.value = 'failed'
+          errorMessage.value = next.error || next.message
+          return
+        }
+
+        if (next.status === 'completed') {
+          phase.value = next.plan ? 'prepared' : 'failed'
+          if (!next.plan) {
+            errorMessage.value = 'The package finished downloading but no install command was returned.'
+          }
+          return
+        }
+
+        pollTimer = setTimeout(tick, TASK_POLL_INTERVAL_MS)
+      } catch (err) {
+        phase.value = 'failed'
+        errorMessage.value = err instanceof Error ? err.message : String(err)
+      }
+    }
+
+    pollTimer = setTimeout(tick, TASK_POLL_INTERVAL_MS)
+  }
+
   /** Attach to an already-running task (e.g. started in another tab). */
   const resumeTask = async (taskId: string): Promise<void> => {
     clearPoll()
@@ -251,9 +329,13 @@ export function useAppUpdate() {
     updateOffered,
     currentVersion,
     latestVersion,
+    selfUpdate,
+    isOpkgManaged,
+    plan,
     refreshStatus,
     loadReleases,
     startUpdate,
+    preparePackage,
     reset,
   }
 }

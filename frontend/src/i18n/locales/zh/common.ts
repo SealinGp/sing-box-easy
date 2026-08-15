@@ -5,6 +5,7 @@ export default {
   chipsHint: '输入后按回车添加；也可用逗号分隔一次粘贴多个。',
   saving: '保存中...',
   cancel: '取消',
+  copy: '复制',
   add: '添加',
   update: '更新',
   edit: '编辑',

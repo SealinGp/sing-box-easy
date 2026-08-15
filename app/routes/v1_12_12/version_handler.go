@@ -97,6 +97,38 @@ func (h *Handler) StartVersionUpdate(ctx context.Context, c *app.RequestContext)
 	respOK(ctx, c, task.Snapshot())
 }
 
+// PrepareVersionPackage downloads and verifies the OpenWrt .ipk matching this
+// install's architecture, without installing it. An empty version means
+// "latest".
+//
+// Admin-only and deliberately stopping short of the install: opkg's prerm
+// stops this very service, so an install driven from inside this process would
+// kill itself mid-transaction. The response carries the exact command to run.
+//
+// POST /version/prepare-package  {"version": "v1.2.5"}
+func (h *Handler) PrepareVersionPackage(ctx context.Context, c *app.RequestContext) {
+	type Request struct {
+		Version string `json:"version"`
+	}
+
+	var req Request
+	// An empty body is valid ("prepare latest").
+	if len(c.Request.Body()) > 0 {
+		if err := c.Bind(&req); err != nil {
+			respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+			return
+		}
+	}
+
+	task, err := h.updater.StartIpkPrepare(strings.TrimSpace(req.Version))
+	if err != nil {
+		respErr(ctx, c, CodeOperationFailed, err.Error())
+		return
+	}
+
+	respOK(ctx, c, task.Snapshot())
+}
+
 // GetVersionUpdateTask reports progress for a running or finished update.
 //
 // GET /version/task/:task_id
