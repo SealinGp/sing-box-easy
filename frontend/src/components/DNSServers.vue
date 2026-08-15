@@ -10,12 +10,15 @@ import { Select } from '../volt'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
+import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
 const { t } = useI18n()
 const dnsStore = useDNSStore()
+const outboundsStore = useOutboundsStore()
 const { dnsServers, loading } = storeToRefs(dnsStore)
+const { outbounds } = storeToRefs(outboundsStore)
 
 // Modal state
 const showServerModal = ref(false)
@@ -59,6 +62,31 @@ const getServerBadgeVariant = (type: string): 'primary' | 'success' | 'warning' 
 const needsServerAddress = computed(() => {
   const types = ['udp', 'tcp', 'tls', 'https', 'http3', 'quic']
   return types.indexOf(currentServer.value.type) !== -1
+})
+
+/**
+ * `detour` is a DNS *server* field (its DialerOptions), not a rule field — a
+ * rule inherits whatever detour the server it routes to has.
+ *
+ * Only remote transports dial anywhere, so local/dhcp/fakeip/hosts have no
+ * detour to speak of. Empty means "dial directly".
+ *
+ * Practical note: pointing a resolver through a proxy is how you stop foreign
+ * DNS from being tampered with, but the resolver named by
+ * route.default_domain_resolver must stay direct — it is what resolves the
+ * proxy servers' own hostnames, so routing it through the proxy is circular.
+ */
+const supportsDetour = computed(() => {
+  const types = ['udp', 'tcp', 'tls', 'https', 'http3', 'quic']
+  return types.indexOf(currentServer.value.type) !== -1
+})
+
+const detourOptions = computed(() => {
+  const options = [{ value: '', label: t('dns.servers.form.detourDirect') }]
+  for (const ob of outbounds.value || []) {
+    if (ob.tag) options.push({ value: ob.tag, label: ob.tag })
+  }
+  return options
 })
 
 const needsPath = computed(() => {
@@ -171,6 +199,10 @@ const closeServerModal = () => {
 }
 
 const handleSaveServer = async () => {
+  // An empty detour means "direct"; send it as absent rather than "" so the
+  // stored config stays clean.
+  if (!currentServer.value.detour) delete currentServer.value.detour
+
   try {
     if (isEditMode.value) {
       await dnsStore.updateDNSServer(editingServerTag.value, currentServer.value)
@@ -234,6 +266,8 @@ const handleDeleteServer = async () => {
 // Load data on mount
 onMounted(() => {
   dnsStore.fetchDNSServers()
+  // Populates the detour picker.
+  outboundsStore.fetchOutbounds()
 })
 </script>
 
@@ -272,6 +306,7 @@ onMounted(() => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.type') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.server') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.port') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.detour') }}</th>
               <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.actions') }}</th>
             </tr>
           </thead>
@@ -301,6 +336,15 @@ onMounted(() => {
                 <div class="text-sm text-gray-900 dark:text-gray-100">
                   {{ (server as any).type === 'hosts' ? '—' : ((server as any).server_port || '-') }}
                 </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <!-- Whether this resolver's queries go through a proxy is the
+                     difference between working and censored foreign DNS, so it
+                     belongs in the table rather than only in the modal. -->
+                <div v-if="(server as any).detour" class="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[12rem]" :title="(server as any).detour">
+                  {{ (server as any).detour }}
+                </div>
+                <div v-else class="text-sm text-gray-400 dark:text-gray-500">{{ $t('dns.servers.form.detourDirect') }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="dns-server-table-actions flex items-center justify-end gap-2">
@@ -368,6 +412,19 @@ onMounted(() => {
               :placeholder="$t('dns.servers.form.portPlaceholder')"
             />
           </div>
+        </div>
+
+        <div v-if="supportsDetour">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.detour') }}</label>
+          <Select
+            class="w-full"
+            v-model="currentServer.detour"
+            :options="detourOptions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('dns.servers.form.detourDirect')"
+          />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.detourHelp') }}</p>
         </div>
 
         <div v-if="needsPath">

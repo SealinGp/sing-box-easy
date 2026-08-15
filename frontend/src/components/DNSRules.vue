@@ -40,6 +40,7 @@ const currentRule = ref<any>({
   action: 'route',
   server: '',
   method: 'default',
+  rcode: 'NXDOMAIN',
   rule_set: '',
   domain: [] as string[],
   domain_suffix: [] as string[],
@@ -79,7 +80,21 @@ const actionTypes = computed(() => [
   { value: 'route', label: t('dns.rules.actionTypes.route') },
   { value: 'route-options', label: t('dns.rules.actionTypes.routeOptions') },
   { value: 'reject', label: t('dns.rules.actionTypes.reject') },
+  // `predefined` is the only way to answer a query yourself in 1.12 — there is
+  // no "block" DNS server type. Without it, blocking a domain at the DNS layer
+  // is unreachable from this UI.
+  { value: 'predefined', label: t('dns.rules.actionTypes.predefined') },
 ])
+
+// Verified against sing-box 1.12.12: uppercase only, and this is the whole set.
+const rcodeOptions = [
+  { value: 'NXDOMAIN', label: 'NXDOMAIN' },
+  { value: 'NOERROR', label: 'NOERROR' },
+  { value: 'SERVFAIL', label: 'SERVFAIL' },
+  { value: 'REFUSED', label: 'REFUSED' },
+  { value: 'FORMERR', label: 'FORMERR' },
+  { value: 'NOTIMP', label: 'NOTIMP' },
+]
 
 const serverOptions = computed(() => {
   const options = [
@@ -112,11 +127,14 @@ const ruleSetOptions = computed(() => {
   return options
 })
 
+// sing-box accepts exactly two reject methods (constant/rule.go:40-41).
+// The list previously also offered success/refused/nxdomain, which sing-box
+// rejects outright — "unknown reject method: nxdomain" — so the modal could
+// save a config that passed panel validation and then refused to start.
+// To answer with a specific rcode, use the `predefined` action instead.
 const rejectMethods = computed(() => [
   { value: 'default', label: t('dns.rules.rejectMethods.default') },
-  { value: 'success', label: t('dns.rules.rejectMethods.success') },
-  { value: 'refused', label: t('dns.rules.rejectMethods.refused') },
-  { value: 'nxdomain', label: t('dns.rules.rejectMethods.nxdomain') },
+  { value: 'drop', label: t('dns.rules.rejectMethods.drop') },
 ])
 
 function emptyRuleForm() {
@@ -124,6 +142,7 @@ function emptyRuleForm() {
     action: 'route',
     server: '',
     method: 'default',
+    rcode: 'NXDOMAIN',
     rule_set: '',
     domain: [] as string[],
     domain_suffix: [] as string[],
@@ -148,6 +167,7 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
     action: (raw.action as string) || 'route',
     server: (raw.server as string) || '',
     method: (raw.method as string) || 'default',
+    rcode: (raw.rcode as string) || 'NXDOMAIN',
     // rule_set is a single-select in the UI; the backend allows array — pick the first.
     rule_set: Array.isArray(raw.rule_set)
       ? ((raw.rule_set as string[])[0] || '')
@@ -186,14 +206,23 @@ const handleSaveRule = async () => {
   })
 
   // Keep only the fields valid for the selected action. sing-box strict-parses
-  // DNS rules and rejects fields that don't belong to the action — e.g.
-  // `method` is reject-only ("unknown field method" on a route rule), and
-  // `server` belongs to route, not reject.
-  if (processedRule.action === 'reject') {
-    delete processedRule.server
-  } else {
-    delete processedRule.method
-    delete processedRule.no_drop
+  // DNS rules and rejects any field that does not belong to the action — e.g.
+  // `method` is reject-only ("unknown field method" on a route rule).
+  switch (processedRule.action) {
+    case 'reject':
+      delete processedRule.server
+      delete processedRule.rcode
+      break
+    case 'predefined':
+      // Answers the query directly; it neither routes to a server nor rejects.
+      delete processedRule.server
+      delete processedRule.method
+      delete processedRule.no_drop
+      break
+    default: // route, route-options
+      delete processedRule.method
+      delete processedRule.no_drop
+      delete processedRule.rcode
   }
 
   loading.value = true
@@ -353,7 +382,12 @@ onMounted(() => {
                 </Badge>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
+                <!-- A predefined rule has no server; showing "-" hid the one
+                     thing that matters about it, the answer it returns. -->
+                <div v-if="(rule as any).action === 'predefined'" class="text-sm font-mono text-gray-600 dark:text-gray-400">
+                  {{ (rule as any).rcode || 'NXDOMAIN' }}
+                </div>
+                <div v-else class="text-sm text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-900 dark:text-gray-100 truncate max-w-md" :title="getRuleConditionsSummary(rule)">
@@ -395,6 +429,13 @@ onMounted(() => {
         <div v-if="currentRule.action === 'route'">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.server') }}</label>
           <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.server" :options="serverOptions" />
+        </div>
+
+        <!-- Response code (for predefined action) -->
+        <div v-if="currentRule.action === 'predefined'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.rcode') }}</label>
+          <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.rcode" :options="rcodeOptions" />
+          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.rcodeHelp') }}</p>
         </div>
 
         <!-- Reject Method (for reject action) -->
