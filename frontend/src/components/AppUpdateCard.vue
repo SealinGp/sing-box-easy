@@ -13,7 +13,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import { useAppUpdate } from '../composables/useAppUpdate'
 import { useConfirm } from '../composables/useConfirm'
 import { useNotify } from '../composables/useNotify'
@@ -38,11 +38,34 @@ const {
   hasUpdate,
   currentVersion,
   latestVersion,
+  selfUpdate,
+  isOpkgManaged,
+  plan,
   refreshStatus,
   loadReleases,
   startUpdate,
+  preparePackage,
   reset,
 } = useAppUpdate()
+
+/** Which shell command the operator copied most recently, for the tick mark. */
+const copied = ref('')
+
+const copyCommand = async (command: string) => {
+  try {
+    await navigator.clipboard.writeText(command)
+    copied.value = command
+    setTimeout(() => {
+      if (copied.value === command) copied.value = ''
+    }, 2000)
+  } catch {
+    // Clipboard access is denied over plain HTTP in some browsers — the
+    // command stays selectable, so this is not worth an error toast.
+    notify.error(t('settings.update.opkg.copyFailed'))
+  }
+}
+
+const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 
 /** Empty string means "latest release". */
 const selectedTag = ref('')
@@ -91,6 +114,8 @@ const progressLabel = computed(() => {
   switch (phase.value) {
     case 'updating':
       return task.value?.message || t('settings.update.progress.updating')
+    case 'preparing':
+      return task.value?.message || t('settings.update.progress.preparing')
     case 'restarting':
       return t('settings.update.progress.restarting')
     case 'waiting':
@@ -155,6 +180,19 @@ const runUpdate = async () => {
     notify.apiError(err, t('settings.update.toast.startFailed'))
   }
 }
+
+/**
+ * opkg path: download + verify only. No confirmation dialog — nothing on the
+ * router changes except a file appearing in /tmp.
+ */
+const runPrepare = async () => {
+  if (!targetVersion.value) return
+  try {
+    await preparePackage(selectedTag.value || undefined)
+  } catch (err) {
+    notify.apiError(err, t('settings.update.opkg.prepareFailed'))
+  }
+}
 </script>
 
 <template>
@@ -208,8 +246,22 @@ const runUpdate = async () => {
         </div>
       </template>
 
+      <!--
+        opkg owns the files on an ipk install, and its prerm stops this very
+        service — so the panel prepares a verified package and hands over the
+        command rather than installing itself.
+      -->
       <button
-        v-if="!busy"
+        v-if="!busy && isOpkgManaged"
+        @click="runPrepare"
+        :disabled="!canUpdate"
+        class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      >
+        <ArrowDownTrayIcon class="h-4 w-4" />
+        <span>{{ targetVersion ? $t('settings.update.opkg.prepareTo', { version: targetVersion }) : $t('settings.update.opkg.prepare') }}</span>
+      </button>
+      <button
+        v-else-if="!busy"
         @click="runUpdate"
         :disabled="!canUpdate"
         class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -218,6 +270,11 @@ const runUpdate = async () => {
         <span>{{ targetVersion ? $t('settings.update.updateTo', { version: targetVersion }) : $t('settings.update.update') }}</span>
       </button>
     </div>
+
+    <!-- Why the button says "Prepare" instead of "Update" on this host. -->
+    <p v-if="isOpkgManaged" class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+      {{ $t('settings.update.opkg.managed', { arch: selfUpdate.architecture || '?' }) }}
+    </p>
 
     <!-- Status line -->
     <p v-if="status?.check_error" class="text-sm text-amber-600 dark:text-amber-400 mb-3">
@@ -281,6 +338,63 @@ const runUpdate = async () => {
       </div>
       <p v-if="task?.to_version" class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono">
         {{ task.from_version }} &rarr; {{ task.to_version }}
+      </p>
+    </div>
+
+    <!--
+      Prepared package: the file is on the router and verified. Everything from
+      here is the operator's to run over SSH, so the commands are the payload.
+    -->
+    <div
+      v-if="phase === 'prepared' && plan"
+      class="mt-3 rounded-control border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 p-3"
+    >
+      <p class="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+        {{ $t('settings.update.opkg.readyTitle', { version: plan.version }) }}
+      </p>
+      <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+        {{ plan.architecture }} · {{ formatSize(plan.size_bytes) }} ·
+        <span v-if="plan.verified">{{ $t('settings.update.opkg.verified') }}</span>
+        <span v-else class="text-amber-700 dark:text-amber-400">{{ $t('settings.update.opkg.unverified') }}</span>
+      </p>
+
+      <p class="mt-3 text-xs font-medium text-gray-700 dark:text-gray-300">
+        {{ $t('settings.update.opkg.runThis') }}
+      </p>
+      <div class="mt-1 flex items-stretch gap-2">
+        <code
+          class="flex-1 min-w-0 overflow-x-auto rounded-control bg-gray-900 dark:bg-black px-3 py-2 text-xs text-gray-100 whitespace-pre"
+          >{{ plan.command }}</code
+        >
+        <button
+          @click="copyCommand(plan.command)"
+          class="flex-shrink-0 px-2.5 rounded-control border border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        >
+          {{ copied === plan.command ? $t('settings.update.opkg.copied') : $t('common.copy') }}
+        </button>
+      </div>
+
+      <!-- Only shown when a feed is actually known to carry the package. -->
+      <template v-if="plan.feed_command">
+        <p class="mt-3 text-xs font-medium text-gray-700 dark:text-gray-300">
+          {{ $t('settings.update.opkg.orFromFeed') }}
+        </p>
+        <div class="mt-1 flex items-stretch gap-2">
+          <code
+            class="flex-1 min-w-0 overflow-x-auto rounded-control bg-gray-900 dark:bg-black px-3 py-2 text-xs text-gray-100 whitespace-pre"
+            >{{ plan.feed_command }}</code
+          >
+          <button
+            @click="copyCommand(plan.feed_command)"
+            class="flex-shrink-0 px-2.5 rounded-control border border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          >
+            {{ copied === plan.feed_command ? $t('settings.update.opkg.copied') : $t('common.copy') }}
+          </button>
+        </div>
+      </template>
+
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        {{ $t('settings.update.opkg.restartNote') }}
       </p>
     </div>
 

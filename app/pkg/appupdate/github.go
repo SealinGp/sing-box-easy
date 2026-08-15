@@ -67,6 +67,27 @@ func ChecksumURL(tag string) string {
 	return AssetURL(tag) + ".sha256"
 }
 
+// IpkAssetName is the OpenWrt package asset for a release tag and opkg
+// architecture, e.g. "sing-box-easy_1.2.4_x86_64.ipk".
+//
+// The arch is opkg's ("x86_64", "aarch64_generic", "arm_cortex-a7"), not Go's,
+// and must come from the installed package's own Architecture field rather
+// than runtime.GOARCH — one GOARCH maps to several opkg arches. The release
+// workflow strips the leading "v" from the tag for this filename.
+func IpkAssetName(tag, arch string) string {
+	return fmt.Sprintf("sing-box-easy_%s_%s.ipk", strings.TrimPrefix(tag, "v"), arch)
+}
+
+// IpkAssetURL builds the ipk download URL for a release tag and opkg arch.
+func IpkAssetURL(tag, arch string) string {
+	return fmt.Sprintf("%s/%s/%s", releaseDownloadBase, tag, IpkAssetName(tag, arch))
+}
+
+// IpkChecksumURL builds the sha256 sidecar URL for the ipk asset.
+func IpkChecksumURL(tag, arch string) string {
+	return IpkAssetURL(tag, arch) + ".sha256"
+}
+
 // TokenFunc resolves the GitHub token to authenticate API calls with. It is a
 // function rather than a plain string so a token saved in settings takes effect
 // without rebuilding the client (which would drop the release cache). Returning

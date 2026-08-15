@@ -5,6 +5,7 @@ export default {
   chipsHint: 'Type a value and press Enter to add it. Paste several separated by commas.',
   saving: 'Saving...',
   cancel: 'Cancel',
+  copy: 'Copy',
   add: 'Add',
   update: 'Update',
   edit: 'Edit',

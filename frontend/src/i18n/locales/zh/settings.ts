@@ -32,10 +32,28 @@ export default {
     confirmMessage: '将把正在运行的程序和 Web 界面替换为 {version}，随后重启服务。代理本身不会中断。是否继续？',
     progress: {
       updating: '正在更新...',
+      preparing: '正在下载并校验安装包...',
       restarting: '正在重启服务...',
       waiting: '等待服务恢复...',
       done: '更新完成，正在刷新页面...',
       failed: '更新失败',
+    },
+    // OpenWrt ipk 安装：文件归 opkg 管理，且其 prerm 会停掉本服务，
+    // 因此由面板下载校验安装包，实际安装交给用户执行。
+    opkg: {
+      managed:
+        '本实例由 opkg 管理（{arch}）。面板无法替换自身的软件包，将为你下载并校验对应的 .ipk，并给出安装命令。',
+      prepare: '准备安装包',
+      prepareTo: '准备 {version}',
+      prepareFailed: '准备安装包失败',
+      readyTitle: '{version} 已下载到路由器',
+      verified: '校验通过',
+      unverified: '未发布校验文件，未校验',
+      runThis: '请通过 SSH 执行：',
+      orFromFeed: '或从已配置的软件源升级：',
+      copied: '已复制',
+      copyFailed: '无法写入剪贴板，请手动选择命令',
+      restartNote: 'opkg 会先停止面板、安装后再启动，因此本页面会短暂失联，恢复后请刷新。',
     },
     toast: {
       started: '更新已开始',

@@ -41,6 +41,21 @@ export class VersionService {
     return response.data.data
   }
 
+  /**
+   * Download and verify the .ipk matching this install's opkg architecture,
+   * without installing it. Omit `version` for the latest release.
+   *
+   * Returns a task like `startUpdate` does — poll it with `getTask`. Unlike an
+   * update the server never restarts; the finished task carries a `plan` with
+   * the command to run by hand.
+   */
+  async preparePackage(version?: string): Promise<UpdateTask> {
+    const response = await this.api.post<BasicResponse<UpdateTask>>('/version/prepare-package', {
+      version: version ?? '',
+    })
+    return response.data.data
+  }
+
   /** Poll a running update. */
   async getTask(taskId: string): Promise<UpdateTask> {
     const response = await this.api.get<BasicResponse<UpdateTask>>(`/version/task/${taskId}`)

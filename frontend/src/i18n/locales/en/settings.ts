@@ -32,10 +32,29 @@ export default {
     confirmMessage: 'This replaces the running binary and the web interface with {version}, then restarts the service. The proxy itself keeps running. Continue?',
     progress: {
       updating: 'Updating...',
+      preparing: 'Downloading and verifying the package...',
       restarting: 'Restarting the service...',
       waiting: 'Waiting for the server to come back...',
       done: 'Update complete. Reloading...',
       failed: 'Update failed',
+    },
+    // OpenWrt ipk installs: opkg owns the files, and its prerm stops this very
+    // service, so the panel prepares the package and the operator installs it.
+    opkg: {
+      managed:
+        'This install is managed by opkg ({arch}). The panel cannot replace its own package — it will download and verify the right .ipk and give you the command to run.',
+      prepare: 'Prepare package',
+      prepareTo: 'Prepare {version}',
+      prepareFailed: 'Failed to prepare the package',
+      readyTitle: '{version} downloaded to the router',
+      verified: 'checksum verified',
+      unverified: 'no checksum published — not verified',
+      runThis: 'Run this over SSH:',
+      orFromFeed: 'Or upgrade from the configured feed:',
+      copied: 'Copied',
+      copyFailed: 'Could not copy to the clipboard — select the command manually',
+      restartNote:
+        'opkg stops the panel, installs the package and starts it again, so this page will briefly lose contact. Reload once it returns.',
     },
     toast: {
       started: 'Update started',

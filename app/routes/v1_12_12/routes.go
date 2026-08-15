@@ -182,6 +182,10 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.GET("/version/releases", handler.ListVersions)
 	auth.GET("/version/task/:task_id", handler.GetVersionUpdateTask)
 	admin.POST("/version/update", handler.StartVersionUpdate)
+	// opkg-managed installs cannot self-update (opkg's prerm stops this
+	// service), so the panel prepares a verified .ipk and hands back the
+	// command instead of running it.
+	admin.POST("/version/prepare-package", handler.PrepareVersionPackage)
 
 	// GitHub sign-in (OAuth device flow). The issued token is an instance-wide
 	// credential used for every outbound GitHub call, so everything that
