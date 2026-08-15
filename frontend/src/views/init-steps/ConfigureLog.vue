@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useSetupDefaults } from '../../composables/useSetupDefaults'
 import type { LogConfig } from '../../types/api'
 import { Button, Input, Alert, Card, Loading } from '../../components'
 import { Select } from '../../volt'
@@ -8,6 +9,10 @@ import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { logService } from '../../services'
 
 const { t } = useI18n()
+
+// OpenWrt reads sing-box's log out of syslog, which only works when no output
+// file is set — worth saying out loud rather than leaving as a silent default.
+const { isOpenWrt } = useSetupDefaults()
 
 const emit = defineEmits<{
   next: []
@@ -159,6 +164,16 @@ const handleSkip = () => {
             :placeholder="$t('init.log.outputPlaceholder')"
             :disabled="logConfig.disabled"
           />
+          <!--
+            On OpenWrt an empty output is not merely the default, it is what
+            makes the Log page work: sing-box then writes to stdout, procd
+            forwards it to syslog, and the panel reads it back with logread.
+            A stale path inherited from another plugin's config leaves the Log
+            page permanently blank, which is hard to attribute after the fact.
+          -->
+          <p v-if="isOpenWrt" class="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('init.log.outputHintOpenwrt') }}
+          </p>
 
           <!-- 时间戳 -->
           <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
