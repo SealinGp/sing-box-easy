@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Outbound } from '../../types/api'
 import { Button, Textarea, Alert, Card, Badge, NodeList } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
-import { nodesService, outboundService } from '../../services'
+import { nodesService, outboundService, subscriptionService } from '../../services'
 
 const { t } = useI18n()
 
@@ -26,6 +26,8 @@ const parseError = ref('')
 
 const saving = ref(false)
 const success = ref(false)
+// Non-fatal: the outbounds saved but the subscription record did not.
+const subscriptionWarning = ref('')
 
 // 解析订阅或节点链接
 const parseSubscription = async () => {
@@ -88,6 +90,58 @@ const toggleSelectAll = () => {
   }
 }
 
+/**
+ * Subscription URLs found in the input box.
+ *
+ * The same field accepts both raw node links (ss://, vmess://, …) and
+ * subscription URLs, so only http(s) lines are candidates for a subscription
+ * record — a pasted node link is a one-off import with nothing to refresh.
+ */
+const subscriptionURLs = (): string[] =>
+  subscriptionInput.value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^https?:\/\//i.test(line))
+
+/** A readable default name; the operator can rename it on the Subscriptions page. */
+const nameForURL = (url: string): string => {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return 'subscription'
+  }
+}
+
+/**
+ * Persist any subscription URL that was imported, so the auto-updater can keep
+ * the nodes fresh.
+ *
+ * Without this the wizard parsed the feed once and discarded the URL: the
+ * Subscriptions page stayed empty and the 303 imported outbounds were a frozen
+ * snapshot that nothing would ever refresh.
+ *
+ * Failures here are reported but never abort the step — the outbounds are
+ * already saved by this point, and losing auto-update is far less bad than
+ * failing a wizard step that actually succeeded.
+ */
+const registerSubscriptions = async (): Promise<void> => {
+  const urls = subscriptionURLs()
+  if (urls.length === 0) return
+
+  const { data } = await subscriptionService.getSubscriptions()
+  const known = new Set((data.subscriptions ?? []).map((s) => s.url))
+
+  for (const url of urls) {
+    if (known.has(url)) continue
+    await subscriptionService.addSubscription({
+      name: nameForURL(url),
+      url,
+      auto_update: true,
+      update_interval: '24h',
+    })
+  }
+}
+
 // 保存出站配置
 const saveOutbounds = async () => {
   saving.value = true
@@ -119,6 +173,13 @@ const saveOutbounds = async () => {
     // 批量添加
     if (outboundsToAdd.length > 0) {
       await outboundService.addOutboundsBatch(outboundsToAdd)
+    }
+
+    // 记录订阅地址，供自动更新使用（失败不影响本步骤）
+    try {
+      await registerSubscriptions()
+    } catch (err: any) {
+      subscriptionWarning.value = err?.message || t('setup.outbounds.subscriptionSaveFailed')
     }
 
     success.value = true
@@ -175,6 +236,16 @@ onMounted(() => {
       <!-- 成功提示 -->
       <Alert v-if="success" type="success" :title="$t('setup.outbounds.successTitle')">
         {{ $t('setup.outbounds.successDesc') }}
+      </Alert>
+
+      <!-- Outbounds saved, but the subscription record did not: auto-update
+           will not refresh these nodes until it is added manually. -->
+      <Alert
+        v-if="subscriptionWarning"
+        type="warning"
+        :title="$t('setup.outbounds.subscriptionSaveFailed')"
+      >
+        {{ subscriptionWarning }}
       </Alert>
 
       <!-- 错误提示 -->

@@ -30,37 +30,18 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 
 ## 🚀 安装
 
-> 目前仅支持 **Debian 系（含 Ubuntu）x86_64** 系统，且需预先安装 [`sing-box` 内核](https://sing-box.sagernet.org/installation/package-manager/)。
+请根据你的系统选择安装文档：
 
-脚本会自动检测系统与架构、下载最新 Release、解压到当前目录、生成 `app.yml`，并以 systemd 服务方式启动 `sing-box-easy`（无 systemd 时回退到后台进程），最后做一次健康检查。
+| 系统 | 安装方式 | 文档 |
+| --- | --- | --- |
+| **OpenWrt** / ImmortalWrt / LEDE | `opkg` 安装 `.ipk`，附带 LuCI 菜单入口 | **[openwrt_install.md](openwrt_install.md)** |
+| **Debian / Ubuntu** 及衍生版 | 一键脚本 + systemd 服务 | **[debian_install.md](debian_install.md)** |
 
-```bash
-# 下载并运行安装脚本
-curl -fsSLO https://raw.githubusercontent.com/SealinGp/sing-box-easy/main/scripts/install.sh
-bash install.sh
-```
+两份文档都包含：所需的前置条件、初始化向导在该系统上的推荐值、配置文件路径、默认端口与修改方法、服务的启停与重启、升级和卸载，以及常见问题排查。
 
-若未在默认路径 `/etc/sing-box/config.json` 找到 sing-box 配置，脚本会提示你输入 `config.json` 的完整路径。
+> 两种方式都需要**先安装 sing-box 内核**，具体命令见对应文档。
+>
+> ⚠️ 如果路由器上已经装了 OpenClash / homeproxy / PassWall 等代理插件，**请先阅读 [OpenWrt 文档的第 0 节](openwrt_install.md#0-与其他代理插件共存)**：同一时间只能有一个插件接管流量，且不要把它们生成的 `config.json` 拿来做初始配置。
 
-常用可选项：
-
-```bash
-# 安装指定版本（默认安装最新 Release）
-bash install.sh v1.0.0
-
-# 预设 sing-box 配置路径，跳过交互提示（适合非交互 / 管道执行）
-SINGBOX_CONFIG=/etc/sing-box/config.json bash install.sh
-
-# 自定义监听端口 / 安装目录
-PORT=9090 INSTALL_DIR=/opt/sing-box-easy bash install.sh
-```
-
-安装完成后通过 systemd 管理服务：
-
-```bash
-sudo systemctl status  sing-box-easy
-sudo systemctl restart sing-box-easy
-sudo journalctl -u sing-box-easy -f
-```
-
-初始管理员账号密码为: admin/admin,进去后请自行修改密码
+安装完成后，默认监听 **8080** 端口，浏览器访问 `http://<设备IP>:8080` 即可。
+非 OpenWrt 系统上初始管理员账号密码为 `admin` / `admin`，**首次登录后请立即修改**。

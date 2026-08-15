@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -115,7 +116,7 @@ type Manager struct {
 	active   *Session
 	seq      int
 
-	clientID string
+	clientID ClientIDFunc
 	proxy    string
 	store    TokenStore
 
@@ -126,9 +127,18 @@ type Manager struct {
 	pollInterval func(*DeviceCode) time.Duration
 }
 
-// NewManager creates a sign-in manager. clientID may be empty, in which case
-// every operation reports ErrNotConfigured and the UI hides sign-in.
-func NewManager(clientID, proxy string, store TokenStore) *Manager {
+// ClientIDFunc resolves the OAuth client ID at call time.
+//
+// It is a function rather than a plain string so an ID saved from the
+// dashboard takes effect immediately: the manager is built once at startup,
+// long before the operator pastes a client ID into Settings, and rebuilding it
+// would drop any in-flight login session.
+type ClientIDFunc func() string
+
+// NewManager creates a sign-in manager. clientID may be nil or resolve to "",
+// in which case every operation reports ErrNotConfigured and the UI hides
+// sign-in until one is configured.
+func NewManager(clientID ClientIDFunc, proxy string, store TokenStore) *Manager {
 	m := &Manager{
 		sessions: make(map[string]*Session),
 		clientID: clientID,
@@ -136,14 +146,22 @@ func NewManager(clientID, proxy string, store TokenStore) *Manager {
 		store:    store,
 		now:      time.Now,
 	}
-	m.newClient = func() (*Client, error) { return NewClient(m.clientID, m.proxy) }
+	m.newClient = func() (*Client, error) { return NewClient(m.resolveClientID(), m.proxy) }
 	m.pollInterval = func(c *DeviceCode) time.Duration { return c.PollInterval() }
 	return m
 }
 
+// resolveClientID reads the current client ID, tolerating a nil resolver.
+func (m *Manager) resolveClientID() string {
+	if m.clientID == nil {
+		return ""
+	}
+	return strings.TrimSpace(m.clientID())
+}
+
 // Configured reports whether an OAuth client ID is available.
 func (m *Manager) Configured() bool {
-	return m.clientID != ""
+	return m.resolveClientID() != ""
 }
 
 // Status describes the current GitHub connection.

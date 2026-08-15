@@ -78,6 +78,71 @@ func TestFilterSyslogLines(t *testing.T) {
 	}
 }
 
+// The panel logs to syslog too, and procd tags its lines "sing-box-easy[pid]"
+// — which contains the substring "sing-box". Matching loosely mixed the
+// panel's own JSON into the sing-box log view exactly when an operator is
+// trying to read sing-box's startup output.
+func TestFilterSyslogLinesExcludesPanelOwnLines(t *testing.T) {
+	const ts = "Sat Aug 15 10:48:09 2026 daemon.info "
+
+	tests := []struct {
+		name string
+		line string
+		keep bool
+	}{
+		{
+			name: "sing-box service line with pid",
+			line: ts + `sing-box[31002]: INFO inbound/tun[tun-in]: started at tun0`,
+			keep: true,
+		},
+		{
+			name: "sing-box service line without pid",
+			line: ts + `sing-box: INFO router: loaded rule-set geosite-cn`,
+			keep: true,
+		},
+		{
+			name: "panel's own line is not sing-box output",
+			line: ts + `sing-box-easy[28530]: {"level":"info","msg":"Serving frontend"}`,
+			keep: false,
+		},
+		{
+			name: "panel line whose message mentions sing-box",
+			line: ts + `sing-box-easy[28530]: {"level":"warn","msg":"failed to start sing-box: exit status 1"}`,
+			keep: false,
+		},
+		{
+			name: "unrelated daemon",
+			line: ts + `dnsmasq[19621]: using nameserver 127.0.0.1#7874`,
+			keep: false,
+		},
+		{
+			// Not sing-box output, but kept deliberately: when sing-box dies
+			// before logging anything, procd's respawn chatter is the only
+			// evidence in the log that anything happened at all.
+			name: "procd chatter about the sing-box instance",
+			line: ts + `procd: Instance sing-box::main s in a crash loop`,
+			keep: true,
+		},
+		{
+			name: "procd chatter about another instance",
+			line: ts + `procd: Instance openclash::main s in a crash loop`,
+			keep: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterSyslogLines(tt.line+"\n", 10)
+			if tt.keep && len(got) != 1 {
+				t.Errorf("filterSyslogLines() dropped a sing-box line: %q", tt.line)
+			}
+			if !tt.keep && len(got) != 0 {
+				t.Errorf("filterSyslogLines() kept a non-sing-box line: %q", tt.line)
+			}
+		})
+	}
+}
+
 func TestHasProcdInitScriptNonOpenwrt(t *testing.T) {
 	// On non-OpenWrt system types the procd backend must never be selected,
 	// regardless of what exists on disk.

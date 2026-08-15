@@ -102,6 +102,11 @@ func (h *Handler) GetCacheFile(ctx context.Context, c *app.RequestContext) {
 
 // UpdateCacheFile updates the cache file configuration
 func (h *Handler) UpdateCacheFile(ctx context.Context, c *app.RequestContext) {
+	// rdrc_timeout is a badoption.Duration, which rejects "". The UI submits an
+	// empty string for an untouched optional field, so treat that as absent
+	// rather than failing the request with `time: invalid duration ""`.
+	c.Request.SetBody(dropEmptyJSONFields(c.Request.Body(), "rdrc_timeout"))
+
 	var cacheFileConfig config.CacheFileConfig
 	if err := c.Bind(&cacheFileConfig); err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())

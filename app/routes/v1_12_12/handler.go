@@ -97,8 +97,19 @@ func NewHandler(
 	updater := appupdate.NewUpdater(githubConfig.Proxy, settingsManager.GetGitHubToken)
 
 	// GitHub sign-in (OAuth device flow) — issues the token the updater reads.
+	//
+	// The client ID is resolved per call, database first: an operator can paste
+	// one into Settings and sign in immediately, with app.yml /
+	// GITHUB_OAUTH_CLIENT_ID remaining the fallback for headless deployments
+	// that prefer to bake it in.
+	fallbackClientID := strings.TrimSpace(githubConfig.OAuthClientID)
 	githubAuth := githubauth.NewManager(
-		strings.TrimSpace(githubConfig.OAuthClientID),
+		func() string {
+			if stored := settingsManager.GetGitHubOAuthClientID(); stored != "" {
+				return stored
+			}
+			return fallbackClientID
+		},
 		githubConfig.Proxy,
 		settingsManager,
 	)

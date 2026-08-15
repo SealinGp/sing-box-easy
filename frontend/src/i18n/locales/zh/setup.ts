@@ -3,6 +3,7 @@ export default {
   outbounds: {
     successTitle: '出站已保存',
     successDesc: '出站节点已成功添加，正在进入下一步……',
+    subscriptionSaveFailed: '节点已保存，但订阅地址未能记录，自动更新将无法刷新这些节点。请在「订阅管理」页面手动添加。',
     parseHeading: '解析订阅或节点',
     parseDesc: '输入订阅链接或节点链接（vmess://、ss://、trojan:// 等）。多个条目请每行一个。',
     inputPlaceholder: "示例：\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ={'@'}192.168.1.1:8388#MyNode\ntrojan://password{'@'}example.com:443?sni=example.com#TrojanNode",

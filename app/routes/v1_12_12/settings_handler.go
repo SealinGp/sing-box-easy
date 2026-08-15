@@ -30,6 +30,12 @@ func (h *Handler) GetSettings(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, map[string]any{
 		"settings":             safe,
 		"config_versions_keep": h.settingsManager.GetConfigVersionsKeep(),
+		// Surfaced explicitly rather than left for the caller to dig out of
+		// `settings`, because "" is meaningful here: it means the deployment
+		// is falling back to app.yml / GITHUB_OAUTH_CLIENT_ID, which the UI
+		// needs to distinguish from "not configured at all".
+		"github_oauth_client_id":  h.settingsManager.GetGitHubOAuthClientID(),
+		"github_oauth_configured": h.githubAuth.Configured(),
 	})
 }
 
@@ -42,6 +48,10 @@ func (h *Handler) UpdateSettings(ctx context.Context, c *app.RequestContext) {
 	// no path that accepts a raw token from a client.
 	type Request struct {
 		ConfigVersionsKeep *int `json:"config_versions_keep"`
+		// The OAuth *client ID* is writable here — unlike the token. The device
+		// flow has no client secret, so this value is public by construction
+		// and carries no privilege on its own. Empty clears the override.
+		GitHubOAuthClientID *string `json:"github_oauth_client_id"`
 	}
 	var req Request
 	if err := c.Bind(&req); err != nil {
@@ -57,8 +67,17 @@ func (h *Handler) UpdateSettings(ctx context.Context, c *app.RequestContext) {
 		h.configManager.SetKeepVersions(*req.ConfigVersionsKeep)
 	}
 
+	if req.GitHubOAuthClientID != nil {
+		if err := h.settingsManager.SetGitHubOAuthClientID(*req.GitHubOAuthClientID); err != nil {
+			respErr(ctx, c, CodeValidationError, err.Error())
+			return
+		}
+	}
+
 	respOK(ctx, c, map[string]any{
-		"config_versions_keep": h.settingsManager.GetConfigVersionsKeep(),
+		"config_versions_keep":    h.settingsManager.GetConfigVersionsKeep(),
+		"github_oauth_client_id":  h.settingsManager.GetGitHubOAuthClientID(),
+		"github_oauth_configured": h.githubAuth.Configured(),
 		"limits": map[string]int{
 			"min": settings.MinConfigVersionsKeep,
 			"max": settings.MaxConfigVersionsKeep,

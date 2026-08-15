@@ -43,6 +43,8 @@ export default {
     outputLabel: '日志输出路径',
     outputPlaceholder:
       '例如：/var/log/sing-box/sing-box.log（留空则输出到 stdout），启用后将不再向控制台写入日志。',
+    outputHintOpenwrt:
+      'OpenWrt 上推荐留空：留空时 sing-box 会把日志写入 syslog，面板的日志页通过 logread 读取。若填了不存在的文件路径，日志页会一直是空白。',
     timestampLabel: '包含时间戳',
     timestampDesc: '为每条日志记录添加时间戳',
     savedBtn: '已保存',

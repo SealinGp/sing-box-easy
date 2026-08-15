@@ -83,7 +83,10 @@ export default {
     scopeHint:
       '不申请任何权限——该令牌仅用于提升公开发行版查询的 API 速率限制。你可以随时在此处或 GitHub 的应用设置中断开连接。',
     notConfigured:
-      '本实例未配置 OAuth 客户端 ID，因此无法使用 GitHub 登录。请在 GitHub 上注册 OAuth App，勾选 "Enable Device Flow"，并将其 client ID 填入 app.yml：',
+      '本实例未配置 OAuth 客户端 ID，因此无法使用 GitHub 登录。请在 GitHub 上注册 OAuth App，勾选 "Enable Device Flow"，然后将 client ID 填入下方。',
+    clientIdHelp: '保存在本实例的数据库中，无需修改配置文件、也无需重启。Device Flow 没有 client secret，因此该 ID 本身就是公开的。',
+    clientIdSaved: 'Client ID 已保存，现在可以使用 GitHub 登录',
+    clientIdSaveFailed: '保存 Client ID 失败',
   },
   about: {
     title: '关于',

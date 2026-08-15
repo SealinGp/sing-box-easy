@@ -46,6 +46,8 @@ export default {
     outputLabel: 'Log Output Path',
     outputPlaceholder:
       'e.g., /var/log/sing-box/sing-box.log (leave empty for stdout), Will not write log to console after enable.',
+    outputHintOpenwrt:
+      'Recommended on OpenWrt: leave this empty. sing-box then logs to syslog and the panel\u2019s Log page can read it via logread. Pointing it at a file that does not exist leaves the Log page blank.',
     timestampLabel: 'Include Timestamps',
     timestampDesc: 'Add timestamp to each log entry',
     savedBtn: 'Saved',

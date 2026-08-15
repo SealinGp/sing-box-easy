@@ -95,11 +95,23 @@ export interface AppSettings {
   /** Non-secret settings only — secrets are stripped server-side. */
   settings: Record<string, string>
   config_versions_keep: number
+  /**
+   * OAuth App client ID stored in the database. Empty means no override, in
+   * which case the deployment falls back to app.yml / GITHUB_OAUTH_CLIENT_ID —
+   * which is why this is distinct from `github_oauth_configured`.
+   *
+   * Not a secret: the device flow (RFC 8628) has no client secret.
+   */
+  github_oauth_client_id: string
+  /** Whether a client ID is available from any source, so sign-in can work. */
+  github_oauth_configured: boolean
 }
 
 /** Response shape of PUT /settings. */
 export interface UpdateSettingsResult {
   config_versions_keep: number
+  github_oauth_client_id: string
+  github_oauth_configured: boolean
   limits: { min: number; max: number }
 }
 

@@ -4,6 +4,7 @@ export default {
   outbounds: {
     successTitle: 'Outbounds Saved',
     successDesc: 'Outbound nodes have been added successfully. Proceeding to next step...',
+    subscriptionSaveFailed: 'Nodes were saved, but the subscription URL could not be recorded — auto-update will not refresh them. Add it manually on the Subscriptions page.',
     parseHeading: 'Parse Subscription or Nodes',
     parseDesc: 'Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.',
     inputPlaceholder: "Examples:\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ={'@'}192.168.1.1:8388#MyNode\ntrojan://password{'@'}example.com:443?sni=example.com#TrojanNode",

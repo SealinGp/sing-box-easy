@@ -46,7 +46,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.geositeCn.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs',
   },
   {
     id: 'geosite-geolocation-!cn',
@@ -56,7 +56,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.geositeNonCn.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs',
   },
   {
     id: 'geosite-category-ads-all',
@@ -66,7 +66,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.adsAll.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs',
   },
   {
     id: 'geoip-cn',
@@ -76,7 +76,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.geoipCn.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
   },
   {
     id: 'geosite-google',
@@ -86,7 +86,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.google.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs',
   },
   {
     id: 'geosite-github',
@@ -96,7 +96,7 @@ const presetRuleSets = computed<PresetRuleSet[]>(() => [
     description: t('setup.ruleSets.presets.github.description'),
     type: 'remote',
     format: 'binary',
-    url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-github.srs',
+    url: 'https://gh-proxy.com/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-github.srs',
   },
 ])
 

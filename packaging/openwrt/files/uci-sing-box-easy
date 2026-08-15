@@ -1,0 +1,7 @@
+# UCI config for the LuCI menu entry only — the panel itself is configured in
+# /etc/sing-box-easy/app.yml.
+#
+# 'port' tells the LuCI view which port to link to. postinst keeps it in sync
+# with server.port from app.yml on install; change both if you move the panel.
+config sing-box-easy 'main'
+	option port '8080'

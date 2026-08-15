@@ -10,7 +10,10 @@
  * there is no stable callback URL to register, and no client secret to ship.
  */
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGitHubAuth } from '../composables/useGitHubAuth'
+import { useNotify } from '../composables/useNotify'
+import { settingsService } from '../services'
 
 const {
   status,
@@ -28,7 +31,45 @@ const {
   dismiss,
 } = useGitHubAuth()
 
-onMounted(refresh)
+const { t } = useI18n()
+const notify = useNotify()
+
+/**
+ * OAuth App client ID, editable here and stored in the database.
+ *
+ * It used to require an app.yml edit plus a restart, which is a poor fit for a
+ * router appliance. Saving it re-checks sign-in availability immediately
+ * because the backend resolves the ID per call rather than at startup.
+ */
+const clientIdInput = ref('')
+const savingClientId = ref(false)
+
+onMounted(async () => {
+  await refresh()
+  try {
+    const { data } = await settingsService.getSettings()
+    clientIdInput.value = data.github_oauth_client_id ?? ''
+  } catch {
+    // Non-fatal: the field simply starts empty. Sign-in state is unaffected.
+  }
+})
+
+const saveClientId = async () => {
+  const value = clientIdInput.value.trim()
+  if (!value) return
+
+  savingClientId.value = true
+  try {
+    await settingsService.updateSettings({ github_oauth_client_id: value })
+    // The manager reads the ID per call, so sign-in becomes available at once.
+    await refresh()
+    notify.success(t('settings.githubAuth.clientIdSaved'))
+  } catch (err) {
+    notify.apiError(err, t('settings.githubAuth.clientIdSaveFailed'))
+  } finally {
+    savingClientId.value = false
+  }
+}
 
 /** Copy the device code so the user need not retype it. */
 const copied = ref(false)
@@ -68,9 +109,31 @@ async function copyCode() {
       <p class="text-sm text-amber-800 dark:text-amber-300">
         {{ $t('settings.githubAuth.notConfigured') }}
       </p>
-      <code class="mt-2 block text-xs font-mono text-amber-900 dark:text-amber-200">
-        github:<br />&nbsp;&nbsp;oauth_client_id: "Ov23li..."
-      </code>
+
+      <!-- Saved to the database, not app.yml: no file edit, no restart. The
+           client ID is public by design (device flow has no client secret),
+           so a plain text input is appropriate here. -->
+      <div class="mt-3 flex items-stretch gap-2">
+        <input
+          v-model="clientIdInput"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Ov23li..."
+          class="flex-1 min-w-0 rounded-control border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-900 px-3 py-2 font-mono text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          @keyup.enter="saveClientId"
+        />
+        <button
+          @click="saveClientId"
+          :disabled="savingClientId || !clientIdInput.trim()"
+          class="flex-shrink-0 px-4 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {{ savingClientId ? $t('common.saving') : $t('common.save') }}
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+        {{ $t('settings.githubAuth.clientIdHelp') }}
+      </p>
     </div>
 
     <template v-else>

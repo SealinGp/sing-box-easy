@@ -11,8 +11,13 @@ import {
   DASHBOARD_OPTIONS,
   dashboardIdForUrl,
 } from '../../constants/dashboards'
+import { useSetupDefaults } from '../../composables/useSetupDefaults'
 
 const { t } = useI18n()
+
+// Platform-appropriate paths, so an OpenWrt operator is not left guessing at
+// where sing-box state should live. Every field stays editable.
+const { defaults } = useSetupDefaults()
 
 const emit = defineEmits<{
   next: []
@@ -28,8 +33,8 @@ const loadFailed = ref(false)
 // Clash API 配置
 const enableClashAPI = ref(false)
 const clashAPIConfig = ref<ClashAPI>({
-  external_controller: '0.0.0.0:9090',
-  external_ui: '',
+  external_controller: defaults.value.clashController,
+  external_ui: defaults.value.clashExternalUI,
   secret: '',
   default_mode: 'rule',
 })
@@ -38,7 +43,9 @@ const clashAPIConfig = ref<ClashAPI>({
 const enableCacheFile = ref(false)
 const cacheFileConfig = ref<CacheFile>({
   enabled: false,
-  path: '',
+  // Persistent on purpose: the cache holds the selected node and the
+  // rule-set cache, so a warm cache lets sing-box start without network.
+  path: defaults.value.cachePath,
   cache_id: '',
   store_fakeip: false,
 })

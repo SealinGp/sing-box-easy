@@ -5,6 +5,9 @@ import type { Inbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
+import { RECOMMENDED_TUN_ADDRESS, RECOMMENDED_TUN_ADDRESS_V6 } from '../../composables/useSetupDefaults'
+
+const RECOMMENDED_TUN_ADDRESS_ALL = [RECOMMENDED_TUN_ADDRESS, RECOMMENDED_TUN_ADDRESS_V6]
 
 const { t } = useI18n()
 
@@ -99,10 +102,10 @@ const inboundPresets = computed<InboundPreset[]>(() => [
       tag: 'tun-in',
       type: 'tun',
       interface_name: 'tun0',
-      address: [
-        "172.19.0.1/30",
-        "fdfe:dcba:9876::1/126"
-      ],
+      // Not sing-box's own 172.19.0.1/30 default: Docker allocates bridges
+      // from 172.17.0.0/16 up, so on a router running Docker that default
+      // collides with a live bridge. See useSetupDefaults.
+      address: [...RECOMMENDED_TUN_ADDRESS_ALL],
       mtu: 9000,
       auto_route: true,
       strict_route: true,

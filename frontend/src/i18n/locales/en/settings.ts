@@ -84,7 +84,11 @@ export default {
     scopeHint:
       'No permissions are requested — the token only lifts the API rate limit for public release lookups. Disconnect at any time here or from your GitHub applications settings.',
     notConfigured:
-      'GitHub sign-in is not available because this install has no OAuth client ID. Register an OAuth App on GitHub, tick "Enable Device Flow", and add its client ID to app.yml:',
+      'GitHub sign-in is not available because this install has no OAuth client ID. Register an OAuth App on GitHub, tick "Enable Device Flow", then paste its client ID below.',
+    clientIdHelp:
+      'Saved to this install\u2019s database \u2014 no file edit and no restart needed. The client ID is public by design: device flow has no client secret.',
+    clientIdSaved: 'Client ID saved \u2014 GitHub sign-in is now available',
+    clientIdSaveFailed: 'Failed to save the client ID',
   },
   about: {
     title: 'About',
