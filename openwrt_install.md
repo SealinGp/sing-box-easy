@@ -96,7 +96,7 @@ opkg print-architecture
 
 ```sh
 cd /tmp
-VER=1.2.5        # 改成 Releases 页面的最新版本
+VER=1.2.6        # 改成 Releases 页面的最新版本
 ARCH=x86_64      # 改成上一步查到的架构
 
 curl -fLO "https://github.com/SealinGp/sing-box-easy/releases/download/v${VER}/sing-box-easy_${VER}_${ARCH}.ipk"
@@ -120,7 +120,7 @@ logread | grep 'sing-box-easy\[' | tail -5
 然后浏览器打开 **`http://<路由器IP>:8080`**。
 
 - OpenWrt 上默认**不需要登录**（`server.auth: auto` 判定为可信局域网），界面使用顶栏布局以免和 LuCI 的侧边栏重复。
-- LuCI 里也会出现入口：**服务 → sing-box-easy**。若没看到，执行 `rm -f /tmp/luci-indexcache*` 后刷新页面。
+- LuCI 里也会出现入口：**服务 → sing-box-easy**。若没看到，见 [LuCI 菜单不显示](#luci-菜单不显示)。
 
 ---
 
@@ -298,7 +298,29 @@ rm -f  /etc/sing-box/sing-box-easy.db
 | sing-box 启动即 FATAL | 多为规则集下载失败，见第 5 节 |
 | 局域网能上网但代理不生效 | 检查 TUN 是否起来（`ip link show tun0`）、`auto_route` 是否开启 |
 | 局域网互访异常 / Docker 容器访问不了 | 缺少 `ip_is_private → direct` 路由规则，或 TUN 网段和 Docker 冲突 |
-| LuCI 里没有菜单入口 | `rm -f /tmp/luci-indexcache*` 后刷新 |
+| LuCI 里没有菜单入口 | 见下方「LuCI 菜单不显示」 |
+
+### LuCI 菜单不显示
+
+菜单项声明了 `depends.acl`，而 LuCI **会把「ACL 未满足」这个判断缓存下来**。如果 rpcd 还没加载我们的 `acl.d` 文件，LuCI 重建菜单时就会直接跳过这一项，并且这个结果会一直保留到缓存再次被清除为止。
+
+顺序很重要：**先重载 rpcd，再清缓存**。
+
+```sh
+/etc/init.d/rpcd reload
+rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/*
+```
+
+然后在浏览器里强制刷新（Ctrl+Shift+R），或退出重新登录 LuCI —— 菜单树在客户端也有一份缓存。
+
+验证是否已经注册成功：
+
+```sh
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/luci-static/resources/view/sing-box-easy/panel.js   # 期望 200
+grep -o "admin/services/sing-box-easy" /tmp/luci-indexcache*.json                                              # 有输出即已注册
+```
+
+> v1.2.6 的 postinst 只清了缓存、没有重载 rpcd，因此**从 v1.2.6 升级上来的实例需要手动执行一次上面的命令**。v1.2.7 起已修复。
 
 ---
 
