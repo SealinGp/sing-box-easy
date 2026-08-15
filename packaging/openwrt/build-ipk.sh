@@ -33,11 +33,43 @@ trap 'rm -rf "$WORK"' EXIT
 
 # ── data.tar.gz: the installed file tree ─────────────────────────────────────
 DATA="$WORK/data"
-mkdir -p "$DATA/usr/bin" "$DATA/etc/init.d" "$DATA/etc/sing-box-easy"
+mkdir -p "$DATA/usr/bin" "$DATA/etc/init.d" "$DATA/etc/sing-box-easy" "$DATA/etc/config"
 
 install -m 755 "$BINARY" "$DATA/usr/bin/sing-box-easy"
 install -m 755 "$SCRIPT_DIR/files/sing-box-easy.init" "$DATA/etc/init.d/sing-box-easy"
 install -m 644 "$REPO_ROOT/app.yml.example" "$DATA/etc/sing-box-easy/app.yml.example"
+
+# Ship app.yml itself, not just the example.
+#
+# It is listed in conffiles, and opkg checksums every conffile during install.
+# When the file was created by postinst instead of being in the package, that
+# checksum step failed noisily:
+#
+#   file_sha256sum_alloc: Failed to open file /etc/sing-box-easy/app.yml
+#
+# The install still worked, but the error is alarming and pointless. Shipping
+# the file makes conffiles behave as intended: opkg now preserves an edited
+# app.yml across upgrades instead of tracking a file it never saw.
+install -m 644 "$REPO_ROOT/app.yml.example" "$DATA/etc/sing-box-easy/app.yml"
+install -m 644 "$SCRIPT_DIR/files/uci-sing-box-easy" "$DATA/etc/config/sing-box-easy"
+
+# ── LuCI entry (OpenWrt only) ────────────────────────────────────────────────
+# A menu item under Services pointing at the panel, so it is reachable the way
+# every other OpenWrt service is rather than only by typing host:8080.
+#
+# These files are inert anywhere LuCI is absent — they are plain data under
+# /usr/share and /www that nothing reads unless luci-base is installed — so the
+# package stays dependency-free and still installs on a bare OpenWrt.
+mkdir -p "$DATA/usr/share/luci/menu.d" \
+         "$DATA/usr/share/rpcd/acl.d" \
+         "$DATA/www/luci-static/resources/view/sing-box-easy"
+
+install -m 644 "$SCRIPT_DIR/files/luci/menu.d/luci-app-sing-box-easy.json" \
+	"$DATA/usr/share/luci/menu.d/luci-app-sing-box-easy.json"
+install -m 644 "$SCRIPT_DIR/files/luci/acl.d/luci-app-sing-box-easy.json" \
+	"$DATA/usr/share/rpcd/acl.d/luci-app-sing-box-easy.json"
+install -m 644 "$SCRIPT_DIR/files/luci/view/sing-box-easy/panel.js" \
+	"$DATA/www/luci-static/resources/view/sing-box-easy/panel.js"
 
 # ── control.tar.gz: package metadata + maintainer scripts ────────────────────
 CONTROL="$WORK/control"
@@ -60,17 +92,38 @@ Description: Web panel for managing sing-box configurations and lifecycle.
  'opkg install sing-box' or from the panel.
 EOF
 
-# Keep the operator's app.yml across upgrades.
+# Keep the operator's edits across upgrades. Both files are shipped in
+# data.tar.gz so opkg can checksum them at install time.
 cat > "$CONTROL/conffiles" <<EOF
 /etc/sing-box-easy/app.yml
+/etc/config/sing-box-easy
 EOF
 
 # Seed app.yml from the example on first install, then enable + start the
 # panel. Starting the panel does NOT start sing-box itself.
 cat > "$CONTROL/postinst" <<'EOF'
 #!/bin/sh
+# app.yml ships in the package now; this only covers an upgrade from a build
+# that did not include it.
 [ -f /etc/sing-box-easy/app.yml ] || cp /etc/sing-box-easy/app.yml.example /etc/sing-box-easy/app.yml
+
 if [ -z "${IPKG_INSTROOT:-}" ]; then
+	# Point the LuCI menu entry at the port the panel actually listens on.
+	# app.yml is the single source of truth; UCI only mirrors it for the view.
+	if [ -x /sbin/uci ] || command -v uci >/dev/null 2>&1; then
+		port=$(sed -n 's/^[[:space:]]*port:[[:space:]]*"\{0,1\}\([0-9]\{1,\}\)"\{0,1\}[[:space:]]*$/\1/p' \
+			/etc/sing-box-easy/app.yml 2>/dev/null | head -n 1)
+		if [ -n "$port" ]; then
+			uci -q set sing-box-easy.main=sing-box-easy
+			uci -q set sing-box-easy.main.port="$port"
+			uci -q commit sing-box-easy
+		fi
+	fi
+
+	# LuCI caches its menu tree; without this the new entry only appears after
+	# the cache expires or the router reboots.
+	rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
+
 	/etc/init.d/sing-box-easy enable
 	/etc/init.d/sing-box-easy start
 fi

@@ -80,7 +80,7 @@ func newTestManager(t *testing.T, store *fakeStore, pollBodies []string) *Manage
 	}))
 	t.Cleanup(srv.Close)
 
-	m := NewManager("test_client_id", "", store)
+	m := NewManager(staticClientID("test_client_id"), "", store)
 	// Redirect the client factory at the stub by overriding the endpoints on
 	// every client the manager builds.
 	m.newClient = func() (*Client, error) {
@@ -114,7 +114,7 @@ func waitForStatus(t *testing.T, s *Session) SessionView {
 }
 
 func TestStartLoginUnconfigured(t *testing.T) {
-	m := NewManager("", "", &fakeStore{})
+	m := NewManager(staticClientID(""), "", &fakeStore{})
 
 	if m.Configured() {
 		t.Error("Configured() = true with a blank client ID, want false")
@@ -254,7 +254,7 @@ func TestCancelLogin(t *testing.T) {
 }
 
 func TestGetSessionUnknownID(t *testing.T) {
-	m := NewManager("test_client_id", "", &fakeStore{})
+	m := NewManager(staticClientID("test_client_id"), "", &fakeStore{})
 
 	if _, err := m.GetSession("nope"); err != ErrNoSession {
 		t.Errorf("GetSession err = %v, want ErrNoSession", err)
@@ -266,7 +266,7 @@ func TestGetSessionUnknownID(t *testing.T) {
 
 func TestSignOutClearsCredential(t *testing.T) {
 	store := &fakeStore{token: "gho_abc", login: "octocat"}
-	m := NewManager("test_client_id", "", store)
+	m := NewManager(staticClientID("test_client_id"), "", store)
 
 	if err := m.SignOut(); err != nil {
 		t.Fatalf("SignOut: %v", err)
@@ -278,4 +278,10 @@ func TestSignOutClearsCredential(t *testing.T) {
 	if status := m.Status(); status.Connected {
 		t.Error("Status().Connected = true after SignOut, want false")
 	}
+}
+
+// staticClientID adapts a fixed ID to ClientIDFunc, which the manager takes so
+// a client ID saved from the dashboard applies without a restart.
+func staticClientID(id string) ClientIDFunc {
+	return func() string { return id }
 }

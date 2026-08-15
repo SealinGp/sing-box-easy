@@ -15,6 +15,8 @@ export class SettingsService {
 
   async updateSettings(payload: {
     config_versions_keep?: number
+    /** Empty string clears the override and falls back to app.yml. */
+    github_oauth_client_id?: string
   }): Promise<BasicResponse<UpdateSettingsResult>> {
     const response = await this.api.put<BasicResponse<UpdateSettingsResult>>('/settings', payload)
     return response.data

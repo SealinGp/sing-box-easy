@@ -1,0 +1,13 @@
+{
+	"admin/services/sing-box-easy": {
+		"title": "sing-box-easy",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "sing-box-easy/panel"
+		},
+		"depends": {
+			"acl": [ "luci-app-sing-box-easy" ]
+		}
+	}
+}

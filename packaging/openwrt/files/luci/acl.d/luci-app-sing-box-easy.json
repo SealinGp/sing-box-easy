@@ -1,0 +1,11 @@
+{
+	"luci-app-sing-box-easy": {
+		"description": "Show the sing-box-easy panel entry under Services",
+		"read": {
+			"uci": [ "sing-box-easy" ]
+		},
+		"write": {
+			"uci": [ "sing-box-easy" ]
+		}
+	}
+}

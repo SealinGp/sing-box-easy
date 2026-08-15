@@ -32,6 +32,17 @@ const (
 	// show who is connected.
 	KeyGitHubLogin = "github_login"
 
+	// KeyGitHubOAuthClientID holds the OAuth App client ID used for
+	// device-flow sign-in, so it can be changed from the dashboard instead of
+	// requiring an app.yml edit and a restart.
+	//
+	// Unlike KeyGitHubToken this is NOT a secret and is deliberately absent
+	// from SecretKeys: the device flow (RFC 8628) has no client secret, which
+	// is the whole reason it works for self-hosted deployments at arbitrary
+	// addresses. The ID is public by construction — it ships in the official
+	// builds as DefaultGitHubOAuthClientID.
+	KeyGitHubOAuthClientID = "github_oauth_client_id"
+
 	// KeySubscriptionInfoKeywords holds the operator's override for the labels
 	// that mark a feed entry as account metadata ("剩余流量：4.7 TB") rather than
 	// a proxy node. Stored as a JSON array; an empty/absent value means "use the
@@ -221,6 +232,53 @@ func (m *ManagerXORM) GetGitHubLogin() string {
 // empty value simply clears it.
 func (m *ManagerXORM) SetGitHubLogin(login string) error {
 	return m.Set(KeyGitHubLogin, strings.TrimSpace(login))
+}
+
+// GetGitHubOAuthClientID returns the client ID stored in the database, or ""
+// when none is set. Callers fall back to the app.yml / environment value.
+func (m *ManagerXORM) GetGitHubOAuthClientID() string {
+	raw, err := m.Get(KeyGitHubOAuthClientID)
+	if err != nil && !errors.Is(err, ErrSettingNotFound) {
+		logger.Warn("failed to read github_oauth_client_id", zap.Error(err))
+	}
+	return strings.TrimSpace(raw)
+}
+
+// SetGitHubOAuthClientID validates and stores the client ID. An empty value
+// clears the override, falling back to app.yml / GITHUB_OAUTH_CLIENT_ID.
+func (m *ManagerXORM) SetGitHubOAuthClientID(id string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return m.Set(KeyGitHubOAuthClientID, "")
+	}
+	if err := validateOAuthClientID(id); err != nil {
+		return err
+	}
+	return m.Set(KeyGitHubOAuthClientID, id)
+}
+
+// maxOAuthClientIDLen bounds the value. Real client IDs are ~20 characters;
+// anything much longer is likely a client *secret* or an access token pasted
+// into the wrong box, and storing that would be worse than rejecting it.
+const maxOAuthClientIDLen = 100
+
+// validateOAuthClientID rejects values that cannot be a GitHub client ID.
+// It deliberately does not require the "Ov23li" prefix: GitHub has used at
+// least three formats (20-char hex, "Iv1.…", "Ov23li…") and will likely use
+// more.
+func validateOAuthClientID(id string) error {
+	if len(id) < 8 {
+		return fmt.Errorf("github client id looks too short to be valid")
+	}
+	if len(id) > maxOAuthClientIDLen {
+		return fmt.Errorf("github client id exceeds %d characters — is this a client secret?", maxOAuthClientIDLen)
+	}
+	for _, r := range id {
+		if r <= ' ' || r == 0x7f {
+			return fmt.Errorf("github client id contains whitespace or control characters")
+		}
+	}
+	return nil
 }
 
 // maxTokenLen bounds a pasted credential; real GitHub tokens are well under it.
