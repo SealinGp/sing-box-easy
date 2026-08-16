@@ -24,6 +24,10 @@ export default {
     add: 'Add Outbound',
   },
   form: {
+    managedByRulesTitle: 'Managed by node rules',
+    managedByRules: 'This outbound is rebuilt from your node rules. Changes saved here are discarded the next time the rules are applied — edit the matching Filter or Group instead.',
+    defaultFirst: 'First member (default)',
+    noOptionsHint: 'This outbound type has no options — its behaviour is fixed.',
     tag: 'Tag *',
     tagPlaceholder: 'e.g., proxy-us',
     tagHelp: 'Unique identifier',
@@ -104,6 +108,7 @@ export default {
     inputRequired: 'Please enter subscription URL(s) or node link(s)',
   },
   validation: {
+    defaultNotMember: 'The default must be one of the selected outbounds',
     title: 'Validation Error',
     tagRequired: 'Tag is required',
     typeRequired: 'Type is required',

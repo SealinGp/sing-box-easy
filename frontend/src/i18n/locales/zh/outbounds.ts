@@ -24,6 +24,10 @@ export default {
     add: '添加出站',
   },
   form: {
+    managedByRulesTitle: '由节点规则管理',
+    managedByRules: '该出站由节点规则重新生成。在此保存的修改会在下次应用规则时被覆盖 —— 请改为编辑对应的过滤器或分组。',
+    defaultFirst: '第一个成员（默认）',
+    noOptionsHint: '该出站类型没有可配置项，其行为是固定的。',
     tag: '标签 *',
     tagPlaceholder: '例如：proxy-us',
     tagHelp: '唯一标识',
@@ -104,6 +108,7 @@ export default {
     inputRequired: '请输入订阅链接或节点链接',
   },
   validation: {
+    defaultNotMember: '默认出站必须是已选成员之一',
     title: '校验错误',
     tagRequired: '标签为必填项',
     typeRequired: '类型为必填项',

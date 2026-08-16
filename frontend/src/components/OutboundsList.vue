@@ -2,15 +2,15 @@
 import { ref, onMounted, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Outbound } from "../types/api";
-import type { OutboundType } from "../types/outbound";
 import Button from "./Button.vue";
 import Input from "./Input.vue";
 import Badge from "./Badge.vue";
+import Alert from "./Alert.vue";
 import Table from "./Table.vue";
 import Textarea from "./Textarea.vue";
-import DialerOptions from "./DialerOptions.vue";
+import SchemaFieldsEditor from "./SchemaFieldsEditor.vue";
 import Modal from "./Modal.vue";
-import { MultiSelect, Select } from "../volt";
+import { Select } from "../volt";
 import {
   PlusIcon,
   PencilIcon,
@@ -20,23 +20,101 @@ import {
 import { nodesService } from "../services";
 import { useToast } from "primevue/usetoast";
 import { useOutboundsStore } from "../stores/outbounds";
+import {
+  OUTBOUND_GROUP_TYPES,
+  OUTBOUND_TYPES_NEEDING_SERVER,
+  OUTBOUND_TYPE_NAMES,
+  OUTBOUND_TYPE_NOTES,
+  applyTypeDefaults,
+  pruneForType,
+  resolveOutboundFields,
+  type OutboundTypeName,
+} from "../schemas/outboundFields";
+import { isDeprecatedIn, isRetired } from "../schemas/optionSchema";
+import { useSingBoxVersion } from "../composables/useSingBoxVersion";
 import { storeToRefs } from "pinia";
 
 const outboundsStore = useOutboundsStore();
 // Use storeToRefs to maintain reactivity when destructuring
-const { outbounds, loading } = storeToRefs(outboundsStore);
+const { outbounds, loading, managedTags } = storeToRefs(outboundsStore);
 
 const localLoading = ref(false);
 const toast = useToast();
-const { t } = useI18n();
+const { t, te } = useI18n();
+
+// The installed binary, for gating retired types — see useSingBoxVersion.
+const { singBoxVersion } = useSingBoxVersion();
 
 // Modal state
 const showModal = ref(false);
 const isEditMode = ref(false);
 const editingTag = ref<string>("");
-const currentOutbound = ref<any>({
-  type: "direct",
-  tag: "",
+const DEFAULT_TYPE: OutboundTypeName = "direct";
+
+function blankOutbound(): Record<string, unknown> {
+  return applyTypeDefaults({ tag: "" }, DEFAULT_TYPE);
+}
+
+const currentOutbound = ref<Record<string, unknown>>(blankOutbound());
+
+/**
+ * The form model is an open record because an outbound's fields depend on its
+ * type, and the declared union cannot narrow on `type`.
+ */
+const currentType = computed(() =>
+  typeof currentOutbound.value.type === "string"
+    ? (currentOutbound.value.type as OutboundTypeName)
+    : undefined,
+);
+
+/**
+ * Switching type prunes rather than wipes.
+ *
+ * The old watcher reset the model to `{ type, tag }`, discarding every dialer
+ * option the operator had already filled in — fields shared by both types that
+ * did not need clearing.
+ */
+function changeType(next: unknown) {
+  if (typeof next !== "string") return;
+  currentOutbound.value = pruneForType(currentOutbound.value, next as OutboundTypeName);
+}
+
+/**
+ * Whether the INSTALLED sing-box has retired the selected type.
+ *
+ * `dns` and `wireguard` both parse and then fail — one at config decode, one at
+ * outbound init — so `sing-box check` passing means nothing here.
+ */
+/**
+ * Whether the outbound being edited is owned by the node-rules engine.
+ *
+ * BuildGroupOutbounds replaces any outbound whose tag matches a Filter or Group
+ * name rather than merging into it, so an edit here is discarded on the next
+ * apply — and for a Group the rebuilt selector carries only its members, taking
+ * url/interval/tolerance with it. Saying so beats letting the work evaporate.
+ */
+const managedWarning = computed(() => {
+  if (!isEditMode.value) return "";
+  return managedTags.value.includes(editingTag.value)
+    ? t("outbounds.form.managedByRules")
+    : "";
+});
+
+const currentTypeWarning = computed(() => {
+  const type = currentType.value;
+  if (!type) return "";
+  const note = OUTBOUND_TYPE_NOTES[type];
+  if (!note) return "";
+  if (isRetired(note, singBoxVersion.value)) {
+    return t("schema.field.typeRetired", {
+      removed: note.removed,
+      version: singBoxVersion.value,
+    });
+  }
+  if (isDeprecatedIn(note, singBoxVersion.value)) {
+    return t("schema.field.deprecated", { since: note.since });
+  }
+  return "";
 });
 
 // Delete confirmation. deleteOutbound() prefers the array index when
@@ -99,25 +177,20 @@ const handleBatchDelete = async () => {
   }
 };
 
-const outboundTypes = computed(() => [
-  { value: "direct", label: t('outbounds.types.direct') },
-  { value: "block", label: t('outbounds.types.block') },
-  { value: "socks", label: t('outbounds.types.socks') },
-  { value: "http", label: t('outbounds.types.http') },
-  { value: "shadowsocks", label: t('outbounds.types.shadowsocks') },
-  { value: "vmess", label: t('outbounds.types.vmess') },
-  { value: "trojan", label: t('outbounds.types.trojan') },
-  { value: "vless", label: t('outbounds.types.vless') },
-  { value: "hysteria", label: t('outbounds.types.hysteria') },
-  { value: "hysteria2", label: t('outbounds.types.hysteria2') },
-  { value: "tuic", label: t('outbounds.types.tuic') },
-  { value: "wireguard", label: t('outbounds.types.wireguard') },
-  { value: "ssh", label: t('outbounds.types.ssh') },
-  { value: "tor", label: t('outbounds.types.tor') },
-  { value: "shadowtls", label: t('outbounds.types.shadowtls') },
-  { value: "selector", label: t('outbounds.types.selector') },
-  { value: "urltest", label: t('outbounds.types.urltest') },
-]);
+/**
+ * Driven by the generated inventory rather than a hardcoded array.
+ *
+ * The old literal listed 17 types while the backend registry constructs 20 —
+ * `anytls`, `dns` and `shadowsocksr` were registered and unofferable, the same
+ * drift that hid `anytls` on the inbound side. Labels stay opt-in: a type with
+ * no `outbounds.types.*` entry shows its own name.
+ */
+const outboundTypes = computed(() =>
+  OUTBOUND_TYPE_NAMES.map((value) => ({
+    value,
+    label: te(`outbounds.types.${value}`) ? t(`outbounds.types.${value}`) : value,
+  })),
+);
 
 const getOutboundTypeLabel = (type: string) => {
   return outboundTypes.value.find((ot) => ot.value === type)?.label || type;
@@ -132,70 +205,62 @@ const getOutboundBadgeVariant = (
   return "primary";
 };
 
-const isProxyType = (type: OutboundType) => {
-  const nonProxyTypes = ["direct", "block", "dns", "selector", "urltest"];
-  return nonProxyTypes.indexOf(type) === -1;
-};
-
-const isGroupType = (type: OutboundType) => {
-  const groupTypes = ["selector", "urltest"];
-  return groupTypes.indexOf(type) !== -1;
-};
-
-const needsServer = computed(() => isProxyType(currentOutbound.value.type));
-const needsPassword = computed(() => {
-  const types = ["shadowsocks", "trojan", "hysteria2", "tuic"];
-  return types.indexOf(currentOutbound.value.type) !== -1;
-});
-const needsUUID = computed(() => {
-  const types = ["vmess", "vless", "tuic"];
-  return types.indexOf(currentOutbound.value.type) !== -1;
-});
-const needsMethod = computed(
-  () => currentOutbound.value.type === "shadowsocks"
-);
-const needsOutbounds = computed(() => isGroupType(currentOutbound.value.type));
+/*
+ * isProxyType / isGroupType / needsServer / needsPassword / needsUUID /
+ * needsMethod / needsOutbounds and groupOutboundOptions used to live here.
+ *
+ * All of them are now answered by the generated inventory: a type needs a
+ * server if its option struct embeds ServerOptions, and it is a group if it has
+ * an `outbounds` list. The member picker moved into SchemaFieldControl's
+ * 'outbound-list' control, which keeps the same self-exclusion and the same
+ * flagging of tags that no longer resolve.
+ *
+ * The predicates were also doing double duty as required-field gates, which was
+ * wrong in two places: `hysteria` needs auth_str and both bandwidths and was
+ * asked for none of them, and `tuic` needs a uuid AND a password but the
+ * branches were independent.
+ */
 
 /**
- * Member options for a selector/urltest group.
+ * Save-time validation. Returns an i18n key, or '' when valid.
  *
- * This field used to be a free-text Chips input, which meant retyping every
- * member tag by hand and getting no feedback on a typo until sing-box rejected
- * the config. A group can only reference outbounds that already exist, so the
- * set of valid values is known — it should be picked, not typed.
- *
- * The group itself is excluded, mirroring DialerOptions' detour list: an
- * outbound listing itself is a reference cycle.
+ * Only rules sing-box will actually reject, plus the two selector rules it
+ * checks at START rather than at parse — `sing-box check` passes a group with
+ * no members or a `default` naming a non-member, and then the service will not
+ * come up.
  */
-const groupOutboundOptions = computed(() => {
-  const selfTag = isEditMode.value ? editingTag.value : currentOutbound.value.tag;
+function validateOutbound(outbound: Record<string, unknown>): string {
+  const tag = outbound.tag;
+  if (typeof tag !== "string" || !tag.trim()) return "outbounds.validation.tagRequired";
 
-  const available = outbounds.value
-    .filter((o) => o.tag && o.tag !== selfTag)
-    .map((o) => ({ label: o.tag, value: o.tag, type: o.type, missing: false }));
+  const type = outbound.type;
+  if (typeof type !== "string" || !type) return "outbounds.validation.typeRequired";
 
-  // Preserve already-referenced tags that no longer resolve to a real outbound
-  // (the member was deleted, or renamed). Without them the MultiSelect could
-  // not render the value, and saving would silently drop it from the config —
-  // turning a visible dangling reference into invisible data loss. They are
-  // flagged so the user can see which members are broken.
-  const known = new Set(available.map((o) => o.value));
-  const referenced: string[] = Array.isArray(currentOutbound.value.outbounds)
-    ? currentOutbound.value.outbounds
-    : [];
-  const orphans = referenced
-    .filter((tag) => tag && !known.has(tag))
-    .map((tag) => ({ label: tag, value: tag, type: "", missing: true }));
+  if (OUTBOUND_TYPES_NEEDING_SERVER.includes(type as OutboundTypeName)) {
+    const server = outbound.server;
+    if (typeof server !== "string" || !server.trim()) {
+      return "outbounds.validation.serverRequired";
+    }
+  }
 
-  return [...available, ...orphans];
-});
+  if (OUTBOUND_GROUP_TYPES.includes(type as OutboundTypeName)) {
+    const members = outbound.outbounds;
+    if (!Array.isArray(members) || members.length === 0) {
+      return "outbounds.validation.outboundsRequired";
+    }
+    // sing-box: "default outbound not found" — at start, not at check.
+    const fallback = outbound.default;
+    if (typeof fallback === "string" && fallback && !members.includes(fallback)) {
+      return "outbounds.validation.defaultNotMember";
+    }
+  }
+
+  return "";
+}
 
 const openAddModal = () => {
   isEditMode.value = false;
-  currentOutbound.value = {
-    type: "direct",
-    tag: "",
-  };
+  currentOutbound.value = blankOutbound();
   showModal.value = true;
 };
 
@@ -222,95 +287,16 @@ const closeModal = () => {
   showModal.value = false;
   isEditMode.value = false;
   editingTag.value = "";
-  currentOutbound.value = {
-    type: "direct",
-    tag: "",
-  };
+  currentOutbound.value = blankOutbound();
 };
 
 const handleSave = async () => {
-  // Validation
-  if (!currentOutbound.value.tag?.trim()) {
+  const error = validateOutbound(currentOutbound.value);
+  if (error) {
     toast.add({
       severity: "error",
       summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.tagRequired'),
-      life: 3000,
-    });
-    return;
-  }
-
-  if (!currentOutbound.value.type) {
-    toast.add({
-      severity: "error",
-      summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.typeRequired'),
-      life: 3000,
-    });
-    return;
-  }
-
-  // Validate proxy-specific fields
-  if (needsServer.value) {
-    if (!currentOutbound.value.server?.trim()) {
-      toast.add({
-        severity: "error",
-        summary: t('outbounds.validation.title'),
-        detail: t('outbounds.validation.serverRequired'),
-        life: 3000,
-      });
-      return;
-    }
-    if (!currentOutbound.value.server_port) {
-      toast.add({
-        severity: "error",
-        summary: t('outbounds.validation.title'),
-        detail: t('outbounds.validation.portRequired'),
-        life: 3000,
-      });
-      return;
-    }
-  }
-
-  if (needsPassword.value && !currentOutbound.value.password?.trim()) {
-    toast.add({
-      severity: "error",
-      summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.passwordRequired'),
-      life: 3000,
-    });
-    return;
-  }
-
-  if (needsUUID.value && !currentOutbound.value.uuid?.trim()) {
-    toast.add({
-      severity: "error",
-      summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.uuidRequired'),
-      life: 3000,
-    });
-    return;
-  }
-
-  if (needsMethod.value && !currentOutbound.value.method?.trim()) {
-    toast.add({
-      severity: "error",
-      summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.methodRequired'),
-      life: 3000,
-    });
-    return;
-  }
-
-  if (
-    needsOutbounds.value &&
-    (!currentOutbound.value.outbounds ||
-      currentOutbound.value.outbounds.length === 0)
-  ) {
-    toast.add({
-      severity: "error",
-      summary: t('outbounds.validation.title'),
-      detail: t('outbounds.validation.outboundsRequired'),
+      detail: t(error),
       life: 3000,
     });
     return;
@@ -321,7 +307,7 @@ const handleSave = async () => {
     if (isEditMode.value) {
       await outboundsStore.updateOutbound(
         editingTag.value,
-        currentOutbound.value
+        currentOutbound.value as unknown as Outbound,
       );
       toast.add({
         severity: "success",
@@ -330,7 +316,7 @@ const handleSave = async () => {
         life: 3000,
       });
     } else {
-      await outboundsStore.addOutbound(currentOutbound.value);
+      await outboundsStore.addOutbound(currentOutbound.value as unknown as Outbound);
       toast.add({
         severity: "success",
         summary: t('common.success'),
@@ -646,188 +632,59 @@ onMounted(() => {
       size="wide"
       show-close
     >
-      <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-3">
+        <Alert v-if="managedWarning" type="warning" :title="$t('outbounds.form.managedByRulesTitle')">
+          {{ managedWarning }}
+        </Alert>
+
+        <!--
+          Tag and type live on the outbound wrapper rather than in any type's
+          option struct, so they are rendered here rather than coming from the
+          schema. Both lock on edit: the tag is what groups and route rules
+          reference, and changing the type would reinterpret every field.
+        -->
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.tag') }}</label
-            >
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('outbounds.form.tag') }}</label>
             <Input
-              v-model="currentOutbound.tag"
+              v-model="(currentOutbound.tag as string)"
               :placeholder="$t('outbounds.form.tagPlaceholder')"
               :disabled="isEditMode"
             />
-            <p class="mt-1 text-xs text-gray-500">
-              {{ $t('outbounds.form.tagHelp') }}
-            </p>
           </div>
 
           <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.type') }}</label
-            >
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('outbounds.form.type') }}</label>
             <Select
               class="w-full"
-              v-model="currentOutbound.type"
+              :modelValue="currentOutbound.type"
               :options="outboundTypes"
               optionLabel="label"
               optionValue="value"
               :placeholder="$t('outbounds.form.typePlaceholder')"
               :disabled="isEditMode"
+              @update:modelValue="changeType"
             />
+            <p v-if="currentTypeWarning" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              {{ currentTypeWarning }}
+            </p>
           </div>
         </div>
 
-        <!-- Proxy Server Fields -->
-        <div v-if="needsServer" class="grid grid-cols-2 gap-4">
-          <div class="col-span-1">
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.server') }}</label
-            >
-            <Input
-              v-model="currentOutbound.server"
-              :placeholder="$t('outbounds.form.serverPlaceholder')"
-            />
-          </div>
-
-          <div class="col-span-1">
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.port') }}</label
-            >
-            <Input
-              v-model.number="currentOutbound.server_port"
-              type="number"
-              :placeholder="$t('outbounds.form.portPlaceholder')"
-            />
-          </div>
-        </div>
-
-        <!-- Method (Shadowsocks) -->
-        <div v-if="needsMethod">
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >{{ $t('outbounds.form.method') }}</label
-          >
-          <Input
-            v-model="currentOutbound.method"
-            :placeholder="$t('outbounds.form.methodPlaceholder')"
-          />
-        </div>
-
-        <!-- Password -->
-        <div v-if="needsPassword">
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >{{ $t('outbounds.form.password') }}</label
-          >
-          <Input
-            v-model="currentOutbound.password"
-            type="password"
-            :placeholder="$t('outbounds.form.passwordPlaceholder')"
-          />
-        </div>
-
-        <!-- UUID (VMess, VLESS, TUIC) -->
-        <div v-if="needsUUID">
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >{{ $t('outbounds.form.uuid') }}</label
-          >
-          <Input
-            v-model="currentOutbound.uuid"
-            :placeholder="$t('outbounds.form.uuidPlaceholder')"
-          />
-        </div>
-
-        <!-- Group Outbounds (Selector, URLTest) -->
-        <!-- Members are picked from the existing outbounds rather than typed:
-             a group can only reference tags that already exist. The model stays
-             string[] to match the Selector/URLTest schema; sing-box also accepts
-             a scalar on the wire, which openEditModal() coerces to an array.
-             PrimeVue appends on select, so the user's ordering is preserved —
-             which matters, because a selector renders its members in order. -->
-        <div v-if="needsOutbounds">
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >{{ $t('outbounds.form.outbounds') }}</label
-          >
-          <MultiSelect
-            v-if="groupOutboundOptions.length > 0"
-            v-model="currentOutbound.outbounds"
-            :options="groupOutboundOptions"
-            optionLabel="label"
-            optionValue="value"
-            display="chip"
-            filter
-            :placeholder="$t('outbounds.form.outboundsPlaceholder')"
-            :filterPlaceholder="$t('outbounds.form.outboundsSearchPlaceholder')"
-            :emptyFilterMessage="$t('outbounds.form.outboundsNoMatch')"
-            class="w-full"
-          >
-            <!-- Show the member's type alongside its tag so nodes are
-                 distinguishable at a glance, and flag dangling references. -->
-            <template #option="{ option }">
-              <span class="flex min-w-0 flex-1 items-center gap-2">
-                <span class="truncate">{{ option.label }}</span>
-                <Badge v-if="option.missing" variant="danger" size="sm">
-                  {{ $t('outbounds.form.outboundsMissing') }}
-                </Badge>
-                <Badge v-else-if="option.type" variant="secondary" size="sm">
-                  {{ getOutboundTypeLabel(option.type) }}
-                </Badge>
-              </span>
-            </template>
-          </MultiSelect>
-          <p v-else class="text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('outbounds.form.outboundsNone') }}
-          </p>
-          <p class="mt-1 text-xs text-gray-500">
-            {{ $t('outbounds.form.outboundsHelp') }}
-          </p>
-        </div>
-
-        <!-- URLTest specific -->
-        <div
-          v-if="currentOutbound.type === 'urltest'"
-          class="grid grid-cols-2 gap-4"
-        >
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.testUrl') }}</label
-            >
-            <Input
-              v-model="currentOutbound.url"
-              :placeholder="$t('outbounds.form.testUrlPlaceholder')"
-            />
-          </div>
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >{{ $t('outbounds.form.interval') }}</label
-            >
-            <Input
-              v-model="currentOutbound.interval"
-              :placeholder="$t('outbounds.form.intervalPlaceholder')"
-            />
-          </div>
-        </div>
-
-        <!-- DialerOptions for all outbound types except block and dns -->
-        <DialerOptions
-          v-if="
-            currentOutbound.type !== 'block' &&
-            currentOutbound.type !== 'dns'
-          "
+        <!--
+          :key remounts the editor on every type change, dropping the set of
+          fields the operator had added. The old watcher wiped the whole model
+          instead — including dialer options already filled in — so switching
+          type cost work rather than just clearing what no longer applied.
+        -->
+        <SchemaFieldsEditor
+          v-if="currentType"
+          :key="currentType"
           v-model="currentOutbound"
-          :current-tag="isEditMode ? editingTag : currentOutbound.tag"
-          :show-advanced="true"
+          :fields="resolveOutboundFields(currentType)"
+          :empty-hint="$t('outbounds.form.noOptionsHint')"
         />
-</div>
+      </div>
 
       <template #footer>
         <Button @click="closeModal" variant="secondary"

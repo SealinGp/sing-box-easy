@@ -21,13 +21,19 @@ import ChipsField from './ChipsField.vue'
 import JsonField from './JsonField.vue'
 import UsersEditor from './UsersEditor.vue'
 import HostsEditor from './HostsEditor.vue'
-import { Select } from '../volt'
+import { MultiSelect, Select } from '../volt'
 import type { ResolvedField } from '../schemas/optionSchema'
 import type { UserFieldSpec } from '../schemas/inboundFields'
 
 const props = defineProps<{
   field: ResolvedField
   value: unknown
+  /**
+   * The whole record being edited, for controls that depend on a sibling
+   * field. A selector's `default` must name one of its own `outbounds`, and a
+   * group must not list itself.
+   */
+  record?: Record<string, unknown>
   userFields?: UserFieldSpec[]
   disabled?: boolean
 }>()
@@ -47,11 +53,50 @@ const outboundsStore = useOutboundsStore()
 const { outbounds } = storeToRefs(outboundsStore)
 
 onMounted(() => {
-  if (props.field.control === 'outbound' && outbounds.value.length === 0) {
+  const wantsOutbounds =
+    props.field.control === 'outbound' || props.field.control === 'outbound-list'
+  if (wantsOutbounds && outbounds.value.length === 0) {
     outboundsStore.fetchOutbounds().catch(() => {
       // Non-fatal: the picker falls back to whatever the record already holds.
     })
   }
+})
+
+/** Tags of every other outbound, for a group's member list. */
+const groupMemberOptions = computed(() => {
+  const selfTag = typeof props.record?.tag === 'string' ? props.record.tag : ''
+  const options = outbounds.value
+    .filter((outbound) => outbound.tag && outbound.tag !== selfTag)
+    .map((outbound) => ({ value: outbound.tag as string, label: outbound.tag as string }))
+
+  // A group can reference a tag that was since renamed or deleted. Dropping it
+  // from the options would drop it from the chips too, and the next save would
+  // look like the operator had removed a member. Keep it, flagged.
+  const known = new Set(options.map((option) => option.value))
+  for (const tag of Array.isArray(props.value) ? (props.value as string[]) : []) {
+    if (known.has(tag)) continue
+    known.add(tag)
+    options.push({ value: tag, label: t('common.missingTag', { tag }) })
+  }
+
+  return options
+})
+
+/**
+ * A selector's `default` — one of the tags currently in its own `outbounds`.
+ *
+ * sing-box fails at START with "default outbound not found" when it names
+ * anything else, which `sing-box check` does not catch, so the picker simply
+ * cannot offer an invalid value.
+ */
+const memberOptions = computed(() => {
+  const members = Array.isArray(props.record?.outbounds)
+    ? (props.record.outbounds as string[])
+    : []
+  return [
+    { value: '', label: t('outbounds.form.defaultFirst') },
+    ...members.map((tag) => ({ value: tag, label: tag })),
+  ]
 })
 
 const outboundOptions = computed(() => {
@@ -134,6 +179,32 @@ function onNumber(raw: string | number) {
     :placeholder="field.placeholder"
     :disabled="disabled"
     @update:modelValue="onChips"
+  />
+
+  <MultiSelect
+    v-else-if="field.control === 'outbound-list'"
+    class="w-full"
+    :modelValue="(Array.isArray(value) ? value : [])"
+    :options="groupMemberOptions"
+    optionLabel="label"
+    optionValue="value"
+    display="chip"
+    filter
+    :disabled="disabled"
+    :placeholder="t('outbounds.form.outboundsPlaceholder')"
+    :emptyMessage="t('outbounds.form.outboundsNone')"
+    @update:modelValue="(v: unknown) => emit('change', Array.isArray(v) && v.length ? v : undefined)"
+  />
+
+  <Select
+    v-else-if="field.control === 'outbound-member'"
+    class="w-full"
+    :modelValue="value ?? ''"
+    :options="memberOptions"
+    optionLabel="label"
+    optionValue="value"
+    :disabled="disabled"
+    @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
 
   <Select
