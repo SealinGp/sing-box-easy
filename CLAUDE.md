@@ -188,12 +188,12 @@ refresh, which would otherwise churn the outbound list.
 
 ### Schema-driven forms (generated field inventories)
 
-The inbound and DNS server dialogs are schema-driven, not hand-written per type.
-Four layers:
+The inbound, DNS server and outbound dialogs are schema-driven, not hand-written
+per type. Four layers:
 
 1. **`cmd/gen-option-schema`** reflects over the `option.*` structs that
    `app/pkg/config/registry.go` constructs and emits one inventory per domain —
-   `frontend/src/schemas/{inboundInventory,dnsServerInventory}.generated.ts`.
+   `frontend/src/schemas/{inbound,dnsServer,outbound}Inventory.generated.ts`.
    Deprecation is recovered by parsing sing-box's `// Deprecated:` doc comments
    with `go/ast`, since `reflect` cannot see comments. Regenerate with
    `go generate ./app/pkg/config/`. Adding the next domain (outbounds,
@@ -201,11 +201,11 @@ Four layers:
 2. **`frontend/src/schemas/optionSchema.ts`** holds everything domain-agnostic:
    the tier model, visibility, pruning, defaults. Domains bind it with
    `createSchema`.
-3. **`inboundFields.ts` / `dnsServerFields.ts`** are pure curation — which
+3. **`inboundFields.ts` / `dnsServerFields.ts` / `outboundFields.ts`** are pure curation — which
    fields to promote, what control to render, what to call them. Typed against
    the generated keys, so naming a field sing-box does not have is a `vue-tsc`
    error rather than an input that never binds.
-4. **`SchemaFieldsEditor.vue`** renders it for both domains, reusing
+4. **`SchemaFieldsEditor.vue`** renders it for all three domains, reusing
    `useOptionalFields` (the composable behind the route- and DNS-rule condition
    forms).
 
@@ -220,6 +220,21 @@ Things that are easy to get wrong:
   field added by a future sing-box is reachable immediately. Field labels fall
   back to a humanized JSON key, so the locale files only need entries where a
   human label beats the field's own name.
+- **The inventory describes the PINNED library, not the installed binary.** The
+  repo pins sing-box 1.12.12; a host may run 1.13.x. Drift in the *additive*
+  direction is harmless (a knob the form does not offer), but a field or type a
+  newer sing-box REMOVED is rejected outright — `sniff` fails config decode on
+  1.13, and it used to sit in the form's own "deprecated" row. The generator
+  records `since`/`removed` from sing-box's `experimental/deprecated` constants
+  and the UI gates against `/system/info` (`useSingBoxVersion` + `isRetired`).
+  Mapping a deprecation entry onto fields is hand-maintained in
+  `cmd/gen-option-schema/versions.go`, built from the `deprecated.Report(...)`
+  call sites — recheck those on a dependency bump.
+- **A full per-version inventory is deliberately NOT built.** Go cannot import
+  two versions of one module, so it would need the generator run once per
+  version in a throwaway module. Measured 1.12->1.13 drift is ~10 added fields
+  and one removed, so the gate above covers the dangerous direction at a
+  fraction of the cost. Revisit if the supported version range widens.
 - **HTTP/3 DNS is `h3`, never `http3`.** sing-box's constant is
   `C.DNSTypeHTTP3 = "h3"` and its transport registers under that name. The
   registry spelled it `http3`, which broke both directions: a valid config could
@@ -231,10 +246,22 @@ Things that are easy to get wrong:
   marshal. Use `bindDNSServer` (`dns_validation.go`). The DNS *rule* handlers
   already carry the same fix.
 
-Adding a type means: add it to `config.InboundTypes` / `config.DNSTypes`, add a
-case to the matching `Create*Options`, regenerate, then optionally curate.
-`TestInboundTypesAreRegistered` / `TestDNSTypesAreRegistered` fail if the list
-and the registry disagree.
+- **Outbound groups.** `selector`/`urltest` carry an `outbounds` list of other
+  tags, edited by the `outbound-list` control (self excluded — a group listing
+  itself hangs at start). A selector's `default` uses `outbound-member`, a
+  picker over that group's *current* members: sing-box fails at START with
+  "default outbound not found" otherwise, which `sing-box check` does not catch.
+- **Some outbounds are not owned by the form.** `noderules` ->
+  `BuildGroupOutbounds` rebuilds any outbound whose tag matches a Filter or
+  Group name, discarding form edits on the next apply. `GET /outbounds` returns
+  `managed_tags` (from `config.ManagedOutboundTags`) and the dialog warns.
+
+Adding a type means: add it to `config.InboundTypes` / `DNSTypes` /
+`OutboundTypes`, add a case to the matching `Create*Options`, regenerate, then
+optionally curate. The `Test*TypesAreRegistered` tests fail if a list and the
+registry disagree. A type whose option struct legitimately has no fields
+(`block`/`dns` outbounds are `option.StubOptions`) must be listed in the
+domain's `FieldlessTypes`, so a silently-empty struct still fails loudly.
 
 Schema logic is tested with `bun test` (`frontend/src/schemas/*.test.ts`).
 
