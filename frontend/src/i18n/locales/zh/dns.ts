@@ -154,7 +154,21 @@ export default {
       add: '添加 DNS 规则',
       edit: '编辑 DNS 规则',
     },
+    flow: {
+      then: {
+        route: '交给 {server} 解析',
+        routeIncomplete: '交给 …（请选择 DNS 服务器）解析',
+        routeOptions: '应用以下解析选项',
+        reject: '拒绝（返回空响应）',
+        rejectDrop: '静默丢弃',
+        predefined: '直接应答',
+        predefinedRcode: '直接以 {rcode} 应答',
+      },
+    },
     form: {
+      whenHeading: '当 DNS 查询同时满足',
+      whenHint: '以下全部条件',
+      thenHeading: '则',
       action: '动作 *',
       server: 'DNS 服务器 *',
       rejectMethod: '拒绝方式',
@@ -166,6 +180,13 @@ export default {
       // 所以 strategy / disable_cache 故意不列。
       fields: {
         server: 'DNS 服务器',
+        // 条件标签，供流程预览使用。条件部分仍是手写的，所以这些不是生成的，
+        // 但预览按同样的 `<prefix>.<json key>` 规则解析。
+        rule_set: '规则集',
+        domain: '域名',
+        domain_suffix: '域名后缀',
+        domain_keyword: '域名关键词',
+        geosite: 'GeoSite（1.12 已移除）',
         strategy: '解析策略',
         disable_cache: '禁用缓存',
         rewrite_ttl: '重写 TTL',

@@ -9,6 +9,7 @@ import Badge from './Badge.vue'
 import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
+import RuleFlowPreview from './RuleFlowPreview.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
 import { useToast } from 'primevue'
@@ -21,6 +22,8 @@ import {
   pruneForeignFields,
   resolveDNSRuleActionFields,
   validateDNSRuleAction,
+  isTerminalAction,
+  ALL_ACTION_KEYS,
   type DNSRuleActionTypeName,
 } from '../schemas/dnsRuleActionFields'
 
@@ -89,6 +92,56 @@ const currentAction = computed<DNSRuleActionTypeName>(() => actionOf(currentRule
 
 /** The fields this action owns, resolved from the generated inventory. */
 const actionFields = computed(() => resolveDNSRuleActionFields(currentAction.value))
+
+/**
+ * Everything on the rule that is NOT the action — i.e. its conditions.
+ *
+ * Derived by subtraction rather than from a list, because there is no generated
+ * matcher inventory for DNS rules (the conditions half stayed hand-written).
+ * Subtracting means a condition the form has no control for still SHOWS in the
+ * preview, which is the honest behaviour: the rule is matching on it either way.
+ */
+const STRUCTURAL_KEYS = ['action', 'type', 'mode', 'rules', 'invert']
+const conditionKeys = computed(() =>
+  Object.keys(currentRule.value).filter(
+    (key) => !ALL_ACTION_KEYS.includes(key) && !STRUCTURAL_KEYS.includes(key),
+  ),
+)
+
+/**
+ * The outcome, as a phrase, for the flow preview. Each action names the field
+ * that carries its result.
+ */
+const flowOutcome = computed(() => {
+  const r = currentRule.value
+  switch (currentAction.value) {
+    case 'route':
+      return r.server
+        ? t('dns.rules.flow.then.route', { server: String(r.server) })
+        : t('dns.rules.flow.then.routeIncomplete')
+    case 'route-options':
+      return t('dns.rules.flow.then.routeOptions')
+    case 'reject':
+      return r.method === 'drop'
+        ? t('dns.rules.flow.then.rejectDrop')
+        : t('dns.rules.flow.then.reject')
+    case 'predefined':
+      return r.rcode
+        ? t('dns.rules.flow.then.predefinedRcode', { rcode: String(r.rcode) })
+        : t('dns.rules.flow.then.predefined')
+    default:
+      return currentAction.value
+  }
+})
+
+/**
+ * Only `route-options` keeps matching — dns/router.go:147-195, where route,
+ * reject and predefined each return and route-options falls through.
+ *
+ * Note the RouteRule list is different: there route-options, direct, resolve
+ * and sniff are the non-terminal ones. Same words, different families.
+ */
+const flowContinues = computed(() => !isTerminalAction(currentAction.value))
 
 /**
  * Switching the action prunes the previous one's fields and seeds the new one's
@@ -468,39 +521,39 @@ onMounted(() => {
     >
       <div class="space-y-4">
         <!--
-          The action select stays outside the schema editor, exactly as the type
-          select does in DNSServers.vue: it is the discriminator that CHOOSES the
-          field set, so it cannot be one of the fields.
+          The rule restated as sing-box will run it. The form shows which fields
+          exist; this says what they DO. Same component the route rule dialog
+          uses — only the outcome phrase and the condition list differ.
         -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.action') }}</label>
-          <Select
-            class="w-full"
-            optionLabel="label"
-            optionValue="value"
-            :modelValue="currentAction"
-            :options="actionTypes"
-            @update:modelValue="changeAction"
-          />
-        </div>
-
-        <!--
-          Everything the action owns, from the generated inventory. Replaces three
-          hand-written v-if blocks that covered 3 of 15 fields and left
-          `route-options` with an empty form body.
-
-          :key remounts on action change so the previous action's added-field
-          state does not leak — the same reason conditionsKey exists below.
-        -->
-        <SchemaFieldsEditor
-          :key="currentAction"
-          v-model="currentRule"
-          :fields="actionFields"
+        <RuleFlowPreview
+          :rule="currentRule"
+          :condition-keys="conditionKeys"
+          label-prefix="dns.rules.form.fields"
+          :outcome="flowOutcome"
+          :continues-matching="flowContinues"
+          :catch-all="!flowContinues"
         />
 
-        <!-- Rule Conditions -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">{{ $t('dns.rules.form.conditionsHeading') }}</h4>
+        <!--
+          WHEN / THEN, in that order.
+
+          The dialog used to lead with the action. sing-box tests the conditions
+          first and only then applies the action, so reading top-to-bottom now
+          follows the query through the rule.
+        -->
+        <section class="space-y-3">
+          <div class="flex items-baseline gap-2">
+            <span
+              class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-pill bg-primary-100 dark:bg-primary-900/40 text-[11px] font-semibold text-primary-700 dark:text-primary-300"
+              >1</span
+            >
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {{ $t('dns.rules.form.whenHeading') }}
+            </h4>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ $t('dns.rules.form.whenHint') }}
+            </span>
+          </div>
 
           <!-- Remounted per modal open (:key) so the collapse state is decided
                from the rule as loaded, not from the previous edit. -->
@@ -513,7 +566,50 @@ onMounted(() => {
             v-model:geosite="currentRule.geosite"
             :rule-set-options="ruleSetOptions"
           />
-        </div>
+        </section>
+
+        <section class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div class="flex items-baseline gap-2">
+            <span
+              class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-pill bg-primary-100 dark:bg-primary-900/40 text-[11px] font-semibold text-primary-700 dark:text-primary-300"
+              >2</span
+            >
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {{ $t('dns.rules.form.thenHeading') }}
+            </h4>
+          </div>
+
+          <!--
+            The action select stays outside the schema editor, exactly as the
+            type select does in DNSServers.vue: it is the discriminator that
+            CHOOSES the field set, so it cannot be one of the fields.
+          -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.action') }}</label>
+            <Select
+              class="w-full"
+              optionLabel="label"
+              optionValue="value"
+              :modelValue="currentAction"
+              :options="actionTypes"
+              @update:modelValue="changeAction"
+            />
+          </div>
+
+          <!--
+            Everything the action owns, from the generated inventory. Replaces
+            three hand-written v-if blocks that covered 3 of 15 fields and left
+            `route-options` with an empty form body.
+
+            :key remounts on action change so the previous action's added-field
+            state does not leak — same reason conditionsKey exists above.
+          -->
+          <SchemaFieldsEditor
+            :key="currentAction"
+            v-model="currentRule"
+            :fields="actionFields"
+          />
+        </section>
       </div>
 
       <template #footer>

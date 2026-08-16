@@ -36,23 +36,37 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { humanizeFieldName } from '../utils/fieldLabels'
-import { actionOf, isTerminalAction } from '../schemas/routeRuleActionFields'
-import { ALL_MATCHER_KEYS } from '../schemas/routeRuleMatcherFields'
 import { isFieldFilled } from '../schemas/optionSchema'
-import type { RouteRule } from '../types/api'
 
-const props = defineProps<{ rule: RouteRule }>()
+const props = defineProps<{
+  /** The rule being edited, whole. */
+  rule: Record<string, unknown>
+  /**
+   * Which keys count as conditions, in render order. Supplied by the caller
+   * because the two rule families disagree: a route rule has a generated
+   * matcher inventory to order by, a DNS rule's conditions are whatever is left
+   * once the action's own fields are removed.
+   */
+  conditionKeys: readonly string[]
+  /** i18n stem for condition labels, e.g. `route.rules.fields`. */
+  labelPrefix: string
+  /** The outcome as a resolved phrase — each domain names its own actions. */
+  outcome: string
+  /** Non-terminal actions annotate and let the next rule be tried. */
+  continuesMatching?: boolean
+  /** A condition-less TERMINAL rule swallows everything below it. */
+  catchAll?: boolean
+}>()
 
 const { t, te } = useI18n()
 
-const record = computed(() => props.rule as Record<string, unknown>)
-const action = computed(() => actionOf(record.value))
+const record = computed(() => props.rule)
 
 /** How many values of one matcher to spell out before collapsing to a count. */
 const MAX_VALUES = 3
 
 function label(key: string): string {
-  const labelKey = `route.rules.fields.${key}`
+  const labelKey = `${props.labelPrefix}.${key}`
   return te(labelKey) ? t(labelKey) : humanizeFieldName(key)
 }
 
@@ -74,7 +88,7 @@ interface Condition {
 const conditions = computed<Condition[]>(() => {
   const out: Condition[] = []
 
-  for (const key of ALL_MATCHER_KEYS) {
+  for (const key of props.conditionKeys) {
     if (key === 'invert') continue
     const value = record.value[key]
     if (!isFieldFilled(value)) continue
@@ -103,41 +117,6 @@ const isInverted = computed(() => isFieldFilled(record.value.invert))
 /** No conditions at all — see the header note. */
 const matchesEverything = computed(() => conditions.value.length === 0)
 
-/** A condition-less TERMINAL rule swallows everything below it. */
-const isCatchAll = computed(() => matchesEverything.value && isTerminalAction(action.value))
-
-const actionLabelKey = computed(() => `route.rules.flow.then.${camel(action.value)}`)
-
-function camel(value: string) {
-  return value.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
-}
-
-/**
- * The outcome, as a phrase. Each action names the field that carries its
- * result, so "route" reads as the outbound rather than the word "route".
- */
-const outcome = computed(() => {
-  const r = record.value
-  switch (action.value) {
-    case 'route':
-      return isFieldFilled(r.outbound)
-        ? t('route.rules.flow.then.route', { outbound: String(r.outbound) })
-        : t('route.rules.flow.then.routeIncomplete')
-    case 'reject':
-      return r.method === 'drop'
-        ? t('route.rules.flow.then.rejectDrop')
-        : t('route.rules.flow.then.reject')
-    case 'resolve':
-      return isFieldFilled(r.server)
-        ? t('route.rules.flow.then.resolveWith', { server: String(r.server) })
-        : t('route.rules.flow.then.resolve')
-    default:
-      return te(actionLabelKey.value) ? t(actionLabelKey.value) : action.value
-  }
-})
-
-/** Non-terminal actions keep matching, which is the thing people miss. */
-const continuesMatching = computed(() => !isTerminalAction(action.value))
 </script>
 
 <template>
@@ -149,16 +128,16 @@ const continuesMatching = computed(() => !isTerminalAction(action.value))
       <span
         class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 w-10"
       >
-        {{ t('route.rules.flow.when') }}
+        {{ t('rule.flow.when') }}
       </span>
 
       <span v-if="matchesEverything" class="text-sm text-gray-700 dark:text-gray-300">
-        {{ t('route.rules.flow.everything') }}
+        {{ t('rule.flow.everything') }}
       </span>
 
       <template v-else>
         <span v-if="isInverted" class="text-sm font-medium text-amber-600 dark:text-amber-400">
-          {{ t('route.rules.flow.invertPrefix') }}
+          {{ t('rule.flow.invertPrefix') }}
         </span>
         <template v-for="(condition, i) in conditions" :key="condition.key">
           <!-- The AND is the correction this whole panel exists to make. -->
@@ -166,13 +145,13 @@ const continuesMatching = computed(() => !isTerminalAction(action.value))
             v-if="i > 0"
             class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
           >
-            {{ t('route.rules.flow.and') }}
+            {{ t('rule.flow.and') }}
           </span>
           <span class="text-sm text-gray-700 dark:text-gray-300">
             <span class="text-gray-500 dark:text-gray-400">{{ condition.label }}</span>
             <template v-if="condition.values.length">
               <span class="text-gray-400 dark:text-gray-500">
-                {{ condition.values.length > 1 ? ` ${t('route.rules.flow.anyOf')} ` : ' ' }}
+                {{ condition.values.length > 1 ? ` ${t('rule.flow.anyOf')} ` : ' ' }}
               </span>
               <code
                 v-for="(value, vi) in condition.values"
@@ -181,7 +160,7 @@ const continuesMatching = computed(() => !isTerminalAction(action.value))
                 >{{ value }}<span v-if="vi < condition.values.length - 1">, </span></code
               >
               <span v-if="condition.overflow" class="text-gray-400 dark:text-gray-500">
-                {{ t('route.rules.flow.more', { count: condition.overflow }) }}
+                {{ t('rule.flow.more', { count: condition.overflow }) }}
               </span>
             </template>
           </span>
@@ -194,19 +173,19 @@ const continuesMatching = computed(() => !isTerminalAction(action.value))
       <span
         class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 w-10"
       >
-        {{ t('route.rules.flow.then.label') }}
+        {{ t('rule.flow.then.label') }}
       </span>
       <span class="inline-flex items-center gap-1.5 text-sm text-gray-800 dark:text-gray-200">
         <ArrowRightIcon class="h-3.5 w-3.5 shrink-0 text-primary-500" />
-        {{ outcome }}
+        {{ props.outcome }}
       </span>
       <!--
         Stated because it is the least obvious thing about a route rule: only
         route/reject/hijack-dns stop here. The others annotate the connection and
         the next rule is still tried.
       -->
-      <span v-if="continuesMatching" class="text-xs text-gray-400 dark:text-gray-500">
-        {{ t('route.rules.flow.continues') }}
+      <span v-if="props.continuesMatching" class="text-xs text-gray-400 dark:text-gray-500">
+        {{ t('rule.flow.continues') }}
       </span>
     </div>
 
@@ -216,11 +195,11 @@ const continuesMatching = computed(() => !isTerminalAction(action.value))
       "no conditions" is the normal way to say "all traffic".
     -->
     <p
-      v-if="isCatchAll"
+      v-if="catchAll && matchesEverything"
       class="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 pt-1 border-t border-gray-200 dark:border-gray-700"
     >
       <ExclamationTriangleIcon class="h-3.5 w-3.5 shrink-0 mt-0.5" />
-      <span>{{ t('route.rules.flow.catchAll') }}</span>
+      <span>{{ t('rule.flow.catchAll') }}</span>
     </p>
   </div>
 </template>

@@ -167,6 +167,29 @@ export const applyActionDefaults = schema.applyTypeDefaults
 export const isDNSRuleAction = schema.isKnownType
 
 /**
+ * DNS actions that STOP rule matching.
+ *
+ * From dns/router.go:147-195, where `route`, `reject` and `predefined` each
+ * `return` and `route-options` falls through to the next rule — it only
+ * accumulates options (strategy, disable_cache, rewrite_ttl, client_subnet)
+ * onto the query and keeps going.
+ *
+ * Note this differs from the ROUTE rule list: there `route-options`, `direct`,
+ * `resolve` and `sniff` are the non-terminal ones. Same words, different
+ * families — see RouteRuleActionTypes.
+ */
+const TERMINAL_ACTIONS: readonly string[] = ['route', 'reject', 'predefined']
+
+export function isTerminalAction(action: string): boolean {
+  return TERMINAL_ACTIONS.includes(action)
+}
+
+/** Every key some DNS action owns — i.e. everything that is NOT a condition. */
+export const ALL_ACTION_KEYS: readonly string[] = Array.from(
+  new Set(Object.values(DNS_RULE_ACTION_INVENTORY).flatMap((fields) => Object.keys(fields))),
+)
+
+/**
  * The action of a rule as loaded from config.json.
  *
  * An omitted `action` means "route" — DNSRuleAction.UnmarshalJSONContext rewrites

@@ -1,3 +1,4 @@
+import type { RouteRuleActionTypeName } from '../schemas/routeRuleActionInventory.generated'
 // API Response Types
 import type { DNSOptions } from './dns'
 import type { Inbound as InboundType } from './inbound'
@@ -260,7 +261,10 @@ export interface RouteRule {
   // *post-normalization* shape — always coerce raw responses with
   // `normalizeRouteRule()` in RoutingRules.vue before assigning into typed
   // state. Direct consumers of the wire payload must accept scalar | array.
-  action?: 'route' | 'reject' | 'route-options' | 'sniff' | 'resolve' | 'hijack-dns'
+  // From the generated inventory rather than hand-listed. The literal union
+  // that used to sit here was missing `direct` — the same drift the schema
+  // pattern exists to remove, one copy at a time.
+  action?: RouteRuleActionTypeName
   inbound?: string[]
   protocol?: string[]
   network?: string[]

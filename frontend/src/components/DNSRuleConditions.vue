@@ -29,7 +29,21 @@ const ruleSet = defineModel<string[]>('ruleSet', { required: true })
 const domain = defineModel<string[]>('domain', { required: true })
 const domainSuffix = defineModel<string[]>('domainSuffix', { required: true })
 const domainKeyword = defineModel<string[]>('domainKeyword', { required: true })
+/**
+ * Still a model, deliberately, even though there is no control for it any more.
+ *
+ * sing-box REMOVED the geosite rule field in 1.12.0 and answers with a hard
+ * error — "geosite database is deprecated in sing-box 1.8.0 and removed in
+ * sing-box 1.12.0" — so offering it produced a rule that could not start. It is
+ * no longer in MatcherKey and renders nothing.
+ *
+ * The binding stays so a config that still carries one round-trips instead of
+ * being silently rewritten: the operator has to be able to see the rule failing
+ * and fix it, and the parent's summary column still reports it. The replacement
+ * is a rule set.
+ */
 const geosite = defineModel<string[]>('geosite', { required: true })
+void geosite
 
 const props = defineProps<{
   ruleSetOptions: { value: string; label: string }[]
@@ -57,13 +71,12 @@ const selectableRuleSets = computed(() => {
   return options
 })
 
-type MatcherKey = 'domain' | 'domainSuffix' | 'domainKeyword' | 'geosite'
+type MatcherKey = 'domain' | 'domainSuffix' | 'domainKeyword'
 
 const matcherModels: Record<MatcherKey, { value: string[] }> = {
   domain,
   domainSuffix,
   domainKeyword,
-  geosite,
 }
 
 // Labels live here so the "add" buttons and the field headers can never drift.
@@ -71,7 +84,6 @@ const matcherLabelKeys: Record<MatcherKey, string> = {
   domain: 'dns.rules.form.domain',
   domainSuffix: 'dns.rules.form.domainSuffix',
   domainKeyword: 'dns.rules.form.domainKeyword',
-  geosite: 'dns.rules.form.geosite',
 }
 
 const matcherKeys = Object.keys(matcherLabelKeys) as MatcherKey[]
@@ -195,15 +207,6 @@ const {
         @remove="removeField('domainKeyword')"
       />
 
-      <ChipsField
-        v-if="isFieldShown('geosite')"
-        v-model="geosite"
-        :label="$t('dns.rules.form.geosite')"
-        :placeholder="$t('dns.rules.form.geositePlaceholder')"
-        :hint="$t('dns.rules.form.geositeHelp')"
-        :removable="isFieldRemovable('geosite')"
-        @remove="removeField('geosite')"
-      />
 
       <!-- The matchers this rule does not use yet: one click each, and the list
            doubles as documentation of what can be matched on. -->

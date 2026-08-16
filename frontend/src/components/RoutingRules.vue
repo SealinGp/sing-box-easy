@@ -9,12 +9,14 @@ import List from './List.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
+import { ALL_MATCHER_KEYS } from '../schemas/routeRuleMatcherFields'
 import {
   ROUTE_RULE_ACTION_TYPE_NAMES,
   applyActionDefaults,
   pruneForeignFields,
   resolveRouteRuleActionFields,
   validateRouteRuleAction,
+  isTerminalAction,
   type RouteRuleActionTypeName,
 } from '../schemas/routeRuleActionFields'
 import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
@@ -290,6 +292,43 @@ function changeAction(action: RouteRuleActionTypeName) {
   activeRule.value = applyActionDefaults(pruned, action) as RouteRule
 }
 
+/**
+ * The outcome, as a phrase, for the flow preview.
+ *
+ * Each action names the field that carries its result, so `route` reads as the
+ * outbound rather than as the word "route".
+ */
+const flowOutcome = computed(() => {
+  const r = activeRule.value as Record<string, unknown>
+  switch (currentAction.value) {
+    case 'route':
+      return r.outbound
+        ? t('route.rules.flow.then.route', { outbound: String(r.outbound) })
+        : t('route.rules.flow.then.routeIncomplete')
+    case 'reject':
+      return r.method === 'drop'
+        ? t('route.rules.flow.then.rejectDrop')
+        : t('route.rules.flow.then.reject')
+    case 'resolve':
+      return r.server
+        ? t('route.rules.flow.then.resolveWith', { server: String(r.server) })
+        : t('route.rules.flow.then.resolve')
+    case 'route-options':
+      return t('route.rules.flow.then.routeOptions')
+    case 'direct':
+      return t('route.rules.flow.then.direct')
+    case 'hijack-dns':
+      return t('route.rules.flow.then.hijackDns')
+    case 'sniff':
+      return t('route.rules.flow.then.sniff')
+    default:
+      return currentAction.value
+  }
+})
+
+/** Only route/reject/hijack-dns stop matching — route.go:478-484. */
+const flowContinues = computed(() => !isTerminalAction(currentAction.value))
+
 /** Outbound tags that actually exist, for the validation `sing-box check` skips. */
 const knownOutboundTags = computed(() =>
   outbounds.value.map((o) => o.tag || '').filter(Boolean),
@@ -433,7 +472,14 @@ onMounted(() => {
           fields exist; this says what they DO. Kept at the top so it reads as a
           heading the editing confirms, and it updates live.
         -->
-        <RuleFlowPreview :rule="activeRule" />
+        <RuleFlowPreview
+          :rule="(activeRule as Record<string, unknown>)"
+          :condition-keys="ALL_MATCHER_KEYS"
+          label-prefix="route.rules.fields"
+          :outcome="flowOutcome"
+          :continues-matching="flowContinues"
+          :catch-all="!flowContinues"
+        />
 
         <!--
           WHEN / THEN, in that order.

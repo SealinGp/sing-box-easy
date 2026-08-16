@@ -158,7 +158,21 @@ export default {
       add: 'Add DNS Rule',
       edit: 'Edit DNS Rule',
     },
+    flow: {
+      then: {
+        route: 'resolve it with {server}',
+        routeIncomplete: 'resolve it with \u2026 (pick a DNS server)',
+        routeOptions: 'apply these resolution options',
+        reject: 'refuse it (empty response)',
+        rejectDrop: 'drop it silently',
+        predefined: 'answer it directly',
+        predefinedRcode: 'answer it directly with {rcode}',
+      },
+    },
     form: {
+      whenHeading: 'When a DNS query matches',
+      whenHint: 'all of the conditions below',
+      thenHeading: 'Then',
       action: 'Action *',
       server: 'DNS Server *',
       rejectMethod: 'Reject Method',
@@ -171,6 +185,14 @@ export default {
       // `strategy` and `disable_cache` are not listed.
       fields: {
         server: 'DNS Server',
+        // Condition labels, for the flow preview. The conditions half of this
+        // form is still hand-written, so these are not generated — but the
+        // preview resolves them the same way, `<prefix>.<json key>`.
+        rule_set: 'Rule set',
+        domain: 'Domain',
+        domain_suffix: 'Domain suffix',
+        domain_keyword: 'Domain keyword',
+        geosite: 'GeoSite (removed in 1.12)',
         rewrite_ttl: 'Rewrite TTL',
         client_subnet: 'Client Subnet (EDNS)',
         method: 'Reject Method',
