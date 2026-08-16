@@ -8,6 +8,7 @@ import RoutingRuleItem from './RoutingRuleItem.vue'
 import List from './List.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
+import RuleFlowPreview from './RuleFlowPreview.vue'
 import {
   ROUTE_RULE_ACTION_TYPE_NAMES,
   applyActionDefaults,
@@ -427,43 +428,83 @@ onMounted(() => {
       class="w-full max-w-2xl"
     >
       <div :key="editingRule ? `edit-${editingRule.index}` : 'add'" class="space-y-4">
-        <!-- Action Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.action') }}</label>
-          <Select
-            :modelValue="currentAction"
-            @update:modelValue="changeAction"
-            :options="actionOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="$t('route.rules.placeholders.action')"
-            class="w-full"
-          />
-          <p v-if="actionIsDefaulted" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('route.rules.actionDefaultHint') }}
-          </p>
-        </div>
+        <!--
+          The rule restated as sing-box will run it. The form below shows which
+          fields exist; this says what they DO. Kept at the top so it reads as a
+          heading the editing confirms, and it updates live.
+        -->
+        <RuleFlowPreview :rule="activeRule" />
 
         <!--
-          Everything the action owns, from the generated inventory. Replaces six
-          hand-written v-if blocks that covered 9 of the 45 fields across the
-          seven actions, offered no `direct` action at all, and left
-          `route-options` unable to reach seven of its ten.
+          WHEN / THEN, in that order.
 
-          :key remounts on action change so the previous action's added-field
-          state does not leak — same reason matchersKey exists below.
+          The dialog used to lead with the action and put the conditions
+          underneath, which is backwards from how the rule executes: sing-box
+          tests the matchers first and only then applies the action. Reading the
+          form top-to-bottom now follows the connection through it.
         -->
-        <SchemaFieldsEditor
-          :key="currentAction"
-          v-model="actionRecord"
-          :fields="actionFields"
-          :empty-hint="$t('route.rules.hints.hijackDns')"
-        />
+        <section class="space-y-3">
+          <div class="flex items-baseline gap-2">
+            <span
+              class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-pill bg-primary-100 dark:bg-primary-900/40 text-[11px] font-semibold text-primary-700 dark:text-primary-300"
+              >1</span
+            >
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {{ $t('route.rules.flow.whenHeading') }}
+            </h4>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ $t('route.rules.flow.whenHint') }}
+            </span>
+          </div>
 
-        <!-- Common matching criteria fields (reusable, renders anywhere).
-             Remounted per dialog open (:key) so the collapse state is decided
-             from the rule as loaded, not from the previous edit. -->
-        <RouteRuleMatchers :key="matchersKey" v-model="activeRule" />
+          <!-- Remounted per dialog open (:key) so the collapse state is decided
+               from the rule as loaded, not from the previous edit. -->
+          <RouteRuleMatchers :key="matchersKey" v-model="activeRule" />
+        </section>
+
+        <section class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div class="flex items-baseline gap-2">
+            <span
+              class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-pill bg-primary-100 dark:bg-primary-900/40 text-[11px] font-semibold text-primary-700 dark:text-primary-300"
+              >2</span
+            >
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {{ $t('route.rules.flow.thenHeading') }}
+            </h4>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.action') }}</label>
+            <Select
+              :modelValue="currentAction"
+              @update:modelValue="changeAction"
+              :options="actionOptions"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('route.rules.placeholders.action')"
+              class="w-full"
+            />
+            <p v-if="actionIsDefaulted" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ $t('route.rules.actionDefaultHint') }}
+            </p>
+          </div>
+
+          <!--
+            Everything the action owns, from the generated inventory. Replaces six
+            hand-written v-if blocks that covered 9 of the 45 fields across the
+            seven actions, offered no `direct` action at all, and left
+            `route-options` unable to reach seven of its ten.
+
+            :key remounts on action change so the previous action's added-field
+            state does not leak — same reason matchersKey exists above.
+          -->
+          <SchemaFieldsEditor
+            :key="currentAction"
+            v-model="actionRecord"
+            :fields="actionFields"
+            :empty-hint="$t('route.rules.hints.hijackDns')"
+          />
+        </section>
       </div>
 
       <template #footer>

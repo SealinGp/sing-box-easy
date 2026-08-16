@@ -85,6 +85,16 @@ const record = computed<Record<string, unknown>>({
 const isFilled = (key: string) => isFieldFilled((model.value as Record<string, unknown>)[key])
 
 const hasRuleSet = computed(() => isFilled('rule_set'))
+
+/**
+ * Whether each section currently narrows the match.
+ *
+ * Drives the AND connectors: a connector between two sections is only honest
+ * when both sides actually carry a condition. Showing "AND" above an empty
+ * context section would claim a constraint that is not there.
+ */
+const contextKeys = contextFields.map((f) => f.key)
+const hasContext = computed(() => contextKeys.some(isFilled))
 // Derived from the curation rather than a second hand-written list, so the
 // warning cannot drift from what the content section actually renders.
 const hasMatchers = computed(() => CONTENT_MATCHER_KEYS.some(isFilled))
@@ -137,6 +147,21 @@ const {
       <span class="font-medium">{{ t('route.rules.mixing.show') }}</span>
     </button>
 
+    <!--
+      Connectors. sing-box ANDs every matcher in a rule
+      (rule_abstract.go:109-115) — the OR is one level down, inside a single
+      field, where `domain: [a, b]` matches either. Saying so between the
+      sections is cheaper than the prose warning alone, and it is the thing
+      operators get wrong.
+    -->
+    <div v-if="showRuleSet && hasRuleSet && hasMatchers" class="flex items-center gap-2">
+      <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+      <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+        {{ t('route.rules.flow.and') }}
+      </span>
+      <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+    </div>
+
     <!-- ── Content conditions: the alternative to a rule set ─────────────── -->
     <template v-if="showMatchers">
       <div class="flex items-center justify-between">
@@ -172,9 +197,20 @@ const {
          traffic came from, so narrowing one by network/port/inbound is correct,
          not an accidental intersection. -->
     <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-      <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-        {{ t('route.rules.mixing.contextGroup') }}
+      <div class="flex items-baseline gap-2 mb-1">
+        <span
+          v-if="hasContext && (hasRuleSet || hasMatchers)"
+          class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
+        >
+          {{ t('route.rules.flow.and') }}
+        </span>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ t('route.rules.mixing.contextGroup') }}
+        </span>
       </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        {{ t('route.rules.flow.contextHint') }}
+      </p>
       <SchemaFieldsEditor v-model="record" :fields="contextFields" />
     </div>
   </div>

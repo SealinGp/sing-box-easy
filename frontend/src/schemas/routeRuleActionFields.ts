@@ -191,6 +191,31 @@ export const applyActionDefaults = schema.applyTypeDefaults
 export const isRouteRuleAction = schema.isKnownType
 
 /**
+ * Actions that STOP rule matching. Everything else annotates the connection and
+ * lets the next rule be tried.
+ *
+ * From route.go:478-484, which is explicit:
+ *
+ *   actionType == route || reject || hijack-dns || (sniff && preMatch)
+ *
+ * `sniff` is listed there but only terminal during the pre-match phase, so it is
+ * treated as non-terminal here — the conservative direction, since the
+ * consequence of the distinction is only whether a condition-less rule is
+ * flagged as a catch-all.
+ *
+ * Why the UI cares: a rule with NO conditions matches every connection
+ * (`rule_abstract.go:55` — `if len(r.allItems) == 0 { return true }`). For a
+ * terminal action that silently swallows all remaining traffic and every rule
+ * below it becomes dead. For a non-terminal one it is normal and common —
+ * `{"action": "sniff"}` with no conditions means "sniff everything".
+ */
+const TERMINAL_ACTIONS: readonly string[] = ['route', 'reject', 'hijack-dns']
+
+export function isTerminalAction(action: string): boolean {
+  return TERMINAL_ACTIONS.includes(action)
+}
+
+/**
  * The action of a rule as loaded from config.json.
  *
  * An omitted `action` means "route" — RuleAction.UnmarshalJSON rewrites "" to

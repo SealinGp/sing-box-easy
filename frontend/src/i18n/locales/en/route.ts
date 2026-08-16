@@ -126,9 +126,39 @@ export default {
       addContent: 'Add a content condition:',
       addContext: 'Narrow by:',
     },
+    flow: {
+      // The connector this whole redesign exists to state. sing-box ANDs every
+      // matcher in a rule; the OR is one level down, inside a single field.
+      and: 'and',
+      anyOf: 'is any of',
+      more: '+{count} more',
+      when: 'When',
+      whenHeading: 'When a connection matches',
+      whenHint: 'all of the conditions below',
+      thenHeading: 'Then',
+      contextHint: 'Narrows whichever matching style you chose above. A rule set cannot express where traffic came from, so these always apply.',
+      everything: 'every connection \u2014 this rule has no conditions',
+      invertPrefix: 'NOT',
+      catchAll:
+        'This rule matches every connection and stops here, so no rule below it can ever run. Add a condition, or move it to the bottom of the list.',
+      continues: '(matching continues to the next rule)',
+      then: {
+        label: 'Then',
+        route: 'send it to {outbound}',
+        routeIncomplete: 'send it to \u2026 (pick an outbound)',
+        routeOptions: 'apply these connection options',
+        direct: 'dial it directly, with the options below',
+        reject: 'refuse it (empty response)',
+        rejectDrop: 'drop it silently',
+        hijackDns: 'answer it with sing-box\u2019s own DNS',
+        sniff: 'sniff the protocol',
+        resolve: 'resolve the domain to an IP',
+        resolveWith: 'resolve the domain via {server}',
+      },
+    },
     mixing: {
-      ruleSetGroup: 'Rule set',
-      contextGroup: 'Context conditions',
+      ruleSetGroup: 'Match by rule set',
+      contextGroup: 'Narrow by context',
       title: 'Conditions are combined with AND',
       warning:
         'A rule set and content conditions in the same rule must BOTH match: only traffic that is in the rule set AND matches the content condition hits this rule. To let everything in the rule set through, leave the content conditions empty — and vice versa. Use a second rule if you meant "either one". Narrowing by inbound, protocol, network or port is unaffected — a rule set cannot express those.',
@@ -136,7 +166,7 @@ export default {
       matchersCollapsed: 'This rule matches by rule set. Content conditions hidden.',
       show: 'Show anyway',
       hide: 'Hide',
-      matchersGroup: 'Content conditions',
+      matchersGroup: 'Match by content',
     },
     placeholders: {
       action: 'Select action',

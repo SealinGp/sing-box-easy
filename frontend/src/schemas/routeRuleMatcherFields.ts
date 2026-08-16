@@ -75,17 +75,26 @@ const BY_TYPE: {
   default: {
     // ── Rule set ────────────────────────────────────────────────────────────
     // Its own group: the alternative to the content matchers, not one of them.
+    //
+    // NOTE ON TIERS IN THIS FILE. Only `rule_set` is core; every other matcher
+    // is `advanced`, including the common ones. That is deliberate and differs
+    // from the other domains: SchemaFieldsEditor SEEDS `typical` fields on
+    // mount, which is right for an inbound (you want its characteristic fields
+    // waiting for you) and wrong for a condition — a rule that pre-opens four
+    // empty condition boxes reads as though it already constrains something.
+    // `advanced` reproduces what the hand-written form did: shown when the
+    // loaded rule uses it, otherwise behind the "add a condition" row.
     rule_set: { tier: 'core', order: 10, group: 'ruleSet', control: 'rule-set' },
     rule_set_ip_cidr_match_source: { tier: 'advanced', order: 20, group: 'ruleSet' },
 
     // ── Content: what the traffic is ────────────────────────────────────────
-    domain: { tier: 'typical', order: 10, group: 'content', control: 'chips' },
-    domain_suffix: { tier: 'typical', order: 20, group: 'content', control: 'chips' },
+    domain: { tier: 'advanced', order: 10, group: 'content', control: 'chips' },
+    domain_suffix: { tier: 'advanced', order: 20, group: 'content', control: 'chips' },
     domain_keyword: { tier: 'advanced', order: 30, group: 'content', control: 'chips' },
     domain_regex: { tier: 'advanced', order: 40, group: 'content', control: 'chips' },
     // Destination address. `ip_cidr` is promoted because the init wizard emits
     // it and the form previously could not edit what it had created.
-    ip_cidr: { tier: 'typical', order: 50, group: 'content', control: 'chips' },
+    ip_cidr: { tier: 'advanced', order: 50, group: 'content', control: 'chips' },
     ip_is_private: { tier: 'advanced', order: 60, group: 'content' },
     ip_version: {
       tier: 'advanced',
@@ -96,16 +105,16 @@ const BY_TYPE: {
     },
 
     // ── Context: where the traffic came from ────────────────────────────────
-    inbound: { tier: 'typical', order: 10, group: 'context', control: 'chips' },
-    protocol: { tier: 'typical', order: 20, group: 'context', control: 'chips' },
+    inbound: { tier: 'advanced', order: 10, group: 'context', control: 'chips' },
+    protocol: { tier: 'advanced', order: 20, group: 'context', control: 'chips' },
     network: {
-      tier: 'typical',
+      tier: 'advanced',
       order: 30,
       group: 'context',
       control: 'chips',
     },
     port: {
-      tier: 'typical',
+      tier: 'advanced',
       order: 40,
       group: 'context',
       control: 'chips',
