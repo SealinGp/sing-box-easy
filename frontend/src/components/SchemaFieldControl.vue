@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useOutboundsStore } from '../stores/outbounds'
 import { useDNSStore } from '../stores/dns'
+import { useRouteStore } from '../stores/route'
 import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 import Input from './Input.vue'
 import ChipsField from './ChipsField.vue'
@@ -61,6 +62,10 @@ const { outbounds } = storeToRefs(outboundsStore)
 const dnsStore = useDNSStore()
 const { dnsServers } = storeToRefs(dnsStore)
 
+/** Rule-set tags for a route/DNS rule's `rule_set`. Same lazy contract. */
+const routeStore = useRouteStore()
+const { ruleSets } = storeToRefs(routeStore)
+
 onMounted(() => {
   const wantsOutbounds =
     props.field.control === 'outbound' || props.field.control === 'outbound-list'
@@ -75,6 +80,45 @@ onMounted(() => {
       // Non-fatal: the picker falls back to whatever the record already holds.
     })
   }
+
+  if (props.field.control === 'rule-set') {
+    // ensureRuleSets loads once per session and collapses concurrent callers,
+    // so several rule dialogs opening in a row do not refetch.
+    routeStore.ensureRuleSets()
+  }
+})
+
+/**
+ * Rule-set tags for a rule's `rule_set`.
+ *
+ * A tag that does not exist in `route.rule_sets` makes sing-box reject the whole
+ * config, and the typo is invisible until the next validate — so tags are picked,
+ * never typed.
+ */
+const ruleSetOptions = computed(() => {
+  const options = (ruleSets.value ?? [])
+    .filter((rs) => !!rs.tag)
+    .map((rs) => ({
+      value: rs.tag as string,
+      label: t('route.rules.ruleSetLabel', {
+        tag: rs.tag,
+        type: (rs as Record<string, unknown>).type || 'local',
+        format: (rs as Record<string, unknown>).format || 'source',
+      }),
+    }))
+
+  // A rule can name a rule set that was since renamed or deleted. MultiSelect
+  // renders nothing for a value it has no option for, so that tag would vanish
+  // from the form while still living in the rule — and the next save would look
+  // like the operator had removed it. Surface it as a flagged option instead.
+  const known = new Set(options.map((o) => o.value))
+  for (const tag of Array.isArray(props.value) ? (props.value as string[]) : []) {
+    if (known.has(tag)) continue
+    known.add(tag)
+    options.push({ value: tag, label: t('route.rules.ruleSetMissing', { tag }) })
+  }
+
+  return options
 })
 
 /**
@@ -243,6 +287,21 @@ function onNumber(raw: string | number) {
     optionValue="value"
     :disabled="disabled"
     @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
+  />
+
+  <MultiSelect
+    v-else-if="field.control === 'rule-set'"
+    class="w-full"
+    :modelValue="(Array.isArray(value) ? value : value ? [value] : [])"
+    :options="ruleSetOptions"
+    optionLabel="label"
+    optionValue="value"
+    display="chip"
+    filter
+    :disabled="disabled"
+    :placeholder="t('route.rules.placeholders.ruleSet')"
+    :emptyMessage="t('route.rules.ruleSetEmpty')"
+    @update:modelValue="(v: unknown) => emit('change', Array.isArray(v) && v.length ? v : undefined)"
   />
 
   <Select

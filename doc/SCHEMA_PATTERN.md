@@ -1,12 +1,12 @@
 # Schema-Driven Option Forms
 
-How the Inbound, DNS Server, Outbound and DNS Rule Action dialogs know what
+How the Inbound, DNS Server, Outbound, DNS Rule and Route Rule dialogs know what
 fields exist, which ones matter, and which ones the installed sing-box will
 actually accept.
 
-> **Status**: implemented for 4 domains — inbound, outbound, DNS server, DNS rule
-> action. `endpoint` and `service` remain. The multi-version plan in §6 is
-> designed but **not built**.
+> **Status**: implemented for 6 domains — inbound, outbound, DNS server, DNS rule
+> action, route rule action, route rule matcher. `endpoint` and `service`
+> remain. The multi-version plan in §6 is designed but **not built**.
 
 ---
 
@@ -26,6 +26,8 @@ Every copy drifted:
 | Hardcoded type dropdowns | Outbounds offered 17 while the registry built 20. `anytls`, `dns`, `shadowsocksr` were unreachable. |
 | Capability predicates | `needsServerAddress` and `supportsDetour` in `DNSServers.vue` were byte-identical lists under different names. Group classification existed in four places. |
 | DNS rule action lists | Three copies. `types/dns.ts` said `'route' \| 'return' \| 'reject'` — `return` is not a sing-box action and `route-options`/`predefined` were missing; `DNSRules.vue` carried a second, correct list; a third `switch` decided which fields to strip on save. |
+| Route rule matchers | 9 of 37 rendered, and two of the nine (`geosite`, `geoip`) had been REMOVED from sing-box since 1.12.0 — promoted as curated dropdowns whose every value produced a rule that could not start. |
+| Route rule actions | 9 of ~45 fields across 6 of the 7 actions; `direct` was not offered at all. The ten dial options were shown only under `route-options`, though sing-box accepts them on `route` too. |
 | `registry.go` itself | Spelled HTTP/3 DNS `"http3"`; sing-box's constant is `"h3"`. A valid config could not be parsed, and a saved one could not start. |
 
 The authoritative list already exists in this repo — `app/pkg/config/registry.go`
@@ -215,6 +217,33 @@ precise failure §4.2 exists to prevent, arrived at from the opposite direction.
 curl -s https://raw.githubusercontent.com/SagerNet/sing-box/<tag>/option/rule_action.go
 ```
 
+### 4.1b A removal can predate the pin
+
+`geosite`, `geoip` and `source_geoip` on a route or DNS rule were **removed in
+1.12.0** — the version this repo pins. They still exist as Go fields, so they
+parse; sing-box then refuses to build the rule:
+
+```
+$ sing-box check          # 1.13.11
+geosite database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0
+```
+
+The route form promoted `geosite` and `geoip` as the primary content matchers,
+with curated dropdowns of 12 and 7 options. All 19 values produced a rule that
+could not start.
+
+This is the gate working in a direction §4.2 does not describe: `removed` is at
+or below the PINNED library, not merely below the installed binary, so the field
+is withheld from every host. Nothing about `isRetired` needed changing — the
+entry simply had to exist in `versions.go`, and sing-box does not report these
+through `deprecated.Report` at all, so nothing found them automatically.
+
+Worth checking for the remaining domains on any dependency bump:
+
+```bash
+grep -rn 'removed in sing-box' "$(go env GOMODCACHE)/github.com/sagernet/sing-box@<ver>"
+```
+
 ### 4.2 Why a gate exists at all
 
 **The inventory describes the pinned library. The operator runs a different
@@ -302,6 +331,40 @@ of is kept **by construction**. The hand-written allowlist it replaced
 (`EDITED_FIELDS` in `DNSRules.vue`) destroyed any field nobody remembered to
 list — including `no_drop`, which was listed but never rendered, so it was read
 into nothing and written back as nothing.
+
+The route rule form had neither. No allowlist, no denylist, nothing: the whole
+in-memory object went to the server, so switching the action shipped the
+previous action's fields. Against a running panel, the two outcomes were
+
+```
+POST {"action":"reject","outbound":"direct"}   -> 200, outbound SILENTLY DROPPED
+POST {"action":"sniff","outbound":"direct",…}  -> 400 unknown field "outbound"
+```
+
+silent data loss or a hard error, depending on which pair of actions.
+
+### Render one domain as several sections
+
+A domain whose fields fall into groups the operator reasons about separately —
+route rule matchers are the only case so far — adds a `group` to its curation
+and filters the resolved list per section.
+
+**`SchemaFieldsEditor` knows nothing about groups.** It already takes an
+already-resolved `fields` array, so grouping is just filtering: several
+instances bound to the same record, each handed its own subset. Each keeps its
+own `useOptionalFields` and its own add-row, which is what a grouped form wants
+anyway.
+
+That was a deliberate choice over teaching the editor about sections. The route
+matcher grouping is not decoration — it encodes that CONTENT matchers are an
+alternative to a rule set (combining them is the AND trap) while CONTEXT
+matchers narrow either one and must never be folded away. That reasoning belongs
+in the component that documents it, not in machinery with one user.
+
+An uncurated field has no group. `resolveMatcherFields` files those under
+CONTEXT rather than CONTENT, because the safe failure is a matcher that shows
+when it need not; a matcher hidden by the rule-set choice would silently
+disappear from a rule that uses it.
 
 ### Add a domain (`endpoint`, `service`)
 
@@ -462,7 +525,23 @@ Each of these cost real time.
     not a one-element array. A chips control bound to that renders one chip per
     *character*. The conditions form already coerced scalar → array for
     `domain`/`rule_set`; anything list-shaped needs the same treatment.
-11. **Defaults belong on create, never on open.** `openEditRuleModal` seeded
+11. **A field can be declared in a context that refuses it.** `DirectActionOptions`
+    IS `DialerOptions`, so `detour` reflects onto the `direct` route action — and
+    sing-box answers "detour is not available in the current context".
+    `domain.ExcludedFields` drops those. Omitting is safe here in a way it is not
+    for a deprecated field: a config carrying one cannot decode at all, so none
+    can be holding a value the form would then hide.
+12. **A Go type's underlying kind can lie about its VOCABULARY too, not just its
+    shape.** `option.NetworkStrategy` and `option.InterfaceType` are `uint8`
+    enums marshalling as names. They shipped as `number` and `list of number` in
+    the released inbound and outbound inventories, so those forms rendered number
+    spinners for `default|fallback|hybrid` and `wifi|cellular|ethernet|other`.
+13. **Two fields can look like one.** `port` is `Listable[uint16]`; `port_range`
+    is `Listable[string]` and its separator is a COLON. The route form had a
+    single `port` field that kept range syntax as a string and advertised
+    `8080-8090` in its placeholder — wrong field and wrong separator, rejected
+    twice over.
+14. **Defaults belong on create, never on open.** `openEditRuleModal` seeded
     `rcode: 'NXDOMAIN'` for a missing value, but an absent rcode means `NOERROR` —
     so opening a rule and pressing Update silently changed what it did.
     `applyTypeDefaults` is called on create and on a type change only, and this
@@ -475,7 +554,7 @@ Each of these cost real time.
 | Path | Role |
 |---|---|
 | `app/pkg/config/registry.go` | Type → option struct. The source of truth. |
-| `app/pkg/config/{inbound,dns,outbound,dns_rule_action}_types.go` | Exported type lists + classification helpers |
+| `app/pkg/config/{inbound,dns,outbound,dns_rule_action,route_rule}_types.go` | Exported type lists + classification helpers |
 | `cmd/gen-option-schema/main.go` | Generator: domains table, reflection, emission |
 | `cmd/gen-option-schema/versions.go` | sing-box deprecation table → inventory mapping |
 | `frontend/src/schemas/optionSchema.ts` | Domain-agnostic: tiers, visibility, prune, defaults, version helpers |
@@ -498,4 +577,9 @@ and flagged rather than dropping it — otherwise the next save looks like the
 operator cleared it.
 
 Current coverage: **Inbound** 17 types, **DNSServer** 11, **Outbound** 20,
-**DNSRuleAction** 4. Remaining: `endpoint`, `service`.
+**DNSRuleAction** 4, **RouteRuleAction** 7, **RouteRuleMatcher** 1 (37 fields).
+Remaining: `endpoint`, `service`.
+
+`RouteRuleMatcher` is the one domain that is not polymorphic — `RawDefaultRule`
+is a single flat struct — so it generates one entry and reuses the generator's
+shape only to avoid a second code path.

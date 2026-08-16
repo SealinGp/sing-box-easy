@@ -3,11 +3,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import { Dialog, Select } from '../volt'
-import ChipsField from './ChipsField.vue'
 import Button from './Button.vue'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import List from './List.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
+import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
+import {
+  ROUTE_RULE_ACTION_TYPE_NAMES,
+  applyActionDefaults,
+  pruneForeignFields,
+  resolveRouteRuleActionFields,
+  validateRouteRuleAction,
+  type RouteRuleActionTypeName,
+} from '../schemas/routeRuleActionFields'
 import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
@@ -183,50 +191,27 @@ const handleDeleteRule = async (index: number) => {
 }
 
 // Options
-const outboundOptions = computed(() =>
-  outbounds.value.map(o => ({ label: o.tag || '', value: o.tag || '' }))
+// Derived from the generated inventory rather than hand-listed, so it cannot
+// drift from what the registry can build. The old list was missing `direct`
+// entirely. Labels fall back to the action's own name.
+const ACTION_LABEL_KEYS: Record<string, string> = {
+  route: 'route.rules.actions.route',
+  'route-options': 'route.rules.actions.routeOptions',
+  direct: 'route.rules.actions.direct',
+  reject: 'route.rules.actions.reject',
+  'hijack-dns': 'route.rules.actions.hijackDns',
+  sniff: 'route.rules.actions.sniff',
+  resolve: 'route.rules.actions.resolve',
+}
+
+const actionOptions = computed(() =>
+  ROUTE_RULE_ACTION_TYPE_NAMES.map((value) => ({
+    value,
+    label: ACTION_LABEL_KEYS[value] ? t(ACTION_LABEL_KEYS[value]!) : value,
+  })),
 )
 
-const actionOptions = computed(() => [
-  { label: t('route.rules.actions.route'), value: 'route' },
-  { label: t('route.rules.actions.reject'), value: 'reject' },
-  { label: t('route.rules.actions.routeOptions'), value: 'route-options' },
-  { label: t('route.rules.actions.sniff'), value: 'sniff' },
-  { label: t('route.rules.actions.resolve'), value: 'resolve' },
-  { label: t('route.rules.actions.hijackDns'), value: 'hijack-dns' },
-])
-
-const rejectMethodOptions = computed(() => [
-  { label: t('route.rules.rejectMethods.default'), value: 'default' },
-  { label: t('route.rules.rejectMethods.drop'), value: 'drop' },
-])
-
-const networkStrategyOptions = computed(() => [
-  { label: t('route.rules.networkStrategies.preferIpv4'), value: 'prefer_ipv4' },
-  { label: t('route.rules.networkStrategies.preferIpv6'), value: 'prefer_ipv6' },
-  { label: t('route.rules.networkStrategies.ipv4Only'), value: 'ipv4_only' },
-  { label: t('route.rules.networkStrategies.ipv6Only'), value: 'ipv6_only' },
-])
-
-const dnsStrategyOptions = computed(() => [
-  { label: t('route.rules.networkStrategies.preferIpv4'), value: 'prefer_ipv4' },
-  { label: t('route.rules.networkStrategies.preferIpv6'), value: 'prefer_ipv6' },
-  { label: t('route.rules.networkStrategies.ipv4Only'), value: 'ipv4_only' },
-  { label: t('route.rules.networkStrategies.ipv6Only'), value: 'ipv6_only' },
-])
-
 // Computed properties for v-model
-const currentRuleOutbound = computed({
-  get: () => editingRule.value ? editingRule.value.rule.outbound : ruleForm.value.outbound,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.outbound = val
-    } else {
-      ruleForm.value.outbound = val
-    }
-  }
-})
-
 // The rule currently being edited (existing rule) or composed (add form). The
 // common-matcher fields are delegated to <RouteRuleMatchers v-model="activeRule">,
 // which updates immutably; the setter reassigns the underlying object so the
@@ -248,17 +233,6 @@ const activeRule = computed<RouteRule>({
 // keeps omitting it on save, and `actionIsDefaulted` stays true so the hint shows.
 const ACTION_DEFAULT = 'route'
 
-const currentRuleAction = computed({
-  get: () => (editingRule.value ? editingRule.value.rule.action : ruleForm.value.action) || ACTION_DEFAULT,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.action = val
-    } else {
-      ruleForm.value.action = val
-    }
-  }
-})
-
 // Effective action — drives which action-specific fields are shown. Falls back
 // to the "route" default so an action-less rule still renders its outbound field.
 const currentAction = computed(() => (editingRule.value ? editingRule.value.rule.action : ruleForm.value.action) || ACTION_DEFAULT)
@@ -270,104 +244,56 @@ const actionIsDefaulted = computed(() => {
   return !raw
 })
 
-// Action-specific computed properties
+/**
+ * The action driving the schema. An omitted `action` means "route".
+ *
+ * Kept separate from `currentRuleAction` above, which is what the Select writes:
+ * that one must NOT persist the default, so a rule that omitted `action` keeps
+ * omitting it and `actionIsDefaulted` stays true.
+ */
+const actionFields = computed(() => resolveRouteRuleActionFields(currentAction.value))
 
-// Reject action
-const currentRuleMethod = computed({
-  get: () => editingRule.value ? editingRule.value.rule.method : ruleForm.value.method,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.method = val
-    } else {
-      ruleForm.value.method = val
-    }
-  }
-})
-
-// Route-options action
-const currentRuleOverrideAddress = computed({
-  get: () => editingRule.value ? editingRule.value.rule.override_address : ruleForm.value.override_address,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.override_address = val
-    } else {
-      ruleForm.value.override_address = val
-    }
-  }
-})
-
-const currentRuleOverridePort = computed({
-  get: () => editingRule.value ? editingRule.value.rule.override_port : ruleForm.value.override_port,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.override_port = val
-    } else {
-      ruleForm.value.override_port = val
-    }
-  }
-})
-
-const currentRuleNetworkStrategy = computed({
-  get: () => editingRule.value ? editingRule.value.rule.network_strategy : ruleForm.value.network_strategy,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.network_strategy = val
-    } else {
-      ruleForm.value.network_strategy = val
-    }
-  }
-})
-
-// Sniff action
-const currentRuleSniffer = computed({
-  get: () => {
-    const sniffer = editingRule.value ? editingRule.value.rule.sniffer : ruleForm.value.sniffer
-    return Array.isArray(sniffer) ? sniffer : (sniffer ? [sniffer] : [])
+/**
+ * The rule as a plain record, for the schema editor.
+ *
+ * `SchemaFieldsEditor` replaces the whole object with an immutable spread that
+ * touches only the keys it renders, so it composes with RouteRuleMatchers'
+ * three editors and with the action Select without any of them stepping on
+ * each other.
+ */
+const actionRecord = computed<Record<string, unknown>>({
+  get: () => activeRule.value as Record<string, unknown>,
+  set: (v) => {
+    activeRule.value = v as RouteRule
   },
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.sniffer = val
-    } else {
-      ruleForm.value.sniffer = val
-    }
-  }
 })
 
-const currentRuleTimeout = computed({
-  get: () => editingRule.value ? editingRule.value.rule.timeout : ruleForm.value.timeout,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.timeout = val
-    } else {
-      ruleForm.value.timeout = val
-    }
-  }
-})
+/**
+ * Switching the action prunes the previous one's fields and seeds the new one's
+ * defaults.
+ *
+ * There was no handler here at all before, and no pruning anywhere on the route
+ * path — no allowlist, no denylist. The form seeds `{action:'route', outbound:''}`,
+ * so picking another action shipped the previous one's fields. Reproduced
+ * against a running panel:
+ *
+ *   {"action":"reject","outbound":"direct"}   -> 200, outbound SILENTLY DROPPED
+ *   {"action":"sniff","outbound":"direct",…}  -> 400 unknown field "outbound"
+ *
+ * Silent data loss or a hard error depending on the combination.
+ * `pruneForeignFields` removes only keys another action owns, so all 37
+ * matchers — and `type`/`mode`/`rules` on a logical rule — survive untouched.
+ */
+function changeAction(action: RouteRuleActionTypeName) {
+  const pruned = pruneForeignFields(activeRule.value as Record<string, unknown>, action)
+  activeRule.value = applyActionDefaults(pruned, action) as RouteRule
+}
 
-// Resolve action
-const currentRuleServer = computed({
-  get: () => editingRule.value ? editingRule.value.rule.server : ruleForm.value.server,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.server = val
-    } else {
-      ruleForm.value.server = val
-    }
-  }
-})
+/** Outbound tags that actually exist, for the validation `sing-box check` skips. */
+const knownOutboundTags = computed(() =>
+  outbounds.value.map((o) => o.tag || '').filter(Boolean),
+)
 
-const currentRuleStrategy = computed({
-  get: () => editingRule.value ? editingRule.value.rule.strategy : ruleForm.value.strategy,
-  set: (val) => {
-    if (editingRule.value) {
-      editingRule.value.rule.strategy = val
-    } else {
-      ruleForm.value.strategy = val
-    }
-  }
-})
-
-// Dialog visibility
 const dialogVisible = computed({
   get: () => showAddRuleDialog.value || !!editingRule.value,
   set: (val) => {
@@ -411,14 +337,39 @@ function startEditRule(index: number, rule: RouteRule) {
   editingRule.value = { index, rule: ruleCopy }
 }
 
+/**
+ * Constraints sing-box enforces while decoding or starting, which surface as an
+ * opaque upstream string — or, for an outbound tag that does not exist, not at
+ * all: `sing-box check` PASSES for that one, so the client is the only place it
+ * can be caught.
+ *
+ * Returns false and shows the reason when the rule cannot be saved.
+ */
+function guardAction(rule: RouteRule): boolean {
+  const invalid = validateRouteRuleAction(
+    rule as Record<string, unknown>,
+    knownOutboundTags.value,
+  )
+  if (!invalid) return true
+
+  toast.add({
+    severity: 'error',
+    summary: t('common.error'),
+    detail: t(invalid),
+    life: 4000,
+  })
+  return false
+}
+
 function submitAddRule() {
+  if (!guardAction(ruleForm.value)) return
   handleAddRule(ruleForm.value)
 }
 
 function submitUpdateRule() {
-  if (editingRule.value) {
-    handleEditRule(editingRule.value.index, editingRule.value.rule)
-  }
+  if (!editingRule.value) return
+  if (!guardAction(editingRule.value.rule)) return
+  handleEditRule(editingRule.value.index, editingRule.value.rule)
 }
 
 function submitDeleteRule(index: number) {
@@ -480,7 +431,8 @@ onMounted(() => {
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.action') }}</label>
           <Select
-            v-model="currentRuleAction"
+            :modelValue="currentAction"
+            @update:modelValue="changeAction"
             :options="actionOptions"
             optionLabel="label"
             optionValue="value"
@@ -492,111 +444,21 @@ onMounted(() => {
           </p>
         </div>
 
-        <!-- Action-specific fields -->
+        <!--
+          Everything the action owns, from the generated inventory. Replaces six
+          hand-written v-if blocks that covered 9 of the 45 fields across the
+          seven actions, offered no `direct` action at all, and left
+          `route-options` unable to reach seven of its ten.
 
-        <!-- Route Action -->
-        <div v-if="currentAction === 'route'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.outbound') }}</label>
-          <Select
-            editable
-            v-model="currentRuleOutbound"
-            :options="outboundOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="$t('route.rules.placeholders.outbound')"
-            class="w-full"
-          />
-        </div>
-
-        <!-- Reject Action -->
-        <template v-if="currentAction === 'reject'">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.method') }}</label>
-            <Select
-              v-model="currentRuleMethod"
-              :options="rejectMethodOptions"
-              optionLabel="label"
-              optionValue="value"
-              :placeholder="$t('route.rules.placeholders.method')"
-              class="w-full"
-            />
-          </div>
-        </template>
-
-        <!-- Route Options Action -->
-        <template v-if="currentAction === 'route-options'">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.overrideAddress') }}</label>
-            <input
-              v-model="currentRuleOverrideAddress"
-              type="text"
-              :placeholder="$t('route.rules.placeholders.overrideAddress')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.overridePort') }}</label>
-            <input
-              v-model.number="currentRuleOverridePort"
-              type="number"
-              :placeholder="$t('route.rules.placeholders.overridePort')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.networkStrategy') }}</label>
-            <Select
-              v-model="currentRuleNetworkStrategy"
-              :options="networkStrategyOptions"
-              optionLabel="label"
-              optionValue="value"
-              :placeholder="$t('route.rules.placeholders.networkStrategy')"
-              class="w-full"
-            />
-          </div>
-        </template>
-
-        <!-- Sniff Action -->
-        <template v-if="currentAction === 'sniff'">
-          <ChipsField
-            v-model="currentRuleSniffer"
-            :label="$t('route.rules.fields.sniffer')"
-            :placeholder="$t('route.rules.placeholders.sniffer')"
-          />
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.timeout') }}</label>
-            <input
-              v-model="currentRuleTimeout"
-              type="text"
-              :placeholder="$t('route.rules.placeholders.timeout')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-          </div>
-        </template>
-
-        <!-- Resolve Action -->
-        <template v-if="currentAction === 'resolve'">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.dnsServer') }}</label>
-            <input
-              v-model="currentRuleServer"
-              type="text"
-              :placeholder="$t('route.rules.placeholders.dnsServer')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-surface bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('route.rules.fields.strategy') }}</label>
-            <Select
-              v-model="currentRuleStrategy"
-              :options="dnsStrategyOptions"
-              optionLabel="label"
-              optionValue="value"
-              :placeholder="$t('route.rules.placeholders.strategy')"
-              class="w-full"
-            />
-          </div>
-        </template>
+          :key remounts on action change so the previous action's added-field
+          state does not leak — same reason matchersKey exists below.
+        -->
+        <SchemaFieldsEditor
+          :key="currentAction"
+          v-model="actionRecord"
+          :fields="actionFields"
+          :empty-hint="$t('route.rules.hints.hijackDns')"
+        />
 
         <!-- Common matching criteria fields (reusable, renders anywhere).
              Remounted per dialog open (:key) so the collapse state is decided

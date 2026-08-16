@@ -126,12 +126,33 @@ export type ControlKind =
    * is rejected, so "" is an error rather than "direct".
    */
   | 'dns-server'
+  /**
+   * A rule's `rule_set` — several rule-set tags from `route.rule_sets`. Its own
+   * kind for the same reason as 'outbound': the vocabulary is the live config,
+   * not a constant. A tag that does not exist makes sing-box reject the whole
+   * config, and the typo is invisible until the next validate.
+   */
+  | 'rule-set'
   | 'json'
 
 export interface FieldCuration {
   tier: FieldTier
   /** Lower sorts first within a tier. Uncurated fields sort last, alphabetically. */
   order?: number
+  /**
+   * Which section of the form this field belongs to.
+   *
+   * Only domains that render more than one editor need it. Route rule matchers
+   * are the case: `rule_set` and the CONTENT matchers are alternatives to each
+   * other (combining them is the AND trap), while CONTEXT matchers narrow
+   * either one and must never be folded away — see routeRuleMatcherFields.ts.
+   *
+   * Grouping is deliberately just a label. `SchemaFieldsEditor` knows nothing
+   * about it: the caller filters the resolved list and renders one editor per
+   * group, so the exclusivity logic stays in the component that documents it
+   * rather than being generalised into machinery that has one user.
+   */
+  group?: string
   control?: ControlKind
   /** Fixed vocabulary for `control: 'select'`. */
   options?: readonly string[]
@@ -146,6 +167,8 @@ export interface FieldCuration {
 export interface ResolvedField extends OptionVersionNote {
   key: string
   tier: FieldTier
+  /** Section label; undefined for domains that render a single editor. */
+  group?: string
   control: ControlKind
   kind: OptionFieldKind
   item?: OptionFieldKind
@@ -276,6 +299,7 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
       return {
         key,
         tier,
+        group: curation?.group,
         control: curation?.control ?? inferControl(info),
         kind: info.kind,
         item: info.item,
