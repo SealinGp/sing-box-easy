@@ -14,6 +14,7 @@ import dnsProbe from './dnsProbe'
 import dnsFlow from './dnsFlow'
 import dnsTimeline from './dnsTimeline'
 import route from './route'
+import schema from './schema'
 import experimental from './experimental'
 import dialer from './dialer'
 import log from './log'
@@ -39,6 +40,7 @@ export default {
   dnsFlow,
   dnsTimeline,
   route,
+  schema,
   experimental,
   dialer,
   log,

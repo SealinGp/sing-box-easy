@@ -49,14 +49,34 @@ export type OptionFieldKind =
   | 'object'
   | 'string'
 
-export interface OptionFieldInfo {
+/**
+ * When sing-box retired something, from its own deprecation table.
+ *
+ * `removed` is the load-bearing one. The inventory describes the sing-box
+ * LIBRARY this repo pins, but the operator runs whatever binary is installed —
+ * routinely a newer one. A field or type whose `removed` version is at or below
+ * the installed binary is not "discouraged", it is REJECTED: probed against
+ * 1.13.11, `sniff` fails config decode outright and a `wireguard` outbound
+ * fails at init. See `isRetiredIn` and cmd/gen-option-schema/versions.go.
+ */
+export interface OptionVersionNote {
+  /** sing-box version that deprecated it, e.g. "1.11.0". */
+  readonly since?: string
+  /** sing-box version that removes it, e.g. "1.13.0". */
+  readonly removed?: string
+  /** Upstream migration guide, when the table names one. */
+  readonly link?: string
+}
+
+export interface OptionFieldInfo extends OptionVersionNote {
   readonly kind: OptionFieldKind
   /** Element kind, for kind: 'list'. */
   readonly item?: OptionFieldKind
   /**
-   * Still accepted by sing-box, but documented as deprecated. Kept so an
+   * Still accepted by the pinned sing-box, but retired upstream. Kept so an
    * existing config that uses the field can still be edited rather than having
-   * it silently dropped on save.
+   * it silently dropped on save — but see `removed`, which decides whether the
+   * INSTALLED binary will actually take it.
    */
   readonly deprecated?: true
 }
@@ -84,6 +104,20 @@ export type ControlKind =
    * config's outbound list, not a constant the schema can carry.
    */
   | 'outbound'
+  /**
+   * A group's `outbounds` — several outbound tags, self excluded. Distinct
+   * from 'outbound' (one tag, empty meaning direct) because the vocabulary,
+   * the cardinality and the self-reference rule all differ: a group listing
+   * itself is a startup hang, not a config error.
+   */
+  | 'outbound-list'
+  /**
+   * One of the tags this record's OWN `outbounds` list currently holds — a
+   * selector's `default`. Dependent rather than fixed: sing-box errors at start
+   * with "default outbound not found" if it names something not in the group,
+   * and that is past where `sing-box check` looks.
+   */
+  | 'outbound-member'
   | 'json'
 
 export interface FieldCuration {
@@ -101,7 +135,7 @@ export interface FieldCuration {
   placeholder?: string
 }
 
-export interface ResolvedField {
+export interface ResolvedField extends OptionVersionNote {
   key: string
   tier: FieldTier
   control: ControlKind
@@ -235,6 +269,8 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
         hintKey: curation?.hintKey,
         placeholder: curation?.placeholder,
         deprecated: info.deprecated === true,
+        since: info.since,
+        removed: info.removed,
         _order: curation?.order ?? UNCURATED_ORDER,
       }
     })
@@ -301,4 +337,72 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
   }
 
   return { resolveFields, pruneForType, applyTypeDefaults, isKnownType }
+}
+
+// ── Version gating ───────────────────────────────────────────────────────────
+//
+// The inventory describes the sing-box LIBRARY this repo pins; the operator
+// runs whatever binary is installed, routinely a newer one. Fields a newer
+// sing-box ADDED are simply missing from the form — a lost knob, no worse. The
+// dangerous direction is the other one: offering something the installed binary
+// REJECTS.
+//
+// Measured against 1.13.11 while this was written, with the panel pinned to the
+// 1.12.12 library: `sniff` fails config decode outright, and it was offered in
+// the inbound form's own "deprecated" row. `sing-box check` catches it before
+// anything is written, so the result is a failed save with an opaque upstream
+// error rather than a broken config — but the UI should not have suggested it.
+
+/**
+ * Compare two dotted version strings. Returns <0, 0, >0 like a comparator.
+ *
+ * Deliberately tolerant: sing-box versions carry suffixes ("1.13.0-beta.1",
+ * "1.12.12"), and a missing or unparseable segment sorts as 0 rather than
+ * throwing. Only the numeric prefix of each segment is read, so "0-beta.1"
+ * compares as 0 — a prerelease of X counts as X, which is the conservative
+ * answer for "has this been removed yet".
+ */
+export function compareVersions(a: string, b: string): number {
+  const parse = (v: string) =>
+    v
+      .replace(/^v/, '')
+      // Drop any prerelease/build suffix before splitting. Without this,
+      // "1.13.0-beta.1" splits into four segments and sorts ABOVE "1.13.0",
+      // while "1.13.0-rc" sorts equal to it — same shape, different answer.
+      .split(/[-+]/)[0]!
+      .split('.')
+      .map((part) => parseInt(part, 10) || 0)
+
+  const left = parse(a)
+  const right = parse(b)
+  const length = Math.max(left.length, right.length)
+
+  for (let i = 0; i < length; i++) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+/**
+ * Whether the installed sing-box has actually removed this field or type.
+ *
+ * Unknown version -> false. Guessing "probably removed" would hide fields from
+ * someone whose binary we simply failed to detect, which is worse than showing
+ * one too many.
+ */
+export function isRetired(note: OptionVersionNote, installedVersion: string | undefined): boolean {
+  if (!installedVersion || !note.removed) return false
+  return compareVersions(installedVersion, note.removed) >= 0
+}
+
+/** Whether the installed sing-box deprecates it but still accepts it. */
+export function isDeprecatedIn(
+  note: OptionVersionNote,
+  installedVersion: string | undefined,
+): boolean {
+  if (!note.since) return false
+  if (isRetired(note, installedVersion)) return false
+  if (!installedVersion) return true
+  return compareVersions(installedVersion, note.since) >= 0
 }

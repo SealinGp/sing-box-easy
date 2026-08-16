@@ -33,7 +33,14 @@ import LabeledField from './LabeledField.vue'
 import SchemaFieldControl from './SchemaFieldControl.vue'
 import { useOptionalFields } from '../composables/useMatcherFields'
 import { humanizeFieldName } from '../utils/fieldLabels'
-import { isFieldFilled, withoutField, type ResolvedField } from '../schemas/optionSchema'
+import {
+  isDeprecatedIn,
+  isFieldFilled,
+  isRetired,
+  withoutField,
+  type ResolvedField,
+} from '../schemas/optionSchema'
+import { useSingBoxVersion } from '../composables/useSingBoxVersion'
 import type { UserFieldSpec } from '../schemas/inboundFields'
 
 const props = defineProps<{
@@ -52,6 +59,12 @@ const props = defineProps<{
 const model = defineModel<Record<string, unknown>>({ required: true })
 
 const { t, te } = useI18n()
+
+// The installed binary, not the pinned library — see useSingBoxVersion.
+const { singBoxVersion } = useSingBoxVersion()
+
+/** Removed by the sing-box actually installed: offering it is a failed save. */
+const retired = (field: ResolvedField) => isRetired(field, singBoxVersion.value)
 
 const fields = computed(() => props.fields)
 
@@ -94,7 +107,12 @@ const hiddenFields = computed(() => {
     .filter((f): f is ResolvedField => !!f)
   return {
     current: hidden.filter((f) => !f.deprecated),
-    deprecated: hidden.filter((f) => f.deprecated),
+    // Deprecated but still accepted by the installed binary: offered, flagged.
+    deprecated: hidden.filter((f) => f.deprecated && !retired(f)),
+    // Removed by the installed binary. NOT offered — adding one makes the save
+    // fail with an upstream decode error for something the UI suggested.
+    // Counted so the row can say what is being withheld and why.
+    retired: hidden.filter((f) => retired(f)),
   }
 })
 
@@ -103,7 +121,19 @@ function label(field: ResolvedField): string {
 }
 
 function hint(field: ResolvedField): string | undefined {
-  if (field.deprecated) return t('inbounds.form.deprecatedHint')
+  // A retired field still renders when a loaded config uses it — hiding it
+  // would mean the operator could not see or clear the thing breaking their
+  // config — but it says plainly that this binary will reject it.
+  if (retired(field)) {
+    return t('schema.field.retired', {
+      removed: field.removed,
+      version: singBoxVersion.value,
+    })
+  }
+  if (isDeprecatedIn(field, singBoxVersion.value)) {
+    return t('schema.field.deprecated', { since: field.since })
+  }
+  if (field.deprecated) return t('schema.field.deprecatedUnversioned')
   return field.hintKey && te(field.hintKey) ? t(field.hintKey) : undefined
 }
 
@@ -140,6 +170,7 @@ function removeField(key: string) {
       <SchemaFieldControl
         :field="field"
         :value="model[field.key]"
+        :record="model"
         :user-fields="props.userFields"
         @change="(v: unknown) => setField(field.key, v)"
       />
@@ -156,6 +187,7 @@ function removeField(key: string) {
       <SchemaFieldControl
         :field="field"
         :value="model[field.key]"
+        :record="model"
         :user-fields="props.userFields"
         @change="(v: unknown) => setField(field.key, v)"
       />
@@ -187,6 +219,23 @@ function removeField(key: string) {
         {{ label(field) }}
       </button>
     </div>
+
+    <!--
+      Removed by the installed sing-box. Stated rather than silently dropped:
+      a field vanishing with no explanation reads as a missing feature, and the
+      operator would go looking for it in config.json instead.
+    -->
+    <p
+      v-if="hiddenFields.retired.length"
+      class="text-xs text-gray-500 dark:text-gray-400"
+    >
+      {{
+        t('schema.field.retiredHidden', {
+          count: hiddenFields.retired.length,
+          version: singBoxVersion,
+        })
+      }}
+    </p>
 
     <div v-if="hiddenFields.deprecated.length" class="flex flex-wrap items-center gap-1.5">
       <span class="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
