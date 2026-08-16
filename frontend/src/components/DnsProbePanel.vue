@@ -17,6 +17,7 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
+import Table from './Table.vue'
 import DnsProbeTimeline from './DnsProbeTimeline.vue'
 import { Select } from '../volt'
 import { dnsService } from '../services'
@@ -201,28 +202,25 @@ const logStatusMessage = computed(() => {
             {{ $t('dnsProbe.disagreement') }}
           </span>
         </h4>
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-              <tr v-for="server in result.servers" :key="server.tag">
-                <td class="py-1.5 pr-3 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                  {{ server.tag }}
-                  <span class="ml-1 text-xs text-gray-400">{{ server.type }}</span>
-                </td>
-                <td class="py-1.5 text-gray-600 dark:text-gray-400">
-                  <span v-if="server.skip_reason" class="text-xs italic">{{ skipLabel(server) }}</span>
-                  <span v-else-if="server.error" class="text-xs text-red-600 dark:text-red-400 break-all">
-                    {{ server.error }}
-                  </span>
-                  <span v-else class="font-mono text-xs break-all">{{ server.records.join(', ') || '—' }}</span>
-                </td>
-                <td class="py-1.5 pl-3 text-right text-xs text-gray-400 whitespace-nowrap">
-                  <span v-if="!server.skip_reason">{{ server.elapsed_ms }} ms</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- No header: the three columns are self-describing, so no #head slot. -->
+        <Table>
+          <tr v-for="server in result.servers" :key="server.tag">
+            <td class="font-medium text-gray-700 dark:text-gray-300">
+              {{ server.tag }}
+              <span class="ml-1 text-xs text-gray-400">{{ server.type }}</span>
+            </td>
+            <td class="cell-wrap text-gray-600 dark:text-gray-400">
+              <span v-if="server.skip_reason" class="text-xs italic">{{ skipLabel(server) }}</span>
+              <span v-else-if="server.error" class="text-xs text-red-600 dark:text-red-400 break-all">
+                {{ server.error }}
+              </span>
+              <span v-else class="font-mono text-xs break-all">{{ server.records.join(', ') || '—' }}</span>
+            </td>
+            <td class="col-actions text-xs text-gray-400">
+              <span v-if="!server.skip_reason">{{ server.elapsed_ms }} ms</span>
+            </td>
+          </tr>
+        </Table>
       </section>
     </div>
 

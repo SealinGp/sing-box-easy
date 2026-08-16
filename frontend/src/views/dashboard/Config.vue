@@ -6,6 +6,7 @@ import { type SingBoxConfig, type ConfigVersion } from '../../types/api'
 import { useNotify } from '../../composables/useNotify'
 import { useConfirm } from '../../composables/useConfirm'
 import MonacoEditor from '../../components/MonacoEditor.vue'
+import Table from '../../components/Table.vue'
 import MonacoDiffEditor from '../../components/MonacoDiffEditor.vue'
 
 const { t, locale } = useI18n()
@@ -568,7 +569,7 @@ onUnmounted(() => {
           </div>
 
           <!-- List view -->
-          <div v-if="!showDiff" class="flex-1 min-h-0 overflow-y-auto p-5">
+          <div v-if="!showDiff" class="flex-1 min-h-0 overflow-y-auto p-4">
             <!-- Retention tip -->
             <div class="mb-4 flex items-start gap-2 rounded-control border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
               <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -607,10 +608,13 @@ onUnmounted(() => {
                   <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
                 </button>
               </div>
-              <table class="w-full text-sm">
-              <thead>
-                <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  <th class="py-2 pr-3 font-medium w-8">
+              <!--
+                The modal body already scrolls, so `scroll` is off: a second
+                scroll container inside it would trap the wheel.
+              -->
+              <Table :scroll="false">
+                <template #head>
+                  <th class="w-8">
                     <input
                       type="checkbox"
                       class="cursor-pointer"
@@ -620,20 +624,19 @@ onUnmounted(() => {
                       :title="$t('config.versionsModal.selectAll')"
                     />
                   </th>
-                  <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colVersion') }}</th>
-                  <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colSavedAt') }}</th>
-                  <th class="py-2 pr-4 font-medium">{{ $t('config.versionsModal.colSize') }}</th>
-                  <th class="py-2 pr-4 font-medium text-right">{{ $t('config.versionsModal.colActions') }}</th>
-                </tr>
-              </thead>
-              <tbody>
+                  <th>{{ $t('config.versionsModal.colVersion') }}</th>
+                  <th>{{ $t('config.versionsModal.colSavedAt') }}</th>
+                  <th>{{ $t('config.versionsModal.colSize') }}</th>
+                  <th class="col-actions">{{ $t('config.versionsModal.colActions') }}</th>
+                </template>
+
                 <tr
                   v-for="(v, i) in versions"
                   :key="v.id"
-                  class="border-b border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200"
+                  class="text-gray-800 dark:text-gray-200"
                   :class="selectedVersionIds.has(v.id) ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''"
                 >
-                  <td class="py-2.5 pr-3">
+                  <td>
                     <input
                       type="checkbox"
                       class="cursor-pointer"
@@ -642,17 +645,17 @@ onUnmounted(() => {
                       :aria-label="$t('config.versionsModal.selectOne', { id: v.id })"
                     />
                   </td>
-                  <td class="py-2.5 pr-4">
+                  <td>
                     #{{ v.id }}
                     <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-pill bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">{{ $t('config.versionsModal.latest') }}</span>
                   </td>
-                  <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">
+                  <td class="text-gray-600 dark:text-gray-400">
                     {{ formatTime(v.created_at) }}
                     <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({{ formatRelative(v.created_at) }})</span>
                   </td>
-                  <td class="py-2.5 pr-4 text-gray-600 dark:text-gray-400">{{ formatBytes(v.size) }}</td>
-                  <td class="py-2.5 pr-4">
-                    <div class="flex items-center justify-end gap-2">
+                  <td class="text-gray-600 dark:text-gray-400">{{ formatBytes(v.size) }}</td>
+                  <td>
+                    <div class="flex items-center justify-end gap-1">
                       <button
                         @click="openDiff(v)"
                         class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -677,8 +680,7 @@ onUnmounted(() => {
                     </div>
                   </td>
                 </tr>
-              </tbody>
-              </table>
+              </Table>
             </div>
           </div>
 

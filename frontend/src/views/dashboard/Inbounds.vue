@@ -6,6 +6,7 @@ import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Modal from '../../components/Modal.vue'
+import Table from '../../components/Table.vue'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
@@ -334,8 +335,8 @@ onMounted(fetchInbounds)
 </script>
 
 <template>
-  <div class="p-8">
-    <div class="flex justify-between items-center mb-6">
+  <div class="page-shell">
+    <div class="flex justify-between items-center mb-4">
       <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('inbounds.title') }}</h2>
       <Button @click="openAddModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
@@ -344,68 +345,53 @@ onMounted(fetchInbounds)
     </div>
 
     <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
-      <div v-if="loading && inbounds.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      <Table :loading="loading && inbounds.length === 0" :empty="inbounds.length === 0">
+        <template #empty>
+          <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('inbounds.empty') }}</p>
+          <Button @click="openAddModal" variant="primary" size="sm">
+            <PlusIcon class="h-4 w-4 mr-1.5" />
+            {{ $t('inbounds.addFirst') }}
+          </Button>
+        </template>
 
-      <div v-else-if="inbounds.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('inbounds.empty') }}</p>
-        <Button @click="openAddModal" variant="primary" size="sm">
-          <PlusIcon class="h-4 w-4 mr-2" />
-          {{ $t('inbounds.addFirst') }}
-        </Button>
-      </div>
+        <template #head>
+          <th>{{ $t('inbounds.table.tag') }}</th>
+          <th>{{ $t('inbounds.table.type') }}</th>
+          <th>{{ $t('inbounds.table.listenAddress') }}</th>
+          <th>{{ $t('inbounds.table.port') }}</th>
+          <th>{{ $t('inbounds.table.sniff') }}</th>
+          <th class="col-actions">{{ $t('inbounds.table.actions') }}</th>
+        </template>
 
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.tag') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.type') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.listenAddress') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.port') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.sniff') }}</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('inbounds.table.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="inbound in inbounds" :key="inbound.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ inbound.tag }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <Badge :variant="getInboundBadgeVariant(inbound.type)">
-                  {{ getInboundTypeLabel(inbound.type) }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (inbound as any).listen || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ (inbound as any).listen_port || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <Badge v-if="(inbound as any).sniff" variant="success">{{ $t('inbounds.sniff.enabled') }}</Badge>
-                <Badge v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</Badge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="inbound-table-actions flex items-center justify-end gap-2">
-                  <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" action :title="$t('inbounds.tooltip.copyConfig')">
-                    <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
-                    <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-primary-600 dark:text-primary-400" />
-                  </Button>
-                  <Button @click="openEditModal(inbound)" variant="ghost" size="sm" action>
-                    <PencilIcon class="h-4 w-4" />
-                  </Button>
-                  <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                    <TrashIcon class="h-4 w-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <tr v-for="inbound in inbounds" :key="inbound.tag">
+          <td class="font-medium text-gray-900 dark:text-gray-100">{{ inbound.tag }}</td>
+          <td>
+            <Badge :variant="getInboundBadgeVariant(inbound.type)">
+              {{ getInboundTypeLabel(inbound.type) }}
+            </Badge>
+          </td>
+          <td class="text-gray-900 dark:text-gray-100">{{ (inbound as any).listen || '-' }}</td>
+          <td class="text-gray-900 dark:text-gray-100">{{ (inbound as any).listen_port || '-' }}</td>
+          <td>
+            <Badge v-if="(inbound as any).sniff" variant="success">{{ $t('inbounds.sniff.enabled') }}</Badge>
+            <Badge v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</Badge>
+          </td>
+          <td class="col-actions font-medium">
+            <div class="flex items-center justify-end gap-1">
+              <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" action :title="$t('inbounds.tooltip.copyConfig')">
+                <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
+                <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-primary-600 dark:text-primary-400" />
+              </Button>
+              <Button @click="openEditModal(inbound)" variant="ghost" size="sm" action>
+                <PencilIcon class="h-4 w-4" />
+              </Button>
+              <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                <TrashIcon class="h-4 w-4" />
+              </Button>
+            </div>
+          </td>
+        </tr>
+      </Table>
     </div>
 
     <!-- Add/Edit Modal -->

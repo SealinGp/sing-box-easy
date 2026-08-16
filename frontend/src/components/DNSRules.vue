@@ -6,6 +6,7 @@ import Button from './Button.vue'
 import Modal from './Modal.vue'
 import { Select } from '../volt'
 import Badge from './Badge.vue'
+import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
@@ -341,73 +342,62 @@ onMounted(() => {
 
     <!-- DNS Rules Table -->
     <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.rules.heading') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {{ $t('dns.rules.subheading') }}
         </p>
       </div>
 
-      <div v-if="loading && dnsRules.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0">
+        <template #empty>
+          <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.rules.empty') }}</p>
+          <Button @click="openAddRuleModal" variant="primary" size="sm">
+            <PlusIcon class="h-4 w-4 mr-1.5" />
+            {{ $t('dns.rules.addFirst') }}
+          </Button>
+        </template>
 
-      <div v-else-if="dnsRules.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('dns.rules.empty') }}</p>
-        <Button @click="openAddRuleModal" variant="primary" size="sm">
-          <PlusIcon class="h-4 w-4 mr-2" />
-          {{ $t('dns.rules.addFirst') }}
-        </Button>
-      </div>
+        <template #head>
+          <th>{{ $t('dns.rules.table.index') }}</th>
+          <th>{{ $t('dns.rules.table.action') }}</th>
+          <th>{{ $t('dns.rules.table.server') }}</th>
+          <th>{{ $t('dns.rules.table.conditions') }}</th>
+          <th class="col-actions">{{ $t('dns.rules.table.actions') }}</th>
+        </template>
 
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.index') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.action') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.server') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.conditions') }}</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.rules.table.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="(rule, index) in dnsRules" :key="index" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ index + 1 }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
-                  {{ (rule as any).action || 'route' }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <!-- A predefined rule has no server; showing "-" hid the one
-                     thing that matters about it, the answer it returns. -->
-                <div v-if="(rule as any).action === 'predefined'" class="text-sm font-mono text-gray-600 dark:text-gray-400">
-                  {{ (rule as any).rcode || 'NXDOMAIN' }}
-                </div>
-                <div v-else class="text-sm text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 dark:text-gray-100 truncate max-w-md" :title="getRuleConditionsSummary(rule)">
-                  {{ getRuleConditionsSummary(rule) }}
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="dns-rule-table-actions flex items-center justify-end gap-2">
-                  <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm" action>
-                    <PencilIcon class="h-4 w-4" />
-                  </Button>
-                  <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                    <TrashIcon class="h-4 w-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <tr v-for="(rule, index) in dnsRules" :key="index">
+          <td class="text-gray-900 dark:text-gray-100">{{ index + 1 }}</td>
+          <td>
+            <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
+              {{ (rule as any).action || 'route' }}
+            </Badge>
+          </td>
+          <td>
+            <!-- A predefined rule has no server; showing "-" hid the one
+                 thing that matters about it, the answer it returns. -->
+            <div v-if="(rule as any).action === 'predefined'" class="font-mono text-gray-600 dark:text-gray-400">
+              {{ (rule as any).rcode || 'NXDOMAIN' }}
+            </div>
+            <div v-else class="text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
+          </td>
+          <td>
+            <div class="text-gray-900 dark:text-gray-100 truncate max-w-md" :title="getRuleConditionsSummary(rule)">
+              {{ getRuleConditionsSummary(rule) }}
+            </div>
+          </td>
+          <td class="col-actions font-medium">
+            <div class="flex items-center justify-end gap-1">
+              <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm" action>
+                <PencilIcon class="h-4 w-4" />
+              </Button>
+              <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                <TrashIcon class="h-4 w-4" />
+              </Button>
+            </div>
+          </td>
+        </tr>
+      </Table>
     </div>
 
     <!-- Add/Edit DNS Rule Modal -->

@@ -5,6 +5,7 @@ import type { DNSServer } from '../types/api'
 import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
+import Table from './Table.vue'
 import Modal from './Modal.vue'
 import { Select } from '../volt'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
@@ -282,84 +283,71 @@ onMounted(() => {
 
     <!-- DNS Servers Table -->
     <div class="bg-white dark:bg-slate-800 rounded-surface shadow overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.servers.heading') }}</h3>
       </div>
 
-      <div v-if="loading && dnsServers.length === 0" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      <Table :loading="loading && dnsServers.length === 0" :empty="dnsServers.length === 0">
+        <template #empty>
+          <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.servers.empty') }}</p>
+          <Button @click="openAddServerModal" variant="primary" size="sm">
+            <PlusIcon class="h-4 w-4 mr-1.5" />
+            {{ $t('dns.servers.addFirst') }}
+          </Button>
+        </template>
 
-      <div v-else-if="dnsServers.length === 0" class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-500 mb-4">{{ $t('dns.servers.empty') }}</p>
-        <Button @click="openAddServerModal" variant="primary" size="sm">
-          <PlusIcon class="h-4 w-4 mr-2" />
-          {{ $t('dns.servers.addFirst') }}
-        </Button>
-      </div>
+        <template #head>
+          <th>{{ $t('dns.servers.table.tag') }}</th>
+          <th>{{ $t('dns.servers.table.type') }}</th>
+          <th>{{ $t('dns.servers.table.server') }}</th>
+          <th>{{ $t('dns.servers.table.port') }}</th>
+          <th>{{ $t('dns.servers.table.detour') }}</th>
+          <th class="col-actions">{{ $t('dns.servers.table.actions') }}</th>
+        </template>
 
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.tag') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.type') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.server') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.port') }}</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.detour') }}</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('dns.servers.table.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="server in dnsServers" :key="server.tag" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ server.tag }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <Badge :variant="getServerBadgeVariant((server as any).type || 'udp')">
-                  {{ getServerTypeLabel((server as any).type || 'udp') }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <!-- For type=hosts, server/port aren't meaningful; show a
-                     summary of predefined hosts + file paths instead. -->
-                <div
-                  v-if="(server as any).type === 'hosts'"
-                  class="text-sm text-gray-600 dark:text-gray-400 italic"
-                  :title="(server as any).predefined ? Object.keys((server as any).predefined).join(', ') : ''"
-                >
-                  {{ formatHostsSummary(server) }}
-                </div>
-                <div v-else class="text-sm text-gray-900 dark:text-gray-100">{{ (server as any).server || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">
-                  {{ (server as any).type === 'hosts' ? '—' : ((server as any).server_port || '-') }}
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <!-- Whether this resolver's queries go through a proxy is the
-                     difference between working and censored foreign DNS, so it
-                     belongs in the table rather than only in the modal. -->
-                <div v-if="(server as any).detour" class="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[12rem]" :title="(server as any).detour">
-                  {{ (server as any).detour }}
-                </div>
-                <div v-else class="text-sm text-gray-400 dark:text-gray-500">{{ $t('dns.servers.form.detourDirect') }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="dns-server-table-actions flex items-center justify-end gap-2">
-                  <Button @click="openEditServerModal(server)" variant="ghost" size="sm" action>
-                    <PencilIcon class="h-4 w-4" />
-                  </Button>
-                  <Button @click="openDeleteConfirm(server)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                    <TrashIcon class="h-4 w-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <tr v-for="server in dnsServers" :key="server.tag">
+          <td class="font-medium text-gray-900 dark:text-gray-100">{{ server.tag }}</td>
+          <td>
+            <Badge :variant="getServerBadgeVariant((server as any).type || 'udp')">
+              {{ getServerTypeLabel((server as any).type || 'udp') }}
+            </Badge>
+          </td>
+          <td>
+            <!-- For type=hosts, server/port aren't meaningful; show a
+                 summary of predefined hosts + file paths instead. -->
+            <div
+              v-if="(server as any).type === 'hosts'"
+              class="text-gray-600 dark:text-gray-400 italic"
+              :title="(server as any).predefined ? Object.keys((server as any).predefined).join(', ') : ''"
+            >
+              {{ formatHostsSummary(server) }}
+            </div>
+            <div v-else class="text-gray-900 dark:text-gray-100">{{ (server as any).server || '-' }}</div>
+          </td>
+          <td class="text-gray-900 dark:text-gray-100">
+            {{ (server as any).type === 'hosts' ? '—' : ((server as any).server_port || '-') }}
+          </td>
+          <td>
+            <!-- Whether this resolver's queries go through a proxy is the
+                 difference between working and censored foreign DNS, so it
+                 belongs in the table rather than only in the modal. -->
+            <div v-if="(server as any).detour" class="text-gray-900 dark:text-gray-100 truncate max-w-[12rem]" :title="(server as any).detour">
+              {{ (server as any).detour }}
+            </div>
+            <div v-else class="text-gray-400 dark:text-gray-500">{{ $t('dns.servers.form.detourDirect') }}</div>
+          </td>
+          <td class="col-actions font-medium">
+            <div class="flex items-center justify-end gap-1">
+              <Button @click="openEditServerModal(server)" variant="ghost" size="sm" action>
+                <PencilIcon class="h-4 w-4" />
+              </Button>
+              <Button @click="openDeleteConfirm(server)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                <TrashIcon class="h-4 w-4" />
+              </Button>
+            </div>
+          </td>
+        </tr>
+      </Table>
     </div>
 
     <!-- Add/Edit DNS Server Modal -->

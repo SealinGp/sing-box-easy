@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { userService } from '../../services'
+import Table from '../../components/Table.vue'
 import { Select } from '../../volt'
 import type { User } from '../../types/api'
 import {
@@ -208,7 +209,7 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <template>
-  <div class="p-6 max-w-6xl mx-auto space-y-6 animate-fade-in">
+  <div class="page-shell max-w-6xl mx-auto space-y-4 animate-fade-in">
     <!-- Header -->
     <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
       <div>
@@ -252,9 +253,9 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Tab 1: Profile Details -->
-    <div v-if="activeTab === 'profile'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div v-if="activeTab === 'profile'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <!-- Profile Info Sidebar Card -->
-      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-6 shadow-surface flex flex-col items-center text-center relative overflow-hidden">
+      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-4 shadow-surface flex flex-col items-center text-center relative overflow-hidden">
         <div class="absolute top-0 inset-x-0 h-20 bg-gradient-to-r from-primary-600 to-indigo-600 opacity-10"></div>
         <div class="w-20 h-20 rounded-pill bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-float shadow-primary-500/20 mt-6 relative z-10">
           {{ currentUser?.username.slice(0, 2).toUpperCase() }}
@@ -266,7 +267,7 @@ const formatDate = (dateStr: string) => {
           {{ currentUser?.role === 'admin' ? $t('profile.roles.admin') : $t('profile.roles.viewer') }}
         </span>
 
-        <div class="w-full border-t border-gray-100 dark:border-gray-800 mt-6 pt-6 text-left space-y-4">
+        <div class="w-full border-t border-gray-100 dark:border-gray-800 mt-6 pt-4 text-left space-y-4">
           <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
             <CalendarIcon class="h-5 w-5 text-gray-400" />
             <div>
@@ -278,12 +279,12 @@ const formatDate = (dateStr: string) => {
       </div>
 
       <!-- Update Form Card -->
-      <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-6 shadow-surface">
-        <h3 class="text-md font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+      <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface p-4 shadow-surface">
+        <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <UserIcon class="h-5 w-5 text-primary-500" />
           {{ $t('profile.profileSection.title') }}
         </h3>
-        <form @submit.prevent="handleUpdateProfile" class="space-y-6">
+        <form @submit.prevent="handleUpdateProfile" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{{ $t('profile.profileSection.username') }}</label>
@@ -296,7 +297,7 @@ const formatDate = (dateStr: string) => {
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             <div>
               <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{{ $t('profile.profileSection.newPassword') }}</label>
               <input
@@ -332,7 +333,7 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Tab 2: Users Management -->
-    <div v-if="activeTab === 'users' && isAdmin" class="space-y-6">
+    <div v-if="activeTab === 'users' && isAdmin" class="space-y-4">
       <!-- Users Table Control Header -->
       <div class="flex items-center justify-between">
         <h3 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -350,55 +351,52 @@ const formatDate = (dateStr: string) => {
 
       <!-- Users List -->
       <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface shadow-surface overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-gray-50 dark:bg-slate-800/40 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                <th class="px-6 py-4">{{ $t('profile.usersSection.table.id') }}</th>
-                <th class="px-6 py-4">{{ $t('profile.usersSection.table.username') }}</th>
-                <th class="px-6 py-4">{{ $t('profile.usersSection.table.role') }}</th>
-                <th class="px-6 py-4">{{ $t('profile.usersSection.table.created') }}</th>
-                <th class="px-6 py-4 text-right">{{ $t('profile.usersSection.table.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm text-gray-800 dark:text-gray-200">
-              <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                <td class="px-6 py-4 font-mono text-xs text-gray-400">#{{ user.id }}</td>
-                <td class="px-6 py-4 font-medium">{{ user.username }}</td>
-                <td class="px-6 py-4">
-                  <span class="px-2.5 py-0.5 rounded-pill text-xs font-semibold"
-                        :class="user.role === 'admin' ? 'bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'">
-                    {{ user.role === 'admin' ? $t('profile.roles.admin') : $t('profile.roles.viewer') }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-gray-500 dark:text-gray-400 text-xs">{{ formatDate(user.created_at) }}</td>
-                <td class="px-6 py-4 text-right flex justify-end gap-2">
-                  <button
-                    @click="startEditUser(user)"
-                    class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    title="Edit User"
-                  >
-                    <PencilIcon class="h-4.5 w-4.5" />
-                  </button>
-                  <button
-                    @click="handleDeleteUser(user)"
-                    :disabled="user.id === currentUser?.id"
-                    class="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                    title="Delete User"
-                  >
-                    <TrashIcon class="h-4.5 w-4.5" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <template #head>
+            <th>{{ $t('profile.usersSection.table.id') }}</th>
+            <th>{{ $t('profile.usersSection.table.username') }}</th>
+            <th>{{ $t('profile.usersSection.table.role') }}</th>
+            <th>{{ $t('profile.usersSection.table.created') }}</th>
+            <th class="col-actions">{{ $t('profile.usersSection.table.actions') }}</th>
+          </template>
+
+          <!-- The row carries the body text colour the old <tbody> held; <Table>
+               owns the <tbody>, and the cells below inherit it either way. -->
+          <tr v-for="user in users" :key="user.id">
+            <td class="font-mono text-xs text-gray-400">#{{ user.id }}</td>
+            <td class="font-medium">{{ user.username }}</td>
+            <td>
+              <span class="px-2.5 py-0.5 rounded-pill text-xs font-semibold"
+                    :class="user.role === 'admin' ? 'bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'">
+                {{ user.role === 'admin' ? $t('profile.roles.admin') : $t('profile.roles.viewer') }}
+              </span>
+            </td>
+            <td class="text-gray-500 dark:text-gray-400 text-xs">{{ formatDate(user.created_at) }}</td>
+            <td class="col-actions flex justify-end gap-1">
+              <button
+                @click="startEditUser(user)"
+                class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                title="Edit User"
+              >
+                <PencilIcon class="h-4.5 w-4.5" />
+              </button>
+              <button
+                @click="handleDeleteUser(user)"
+                :disabled="user.id === currentUser?.id"
+                class="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                title="Delete User"
+              >
+                <TrashIcon class="h-4.5 w-4.5" />
+              </button>
+            </td>
+          </tr>
+        </Table>
       </div>
     </div>
 
     <!-- Create User Modal -->
     <div v-if="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-float animate-scale-up">
+      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-4 shadow-float animate-scale-up">
         <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.addTitle') }}</h3>
         <form @submit.prevent="handleAddUser" class="space-y-4">
           <div>
@@ -450,7 +448,7 @@ const formatDate = (dateStr: string) => {
 
     <!-- Edit User Modal -->
     <div v-if="showEditUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-6 shadow-float animate-scale-up">
+      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-4 shadow-float animate-scale-up">
         <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.editTitle') }}</h3>
         <form @submit.prevent="handleEditUser" class="space-y-4">
           <div>
