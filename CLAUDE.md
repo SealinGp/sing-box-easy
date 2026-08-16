@@ -186,6 +186,42 @@ refresh, which would otherwise churn the outbound list.
 
 ## Key Development Patterns
 
+### Inbound form fields (generated schema)
+
+The inbound dialog is schema-driven, not hand-written per type. Three layers:
+
+1. **`cmd/gen-inbound-schema`** reflects over the `option.*InboundOptions`
+   structs that `app/pkg/config/registry.go` constructs and emits
+   `frontend/src/schemas/inboundInventory.generated.ts` — which fields each of
+   the 17 inbound types accepts, and their shapes. Deprecation is recovered by
+   parsing sing-box's `// Deprecated:` doc comments with `go/ast`, since
+   `reflect` cannot see comments. Regenerate with `go generate ./app/pkg/config/`
+   after bumping the sing-box dependency.
+2. **`frontend/src/schemas/inboundFields.ts`** is the editorial layer: which
+   fields to promote, what control to render, what to call them. It is typed
+   against the generated keys, so naming a field sing-box does not have is a
+   `vue-tsc` error rather than an input that never binds.
+3. **`InboundFieldsEditor.vue`** renders it, reusing `useOptionalFields` (the
+   same composable behind the route- and DNS-rule condition forms).
+
+Two things that are easy to get wrong:
+
+- Tiers are **core / typical / advanced**, not required/optional. sing-box marks
+  almost nothing Required — for `mixed` only `listen` — so tiering follows what
+  each doc page's *example* shows, i.e. the type's characteristic fields.
+  Genuine required-ness lives in `utils/inboundRequiredFields.ts` and runs on save.
+- Anything **uncurated resolves to `advanced`** rather than being dropped, so a
+  field added by a future sing-box is reachable immediately. Likewise, field
+  labels fall back to a humanized form of the JSON key, so `inbounds.form.fields.*`
+  only needs entries where a human label beats the field's own name.
+
+Adding a new inbound type means: add it to `config.InboundTypes`, add a case to
+`CreateInboundOptions`, regenerate, then (optionally) curate tiers and a
+`USER_FIELDS` entry. `TestInboundTypesAreRegistered` fails if the first two
+disagree.
+
+Schema logic is tested with `bun test` (`frontend/src/schemas/inboundFields.test.ts`).
+
 ### Adding a New Protocol Parser
 
 1. Create `app/pkg/sublink/protocol/newprotocol.go`
