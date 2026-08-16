@@ -6,6 +6,7 @@ import { Dialog, Select } from '../volt'
 import ChipsField from './ChipsField.vue'
 import Button from './Button.vue'
 import RoutingRuleItem from './RoutingRuleItem.vue'
+import List from './List.vue'
 import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
@@ -432,7 +433,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <Card>
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -440,21 +441,15 @@ onMounted(() => {
         </h3>
         <button
           @click="showWizard = true"
-          class="px-4 py-2 bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
+          class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
         >
           {{ $t('route.rules.add') }}
         </button>
       </div>
 
-      <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      <List :loading="loading" :empty="rules.length === 0">
+        <template #empty>{{ $t('route.rules.empty') }}</template>
 
-      <div v-else-if="rules.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-        {{ $t('route.rules.empty') }}
-      </div>
-
-      <div v-else class="space-y-4">
         <RoutingRuleItem
           v-for="(rule, index) in rules"
           :key="index"
@@ -463,7 +458,7 @@ onMounted(() => {
           @edit="startEditRule"
           @delete="submitDeleteRule"
         />
-      </div>
+      </List>
     </Card>
 
     <!-- Guided add wizard (default Add flow) -->

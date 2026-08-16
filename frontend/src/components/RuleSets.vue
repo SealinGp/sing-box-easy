@@ -7,6 +7,9 @@ import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import { Dialog, Select } from '../volt'
 import Button from './Button.vue'
 import PopConfirm from './PopConfirm.vue'
+import List from './List.vue'
+import ListRow from './ListRow.vue'
+import ListField from './ListField.vue'
 import type { RuleSet } from '../types/api'
 import { routeService } from '../services'
 import { useToast } from 'primevue'
@@ -286,7 +289,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <Card>
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -294,81 +297,54 @@ onMounted(() => {
         </h3>
         <button
           @click="showAddRuleSetDialog = true"
-          class="px-4 py-2 bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
+          class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
         >
           {{ $t('route.ruleSets.add') }}
         </button>
       </div>
 
-      <div v-if="loading" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      <List :loading="loading" :empty="ruleSets.length === 0">
+        <template #empty>{{ $t('route.ruleSets.empty') }}</template>
 
-      <div v-else-if="ruleSets.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-        {{ $t('route.ruleSets.empty') }}
-      </div>
+        <ListRow v-for="ruleSet in ruleSets" :key="ruleSet.tag">
+          <ListField :label="$t('route.ruleSets.fields.tag')" :value="ruleSet.tag" />
+          <ListField :label="$t('route.ruleSets.fields.type')" :value="ruleSet.type" />
+          <ListField :label="$t('route.ruleSets.fields.format')" :value="ruleSet.format" />
+          <ListField :label="$t('route.ruleSets.fields.url')" :value="ruleSet.url" />
+          <ListField
+            :label="$t('route.ruleSets.fields.updateInterval')"
+            :value="ruleSet.update_interval"
+          />
 
-      <div v-else class="space-y-4">
-        <div
-          v-for="ruleSet in ruleSets"
-          :key="ruleSet.tag"
-          class="border border-gray-200 dark:border-gray-700 rounded-surface p-4"
-        >
-          <div class="flex justify-between items-start">
-            <div class="flex-1">
-              <div class="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.tag') }}</span>
-                  <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.tag }}</span>
-                </div>
-                <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.type') }}</span>
-                  <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.type }}</span>
-                </div>
-                <div>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.format') }}</span>
-                  <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.format }}</span>
-                </div>
-                <div v-if="ruleSet.url">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.url') }}</span>
-                  <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.url }}</span>
-                </div>
-                <div v-if="ruleSet.update_interval">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ $t('route.ruleSets.fields.updateInterval') }}</span>
-                  <span class="ml-2 text-gray-900 dark:text-gray-100">{{ ruleSet.update_interval }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex space-x-2 ml-4">
-              <button
-                @click="startEditRuleSet(ruleSet)"
-                class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-              >
-                {{ $t('common.edit') }}
-              </button>
-              <PopConfirm
-                :message="$t('route.ruleSets.confirm.delete')"
-                :target="ruleSet.tag"
-                :details="referenceInfo[ruleSet.tag]?.details"
-                :loading="referenceInfo[ruleSet.tag]?.loading ?? false"
-                :loading-label="$t('route.ruleSets.cascade.checking')"
-                :confirm-label="
-                  referenceInfo[ruleSet.tag]?.cascade
-                    ? $t('route.ruleSets.cascade.confirm')
-                    : $t('common.delete')
-                "
-                tone="danger"
-                align="right"
-                trigger-class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded-control"
-                @open="loadRuleSetReferences(ruleSet.tag)"
-                @confirm="handleDeleteRuleSet(ruleSet.tag)"
-              >
-                {{ $t('common.delete') }}
-              </PopConfirm>
-            </div>
-          </div>
-        </div>
-      </div>
+          <template #actions>
+            <button
+              @click="startEditRuleSet(ruleSet)"
+              class="list-action-btn text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
+            >
+              {{ $t('common.edit') }}
+            </button>
+            <PopConfirm
+              :message="$t('route.ruleSets.confirm.delete')"
+              :target="ruleSet.tag"
+              :details="referenceInfo[ruleSet.tag]?.details"
+              :loading="referenceInfo[ruleSet.tag]?.loading ?? false"
+              :loading-label="$t('route.ruleSets.cascade.checking')"
+              :confirm-label="
+                referenceInfo[ruleSet.tag]?.cascade
+                  ? $t('route.ruleSets.cascade.confirm')
+                  : $t('common.delete')
+              "
+              tone="danger"
+              align="right"
+              trigger-class="list-action-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+              @open="loadRuleSetReferences(ruleSet.tag)"
+              @confirm="handleDeleteRuleSet(ruleSet.tag)"
+            >
+              {{ $t('common.delete') }}
+            </PopConfirm>
+          </template>
+        </ListRow>
+      </List>
     </Card>
 
     <!-- Smart Routing Rule wizard, seeded with the just-added rule set -->
