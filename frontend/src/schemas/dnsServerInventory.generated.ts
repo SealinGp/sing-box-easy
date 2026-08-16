@@ -15,7 +15,7 @@
 // order to show them in — that is editorial and lives in the matching curation
 // file, which is type-checked against the keys below.
 
-import type { OptionFieldInfo } from './optionSchema'
+import type { OptionFieldInfo, OptionVersionNote } from './optionSchema'
 
 export const DNS_SERVER_INVENTORY = {
   udp: {
@@ -23,7 +23,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -45,7 +45,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -67,7 +67,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -90,7 +90,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -112,7 +112,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     headers: { kind: 'object' },
@@ -138,7 +138,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     headers: { kind: 'object' },
@@ -164,7 +164,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -192,7 +192,7 @@ export const DNS_SERVER_INVENTORY = {
     connect_timeout: { kind: 'duration' },
     detour: { kind: 'string' },
     domain_resolver: { kind: 'object' },
-    domain_strategy: { kind: 'string', deprecated: true },
+    domain_strategy: { kind: 'string', deprecated: true, since: '1.12.0', removed: '1.14.0' },
     fallback_delay: { kind: 'duration' },
     fallback_network_type: { kind: 'list', item: 'number' },
     inet4_bind_address: { kind: 'address' },
@@ -228,3 +228,11 @@ export type DNSServerFieldKey<T extends DNSServerTypeName> = Extract<
 >
 
 export const DNS_SERVER_TYPE_NAMES = Object.keys(DNS_SERVER_INVENTORY) as DNSServerTypeName[]
+
+/**
+ * Types sing-box has retired, with the versions from its own deprecation
+ * table. `removed` is the one that bites: a type whose removed version is at
+ * or below the INSTALLED binary is rejected, not merely discouraged.
+ */
+export const DNS_SERVER_TYPE_NOTES: Partial<Record<DNSServerTypeName, OptionVersionNote>> = {
+}

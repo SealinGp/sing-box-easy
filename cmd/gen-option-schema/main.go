@@ -95,6 +95,19 @@ type domain struct {
 	// Doc is a sentence in the generated file's header explaining what the
 	// domain is, since the file is the first thing a reader opens.
 	Doc string
+	// FieldlessTypes are types whose option struct legitimately has no fields,
+	// so the "reflected to zero fields" guard must not fire. `block` and `dns`
+	// outbounds both map to option.StubOptions, which is `struct{}`.
+	FieldlessTypes []string
+}
+
+func (d domain) allowsNoFields(optionType string) bool {
+	for _, name := range d.FieldlessTypes {
+		if name == optionType {
+			return true
+		}
+	}
+	return false
 }
 
 func domains(registry *config.Registry) []domain {
@@ -116,6 +129,22 @@ func domains(registry *config.Registry) []domain {
 				"domain_strategy":              true,
 				"udp_disable_domain_unmapping": true,
 			},
+		},
+		{
+			Name:      "Outbound",
+			Screaming: "OUTBOUND",
+			Output:    "frontend/src/schemas/outboundInventory.generated.ts",
+			Types:     config.OutboundTypes,
+			Create:    registry.CreateOutboundOptions,
+			Doc: "Outbound options, keyed by the `type` field of an entry in `outbounds`.\n" +
+				"// `selector` and `urltest` are groups: they carry an `outbounds` list of other\n" +
+				"// outbound tags rather than a server to dial.",
+			// option.StubOptions is `struct{}` — these two are behaviours, not
+			// configurations, so a zero-field inventory entry is correct.
+			FieldlessTypes: []string{"block", "dns"},
+			// Nothing docs-only here: every outbound retirement is in
+			// sing-box's own table, which versions.go reads.
+			DocDeprecated: map[string]bool{},
 		},
 		{
 			Name:      "DNSServer",
@@ -181,7 +210,13 @@ type field struct {
 	Kind       string
 	Item       string // element kind, for kindList
 	Deprecated bool
-	depth      int // embedding depth; shallower wins on a name collision
+	// Versions from sing-box's own deprecation table, when the field maps to an
+	// entry there. `Removed` is the one that matters at runtime: a field whose
+	// Removed version is <= the installed binary is not "discouraged", it is
+	// rejected. See versions.go.
+	Since   string
+	Removed string
+	depth   int // embedding depth; shallower wins on a name collision
 
 	// Where this field came from in Go, so the go/ast deprecation pass can be
 	// matched up with it. Not emitted.
@@ -205,6 +240,12 @@ func main() {
 		fatal(err)
 	}
 
+	// sing-box's own versioned deprecation table. Read once for all domains.
+	table, err := deprecationTable()
+	if err != nil {
+		fatal(err)
+	}
+
 	matched := 0
 	for _, d := range domains(&config.Registry{}) {
 		if *only != "" && !strings.EqualFold(*only, d.Name) {
@@ -212,7 +253,7 @@ func main() {
 		}
 		matched++
 
-		source, err := render(d, deprecations)
+		source, err := render(d, deprecations, table)
 		if err != nil {
 			fatal(fmt.Errorf("%s: %w", d.Name, err))
 		}
@@ -257,7 +298,7 @@ func repoRoot() (string, error) {
 	}
 }
 
-func render(d domain, deprecations deprecationIndex) ([]byte, error) {
+func render(d domain, deprecations deprecationIndex, table map[string]deprecationNote) ([]byte, error) {
 	type entry struct {
 		Type   string
 		Fields []field
@@ -273,10 +314,14 @@ func render(d domain, deprecations deprecationIndex) ([]byte, error) {
 		}
 
 		fields := collect(reflect.TypeOf(options))
-		if len(fields) == 0 {
+		if len(fields) == 0 && !d.allowsNoFields(optionType) {
+			// The guard catches a registry returning the wrong thing. A type
+			// that genuinely has no options must say so explicitly, so a
+			// silently-empty struct still fails loudly.
 			return nil, fmt.Errorf("type %q reflected to zero fields", optionType)
 		}
 		markDeprecated(fields, deprecations, d.DocDeprecated)
+		markVersioned(d, optionType, fields, table)
 		entries = append(entries, entry{Type: optionType, Fields: fields})
 	}
 
@@ -296,7 +341,7 @@ func render(d domain, deprecations deprecationIndex) ([]byte, error) {
 // order to show them in — that is editorial and lives in the matching curation
 // file, which is type-checked against the keys below.
 
-import type { OptionFieldInfo } from './optionSchema'
+import type { OptionFieldInfo, OptionVersionNote } from './optionSchema'
 
 export const %s_INVENTORY = {
 `,
@@ -312,6 +357,12 @@ export const %s_INVENTORY = {
 			}
 			if f.Deprecated {
 				b.WriteString(", deprecated: true")
+			}
+			if f.Since != "" {
+				fmt.Fprintf(&b, ", since: '%s'", f.Since)
+			}
+			if f.Removed != "" {
+				fmt.Fprintf(&b, ", removed: '%s'", f.Removed)
 			}
 			b.WriteString(" },\n")
 		}
@@ -335,6 +386,35 @@ export type %[1]sFieldKey<T extends %[1]sTypeName> = Extract<
 
 export const %[2]s_TYPE_NAMES = Object.keys(%[2]s_INVENTORY) as %[1]sTypeName[]
 `, d.Name, d.Screaming)
+
+	// Per-type deprecation. A whole type can be retired the way a field can —
+	// `dns` and `wireguard` outbounds both parse on 1.13 and then fail — and
+	// the type selector needs to say so before the operator picks one.
+	fmt.Fprintf(&b, `
+/**
+ * Types sing-box has retired, with the versions from its own deprecation
+ * table. `+"`removed`"+` is the one that bites: a type whose removed version is at
+ * or below the INSTALLED binary is rejected, not merely discouraged.
+ */
+export const %s_TYPE_NOTES: Partial<Record<%sTypeName, OptionVersionNote>> = {
+`, d.Screaming, d.Name)
+
+	notes := typeNotes(d, table)
+	for _, optionType := range d.Types {
+		note, ok := notes[optionType]
+		if !ok {
+			continue
+		}
+		fmt.Fprintf(&b, "  %s: { since: '%s'", tsKey(optionType), note.DeprecatedVersion)
+		if note.ScheduledVersion != "" {
+			fmt.Fprintf(&b, ", removed: '%s'", note.ScheduledVersion)
+		}
+		if note.MigrationLink != "" {
+			fmt.Fprintf(&b, ", link: '%s'", note.MigrationLink)
+		}
+		b.WriteString(" },\n")
+	}
+	b.WriteString("}\n")
 
 	return b.Bytes(), nil
 }
@@ -548,19 +628,23 @@ func isDeprecated(doc string) bool {
 	return false
 }
 
-// optionPackageDir asks the go tool where the sing-box module was unpacked.
-// `go list -m` is used rather than go/build because the dependency only exists
-// in the module cache, which GOPATH-style resolution does not find.
-func optionPackageDir() (string, error) {
-	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", singBoxModule).Output()
+// moduleDir asks the go tool where a module was unpacked. `go list -m` is used
+// rather than go/build because the dependency only exists in the module cache,
+// which GOPATH-style resolution does not find.
+func moduleDir(module string) (string, error) {
+	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", module).Output()
 	if err != nil {
-		return "", fmt.Errorf("locating %s: %w", singBoxModule, err)
+		return "", fmt.Errorf("locating %s: %w", module, err)
 	}
 	dir := strings.TrimSpace(string(out))
 	if dir == "" {
-		return "", fmt.Errorf("%s has no local directory; run `go mod download`", singBoxModule)
+		return "", fmt.Errorf("%s has no local directory; run `go mod download`", module)
 	}
-	return filepath.Join(dir, "option"), nil
+	return dir, nil
+}
+
+func optionPackageDir() (string, error) {
+	return singBoxSubdir("option")
 }
 
 // tsKey quotes an object key only when it is not a bare JS identifier. Every
