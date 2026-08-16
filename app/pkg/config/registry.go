@@ -23,28 +23,45 @@ var (
 )
 
 // CreateOptions implements option.DNSTransportOptionsRegistry
+// 类型字符串一律用 C.DNSType* 常量, 不要写字面量。
+//
+// 这里原本是 `case "http3"`, 但 sing-box 的常量是 C.DNSTypeHTTP3 = "h3"
+// (constant/dns.go), 传输层也注册在 "h3" 下 (dns/transport/quic/http3.go)。
+// 两边不一致造成双向损坏:
+//
+//	type: "h3"    -> 这里 default 分支返回 false, 整个 config.json 解析失败,
+//	                 报 "unknown transport type: h3" —— 面板连配置都打不开;
+//	type: "http3" -> 这里能解析, 但 sing-box 运行时没有 "http3" 传输,
+//	                 写出来的配置根本起不来。
+//
+// 同一个后端内部也互相矛盾: dnsprobe/servers.go 的默认端口表用的就是 "h3"。
 func (r *Registry) CreateDNSOptions(transportType string) (any, bool) {
 	switch transportType {
-	case "udp":
+	case C.DNSTypeUDP:
 		return new(option.RemoteDNSServerOptions), true
-	case "tcp":
+	case C.DNSTypeTCP:
 		return new(option.RemoteDNSServerOptions), true
-	case "tls":
+	case C.DNSTypeTLS:
 		return new(option.RemoteTLSDNSServerOptions), true
-	case "https":
+	case C.DNSTypeHTTPS:
 		return new(option.RemoteHTTPSDNSServerOptions), true
-	case "http3":
+	case C.DNSTypeHTTP3:
 		return new(option.RemoteHTTPSDNSServerOptions), true
-	case "quic":
+	case C.DNSTypeQUIC:
 		return new(option.RemoteDNSServerOptions), true
-	case "dhcp":
+	case C.DNSTypeDHCP:
 		return new(option.DHCPDNSServerOptions), true
-	case "fakeip":
+	case C.DNSTypeFakeIP:
 		return new(option.FakeIPDNSServerOptions), true
-	case "local":
+	case C.DNSTypeLocal:
 		return new(option.LocalDNSServerOptions), true
-	case "hosts":
+	case C.DNSTypeHosts:
 		return new(option.HostsDNSServerOptions), true
+	case C.DNSTypeTailscale:
+		// 选项结构体在 option 包里始终存在, 传输实现则由 with_tailscale
+		// 构建标签决定。面板只负责解析 —— 能不能跑是 sing-box 二进制的事,
+		// 不该因此连配置都读不出来。
+		return new(option.TailscaleDNSServerOptions), true
 	default:
 		return nil, false
 	}

@@ -100,14 +100,14 @@ func (h *Handler) GetDNSServerByTag(ctx context.Context, c *app.RequestContext) 
 
 // AddDNSServer adds a new DNS server
 func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
-	var server option.DNSServerOptions
-	if err := c.Bind(&server); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	server, errMsg := bindDNSServer(ctx, c)
+	if errMsg != "" {
+		respErr(ctx, c, CodeBadRequest, errMsg)
 		return
 	}
 
-	if server.Tag == "" {
-		respErr(ctx, c, CodeBadRequest, "tag is required")
+	if err := validateDNSServer(server); err != nil {
+		respErr(ctx, c, CodeValidationError, err.Error())
 		return
 	}
 
@@ -142,13 +142,18 @@ func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	var server option.DNSServerOptions
-	if err := c.Bind(&server); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	server, errMsg := bindDNSServer(ctx, c)
+	if errMsg != "" {
+		respErr(ctx, c, CodeBadRequest, errMsg)
 		return
 	}
 
 	server.Tag = tag
+
+	if err := validateDNSServer(server); err != nil {
+		respErr(ctx, c, CodeValidationError, err.Error())
+		return
+	}
 
 	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
 		if cfg.DNS == nil {
