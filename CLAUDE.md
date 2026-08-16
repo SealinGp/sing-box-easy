@@ -186,41 +186,57 @@ refresh, which would otherwise churn the outbound list.
 
 ## Key Development Patterns
 
-### Inbound form fields (generated schema)
+### Schema-driven forms (generated field inventories)
 
-The inbound dialog is schema-driven, not hand-written per type. Three layers:
+The inbound and DNS server dialogs are schema-driven, not hand-written per type.
+Four layers:
 
-1. **`cmd/gen-inbound-schema`** reflects over the `option.*InboundOptions`
-   structs that `app/pkg/config/registry.go` constructs and emits
-   `frontend/src/schemas/inboundInventory.generated.ts` — which fields each of
-   the 17 inbound types accepts, and their shapes. Deprecation is recovered by
-   parsing sing-box's `// Deprecated:` doc comments with `go/ast`, since
-   `reflect` cannot see comments. Regenerate with `go generate ./app/pkg/config/`
-   after bumping the sing-box dependency.
-2. **`frontend/src/schemas/inboundFields.ts`** is the editorial layer: which
-   fields to promote, what control to render, what to call them. It is typed
-   against the generated keys, so naming a field sing-box does not have is a
-   `vue-tsc` error rather than an input that never binds.
-3. **`InboundFieldsEditor.vue`** renders it, reusing `useOptionalFields` (the
-   same composable behind the route- and DNS-rule condition forms).
+1. **`cmd/gen-option-schema`** reflects over the `option.*` structs that
+   `app/pkg/config/registry.go` constructs and emits one inventory per domain —
+   `frontend/src/schemas/{inboundInventory,dnsServerInventory}.generated.ts`.
+   Deprecation is recovered by parsing sing-box's `// Deprecated:` doc comments
+   with `go/ast`, since `reflect` cannot see comments. Regenerate with
+   `go generate ./app/pkg/config/`. Adding the next domain (outbounds,
+   endpoints, services) is a row in `domains()` plus a curation file.
+2. **`frontend/src/schemas/optionSchema.ts`** holds everything domain-agnostic:
+   the tier model, visibility, pruning, defaults. Domains bind it with
+   `createSchema`.
+3. **`inboundFields.ts` / `dnsServerFields.ts`** are pure curation — which
+   fields to promote, what control to render, what to call them. Typed against
+   the generated keys, so naming a field sing-box does not have is a `vue-tsc`
+   error rather than an input that never binds.
+4. **`SchemaFieldsEditor.vue`** renders it for both domains, reusing
+   `useOptionalFields` (the composable behind the route- and DNS-rule condition
+   forms).
 
-Two things that are easy to get wrong:
+Things that are easy to get wrong:
 
 - Tiers are **core / typical / advanced**, not required/optional. sing-box marks
   almost nothing Required — for `mixed` only `listen` — so tiering follows what
-  each doc page's *example* shows, i.e. the type's characteristic fields.
-  Genuine required-ness lives in `utils/inboundRequiredFields.ts` and runs on save.
+  each doc page's *example* shows. Genuine required-ness lives in
+  `utils/inboundRequiredFields.ts` and `routes/v1_12_12/dns_validation.go`, and
+  runs on save.
 - Anything **uncurated resolves to `advanced`** rather than being dropped, so a
-  field added by a future sing-box is reachable immediately. Likewise, field
-  labels fall back to a humanized form of the JSON key, so `inbounds.form.fields.*`
-  only needs entries where a human label beats the field's own name.
+  field added by a future sing-box is reachable immediately. Field labels fall
+  back to a humanized JSON key, so the locale files only need entries where a
+  human label beats the field's own name.
+- **HTTP/3 DNS is `h3`, never `http3`.** sing-box's constant is
+  `C.DNSTypeHTTP3 = "h3"` and its transport registers under that name. The
+  registry spelled it `http3`, which broke both directions: a valid config could
+  not be parsed, and a config the panel saved could not start.
+  `TestDNSTypeHTTP3IsH3` pins it.
+- **DNS server handlers must not use `c.Bind`.** `option.DNSServerOptions`
+  defines only `UnmarshalJSONContext`; every real field lives behind an
+  `Options any` that a reflective bind leaves nil, so the config then fails to
+  marshal. Use `bindDNSServer` (`dns_validation.go`). The DNS *rule* handlers
+  already carry the same fix.
 
-Adding a new inbound type means: add it to `config.InboundTypes`, add a case to
-`CreateInboundOptions`, regenerate, then (optionally) curate tiers and a
-`USER_FIELDS` entry. `TestInboundTypesAreRegistered` fails if the first two
-disagree.
+Adding a type means: add it to `config.InboundTypes` / `config.DNSTypes`, add a
+case to the matching `Create*Options`, regenerate, then optionally curate.
+`TestInboundTypesAreRegistered` / `TestDNSTypesAreRegistered` fail if the list
+and the registry disagree.
 
-Schema logic is tested with `bun test` (`frontend/src/schemas/inboundFields.test.ts`).
+Schema logic is tested with `bun test` (`frontend/src/schemas/*.test.ts`).
 
 ### Adding a New Protocol Parser
 
