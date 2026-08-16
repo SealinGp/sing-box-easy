@@ -26,30 +26,75 @@ export default {
     tagHelp: '该入站的唯一标识',
     type: '类型 *',
     typePlaceholder: '选择入站类型',
-    listenAddress: '监听地址',
-    listenAddressPlaceholder: '127.0.0.1 或 0.0.0.0',
-    listenAddressHelp: '监听的 IP 地址',
-    listenPort: '监听端口 *',
-    listenPortPlaceholder: '1080',
-    enableSniff: '启用流量探测',
-    overrideDestination: '覆盖目标地址',
-    interfaceName: '接口名称',
-    interfaceNamePlaceholder: 'tun0',
-    mtu: 'MTU',
-    mtuPlaceholder: '1500',
-    autoRoute: '自动路由',
-    ssMethod: '加密方法 *',
-    ssPassword: '密码 *',
-    generate: '生成',
-    ssPasswordHelp2022: 'AEAD-2022 方法需要：{len} 字节 Base64 编码的密钥。',
-    ssPasswordHelpOther: '任意密码字符串。',
-    vmessUserName: '用户名称',
-    vmessUserNamePlaceholder: 'sekai',
-    vmessUUID: 'UUID *',
-    vmessUUIDPlaceholder: 'bf000d23-0752-40b4-affe-68f7707a9661',
-    vmessAlterId: 'Alter ID',
-    vmessAlterIdPlaceholder: '0',
-    vmessAlterIdHelp: '除非需要兼容旧版 VMess，否则请使用 0。',
+    generate: '重新生成',
+    enabled: '启用',
+    addField: '添加字段：',
+    addDeprecatedField: '已弃用：',
+    deprecatedHint: '在 sing-box 1.12 中已弃用 —— 仍可使用，但新配置不应再使用该字段。',
+    addUser: '添加用户',
+    invalidJson: 'JSON 格式错误：{message}',
+    flowNone: '无',
+
+    /*
+     * 仅为「名字本身讲不清楚」的字段提供中文名。
+     *
+     * 这里刻意不求全：生成的字段清单共约 250 个字段名，未列出的会在渲染时
+     * 由字段名自动转换（"tcp_fast_open" → "TCP Fast Open"），因此 sing-box
+     * 新增字段无需改动本文件即可正常显示。
+     */
+    fields: {
+      listen: '监听地址',
+      listen_port: '监听端口',
+      users: '用户',
+      method: '加密方法',
+      password: '密码',
+      set_system_proxy: '设为系统代理',
+      detour: '出站绕行',
+      network: '网络',
+      tls: 'TLS',
+      transport: '传输层',
+      multiplex: '多路复用',
+      domain_resolver: '域名解析器',
+      // tun
+      address: '接口地址',
+      auto_route: '自动路由',
+      strict_route: '严格路由',
+      stack: '网络栈',
+      route_address: '路由地址',
+      route_exclude_address: '排除路由地址',
+      // shadowsocks
+      destinations: '中继目标',
+      managed: '由 SSM API 管理',
+      // direct
+      override_address: '覆盖地址',
+      override_port: '覆盖端口',
+      // hysteria / hysteria2
+      up_mbps: '上行带宽 (Mbps)',
+      down_mbps: '下行带宽 (Mbps)',
+      // tuic
+      congestion_control: '拥塞控制',
+      zero_rtt_handshake: '零 RTT 握手',
+      // shadowtls
+      version: 'ShadowTLS 版本',
+      handshake: '握手服务器',
+      wildcard_sni: '通配符 SNI',
+      // anytls
+      padding_scheme: '填充方案',
+      // trojan
+      fallback: '回落',
+      fallback_for_alpn: 'ALPN 回落',
+    },
+
+    /** users 数组中单个条目的子字段。 */
+    userFields: {
+      username: '用户名',
+      password: '密码',
+      name: '名称',
+      uuid: 'UUID',
+      alterId: 'Alter ID',
+      flow: 'Flow',
+      auth_str: '认证字符串',
+    },
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -68,6 +113,7 @@ export default {
     tuic: 'TUIC',
     naive: 'Naive',
     shadowtls: 'ShadowTLS',
+    anytls: 'AnyTLS',
   },
   del: {
     title: '删除入站',
@@ -93,7 +139,7 @@ export default {
     listenPortRequired: '监听端口为必填项',
     ssMethodRequired: '加密方法为必填项',
     ssPasswordRequired: '密码为必填项',
-    vmessUsersRequired: '至少需要一个 VMess 用户',
-    vmessUUIDRequired: 'VMess 用户 UUID 为必填项',
+    usersRequired: '该入站类型至少需要一个用户',
+    userIdentityRequired: '每个用户都需要填写凭据（UUID 或密码）',
   },
 }

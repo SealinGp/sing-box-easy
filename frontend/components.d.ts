@@ -34,7 +34,10 @@ declare module 'vue' {
     DNSSettings: typeof import('./src/components/DNSSettings.vue')['default']
     FinalPolicy: typeof import('./src/components/FinalPolicy.vue')['default']
     GitHubAuthCard: typeof import('./src/components/GitHubAuthCard.vue')['default']
+    InboundFieldControl: typeof import('./src/components/InboundFieldControl.vue')['default']
+    InboundFieldsEditor: typeof import('./src/components/InboundFieldsEditor.vue')['default']
     Input: typeof import('./src/components/Input.vue')['default']
+    JsonField: typeof import('./src/components/JsonField.vue')['default']
     LabeledField: typeof import('./src/components/LabeledField.vue')['default']
     LanguageSwitcher: typeof import('./src/components/LanguageSwitcher.vue')['default']
     List: typeof import('./src/components/List.vue')['default']
@@ -61,6 +64,7 @@ declare module 'vue' {
     TabNav: typeof import('./src/components/TabNav.vue')['default']
     Textarea: typeof import('./src/components/Textarea.vue')['default']
     Topbar: typeof import('./src/components/Topbar.vue')['default']
+    UsersEditor: typeof import('./src/components/UsersEditor.vue')['default']
     V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
   }
 }

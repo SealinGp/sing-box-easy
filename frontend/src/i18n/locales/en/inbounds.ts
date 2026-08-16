@@ -26,30 +26,78 @@ export default {
     tagHelp: 'Unique identifier for this inbound',
     type: 'Type *',
     typePlaceholder: 'Pick inbound type',
-    listenAddress: 'Listen Address',
-    listenAddressPlaceholder: '127.0.0.1 or 0.0.0.0',
-    listenAddressHelp: 'IP address to listen on',
-    listenPort: 'Listen Port *',
-    listenPortPlaceholder: '1080',
-    enableSniff: 'Enable Traffic Sniffing',
-    overrideDestination: 'Override Destination',
-    interfaceName: 'Interface Name',
-    interfaceNamePlaceholder: 'tun0',
-    mtu: 'MTU',
-    mtuPlaceholder: '1500',
-    autoRoute: 'Auto Route',
-    ssMethod: 'Encryption Method *',
-    ssPassword: 'Password *',
-    generate: 'Generate',
-    ssPasswordHelp2022: 'Required: {len}-byte base64 encoded key for AEAD-2022 methods.',
-    ssPasswordHelpOther: 'Any password string.',
-    vmessUserName: 'User Name',
-    vmessUserNamePlaceholder: 'sekai',
-    vmessUUID: 'UUID *',
-    vmessUUIDPlaceholder: 'bf000d23-0752-40b4-affe-68f7707a9661',
-    vmessAlterId: 'Alter ID',
-    vmessAlterIdPlaceholder: '0',
-    vmessAlterIdHelp: 'Use 0 unless you need legacy VMess compatibility.',
+    generate: 'Regenerate',
+    enabled: 'Enabled',
+    addField: 'Add field:',
+    addDeprecatedField: 'Deprecated:',
+    deprecatedHint:
+      'Deprecated in sing-box 1.12 — still accepted, but new configs should not use it.',
+    addUser: 'Add user',
+    invalidJson: 'Invalid JSON: {message}',
+    flowNone: 'None',
+
+    /*
+     * Labels for fields whose sing-box name is not self-explanatory.
+     *
+     * Deliberately NOT exhaustive. The generated inventory carries ~250 field
+     * names; anything absent here is humanized from its own key at render time
+     * ("tcp_fast_open" → "TCP Fast Open"), so a field added by a future
+     * sing-box is legible without touching this file. Add an entry only when a
+     * human label says more than the field name does.
+     */
+    fields: {
+      listen: 'Listen Address',
+      listen_port: 'Listen Port',
+      users: 'Users',
+      method: 'Encryption Method',
+      password: 'Password',
+      set_system_proxy: 'Set as System Proxy',
+      detour: 'Detour Outbound',
+      network: 'Network',
+      tls: 'TLS',
+      transport: 'Transport',
+      multiplex: 'Multiplex',
+      domain_resolver: 'Domain Resolver',
+      // tun
+      address: 'Interface Address',
+      auto_route: 'Auto Route',
+      strict_route: 'Strict Route',
+      stack: 'Network Stack',
+      route_address: 'Routed Addresses',
+      route_exclude_address: 'Excluded Addresses',
+      // shadowsocks
+      destinations: 'Relay Destinations',
+      managed: 'Managed by SSM API',
+      // direct
+      override_address: 'Override Address',
+      override_port: 'Override Port',
+      // hysteria / hysteria2
+      up_mbps: 'Upload Bandwidth (Mbps)',
+      down_mbps: 'Download Bandwidth (Mbps)',
+      // tuic
+      congestion_control: 'Congestion Control',
+      zero_rtt_handshake: 'Zero-RTT Handshake',
+      // shadowtls
+      version: 'ShadowTLS Version',
+      handshake: 'Handshake Server',
+      wildcard_sni: 'Wildcard SNI',
+      // anytls
+      padding_scheme: 'Padding Scheme',
+      // trojan
+      fallback: 'Fallback',
+      fallback_for_alpn: 'Fallback for ALPN',
+    },
+
+    /** Sub-fields of one entry in a `users` array. */
+    userFields: {
+      username: 'Username',
+      password: 'Password',
+      name: 'Name',
+      uuid: 'UUID',
+      alterId: 'Alter ID',
+      flow: 'Flow',
+      auth_str: 'Auth String',
+    },
   },
   types: {
     mixed: 'Mixed (HTTP/SOCKS)',
@@ -68,6 +116,7 @@ export default {
     tuic: 'TUIC',
     naive: 'Naive',
     shadowtls: 'ShadowTLS',
+    anytls: 'AnyTLS',
   },
   del: {
     title: 'Delete Inbound',
@@ -93,7 +142,7 @@ export default {
     listenPortRequired: 'Listen port is required',
     ssMethodRequired: 'Encryption method is required',
     ssPasswordRequired: 'Password is required',
-    vmessUsersRequired: 'At least one VMess user is required',
-    vmessUUIDRequired: 'VMess user UUID is required',
+    usersRequired: 'At least one user is required for this inbound type',
+    userIdentityRequired: 'Every user needs its credential filled in (UUID or password)',
   },
 }

@@ -7,67 +7,80 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Modal from '../../components/Modal.vue'
 import Table from '../../components/Table.vue'
+import InboundFieldsEditor from '../../components/InboundFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
-import { applyInboundTypeDefaults, generateVmessUUID, validateInboundRequiredFields } from '../../utils/inboundRequiredFields'
+import {
+  prepareInboundForEdit,
+  prepareInboundForType,
+  validateInboundRequiredFields,
+} from '../../utils/inboundRequiredFields'
+import { INBOUND_TYPE_NAMES, type InboundTypeName } from '../../schemas/inboundFields'
 import { Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
 const copiedTag = ref<string | null>(null)
 const toast = useToast()
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+const DEFAULT_TYPE: InboundTypeName = 'mixed'
+
+function blankInbound(): Record<string, unknown> {
+  return prepareInboundForType({ tag: '' }, DEFAULT_TYPE)
+}
 
 // Modal state
 const showModal = ref(false)
 const isEditMode = ref(false)
 const editingTag = ref<string>('')
-const currentInbound = ref<Partial<Inbound>>({
-  type: 'mixed',
-  tag: '',
-  listen: '127.0.0.1',
-  listen_port: 1080,
-})
+const currentInbound = ref<Record<string, unknown>>(blankInbound())
 
 // Delete confirmation
 const showDeleteConfirm = ref(false)
 const deletingInbound = ref<Inbound | null>(null)
 
-const inboundTypes = computed(() => [
-  { value: 'mixed', label: t('inbounds.types.mixed') },
-  { value: 'http', label: t('inbounds.types.http') },
-  { value: 'socks', label: t('inbounds.types.socks') },
-  { value: 'tun', label: t('inbounds.types.tun') },
-  { value: 'redirect', label: t('inbounds.types.redirect') },
-  { value: 'tproxy', label: t('inbounds.types.tproxy') },
-  { value: 'direct', label: t('inbounds.types.direct') },
-  { value: 'shadowsocks', label: t('inbounds.types.shadowsocks') },
-  { value: 'vmess', label: t('inbounds.types.vmess') },
-  { value: 'trojan', label: t('inbounds.types.trojan') },
-  { value: 'vless', label: t('inbounds.types.vless') },
-  { value: 'hysteria', label: t('inbounds.types.hysteria') },
-  { value: 'hysteria2', label: t('inbounds.types.hysteria2') },
-  { value: 'tuic', label: t('inbounds.types.tuic') },
-  { value: 'naive', label: t('inbounds.types.naive') },
-  { value: 'shadowtls', label: t('inbounds.types.shadowtls') },
-])
-
-const shadowsocksMethods = [
-  '2022-blake3-aes-128-gcm',
-  '2022-blake3-aes-256-gcm',
-  '2022-blake3-chacha20-poly1305',
-  'none',
-  'aes-128-gcm',
-  'aes-192-gcm',
-  'aes-256-gcm',
-  'chacha20-ietf-poly1305',
-  'xchacha20-ietf-poly1305',
-]
+/**
+ * Driven by the generated inventory rather than a hand-written list, which is
+ * how "anytls" came to be registered on the backend since 1.12 while never
+ * appearing in this dropdown. Labels stay opt-in: a type without an
+ * `inbounds.types.*` entry shows its own name rather than a raw i18n path.
+ */
+const inboundTypes = computed(() =>
+  INBOUND_TYPE_NAMES.map((value) => ({
+    value,
+    label: te(`inbounds.types.${value}`) ? t(`inbounds.types.${value}`) : value,
+  })),
+)
 
 const getInboundTypeLabel = (type: string) => {
   return inboundTypes.value.find(it => it.value === type)?.label || type
 }
+
+/**
+ * Switching type prunes the previous type's fields before seeding the new
+ * one's defaults. Carrying them over used to produce a payload with, say,
+ * shadowsocks' `method` on a trojan inbound — which sing-box rejects, because
+ * it decodes inbound options strictly.
+ */
+function changeType(next: unknown) {
+  if (typeof next !== 'string') return
+  currentInbound.value = prepareInboundForType(currentInbound.value, next as InboundTypeName)
+}
+
+/**
+ * The form model is an open record because an inbound's fields depend on its
+ * type, and the declared `Inbound` union cannot narrow on `type` (the
+ * discriminant sits outside the union). This is the one place that shape is
+ * read back as a type name, so the assertion lives here rather than at every
+ * template use.
+ */
+const currentType = computed(() =>
+  typeof currentInbound.value.type === 'string'
+    ? (currentInbound.value.type as InboundTypeName)
+    : undefined,
+)
 
 const getInboundBadgeVariant = (type: string): 'primary' | 'success' | 'warning' | 'info' | 'secondary' => {
   if (type === 'mixed' || type === 'http' || type === 'socks') return 'primary'
@@ -94,35 +107,27 @@ const fetchInbounds = async () => {
 
 const openAddModal = () => {
   isEditMode.value = false
-  currentInbound.value = {
-    type: 'mixed',
-    tag: '',
-    listen: '127.0.0.1',
-    listen_port: 1080,
-  }
+  currentInbound.value = blankInbound()
   showModal.value = true
 }
 
 const openEditModal = (inbound: Inbound) => {
   isEditMode.value = true
   editingTag.value = inbound.tag
-  currentInbound.value = { ...inbound }
-  applyInboundTypeDefaults(currentInbound.value as any)
+  // No defaults seeded on edit: writing one into a config that deliberately
+  // omitted the key would change behaviour before the operator touched
+  // anything, and show up in the diff as their change.
+  currentInbound.value = prepareInboundForEdit(inbound as unknown as Record<string, unknown>)
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  currentInbound.value = {
-    type: 'mixed',
-    tag: '',
-    listen: '127.0.0.1',
-    listen_port: 1080,
-  }
+  currentInbound.value = blankInbound()
 }
 
 const handleSave = async () => {
-  const validationError = validateInboundRequiredFields(currentInbound.value as any)
+  const validationError = validateInboundRequiredFields(currentInbound.value)
   if (validationError) {
     toast.add({
       severity: 'error',
@@ -136,7 +141,7 @@ const handleSave = async () => {
   loading.value = true
   try {
     if (isEditMode.value) {
-      await inboundService.updateInbound(editingTag.value, currentInbound.value as Inbound)
+      await inboundService.updateInbound(editingTag.value, currentInbound.value as unknown as Inbound)
       toast.add({
         severity: 'success',
         summary: t('common.success'),
@@ -144,7 +149,7 @@ const handleSave = async () => {
         life: 3000
       })
     } else {
-      await inboundService.addInbound(currentInbound.value as Inbound)
+      await inboundService.addInbound(currentInbound.value as unknown as Inbound)
       toast.add({
         severity: 'success',
         summary: t('common.success'),
@@ -203,62 +208,17 @@ const handleDelete = async () => {
   }
 }
 
-const generatePassword = () => {
-  const method = (currentInbound.value as any).method || '2022-blake3-aes-128-gcm'
-  if (method === 'none') {
-    ;(currentInbound.value as any).password = ''
-    return
-  }
-  
-  if (method.startsWith('2022-blake3-')) {
-    const keyLen = method.includes('128') ? 16 : 32
-    const arr = new Uint8Array(keyLen)
-    window.crypto.getRandomValues(arr)
-    let binary = ''
-    const len = arr.byteLength
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(arr[i] as number)
-    }
-    ;(currentInbound.value as any).password = window.btoa(binary)
-  } else {
-    // Generate a secure random string (32 characters)
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    const arr = new Uint8Array(32)
-    window.crypto.getRandomValues(arr)
-    for (let i = 0; i < arr.length; i++) {
-      result += chars.charAt((arr[i] as number) % chars.length)
-    }
-    ;(currentInbound.value as any).password = result
-  }
-}
-
-const generateVMessUUID = () => {
-  const inbound = currentInbound.value as any
-  if (!Array.isArray(inbound.users) || inbound.users.length === 0) {
-    inbound.users = [{ name: 'sekai', uuid: '', alterId: 0 }]
-  }
-  inbound.users[0].uuid = generateVmessUUID()
-}
-
-watch(() => currentInbound.value.type, (newType) => {
-  applyInboundTypeDefaults(currentInbound.value as any)
-  if (newType === 'shadowsocks' && !(currentInbound.value as any).password) {
-    generatePassword()
-  }
-})
+// Credential generation moved to utils/credentials.ts and is reached through
+// the users editor, so it now works for every type that takes credentials
+// rather than only the shadowsocks and vmess blocks that used to be hardcoded
+// here. Type changes are handled by changeType(), which prunes before seeding.
 
 // Watch for modal close to reset form state
 watch(showModal, (newValue) => {
   if (!newValue) {
     // Reset form when modal is closed
     setTimeout(() => {
-      currentInbound.value = {
-        type: 'mixed',
-        tag: '',
-        listen: '127.0.0.1',
-        listen_port: 1080,
-      }
+      currentInbound.value = blankInbound()
     }, 300) // Wait for transition to complete
   }
 })
@@ -402,7 +362,14 @@ onMounted(fetchInbounds)
       size="md"
       show-close
     >
-      <div class="space-y-4">
+      <div class="space-y-3">
+        <!--
+          Tag and type are not part of any type's option struct — they live on
+          the inbound wrapper — so they are rendered here rather than coming
+          from the schema. Both are locked while editing: the tag is the
+          identity other config sections reference, and changing the type would
+          reinterpret every remaining field.
+        -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.tag') }}</label>
           <Input
@@ -417,149 +384,28 @@ onMounted(fetchInbounds)
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
           <Select
             class="w-full"
-            v-model="(currentInbound as any).type"
+            :modelValue="currentInbound.type"
             :options="inboundTypes"
             optionLabel="label"
             optionValue="value"
             :placeholder="$t('inbounds.form.typePlaceholder')"
             :disabled="isEditMode"
+            @update:modelValue="changeType"
           />
         </div>
 
-        <div v-if="currentInbound.type !== 'tun'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenAddress') }}</label>
-          <Input
-            v-model="(currentInbound as any).listen"
-            :placeholder="$t('inbounds.form.listenAddressPlaceholder')"
-          />
-          <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.listenAddressHelp') }}</p>
-        </div>
-
-        <div v-if="currentInbound.type !== 'tun'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.listenPort') }}</label>
-          <Input
-            v-model.number="(currentInbound as any).listen_port"
-            type="number"
-            :placeholder="$t('inbounds.form.listenPortPlaceholder')"
-          />
-        </div>
-
-        <!-- Shadowsocks Options -->
-        <div v-if="currentInbound.type === 'shadowsocks'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssMethod') }}</label>
-            <Select
-              class="w-full"
-              v-model="(currentInbound as any).method"
-              :options="shadowsocksMethods"
-              @change="generatePassword"
-            />
-          </div>
-
-          <div v-if="(currentInbound as any).method !== 'none'">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.ssPassword') }}</label>
-            <div class="flex gap-2">
-              <div class="flex-1">
-                <Input
-                  v-model="(currentInbound as any).password"
-                  placeholder="Password or Key"
-                />
-              </div>
-              <Button type="button" @click="generatePassword" variant="secondary" class="shrink-0 flex items-center justify-center">
-                {{ $t('inbounds.form.generate') }}
-              </Button>
-            </div>
-            <p class="mt-1 text-xs text-gray-500">
-              {{ (currentInbound as any).method?.startsWith('2022-blake3-')
-                ? $t('inbounds.form.ssPasswordHelp2022', { len: (currentInbound as any).method.includes('128') ? 16 : 32 })
-                : $t('inbounds.form.ssPasswordHelpOther')
-              }}
-            </p>
-          </div>
-        </div>
-
-        <!-- VMess Options -->
-        <div v-if="currentInbound.type === 'vmess'" class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUserName') }}</label>
-            <Input
-              v-model="(currentInbound as any).users[0].name"
-              :placeholder="$t('inbounds.form.vmessUserNamePlaceholder')"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessUUID') }}</label>
-            <div class="flex gap-2">
-              <div class="flex-1">
-                <Input
-                  v-model="(currentInbound as any).users[0].uuid"
-                  :placeholder="$t('inbounds.form.vmessUUIDPlaceholder')"
-                />
-              </div>
-              <Button type="button" @click="generateVMessUUID" variant="secondary" class="shrink-0 flex items-center justify-center">
-                {{ $t('inbounds.form.generate') }}
-              </Button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.vmessAlterId') }}</label>
-            <Input
-              v-model.number="(currentInbound as any).users[0].alterId"
-              type="number"
-              :placeholder="$t('inbounds.form.vmessAlterIdPlaceholder')"
-            />
-            <p class="mt-1 text-xs text-gray-500">{{ $t('inbounds.form.vmessAlterIdHelp') }}</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sniff"
-            v-model="(currentInbound as any).sniff"
-            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <label for="sniff" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.enableSniff') }}</label>
-        </div>
-
-        <div v-if="(currentInbound as any).sniff" class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sniff_override"
-            v-model="(currentInbound as any).sniff_override_destination"
-            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <label for="sniff_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.overrideDestination') }}</label>
-        </div>
-
-        <div v-if="currentInbound.type === 'tun'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.interfaceName') }}</label>
-          <Input
-            v-model="(currentInbound as any).interface_name"
-            :placeholder="$t('inbounds.form.interfaceNamePlaceholder')"
-          />
-        </div>
-
-        <div v-if="currentInbound.type === 'tun'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.mtu') }}</label>
-          <Input
-            v-model.number="(currentInbound as any).mtu"
-            type="number"
-            :placeholder="$t('inbounds.form.mtuPlaceholder')"
-          />
-        </div>
-
-        <div v-if="currentInbound.type === 'tun'" class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="auto_route"
-            v-model="(currentInbound as any).auto_route"
-            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <label for="auto_route" class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('inbounds.form.autoRoute') }}</label>
-        </div>
+        <!--
+          :key remounts the editor on every type change, which resets the set of
+          fields the operator had added. Without it, switching shadowsocks →
+          trojan would leave shadowsocks' fields on screen bound to keys the new
+          type does not have. Same mechanism as RoutingRules' matchersKey.
+        -->
+        <InboundFieldsEditor
+          v-if="currentType"
+          :key="currentType"
+          v-model="currentInbound"
+          :type="currentType"
+        />
       </div>
 
       <template #footer>
