@@ -202,6 +202,40 @@ var deprecationTargets = map[string][]deprecationTarget{
 	"legacy-domain-strategy-options": {
 		{Domain: "Outbound", Fields: map[string][]string{"*": {"domain_strategy"}}},
 		{Domain: "DNSServer", Fields: map[string][]string{"*": {"domain_strategy"}}},
+		// The `direct` route action is DialerOptions too, so it inherits the
+		// same retired field. The go/ast pass does not catch this one on its
+		// own — the outbound and DNS entries above are also carried purely by
+		// this table — so a new domain embedding DialerOptions must be added
+		// here explicitly or it silently offers a field scheduled for removal.
+		{Domain: "RouteRuleAction", Fields: map[string][]string{"direct": {"domain_strategy"}}},
+	},
+
+	// route/rule/rule_default.go:125-133 and rule_dns.go:116 — these two are
+	// NOT reported through deprecated.Report at all. They are a hard error at
+	// rule construction:
+	//
+	//	geosite database is deprecated in sing-box 1.8.0 and removed in sing-box 1.12.0
+	//
+	// Removed in 1.12.0, which is at or below the pinned library AND below every
+	// binary an operator can install, so isRetired withholds them everywhere.
+	// That is the intent: the route form used to promote `geosite` and `geoip`
+	// as curated dropdowns with 12 and 7 options, and every one of those values
+	// produced a rule sing-box refuses to start. Verified with `sing-box check`
+	// against 1.13.11.
+	//
+	// The replacement is a rule set — which this repo's own templates and init
+	// wizard already use.
+	"geosite": {
+		{Domain: "RouteRuleMatcher", Fields: map[string][]string{"*": {"geosite"}}},
+	},
+	"geoip": {
+		{Domain: "RouteRuleMatcher", Fields: map[string][]string{"*": {"geoip", "source_geoip"}}},
+	},
+
+	// route/rule/rule_default.go:255-257 — the pre-1.10 spelling, renamed to
+	// rule_set_ip_cidr_match_source. Still decodes on 1.13.11, but reports.
+	"bad-match-source": {
+		{Domain: "RouteRuleMatcher", Fields: map[string][]string{"*": {"rule_set_ipcidr_match_source"}}},
 	},
 }
 

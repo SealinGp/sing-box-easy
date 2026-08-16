@@ -108,6 +108,51 @@ func (r *Registry) CreateDNSRuleActionOptions(action string) (any, bool) {
 	}
 }
 
+// CreateRouteRuleActionOptions 按 `action` 返回路由规则动作的选项结构。
+//
+// 与 CreateDNSRuleActionOptions 同理: 不实现任何 sing-box registry 接口,
+// 存在的唯一理由是给 schema 生成器一个可枚举的入口。
+//
+// 七个分支与 option/rule_action.go 的 _RuleAction 一一对应。注意这与 DNS 规则的
+// 动作集合并不相同, 两个方向都有差异, 见 RouteRuleActionTypes 的注释。
+//
+// hijack-dns 没有任何选项结构 —— RuleAction.MarshalJSON 对它取 v = nil ——
+// 所以这里返回 nil 且 ok=true, 并由 domain.FieldlessTypes 允许零字段。
+func (r *Registry) CreateRouteRuleActionOptions(action string) (any, bool) {
+	switch action {
+	case C.RuleActionTypeRoute:
+		return new(option.RouteActionOptions), true
+	case C.RuleActionTypeRouteOptions:
+		return new(option.RouteOptionsActionOptions), true
+	case C.RuleActionTypeDirect:
+		return new(option.DirectActionOptions), true
+	case C.RuleActionTypeReject:
+		return new(option.RejectActionOptions), true
+	case C.RuleActionTypeHijackDNS:
+		// 行为而非配置: 没有可编辑字段。
+		return new(struct{}), true
+	case C.RuleActionTypeSniff:
+		return new(option.RouteActionSniff), true
+	case C.RuleActionTypeResolve:
+		return new(option.RouteActionResolve), true
+	default:
+		return nil, false
+	}
+}
+
+// CreateRouteRuleMatcherOptions 返回路由规则的匹配条件结构。
+//
+// 路由规则的匹配条件不是多态的: option.RawDefaultRule 是一个约 37 个字段的扁平
+// 结构, 没有任何判别字段。这里保持 Create(type) 的签名只是为了复用生成器的形状。
+func (r *Registry) CreateRouteRuleMatcherOptions(matcherType string) (any, bool) {
+	switch matcherType {
+	case C.RuleTypeDefault:
+		return new(option.RawDefaultRule), true
+	default:
+		return nil, false
+	}
+}
+
 // CreateServiceOptions implements option.ServiceOptionsRegistry
 func (r *Registry) CreateServiceOptions(serviceType string) (any, bool) {
 	switch serviceType {

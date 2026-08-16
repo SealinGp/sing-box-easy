@@ -99,6 +99,27 @@ type domain struct {
 	// so the "reflected to zero fields" guard must not fire. `block` and `dns`
 	// outbounds both map to option.StubOptions, which is `struct{}`.
 	FieldlessTypes []string
+	// ExcludedFields drops fields that reflection finds but sing-box refuses in
+	// this particular context, keyed by type.
+	//
+	// The case this exists for: the `direct` route action is DialerOptions, so
+	// `detour` reflects into it — and DirectActionOptions.UnmarshalJSON rejects
+	// it outright with "detour is not available in the current context".
+	// Offering it would be a save that cannot succeed.
+	//
+	// Omitting is safe here in a way it would not be for a deprecated field: a
+	// config carrying one of these cannot decode at all, so no existing config
+	// can be holding a value the form would then hide.
+	ExcludedFields map[string][]string
+}
+
+func (d domain) excludes(optionType, field string) bool {
+	for _, name := range d.ExcludedFields[optionType] {
+		if name == field {
+			return true
+		}
+	}
+	return false
 }
 
 func (d domain) allowsNoFields(optionType string) bool {
@@ -179,6 +200,52 @@ func domains(registry *config.Registry) []domain {
 				"// by another action — see pruneForeignFields in optionSchema.ts.",
 			// Nothing deprecated: every field of all four action structs is
 			// present and current in 1.12.12, and unchanged through 1.13.11.
+			DocDeprecated: map[string]bool{},
+		},
+		{
+			Name:      "RouteRuleAction",
+			Screaming: "ROUTE_RULE_ACTION",
+			Output:    "frontend/src/schemas/routeRuleActionInventory.generated.ts",
+			Types:     config.RouteRuleActionTypes,
+			Create:    registry.CreateRouteRuleActionOptions,
+			Doc: "Route rule action options, keyed by the `action` field of an entry in `route.rules`.\n" +
+				"//\n" +
+				"// THE KEY IS `action`, NOT `type` — a route rule uses `type` for the matcher\n" +
+				"// shape (\"default\"/\"logical\"). An omitted `action` means \"route\".\n" +
+				"//\n" +
+				"// This is NOT the same set as DNS rule actions. `direct`, `hijack-dns`, `sniff`\n" +
+				"// and `resolve` are route-only; `predefined` is DNS-only; the rest are shared.\n" +
+				"//\n" +
+				"// These fields share one flat JSON object with the rule's matchers, which belong\n" +
+				"// to no action — prune with pruneForeignFields, never pruneForType.",
+			// hijack-dns is a behaviour, not a configuration: RuleAction
+			// marshals it with v = nil, so a zero-field entry is correct.
+			FieldlessTypes: []string{"hijack-dns"},
+			// DirectActionOptions IS DialerOptions, so `detour` reflects onto it
+			// — and sing-box rejects it: "detour is not available in the current
+			// context". Verified against 1.13.11. TestDirectActionRejectsDetour
+			// fails if this stops being true.
+			ExcludedFields: map[string][]string{
+				"direct": {"detour"},
+			},
+			DocDeprecated: map[string]bool{},
+		},
+		{
+			Name:      "RouteRuleMatcher",
+			Screaming: "ROUTE_RULE_MATCHER",
+			Output:    "frontend/src/schemas/routeRuleMatcherInventory.generated.ts",
+			Types:     config.RouteRuleMatcherTypes,
+			Create:    registry.CreateRouteRuleMatcherOptions,
+			Doc: "Route rule matching conditions — the `option.RawDefaultRule` half of an entry\n" +
+				"// in `route.rules`.\n" +
+				"//\n" +
+				"// UNLIKE EVERY OTHER DOMAIN HERE, THIS ONE IS NOT POLYMORPHIC. There is exactly\n" +
+				"// one entry, \"default\", because the matchers are a single flat struct with no\n" +
+				"// discriminator. The generator's shape is reused only to avoid a second code\n" +
+				"// path; \"logical\" is absent because a logical rule has no matchers of its own.\n" +
+				"//\n" +
+				"// Grouping (rule set / content / context) is editorial and lives in the curation\n" +
+				"// file — see routeRuleMatcherFields.ts for why content and context differ.",
 			DocDeprecated: map[string]bool{},
 		},
 	}
@@ -358,6 +425,21 @@ func render(d domain, deprecations deprecationIndex, table map[string]deprecatio
 		}
 
 		fields := collect(reflect.TypeOf(options))
+
+		// Drop what sing-box declares here but refuses to decode. Done after
+		// collect so the exclusion is stated per type rather than hidden in the
+		// reflection walk — an embedded struct's field is legitimate for every
+		// OTHER type that embeds it. See domain.ExcludedFields.
+		if len(d.ExcludedFields[optionType]) > 0 {
+			kept := fields[:0]
+			for _, f := range fields {
+				if !d.excludes(optionType, f.Name) {
+					kept = append(kept, f)
+				}
+			}
+			fields = kept
+		}
+
 		if len(fields) == 0 && !d.allowsNoFields(optionType) {
 			// The guard catches a registry returning the wrong thing. A type
 			// that genuinely has no options must say so explicitly, so a
