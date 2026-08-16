@@ -545,7 +545,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-end items-center mb-4">
+    <div class="flex justify-end items-center mb-2">
       <div class="flex gap-3">
         <Button
           v-if="selectedOutbounds.size > 0"

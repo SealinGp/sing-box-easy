@@ -33,10 +33,14 @@ const isActiveTab = (path: string) => {
     <!--
       The strip is chrome, not content: it gets the minimum that still reads as
       a divider. Was `mb-4` + `py-1.5` links, which cost 64px before a page's
-      first row; now 44px. Link boxes stay at ~28px, above the 24px WCAG 2.2
-      minimum target size.
+      first row; now 40px (12px gutter + a 28px strip). Link boxes stay at
+      ~28px, above the 24px WCAG 2.2 minimum target size.
+
+      No bottom margin: every panel below already leads with its own toolbar
+      row carrying `mb-2`, so a margin here stacked with it. The panel owns the
+      gap.
     -->
-    <div class="mb-2 border-b border-gray-200 dark:border-gray-700">
+    <div class="border-b border-gray-200 dark:border-gray-700">
       <nav class="-mb-px flex space-x-4">
         <RouterLink
           v-for="tab in tabs"
