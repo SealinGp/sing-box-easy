@@ -1,10 +1,12 @@
 # Schema-Driven Option Forms
 
-How the Inbound, DNS Server and Outbound dialogs know what fields exist, which
-ones matter, and which ones the installed sing-box will actually accept.
+How the Inbound, DNS Server, Outbound and DNS Rule Action dialogs know what
+fields exist, which ones matter, and which ones the installed sing-box will
+actually accept.
 
-> **Status**: implemented for 3 of 5 option domains. `endpoint` and `service`
-> remain. The multi-version plan in §6 is designed but **not built**.
+> **Status**: implemented for 4 domains — inbound, outbound, DNS server, DNS rule
+> action. `endpoint` and `service` remain. The multi-version plan in §6 is
+> designed but **not built**.
 
 ---
 
@@ -23,6 +25,7 @@ Every copy drifted:
 | `frontend/src/types/inbound.ts` | 424 hand-transcribed lines. Missing `anytls`, which the backend had registered since 1.12. |
 | Hardcoded type dropdowns | Outbounds offered 17 while the registry built 20. `anytls`, `dns`, `shadowsocksr` were unreachable. |
 | Capability predicates | `needsServerAddress` and `supportsDetour` in `DNSServers.vue` were byte-identical lists under different names. Group classification existed in four places. |
+| DNS rule action lists | Three copies. `types/dns.ts` said `'route' \| 'return' \| 'reject'` — `return` is not a sing-box action and `route-options`/`predefined` were missing; `DNSRules.vue` carried a second, correct list; a third `switch` decided which fields to strip on save. |
 | `registry.go` itself | Spelled HTTP/3 DNS `"http3"`; sing-box's constant is `"h3"`. A valid config could not be parsed, and a saved one could not start. |
 
 The authoritative list already exists in this repo — `app/pkg/config/registry.go`
@@ -187,6 +190,31 @@ names mislead. `"special-outbounds"` reads like it covers `block` and `dns`, but
 grep -rn 'deprecated\.Option' "$(go env GOMODCACHE)/github.com/sagernet/sing-box@<ver>"
 ```
 
+### 4.1a The docs site is not a version
+
+`sing-box.sagernet.org` serves **dev-next**. It is not the documentation for any
+release, and it is not a substitute for reading the option structs.
+
+Measured while building the DNS rule action domain. The docs page for
+`dns/rule_action` lists a `route` action with `speculative`, `timeout`,
+`disable_optimistic_cache` and `remove_client_subnet`. Against actual tags:
+
+| Field | 1.12.12 (pin) | 1.13.0 | 1.13.11 | 1.14.0-beta.1 | docs |
+|---|---|---|---|---|---|
+| server, strategy, disable_cache, rewrite_ttl, client_subnet | ✓ | ✓ | ✓ | ✓ | ✓ |
+| tag, speculative, timeout, disable_optimistic_cache | — | — | — | ✓ | ✓ |
+| remove_client_subnet | — | — | — | **—** | ✓ |
+
+So one documented field exists in **no release at all**, and the rest are a whole
+minor further out than the page implies. Curating from that page would have
+produced a form offering four fields every installable binary rejects — the
+precise failure §4.2 exists to prevent, arrived at from the opposite direction.
+
+```bash
+# What to do instead, for any tag:
+curl -s https://raw.githubusercontent.com/SagerNet/sing-box/<tag>/option/rule_action.go
+```
+
 ### 4.2 Why a gate exists at all
 
 **The inventory describes the pinned library. The operator runs a different
@@ -250,6 +278,30 @@ carries X's removals, so both must gate like X.
 `Test*TypesAreRegistered` fails if the list and the registry disagree. The
 reverse — a registry case nobody listed — is **not** detectable, because a Go
 type switch cannot be enumerated at runtime. Adding a type means touching both.
+
+### When the discriminator is not `type`
+
+DNS rule actions key off `action`, because a DNS rule already uses `type` for
+something else — the matcher shape (`default` / `logical`), which varies
+independently of what the rule does once it matches. `createSchema` takes a
+`typeKey` for this; binding it wrong turns a logical rule into an unparseable
+one on the first action change.
+
+That domain is also the first whose record the schema only **partly owns**. A
+DNS rule is one flat JSON object holding both the action's fields and every
+match condition. `pruneForType` is an allowlist and would delete the entire
+matcher, so there is a denylist sibling:
+
+| | Keeps | Use for |
+|---|---|---|
+| `pruneForType` | identity keys + this type's fields | a record the schema fully describes (inbound, outbound, DNS server) |
+| `pruneForeignFields` | everything except keys another type in this inventory owns | a record the schema shares with something else (DNS rule) |
+
+The denylist is the safer default where it applies: a key no inventory has heard
+of is kept **by construction**. The hand-written allowlist it replaced
+(`EDITED_FIELDS` in `DNSRules.vue`) destroyed any field nobody remembered to
+list — including `no_drop`, which was listed but never rendered, so it was read
+into nothing and written back as nothing.
 
 ### Add a domain (`endpoint`, `service`)
 
@@ -334,7 +386,17 @@ call site per domain.
 
 ### 6.5 Is it worth it?
 
-Measured 1.12.12 → 1.13.12 across all three domains:
+Re-measured for DNS rule actions, 1.12.12 → 1.13.11: **zero drift.** The four
+action structs are field-for-field identical across the entire 1.13 line, so the
+generated inventory is complete for every binary an operator can install today
+and the §4 gate has nothing to withhold. The first real movement is
+1.14.0-beta.1, which adds 6 fields across `route` and `route-options`.
+
+That is the trigger §6.5 was waiting for — 1.14 changes *action* fields, not dial
+fields — but it is still a beta, so the pin-only inventory stands. Revisit when
+1.14 ships stable.
+
+Measured 1.12.12 → 1.13.12 across the first three domains:
 
 | Direction | Count | Consequence |
 |---|---|---|
@@ -388,6 +450,23 @@ Each of these cost real time.
 8. **Verify the artifact, not the command output.** `bun --cwd frontend run build`
    printed `✓ built` without rebuilding, which nearly produced a "the feature
    does not work" conclusion. Grep the built bundle for a string you just added.
+9. **A Go type's underlying kind can lie about its wire format.** `option.DNSRCode`
+   is an `int` that marshals as `"NXDOMAIN"`; `option.DNSRecordOptions` is a
+   struct embedding the `dns.RR` interface that marshals as a one-line RR string.
+   Classified by `reflect.Kind` they became a number spinner and a JSON textarea.
+   Both needed `namedKinds` entries. When adding a domain, marshal one fully
+   populated value of every type and read the JSON — that is what
+   `TestDNSRuleActionRoundTrip` does.
+10. **`badoption.Listable[T]` collapses a single entry to a bare scalar.** A
+    `predefined` rule with one answer marshals as `"answer": "a. 3600 IN A ..."`,
+    not a one-element array. A chips control bound to that renders one chip per
+    *character*. The conditions form already coerced scalar → array for
+    `domain`/`rule_set`; anything list-shaped needs the same treatment.
+11. **Defaults belong on create, never on open.** `openEditRuleModal` seeded
+    `rcode: 'NXDOMAIN'` for a missing value, but an absent rcode means `NOERROR` —
+    so opening a rule and pressing Update silently changed what it did.
+    `applyTypeDefaults` is called on create and on a type change only, and this
+    is why.
 
 ---
 
@@ -396,7 +475,7 @@ Each of these cost real time.
 | Path | Role |
 |---|---|
 | `app/pkg/config/registry.go` | Type → option struct. The source of truth. |
-| `app/pkg/config/{inbound,dns,outbound}_types.go` | Exported type lists + classification helpers |
+| `app/pkg/config/{inbound,dns,outbound,dns_rule_action}_types.go` | Exported type lists + classification helpers |
 | `cmd/gen-option-schema/main.go` | Generator: domains table, reflection, emission |
 | `cmd/gen-option-schema/versions.go` | sing-box deprecation table → inventory mapping |
 | `frontend/src/schemas/optionSchema.ts` | Domain-agnostic: tiers, visibility, prune, defaults, version helpers |
@@ -411,5 +490,12 @@ Composite controls, for fields with no generic editor:
 `UsersEditor.vue` (inbound `users`), `HostsEditor.vue` (DNS `predefined`),
 `JsonField.vue` (anything uncurated and object-shaped).
 
-Current coverage: **Inbound** 17 types, **DNSServer** 11, **Outbound** 20.
-Remaining: `endpoint`, `service`.
+Dependent controls, whose vocabulary is the live config rather than a constant:
+`outbound` / `outbound-list` / `outbound-member` (outbound tags) and
+`dns-server` (DNS server tags). All resolve their options in
+`SchemaFieldControl.vue`, and all keep a value that no longer resolves visible
+and flagged rather than dropping it — otherwise the next save looks like the
+operator cleared it.
+
+Current coverage: **Inbound** 17 types, **DNSServer** 11, **Outbound** 20,
+**DNSRuleAction** 4. Remaining: `endpoint`, `service`.
