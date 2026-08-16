@@ -115,41 +115,41 @@ onMounted(() => {
 
 <template>
   <div>
-    <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ $t('dns.settings.heading') }}</h3>
-
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
+    <!-- The heading comes from Card's own `title` prop rather than a local <h3>:
+         one spelling of the card title, and it carries the compact `mb-3`. -->
+    <Card :title="$t('dns.settings.heading')">
+      <div v-if="loading" class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else class="space-y-3">
         <!-- Domain Strategy -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.strategy') }}
           </label>
           <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.strategy" :options="strategyOptions" />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {{ $t('dns.settings.strategyHelp') }}
           </p>
         </div>
 
         <!-- Final DNS Server -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.finalServer') }}
           </label>
           <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.final" :options="serverOptions" />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {{ $t('dns.settings.finalServerHelp') }}
           </p>
         </div>
 
         <!-- Cache Settings -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('dns.settings.cacheHeading') }}</h4>
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+          <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ $t('dns.settings.cacheHeading') }}</h4>
 
-          <div class="space-y-4">
+          <div class="space-y-2">
             <div class="flex items-start">
               <div class="flex items-center h-5">
                 <input
@@ -159,11 +159,11 @@ onMounted(() => {
                   class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
-              <div class="ml-3">
+              <div class="ml-2">
                 <label for="disable_cache" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('dns.settings.disableCache') }}
                 </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ $t('dns.settings.disableCacheHelp') }}
                 </p>
               </div>
@@ -178,11 +178,11 @@ onMounted(() => {
                   class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
-              <div class="ml-3">
+              <div class="ml-2">
                 <label for="disable_expire" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('dns.settings.disableExpire') }}
                 </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ $t('dns.settings.disableExpireHelp') }}
                 </p>
               </div>
@@ -191,10 +191,10 @@ onMounted(() => {
         </div>
 
         <!-- Save Button -->
-        <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex justify-end pt-3 border-t border-gray-200 dark:border-gray-700">
           <!-- `action` drops the drop shadow: the footer sits inside the panel,
                so a raised pill reads as floating above it. -->
-          <Button @click="handleSave" variant="primary" action :disabled="loading">
+          <Button @click="handleSave" variant="primary" size="sm" action :disabled="loading">
             {{ $t('dns.settings.save') }}
           </Button>
         </div>

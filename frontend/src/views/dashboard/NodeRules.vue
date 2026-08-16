@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useNodeRulesStore } from '../../stores/noderules'
 import PopConfirm from '../../components/PopConfirm.vue'
+import Button from '../../components/Button.vue'
 import { Select } from '../../volt'
 import type { Filter, Group, Matcher, MatcherType, FilterOutboundType } from '../../types/noderules'
 import { URLTEST_DEFAULTS } from '../../types/noderules'
@@ -318,46 +319,38 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-4 animate-fade-in">
+  <div class="space-y-3 animate-fade-in">
     <!-- Header: subtitle + actions -->
-    <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
-      <div class="flex items-center gap-3">
-        <button
-          class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm font-semibold px-4 py-2 rounded-control transition-all cursor-pointer"
-          :disabled="loading"
-          @click="store.runPreview()"
-        >
+      <div class="flex items-center gap-2">
+        <Button variant="secondary" size="sm" action :disabled="loading" @click="store.runPreview()">
           {{ t('nodeRules.preview') }}
-        </button>
-        <button
-          class="bg-primary-600 hover:bg-primary-500 text-white text-sm font-semibold px-4 py-2 rounded-control shadow-surface transition-colors cursor-pointer"
-          :disabled="applying"
-          @click="doApply"
-        >
+        </Button>
+        <Button variant="primary" size="sm" action :disabled="applying" @click="doApply">
           {{ applying ? t('nodeRules.applying') : t('nodeRules.applyNow') }}
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Alert Messages -->
-    <div v-if="notice" class="p-4 rounded-surface bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-400 text-sm animate-fade-in flex items-center gap-2">
+    <div v-if="notice" class="px-3 py-2 rounded-control bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-400 text-sm animate-fade-in flex items-center gap-2">
       <span class="w-1.5 h-1.5 rounded-pill bg-primary-500 animate-ping"></span>
       <span>{{ notice }}</span>
     </div>
-    <div v-if="error" class="p-4 rounded-surface bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm animate-fade-in flex items-center gap-2">
+    <div v-if="error" class="px-3 py-2 rounded-control bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm animate-fade-in flex items-center gap-2">
       <span class="w-1.5 h-1.5 rounded-pill bg-red-500 animate-ping"></span>
       <span>{{ error }}</span>
     </div>
 
     <!-- Templates -->
-    <section v-if="templates.length" class="space-y-3 bg-gray-50/50 dark:bg-slate-900/40 border border-gray-100 dark:border-gray-800/80 p-4 rounded-surface">
+    <section v-if="templates.length" class="space-y-2 bg-gray-50/50 dark:bg-slate-900/40 border border-gray-100 dark:border-gray-800/80 px-3 py-2.5 rounded-surface">
       <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ t('nodeRules.templates') }}</h2>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-1.5">
         <button
           v-for="tpl in templates"
           :key="tpl.id"
-          class="border border-primary-200 dark:border-primary-800 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-700 dark:text-primary-400 text-xs font-semibold px-3 py-1.5 rounded-control transition-all cursor-pointer"
+          class="border border-primary-200 dark:border-primary-800 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-700 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
           :title="tpl.description"
           @click="addTemplate(tpl.id)"
         >
@@ -367,16 +360,16 @@ onMounted(async () => {
     </section>
 
     <!-- Filters & Groups Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <!-- Filters panel -->
-      <section class="space-y-4 flex flex-col">
+      <section class="space-y-2 flex flex-col">
         <div class="flex items-center justify-between">
-          <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <AdjustmentsHorizontalIcon class="h-5 w-5 text-primary-500" />
+          <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+            <AdjustmentsHorizontalIcon class="h-4 w-4 text-primary-500" />
             {{ t('nodeRules.filters') }}
           </h2>
           <button
-            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold px-3 py-1.5 rounded-control transition-colors cursor-pointer flex items-center gap-1"
+            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold px-2 py-1 rounded-control transition-colors cursor-pointer flex items-center gap-1"
             @click="startCreateFilter"
           >
             <PlusIcon class="h-3.5 w-3.5" />
@@ -385,13 +378,13 @@ onMounted(async () => {
         </div>
 
         <!-- Filter list -->
-        <ul class="space-y-3">
+        <ul class="space-y-1.5">
           <li
             v-for="f in filters"
             :key="f.id"
-            class="node-rule-card rounded-surface border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 transition-colors duration-200"
+            class="node-rule-card rounded-control border border-gray-200 dark:border-gray-800 px-2.5 py-2 flex items-start justify-between gap-2 bg-white dark:bg-slate-900 transition-colors duration-200"
           >
-              <div class="min-w-0 space-y-2">
+              <div class="min-w-0 space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-bold text-sm text-gray-900 dark:text-white truncate">{{ f.name }}</span>
                   <span class="px-2 py-0.5 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-950/40 text-primary-700 dark:text-primary-400">
@@ -418,23 +411,23 @@ onMounted(async () => {
                 </div>
                 <div v-else class="text-xs text-gray-400">{{ t('nodeRules.fallbackHint') }}</div>
               </div>
-              <div class="flex gap-1 shrink-0">
+              <div class="flex gap-0.5 shrink-0">
                 <button
                   @click="startEditFilter(f)"
-                  class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  class="p-1 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   :title="t('nodeRules.edit')"
                 >
-                  <PencilIcon class="h-4 w-4" />
+                  <PencilIcon class="h-3.5 w-3.5" />
                 </button>
                 <PopConfirm
                   v-if="!f.is_fallback"
                   :message="t('nodeRules.confirmDeleteFilter', { name: f.name })"
                   :confirm-label="t('nodeRules.delete')"
                   tone="danger"
-                  triggerClass="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
+                  triggerClass="p-1 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                   @confirm="removeFilter(f)"
                 >
-                  <TrashIcon class="h-4 w-4" />
+                  <TrashIcon class="h-3.5 w-3.5" />
                 </PopConfirm>
               </div>
             </li>
@@ -442,14 +435,14 @@ onMounted(async () => {
       </section>
 
       <!-- Groups panel -->
-      <section class="space-y-4 flex flex-col">
+      <section class="space-y-2 flex flex-col">
         <div class="flex items-center justify-between">
-          <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <SparklesIcon class="h-5 w-5 text-primary-500" />
+          <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+            <SparklesIcon class="h-4 w-4 text-primary-500" />
             {{ t('nodeRules.groups') }}
           </h2>
           <button
-            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold px-3 py-1.5 rounded-control transition-colors cursor-pointer flex items-center gap-1"
+            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold px-2 py-1 rounded-control transition-colors cursor-pointer flex items-center gap-1"
             @click="startCreateGroup"
           >
             <PlusIcon class="h-3.5 w-3.5" />
@@ -458,13 +451,13 @@ onMounted(async () => {
         </div>
 
         <!-- Group list -->
-        <ul class="space-y-3">
+        <ul class="space-y-1.5">
           <li
             v-for="g in groups"
             :key="g.id"
-            class="node-rule-card rounded-surface border border-gray-200 dark:border-gray-800 p-4 flex items-start justify-between gap-3 bg-white dark:bg-slate-900 transition-colors duration-200"
+            class="node-rule-card rounded-control border border-gray-200 dark:border-gray-800 px-2.5 py-2 flex items-start justify-between gap-2 bg-white dark:bg-slate-900 transition-colors duration-200"
           >
-              <div class="min-w-0 space-y-2">
+              <div class="min-w-0 space-y-1">
                 <div class="flex items-center gap-2">
                   <span class="font-bold text-sm text-gray-900 dark:text-white truncate">{{ g.name }}</span>
                   <span class="text-xs text-gray-400 font-mono">P{{ g.priority }}</span>
@@ -476,26 +469,26 @@ onMounted(async () => {
                   <span v-if="!g.filter_ids.length" class="text-xs text-gray-400 italic">{{ t('nodeRules.noFilters') }}</span>
                 </div>
               </div>
-              <div class="flex gap-1 shrink-0">
+              <div class="flex gap-0.5 shrink-0">
                 <button
                   @click="startEditGroup(g)"
-                  class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  class="p-1 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   :title="t('nodeRules.edit')"
                 >
-                  <PencilIcon class="h-4 w-4" />
+                  <PencilIcon class="h-3.5 w-3.5" />
                 </button>
                 <PopConfirm
                   :message="t('nodeRules.confirmDeleteGroup', { name: g.name })"
                   :confirm-label="t('nodeRules.delete')"
                   tone="danger"
-                  triggerClass="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
+                  triggerClass="p-1 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                   @confirm="removeGroup(g)"
                 >
-                  <TrashIcon class="h-4 w-4" />
+                  <TrashIcon class="h-3.5 w-3.5" />
                 </PopConfirm>
               </div>
             </li>
-            <li v-if="!groups.length" class="text-xs text-gray-400 text-center py-6 bg-gray-50/20 dark:bg-slate-900/20 border border-dashed border-gray-200 dark:border-gray-800 rounded-surface">
+            <li v-if="!groups.length" class="text-xs text-gray-400 text-center py-4 bg-gray-50/20 dark:bg-slate-900/20 border border-dashed border-gray-200 dark:border-gray-800 rounded-control">
               {{ t('nodeRules.noGroups') }}
             </li>
           </ul>
@@ -503,15 +496,15 @@ onMounted(async () => {
     </div>
 
     <!-- Preview Section -->
-    <section v-if="preview" class="space-y-4">
-      <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <InformationCircleIcon class="h-5 w-5 text-primary-500" />
+    <section v-if="preview" class="space-y-2">
+      <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+        <InformationCircleIcon class="h-4 w-4 text-primary-500" />
         {{ t('nodeRules.previewResult') }}
-        <span class="text-sm font-normal text-gray-400">({{ t('nodeRules.endpoints', { n: preview.endpoints }) }})</span>
+        <span class="text-xs font-normal text-gray-400">({{ t('nodeRules.endpoints', { n: preview.endpoints }) }})</span>
       </h2>
-      
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <div v-for="pf in preview.filters" :key="pf.id" class="node-rule-card rounded-surface border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 p-4 self-start transition-colors duration-200">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <div v-for="pf in preview.filters" :key="pf.id" class="node-rule-card rounded-control border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 px-2.5 py-2 self-start transition-colors duration-200">
             <button
               class="w-full flex items-center justify-between gap-2 cursor-pointer focus:outline-none"
               :disabled="!pf.member_count"
@@ -543,7 +536,7 @@ onMounted(async () => {
         </div>
 
         <!-- Unmatched nodes (fall through to the fallback) -->
-        <div v-if="preview.unmatched.length" class="node-rule-card rounded-surface border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-4">
+        <div v-if="preview.unmatched.length" class="node-rule-card rounded-control border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 px-2.5 py-2">
           <button class="w-full flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 cursor-pointer focus:outline-none" @click="showUnmatched = !showUnmatched">
             <span class="shrink-0">
               <ChevronDownIcon v-if="showUnmatched" class="h-3.5 w-3.5" />
@@ -568,28 +561,28 @@ onMounted(async () => {
     <div v-if="editingFilterId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div class="node-rule-modal bg-white dark:bg-slate-900 rounded-surface border border-gray-200 dark:border-gray-800 max-w-2xl w-full animate-scale-up flex flex-col my-8 max-h-[85vh]">
         <!-- Modal Header -->
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+          <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <AdjustmentsHorizontalIcon class="h-5 w-5 text-primary-500" />
             {{ editingFilterId === '' ? $t('nodeRules.modal.addFilter') : $t('nodeRules.modal.editFilter') }}
           </h3>
           <button @click="cancelFilterEdit" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer">
-            <XMarkIcon class="h-6 w-6" />
+            <XMarkIcon class="h-5 w-5" />
           </button>
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="p-4 overflow-y-auto space-y-4 flex-1 min-h-0">
+        <div class="p-3 overflow-y-auto space-y-3 flex-1 min-h-0">
           <!-- Basic Settings Section -->
-          <div class="space-y-4">
+          <div class="space-y-2.5">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Basic Settings</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div class="sm:col-span-2">
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Filter Name</label>
                 <input
                   v-model="filterForm.name"
                   :placeholder="t('nodeRules.filterName')"
-                  class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
+                  class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
                 />
               </div>
               <div>
@@ -612,13 +605,13 @@ onMounted(async () => {
               <input
                 v-model.number="filterForm.priority"
                 type="number"
-                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
+                class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
 
           <!-- Rule Matchers Section -->
-          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div class="space-y-2.5 border-t border-gray-100 dark:border-gray-800 pt-3">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               Rule Matchers
               <span class="text-[11px] font-normal text-gray-400 normal-case">(Matches node names by keywords, country codes, or emoji)</span>
@@ -643,7 +636,7 @@ onMounted(async () => {
                   <XMarkIcon class="h-4 w-4" />
                 </button>
               </div>
-              <div v-if="!filterForm.matchers.length" class="text-xs text-gray-400 text-center py-3 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
+              <div v-if="!filterForm.matchers.length" class="text-xs text-gray-400 text-center py-2 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
                 No matchers configured. This filter will not match any nodes.
               </div>
             </div>
@@ -653,14 +646,14 @@ onMounted(async () => {
               <button
                 type="button"
                 @click="addMatcher('keyword')"
-                class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-3 py-1.5 rounded-control transition-all cursor-pointer"
+                class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
               >
                 + Add Keyword
               </button>
               <button
                 type="button"
                 @click="addMatcher('emoji')"
-                class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-3 py-1.5 rounded-control transition-all cursor-pointer"
+                class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
               >
                 + Add Emoji
               </button>
@@ -697,7 +690,7 @@ onMounted(async () => {
           </div>
 
           <!-- Rule Excludes Section -->
-          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div class="space-y-2.5 border-t border-gray-100 dark:border-gray-800 pt-3">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               Exclude Rules (Deny-list)
               <span class="text-[11px] font-normal text-gray-400 normal-case">(Keep nodes OUT even if they match)</span>
@@ -722,7 +715,7 @@ onMounted(async () => {
                   <XMarkIcon class="h-4 w-4" />
                 </button>
               </div>
-              <div v-if="!filterForm.excludes.length" class="text-xs text-gray-400 text-center py-3 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
+              <div v-if="!filterForm.excludes.length" class="text-xs text-gray-400 text-center py-2 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
                 No exclusion rules configured.
               </div>
             </div>
@@ -732,7 +725,7 @@ onMounted(async () => {
               <button
                 type="button"
                 @click="addExclude('keyword')"
-                class="border border-red-200 dark:border-red-900/50 hover:bg-red-50/10 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 text-xs font-semibold px-3 py-1.5 rounded-control transition-all cursor-pointer"
+                class="border border-red-200 dark:border-red-900/50 hover:bg-red-50/10 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
               >
                 + Add Exclude Keyword
               </button>
@@ -769,23 +762,23 @@ onMounted(async () => {
           </div>
 
           <!-- urltest Advanced Settings Section -->
-          <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-2.5 border-t border-gray-100 dark:border-gray-800 pt-3">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Health Check Settings (urltest)</h4>
-            <div class="grid grid-cols-1 gap-4">
+            <div class="grid grid-cols-1 gap-2.5">
               <div>
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Test URL</label>
                 <input
                   v-model="filterForm.test_url"
-                  class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
+                  class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
                   placeholder="http://www.gstatic.com/generate_204"
                 />
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Test Interval</label>
                   <input
                     v-model="filterForm.test_interval"
-                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none"
+                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none"
                     placeholder="10s"
                   />
                 </div>
@@ -795,7 +788,7 @@ onMounted(async () => {
                     v-model.number="filterForm.test_tolerance"
                     type="number"
                     min="0"
-                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none"
+                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none"
                     placeholder="200"
                   />
                 </div>
@@ -805,21 +798,13 @@ onMounted(async () => {
         </div>
 
         <!-- Modal Footer -->
-        <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
-          <button
-            type="button"
-            @click="cancelFilterEdit"
-            class="px-5 py-2.5 text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-control hover:bg-gray-50/10 cursor-pointer"
-          >
+        <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
+          <Button variant="secondary" size="sm" action @click="cancelFilterEdit">
             {{ t('nodeRules.cancel') }}
-          </button>
-          <button
-            type="button"
-            @click="saveFilter"
-            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-sm font-semibold px-5 py-2.5 rounded-control cursor-pointer"
-          >
+          </Button>
+          <Button variant="primary" size="sm" action @click="saveFilter">
             {{ t('nodeRules.save') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -828,24 +813,24 @@ onMounted(async () => {
     <div v-if="editingGroupId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div class="node-rule-modal bg-white dark:bg-slate-900 rounded-surface border border-gray-200 dark:border-gray-800 max-w-md w-full animate-scale-up flex flex-col my-8 max-h-[85vh]">
         <!-- Modal Header -->
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+          <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <SparklesIcon class="h-5 w-5 text-primary-500" />
             {{ editingGroupId === '' ? $t('nodeRules.modal.addGroup') : $t('nodeRules.modal.editGroup') }}
           </h3>
           <button @click="cancelGroupEdit" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer">
-            <XMarkIcon class="h-6 w-6" />
+            <XMarkIcon class="h-5 w-5" />
           </button>
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="p-4 overflow-y-auto space-y-4 flex-1 min-h-0">
+        <div class="p-3 overflow-y-auto space-y-3 flex-1 min-h-0">
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Group Name</label>
             <input
               v-model="groupForm.name"
               :placeholder="t('nodeRules.groupName')"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
             />
           </div>
 
@@ -857,7 +842,7 @@ onMounted(async () => {
             <input
               v-model.number="groupForm.priority"
               type="number"
-              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-4 py-2.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
+              class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none focus:border-primary-500"
             />
           </div>
 
@@ -869,7 +854,7 @@ onMounted(async () => {
                 :key="f.id"
                 type="button"
                 @click="toggleGroupFilter(f.id)"
-                class="px-3 py-1.5 text-xs font-semibold rounded-control border transition-all cursor-pointer"
+                class="px-2 py-1 text-xs font-semibold rounded-control border transition-all cursor-pointer"
                 :class="groupForm.filter_ids.includes(f.id)
                   ? 'bg-primary-600 border-primary-600 text-white'
                   : 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-gray-700 text-gray-750 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'"
@@ -884,21 +869,13 @@ onMounted(async () => {
         </div>
 
         <!-- Modal Footer -->
-        <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
-          <button
-            type="button"
-            @click="cancelGroupEdit"
-            class="px-5 py-2.5 text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-control hover:bg-gray-50/10 cursor-pointer"
-          >
+        <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2 shrink-0 bg-gray-50/50 dark:bg-slate-900/50 rounded-b-2xl">
+          <Button variant="secondary" size="sm" action @click="cancelGroupEdit">
             {{ t('nodeRules.cancel') }}
-          </button>
-          <button
-            type="button"
-            @click="saveGroup"
-            class="node-rule-primary-button bg-primary-600 hover:bg-primary-500 text-white text-sm font-semibold px-5 py-2.5 rounded-control cursor-pointer"
-          >
+          </Button>
+          <Button variant="primary" size="sm" action @click="saveGroup">
             {{ t('nodeRules.save') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

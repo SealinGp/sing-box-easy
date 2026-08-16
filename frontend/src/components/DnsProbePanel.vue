@@ -100,9 +100,9 @@ const logStatusMessage = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-3">
     <!-- Query form -->
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="run">
+    <form class="flex flex-wrap items-end gap-2" @submit.prevent="run">
       <div class="flex-1 min-w-56">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="dns-probe-domain">
           {{ $t('dnsProbe.domain') }}
@@ -114,7 +114,7 @@ const logStatusMessage = computed(() => {
           autocomplete="off"
           spellcheck="false"
           placeholder="example.com"
-          class="w-full rounded-control border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          class="block w-full px-2.5 py-1.5 text-sm"
         />
       </div>
 
@@ -129,7 +129,7 @@ const logStatusMessage = computed(() => {
         />
       </div>
 
-      <Button type="submit" :disabled="!canRun" :loading="running">
+      <Button type="submit" size="sm" :disabled="!canRun" :loading="running">
         <MagnifyingGlassIcon v-if="!running" class="h-4 w-4" />
         {{ $t('dnsProbe.run') }}
       </Button>
@@ -144,14 +144,14 @@ const logStatusMessage = computed(() => {
       <span>{{ $t('dnsProbe.compareServers') }}</span>
     </label>
 
-    <div v-if="result" class="space-y-4">
+    <div v-if="result" class="space-y-3">
       <!--
         The lookup as a sequence. This replaces separate "answer" and "routing"
         blocks: read in order they explain how the result was reached, which is
         the whole question being asked.
       -->
       <section>
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
           {{ $t('dnsTimeline.title') }}
         </h4>
         <DnsProbeTimeline :result="result" />
