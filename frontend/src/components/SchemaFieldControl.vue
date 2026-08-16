@@ -1,20 +1,29 @@
 <script setup lang="ts">
 /**
- * Renders ONE inbound field, picking the control from its resolved schema entry.
+ * Renders ONE schema field, picking the control from its resolved entry.
  *
- * Split out of InboundFieldsEditor so the orchestration (which fields are
- * visible, which can be added or removed) stays readable next to the rendering
- * (which control a `duration` gets). The `control` value is already decided by
- * the schema — this component never branches on the field's name.
+ * Domain-agnostic: it is given a ResolvedField and a value, and never learns
+ * whether it is drawing an inbound or a DNS server. The `control` value is
+ * already decided by the schema, so this never branches on a field's name —
+ * the one exception being the composite controls (`users`, `hosts`), which
+ * need a dedicated editor rather than a text box.
+ *
+ * Split out of SchemaFieldsEditor so orchestration (which fields are visible,
+ * which can be added or removed) stays readable next to rendering (which
+ * control a `duration` gets).
  */
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
+import { useOutboundsStore } from '../stores/outbounds'
 import Input from './Input.vue'
 import ChipsField from './ChipsField.vue'
 import JsonField from './JsonField.vue'
 import UsersEditor from './UsersEditor.vue'
+import HostsEditor from './HostsEditor.vue'
 import { Select } from '../volt'
-import type { ResolvedField, UserFieldSpec } from '../schemas/inboundFields'
+import type { ResolvedField } from '../schemas/optionSchema'
+import type { UserFieldSpec } from '../schemas/inboundFields'
 
 const props = defineProps<{
   field: ResolvedField
@@ -26,6 +35,39 @@ const props = defineProps<{
 const emit = defineEmits<{ change: [value: unknown] }>()
 
 const { t } = useI18n()
+
+/**
+ * Outbound tags for a `detour` picker. Fetched lazily and only when a detour
+ * field is actually rendered, so a form with no detour costs no request.
+ * A tag must be picked rather than typed: naming an outbound that does not
+ * exist makes sing-box reject the whole config, and the typo is invisible
+ * until the next validate.
+ */
+const outboundsStore = useOutboundsStore()
+const { outbounds } = storeToRefs(outboundsStore)
+
+onMounted(() => {
+  if (props.field.control === 'outbound' && outbounds.value.length === 0) {
+    outboundsStore.fetchOutbounds().catch(() => {
+      // Non-fatal: the picker falls back to whatever the record already holds.
+    })
+  }
+})
+
+const outboundOptions = computed(() => {
+  const options = [{ value: '', label: t('common.direct') }]
+  for (const outbound of outbounds.value) {
+    if (outbound.tag) options.push({ value: outbound.tag, label: outbound.tag })
+  }
+  // A detour naming an outbound that was since renamed would otherwise vanish
+  // from the picker while still living in the config, and the next save would
+  // look like the operator had cleared it. Surface it instead.
+  const current = props.value
+  if (typeof current === 'string' && current && !options.some((o) => o.value === current)) {
+    options.push({ value: current, label: t('common.missingTag', { tag: current }) })
+  }
+  return options
+})
 
 const selectOptions = computed(() =>
   (props.field.options ?? []).map((value) => ({ value, label: value })),
@@ -73,6 +115,12 @@ function onNumber(raw: string | number) {
     @update:modelValue="(v) => emit('change', v)"
   />
 
+  <HostsEditor
+    v-else-if="field.control === 'hosts'"
+    :modelValue="(value as Record<string, string | string[]> | undefined)"
+    @update:modelValue="(v) => emit('change', v)"
+  />
+
   <JsonField
     v-else-if="field.control === 'json'"
     :modelValue="value"
@@ -86,6 +134,17 @@ function onNumber(raw: string | number) {
     :placeholder="field.placeholder"
     :disabled="disabled"
     @update:modelValue="onChips"
+  />
+
+  <Select
+    v-else-if="field.control === 'outbound'"
+    class="w-full"
+    :modelValue="value ?? ''"
+    :options="outboundOptions"
+    optionLabel="label"
+    optionValue="value"
+    :disabled="disabled"
+    @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
 
   <Select

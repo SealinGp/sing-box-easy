@@ -5,11 +5,11 @@ import C "github.com/sagernet/sing-box/constant"
 // Regenerates the frontend's inbound field inventory from the option structs
 // the registry below constructs. Run after bumping the sing-box dependency.
 //
-//go:generate go run ../../../cmd/gen-inbound-schema
+//go:generate go run ../../../cmd/gen-option-schema
 
 // InboundTypes lists every inbound type CreateInboundOptions can construct.
 //
-// This exists so the schema generator (cmd/gen-inbound-schema) and the registry
+// This exists so the schema generator (cmd/gen-option-schema) and the registry
 // cannot disagree about which types the panel supports. The generator reflects
 // over exactly these, and TestInboundTypesAreRegistered asserts every entry is
 // actually constructible — so an entry added here without a matching case in

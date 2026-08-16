@@ -10,6 +10,8 @@ export default {
   update: 'Update',
   edit: 'Edit',
   delete: 'Delete',
+  direct: 'Direct (no proxy)',
+  missingTag: '{tag} (missing)',
   remove: 'Remove',
   close: 'Close',
   back: 'Back',

@@ -1,96 +1,25 @@
 /**
- * Editorial layer over the generated inbound field inventory.
+ * Inbound field curation — the editorial layer over the generated inventory.
  *
  * `inboundInventory.generated.ts` says which fields sing-box accepts for each
- * inbound type and what shape they are. It deliberately says nothing about
- * which ones matter — that judgement is here, and it is the only part a human
- * maintains.
- *
- * THREE TIERS, NOT "REQUIRED" / "OPTIONAL"
- * ────────────────────────────────────────
- * The obvious model — show required fields, hide optional ones — does not work,
- * because sing-box marks almost nothing required. For a `mixed` inbound the
- * docs mark exactly one field Required (`listen`); `users` is explicitly
- * "No authentication required if empty" and `set_system_proxy` is optional too.
- * A form built on required-ness would render a single address box and hide the
- * two fields anyone actually opens the dialog to set.
- *
- * What each doc page *shows* is the type's characteristic fields, which is a
- * different question from what sing-box will reject. So:
- *
- *   core      always rendered, never removable — the field the type cannot work
- *             without (`listen`, and the port for anything that binds one).
- *   typical   rendered by default, removable while empty — what the sing-box doc
- *             page for this type puts in its example.
- *   advanced  hidden behind the "add field" row until asked for, or until a
- *             loaded config turns out to use it.
- *
- * Genuine required-ness stays where it already lived, in
- * `utils/inboundRequiredFields.ts`, and is enforced on save.
- *
- * ANYTHING UNCURATED IS `advanced`
- * ────────────────────────────────
- * Fields absent from the maps below are not dropped — they resolve to the
- * advanced tier automatically. That is what makes this file safe to leave
- * incomplete: a sing-box upgrade that adds a field makes it reachable in the UI
- * immediately, just not promoted. Nothing has to be exhaustive except the
- * things we want to *promote*.
+ * inbound type and what shape they are. This says which ones matter, what
+ * control to render, and what to call them. The generic machinery — tiers,
+ * visibility, pruning, defaults — lives in `optionSchema.ts` and is shared with
+ * the DNS server form; see that file for why the tiers are core/typical/advanced
+ * rather than required/optional, and why uncurated fields stay reachable.
  */
 import {
   INBOUND_INVENTORY,
-  type InboundFieldInfo,
-  type InboundFieldKind,
   type InboundFieldKey,
   type InboundTypeName,
 } from './inboundInventory.generated'
-
-export type FieldTier = 'core' | 'typical' | 'advanced'
-
-/**
- * The control to render. Mostly inferred from the generated `kind`; named here
- * only when the inferred one would be wrong — `method` is a string in Go but a
- * fixed vocabulary in practice, and `users` is a list of objects that deserves
- * a real editor rather than a JSON textarea.
- */
-export type ControlKind =
-  | 'text'
-  | 'number'
-  | 'switch'
-  | 'select'
-  | 'chips'
-  | 'password'
-  | 'users'
-  | 'json'
-
-export interface FieldCuration {
-  tier: FieldTier
-  /** Lower sorts first within a tier. Uncurated fields sort last, alphabetically. */
-  order?: number
-  control?: ControlKind
-  /** Fixed vocabulary for `control: 'select'`. */
-  options?: readonly string[]
-  /** Seeded when the field is first shown on a NEW inbound. Never on edit. */
-  default?: unknown
-  /** Defaults to `inbounds.form.fields.<key>`. */
-  labelKey?: string
-  hintKey?: string
-  placeholder?: string
-}
+import { createSchema, type ControlKind, type FieldCuration } from './optionSchema'
 
 /** Every field name across every inbound type — so the shared map cannot hold a typo. */
 type AnyInboundFieldKey = {
   [T in InboundTypeName]: InboundFieldKey<T>
 }[InboundTypeName]
 
-/**
- * Curation that applies to any type possessing the field.
- *
- * Keyed by field name rather than spread into each type on purpose: a spread
- * would bypass TypeScript's excess-property check, so `listen_port` could be
- * spread into `tun` — which has no such field — and fail silently. Resolution
- * intersects this with the type's real inventory instead, so a shared entry
- * simply does not apply where the field does not exist.
- */
 const SHARED: Partial<Record<AnyInboundFieldKey, FieldCuration>> = {
   listen: { tier: 'core', order: 10, default: '127.0.0.1', placeholder: '127.0.0.1' },
   listen_port: { tier: 'core', order: 20, control: 'number', placeholder: '1080' },
@@ -102,7 +31,7 @@ const SHARED: Partial<Record<AnyInboundFieldKey, FieldCuration>> = {
   tls: { tier: 'advanced', order: 40, control: 'json' },
 
   network: { tier: 'advanced', order: 50, control: 'select', options: ['tcp', 'udp'] },
-  detour: { tier: 'advanced', order: 60 },
+  detour: { tier: 'advanced', order: 60, control: 'outbound' },
 
   transport: { tier: 'advanced', order: 210, control: 'json' },
   multiplex: { tier: 'advanced', order: 220, control: 'json' },
@@ -289,173 +218,27 @@ export const USER_FIELDS: Partial<Record<InboundTypeName, UserFieldSpec[]>> = {
 /** VLESS `flow` accepts one documented value, or empty for none. */
 export const VLESS_FLOW_OPTIONS = ['', 'xtls-rprx-vision'] as const
 
-export interface ResolvedField {
-  key: string
-  tier: FieldTier
-  control: ControlKind
-  kind: InboundFieldKind
-  /** Element kind, when kind is 'list'. */
-  item?: InboundFieldKind
-  options?: readonly string[]
-  default?: unknown
-  labelKey: string
-  hintKey?: string
-  placeholder?: string
-  deprecated: boolean
-}
+const schema = createSchema<InboundTypeName>({
+  inventory: INBOUND_INVENTORY,
+  labelPrefix: 'inbounds.form.fields',
+  shared: SHARED as Record<string, FieldCuration>,
+  byType: BY_TYPE as Partial<Record<InboundTypeName, Record<string, FieldCuration>>>,
+})
 
-/** Control to use when curation does not name one. */
-function inferControl(info: InboundFieldInfo): ControlKind {
-  switch (info.kind) {
-    case 'boolean':
-      return 'switch'
-    case 'number':
-      return 'number'
-    case 'object':
-      return 'json'
-    case 'list':
-      // A list of objects has no generic editor; raw JSON is honest about that.
-      return info.item === 'object' ? 'json' : 'chips'
-    default:
-      // string, address, cidr, duration — all single-line text. Duration keeps
-      // its sing-box spelling ("5m", "300ms") rather than becoming a number.
-      return 'text'
-  }
-}
+export const resolveInboundFields = schema.resolveFields
+export const pruneForType = schema.pruneForType
+export const applyTypeDefaults = schema.applyTypeDefaults
+export const isInboundType = schema.isKnownType
 
-const TIER_ORDER: Record<FieldTier, number> = { core: 0, typical: 1, advanced: 2 }
-const UNCURATED_ORDER = 1_000
-
-/**
- * The full field list for one inbound type, tier-resolved and sorted.
- *
- * Every field in the inventory comes back — including deprecated ones and ones
- * nobody curated. Callers decide what to render; nothing is filtered away here,
- * because a field omitted at this layer would be a field the operator can never
- * reach or even see in a config they already have.
- */
-export function resolveInboundFields(type: InboundTypeName): ResolvedField[] {
-  const inventory = INBOUND_INVENTORY[type] as Record<string, InboundFieldInfo>
-  const byType = BY_TYPE[type] as Partial<Record<string, FieldCuration>>
-
-  const resolved = Object.entries(inventory).map(([key, info]) => {
-    const curation = byType[key] ?? SHARED[key as AnyInboundFieldKey]
-
-    // A deprecated field is never promoted, whatever the curation says: it can
-    // still be edited when a loaded config uses it, but it is not offered up.
-    const tier: FieldTier = info.deprecated ? 'advanced' : (curation?.tier ?? 'advanced')
-
-    return {
-      key,
-      tier,
-      control: curation?.control ?? inferControl(info),
-      kind: info.kind,
-      item: info.item,
-      options: curation?.options,
-      default: curation?.default,
-      labelKey: curation?.labelKey ?? `inbounds.form.fields.${key}`,
-      hintKey: curation?.hintKey,
-      placeholder: curation?.placeholder,
-      deprecated: info.deprecated === true,
-      _order: curation?.order ?? UNCURATED_ORDER,
-    }
-  })
-
-  resolved.sort((a, b) => {
-    const tierDiff = TIER_ORDER[a.tier] - TIER_ORDER[b.tier]
-    if (tierDiff !== 0) return tierDiff
-    if (a._order !== b._order) return a._order - b._order
-    return a.key.localeCompare(b.key)
-  })
-
-  return resolved.map(({ _order, ...field }) => field)
-}
-
-/**
- * Whether a value counts as set, for "should this field be visible" and "may it
- * be removed".
- *
- * `false` deliberately counts as EMPTY. This is the trap the route-rule matcher
- * form does not hit because it has no boolean matchers: with the usual
- * `value !== undefined && value !== ''` test, a `set_system_proxy: false` reads
- * as filled, which pins the switch permanently visible and — since removal is
- * only offered for empty fields — permanently un-removable. An unticked switch
- * is the absence of a setting, and sing-box agrees: every boolean option is
- * `omitempty`, so `false` and absent serialize identically.
- *
- * Numbers are the opposite case: `0` is meaningful (`alterId: 0`,
- * `listen_port: 0` meaning "pick one"), so it counts as set.
- */
-export function isFieldFilled(value: unknown): boolean {
-  if (value === undefined || value === null) return false
-  if (Array.isArray(value)) return value.length > 0
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'string') return value !== ''
-  if (typeof value === 'object') return Object.keys(value).length > 0
-  return true
-}
-
-/**
- * Drop the previous type's fields when the operator switches type.
- *
- * Without this, building a shadowsocks inbound and then switching to trojan
- * carries `method` and `password` along into the saved payload. sing-box
- * decodes options strictly and rejects unknown keys, so the save fails with an
- * error naming a field the form no longer shows.
- *
- * `tag` and `type` survive because they live on the inbound wrapper rather than
- * in any type's option struct, so they appear in no inventory.
- */
-export function pruneForType(
-  inbound: Readonly<Record<string, unknown>>,
-  type: InboundTypeName,
-): Record<string, unknown> {
-  const allowed = INBOUND_INVENTORY[type] as Record<string, InboundFieldInfo>
-  const next: Record<string, unknown> = {}
-
-  for (const [key, value] of Object.entries(inbound)) {
-    if (key === 'tag' || key === 'type' || key in allowed) {
-      next[key] = value
-    }
-  }
-  next.type = type
-  return next
-}
-
-/**
- * Seed defaults for a NEW inbound of this type.
- *
- * Only fills fields that are absent, and only core/typical ones — an advanced
- * field the operator has not asked for should not appear pre-filled. Never
- * called when opening an existing inbound: writing a default into a config that
- * deliberately omitted the key would change behaviour on open, before the
- * operator touched anything.
- */
-export function applyTypeDefaults(
-  inbound: Readonly<Record<string, unknown>>,
-  type: InboundTypeName,
-): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...inbound, type }
-
-  for (const field of resolveInboundFields(type)) {
-    if (field.tier === 'advanced') continue
-    if (field.default === undefined) continue
-    if (next[field.key] !== undefined) continue
-    next[field.key] = Array.isArray(field.default) ? [...field.default] : field.default
-  }
-
-  return next
-}
-
-/** Remove a field, deleting the key rather than blanking it. */
-export function withoutField(
-  inbound: Readonly<Record<string, unknown>>,
-  key: string,
-): Record<string, unknown> {
-  const { [key]: _removed, ...rest } = inbound
-  return rest
-}
+export { isFieldFilled, withoutField } from './optionSchema'
+export type {
+  ControlKind,
+  FieldCuration,
+  FieldTier,
+  OptionFieldKind as InboundFieldKind,
+  ResolvedField,
+} from './optionSchema'
 
 export { INBOUND_INVENTORY }
-export type { InboundTypeName, InboundFieldKind }
+export type { InboundTypeName }
 export { INBOUND_TYPE_NAMES } from './inboundInventory.generated'

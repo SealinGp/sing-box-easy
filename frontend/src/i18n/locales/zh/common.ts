@@ -10,6 +10,8 @@ export default {
   update: '更新',
   edit: '编辑',
   delete: '删除',
+  direct: '直连（不经代理）',
+  missingTag: '{tag}（不存在）',
   remove: '移除',
   close: '关闭',
   back: '返回',

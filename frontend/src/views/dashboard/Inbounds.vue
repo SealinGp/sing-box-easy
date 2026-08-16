@@ -7,7 +7,7 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Modal from '../../components/Modal.vue'
 import Table from '../../components/Table.vue'
-import InboundFieldsEditor from '../../components/InboundFieldsEditor.vue'
+import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
@@ -16,7 +16,12 @@ import {
   prepareInboundForType,
   validateInboundRequiredFields,
 } from '../../utils/inboundRequiredFields'
-import { INBOUND_TYPE_NAMES, type InboundTypeName } from '../../schemas/inboundFields'
+import {
+  INBOUND_TYPE_NAMES,
+  USER_FIELDS,
+  resolveInboundFields,
+  type InboundTypeName,
+} from '../../schemas/inboundFields'
 import { Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
@@ -400,11 +405,12 @@ onMounted(fetchInbounds)
           trojan would leave shadowsocks' fields on screen bound to keys the new
           type does not have. Same mechanism as RoutingRules' matchersKey.
         -->
-        <InboundFieldsEditor
+        <SchemaFieldsEditor
           v-if="currentType"
           :key="currentType"
           v-model="currentInbound"
-          :type="currentType"
+          :fields="resolveInboundFields(currentType)"
+          :user-fields="USER_FIELDS[currentType]"
         />
       </div>
 

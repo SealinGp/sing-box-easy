@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * The type-aware body of the inbound dialog.
+ * The type-aware body of a schema-driven dialog.
  *
- * Replaces ~135 lines of hand-written `v-if="type === 'shadowsocks'"` template
- * that covered 3 of 16 inbound types. Every other type — trojan, vless, tuic,
- * hysteria2, naive, shadowtls and the rest — rendered nothing beyond tag, listen
- * address and port, so a trojan inbound created through this panel had no
- * credentials and could authenticate nobody.
+ * Shared by the inbound and DNS server forms; it is handed an already-resolved
+ * field list and never learns which domain it is drawing. Between them it
+ * replaces ~250 lines of hand-written `v-if="type === '...'"` template that
+ * covered 3 of 16 inbound types and left DNS `local` servers with no editable
+ * field at all.
  *
  * WHAT DECIDES VISIBILITY
  * ───────────────────────
@@ -30,25 +30,30 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import LabeledField from './LabeledField.vue'
-import InboundFieldControl from './InboundFieldControl.vue'
+import SchemaFieldControl from './SchemaFieldControl.vue'
 import { useOptionalFields } from '../composables/useMatcherFields'
 import { humanizeFieldName } from '../utils/fieldLabels'
-import {
-  isFieldFilled,
-  resolveInboundFields,
-  withoutField,
-  USER_FIELDS,
-  type InboundTypeName,
-  type ResolvedField,
-} from '../schemas/inboundFields'
+import { isFieldFilled, withoutField, type ResolvedField } from '../schemas/optionSchema'
+import type { UserFieldSpec } from '../schemas/inboundFields'
 
-const props = defineProps<{ type: InboundTypeName }>()
+const props = defineProps<{
+  /** Already resolved by the domain's schema, so this stays domain-agnostic. */
+  fields: ResolvedField[]
+  /** Sub-field shape for a `users` control, when the domain has one. */
+  userFields?: UserFieldSpec[]
+  /**
+   * Shown when a type has no core or typical field at all. DNS `local` is the
+   * real case: it resolves through the host resolver and owns nothing but
+   * dialer options, so without this the dialog would look broken.
+   */
+  emptyHint?: string
+}>()
 
 const model = defineModel<Record<string, unknown>>({ required: true })
 
 const { t, te } = useI18n()
 
-const fields = computed(() => resolveInboundFields(props.type))
+const fields = computed(() => props.fields)
 
 const coreFields = computed(() => fields.value.filter((f) => f.tier === 'core'))
 /** Everything the operator may add or remove: typical + advanced. */
@@ -93,8 +98,6 @@ const hiddenFields = computed(() => {
   }
 })
 
-const userFields = computed(() => USER_FIELDS[props.type])
-
 function label(field: ResolvedField): string {
   return te(field.labelKey) ? t(field.labelKey) : humanizeFieldName(field.key)
 }
@@ -134,11 +137,11 @@ function removeField(key: string) {
       :label="label(field)"
       :hint="hint(field)"
     >
-      <InboundFieldControl
+      <SchemaFieldControl
         :field="field"
         :value="model[field.key]"
-        :user-fields="userFields"
-        @change="(v) => setField(field.key, v)"
+        :user-fields="props.userFields"
+        @change="(v: unknown) => setField(field.key, v)"
       />
     </LabeledField>
 
@@ -150,13 +153,20 @@ function removeField(key: string) {
       :removable="optional.isRemovable(field.key)"
       @remove="removeField(field.key)"
     >
-      <InboundFieldControl
+      <SchemaFieldControl
         :field="field"
         :value="model[field.key]"
-        :user-fields="userFields"
-        @change="(v) => setField(field.key, v)"
+        :user-fields="props.userFields"
+        @change="(v: unknown) => setField(field.key, v)"
       />
     </LabeledField>
+
+    <p
+      v-if="emptyHint && !coreFields.length && !shownOptional.length"
+      class="text-xs text-gray-500 dark:text-gray-400"
+    >
+      {{ emptyHint }}
+    </p>
 
     <!-- Add-field rows: also the discovery mechanism for what this type accepts. -->
     <div

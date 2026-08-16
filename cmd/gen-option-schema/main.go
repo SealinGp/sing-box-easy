@@ -1,5 +1,11 @@
-// Command gen-inbound-schema reflects over sing-box's own inbound option
-// structs and emits the field inventory the frontend forms are typed against.
+// Command gen-option-schema reflects over sing-box's own option structs and
+// emits the field inventories the frontend forms are typed against.
+//
+// One generator, several domains. registry.go builds five families of
+// polymorphic options — inbound, outbound, endpoint, DNS transport, service —
+// and each has the same shape: a type string selecting a struct whose fields
+// the UI must render. See domains() for the table; adding the next one is a row
+// there plus a curation file on the frontend.
 //
 // WHY THIS EXISTS
 // ───────────────
@@ -7,7 +13,9 @@
 // frontend/src/types/inbound.ts hand-transcribed the same option structs into
 // TypeScript a second time. Both drifted: twelve of sixteen types rendered no
 // type-specific fields at all, and "anytls" — registered on the backend since
-// 1.12 — never appeared in either the TS union or the type dropdown.
+// 1.12 — never appeared in either the TS union or the type dropdown. The DNS
+// side was worse still: the registry spelled HTTP/3 "http3" where sing-box uses
+// "h3", so a valid config could not be opened and a saved one could not start.
 //
 // The authoritative field list already exists, exactly and version-correctly,
 // in the structs app/pkg/config/registry.go constructs. This reads those
@@ -28,7 +36,7 @@
 //   - Some fields are deprecated only in the documentation, with no marker in
 //     the source at all — the whole sniff family moved to route rules in 1.12
 //     while option.InboundOptions still declares them plainly. Those are listed
-//     in docDeprecatedFields below and must be rechecked on upgrade.
+//     per domain in domain.DocDeprecated and must be rechecked on upgrade.
 //
 // WHAT IT DOES NOT KNOW
 // ─────────────────────
@@ -38,8 +46,9 @@
 //
 // Usage:
 //
-//	go run ./cmd/gen-inbound-schema
-//	go run ./cmd/gen-inbound-schema -o path/to/out.ts
+//	go generate ./app/pkg/config/
+//	go run ./cmd/gen-option-schema
+//	go run ./cmd/gen-option-schema -only DNSServer
 package main
 
 import (
@@ -60,11 +69,70 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
-const defaultOutput = "frontend/src/schemas/inboundInventory.generated.ts"
-
 // singBoxModule is the dependency whose version is stamped into the generated
 // header, so a reader can tell which sing-box the inventory describes.
 const singBoxModule = "github.com/sagernet/sing-box"
+
+// domain is one family of polymorphic sing-box options that the panel edits.
+//
+// registry.go builds five of these (inbound, outbound, endpoint, DNS
+// transport, service) and every one has the same shape: a type string selecting
+// an option struct whose fields the UI must render. Adding the next domain is a
+// row here plus a curation file on the frontend.
+type domain struct {
+	// Name is the TypeScript identifier stem: "Inbound" -> INBOUND_INVENTORY,
+	// InboundTypeName, InboundFieldKey, INBOUND_TYPE_NAMES.
+	Name string
+	// Screaming is Name in SCREAMING_SNAKE_CASE, spelled out rather than
+	// derived so "DNSServer" does not become "D_N_S_SERVER".
+	Screaming string
+	Output    string
+	Types     []string
+	Create    func(string) (any, bool)
+	// DocDeprecated covers fields the sing-box DOCS retire while the source
+	// still declares them plainly, so the go/ast pass cannot find them.
+	DocDeprecated map[string]bool
+	// Doc is a sentence in the generated file's header explaining what the
+	// domain is, since the file is the first thing a reader opens.
+	Doc string
+}
+
+func domains(registry *config.Registry) []domain {
+	return []domain{
+		{
+			Name:      "Inbound",
+			Screaming: "INBOUND",
+			Output:    "frontend/src/schemas/inboundInventory.generated.ts",
+			Types:     config.InboundTypes,
+			Create:    registry.CreateInboundOptions,
+			Doc:       "Inbound (server) options, keyed by the `type` field of an entry in `inbounds`.",
+			// All in the shared ListenOptions / InboundOptions, so they apply
+			// to every listening inbound. Superseded by route rules with
+			// `action: sniff` in 1.12. Recheck on a sing-box bump.
+			DocDeprecated: map[string]bool{
+				"sniff":                        true,
+				"sniff_override_destination":   true,
+				"sniff_timeout":                true,
+				"domain_strategy":              true,
+				"udp_disable_domain_unmapping": true,
+			},
+		},
+		{
+			Name:      "DNSServer",
+			Screaming: "DNS_SERVER",
+			Output:    "frontend/src/schemas/dnsServerInventory.generated.ts",
+			Types:     config.DNSTypes,
+			Create:    registry.CreateDNSOptions,
+			Doc: "DNS transport options, keyed by the `type` field of an entry in `dns.servers`.\n" +
+				"// The legacy (untyped, `address`-based) shape is absent on purpose: sing-box\n" +
+				"// upgrades it to a typed server while parsing, so it never reaches the UI.",
+			// The legacy fields live on LegacyDNSServerOptions, which the
+			// registry never returns, and the compatibility fields on
+			// LocalDNSServerOptions are all `json:"-"`. Nothing to add.
+			DocDeprecated: map[string]bool{},
+		},
+	}
+}
 
 // Field kinds the frontend can render. Anything this generator cannot classify
 // degrades to "json" — an explicit "edit this as raw JSON" signal rather than a
@@ -102,25 +170,11 @@ var namedKinds = map[string]string{
 	"option.NetworkList":      kindString,
 }
 
-// docDeprecatedFields covers fields the sing-box DOCS retire but the source
-// still declares without a marker, so the go/ast pass cannot find them. Keyed
-// by JSON name; these all live in the shared ListenOptions / InboundOptions and
-// therefore apply to every listening inbound.
-//
-// Deprecated fields stay in the inventory on purpose: existing config.json
+// Deprecated fields stay in every inventory on purpose: existing config.json
 // files carry them, and a form that dropped them would silently discard a live
 // setting on the next save. The frontend files them under the advanced tier
-// with a warning instead.
-//
-// Recheck against the Listen Fields docs when bumping sing-box.
-var docDeprecatedFields = map[string]bool{
-	// Superseded by route rules with `action: sniff` in 1.12.
-	"sniff":                        true,
-	"sniff_override_destination":   true,
-	"sniff_timeout":                true,
-	"domain_strategy":              true,
-	"udp_disable_domain_unmapping": true,
-}
+// with a warning instead. See domain.DocDeprecated for the ones reflection and
+// go/ast between them cannot find.
 
 type field struct {
 	Name       string
@@ -136,35 +190,51 @@ type field struct {
 }
 
 func main() {
-	out := flag.String("o", "", "output path (default "+defaultOutput+", relative to repo root)")
+	only := flag.String("only", "", "generate a single domain by name (e.g. Inbound, DNSServer)")
 	flag.Parse()
 
-	target := *out
-	if target == "" {
-		root, err := repoRoot()
-		if err != nil {
-			fatal(err)
-		}
-		target = filepath.Join(root, defaultOutput)
-	}
-
-	source, err := render()
+	root, err := repoRoot()
 	if err != nil {
 		fatal(err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		fatal(err)
-	}
-	if err := os.WriteFile(target, source, 0o644); err != nil {
+	// One scan of the option package for all domains — it is the slowest part
+	// and the result does not vary per domain.
+	deprecations, err := scanDeprecations()
+	if err != nil {
 		fatal(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "wrote %s (%d inbound types)\n", target, len(config.InboundTypes))
+	matched := 0
+	for _, d := range domains(&config.Registry{}) {
+		if *only != "" && !strings.EqualFold(*only, d.Name) {
+			continue
+		}
+		matched++
+
+		source, err := render(d, deprecations)
+		if err != nil {
+			fatal(fmt.Errorf("%s: %w", d.Name, err))
+		}
+
+		target := filepath.Join(root, d.Output)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			fatal(err)
+		}
+		if err := os.WriteFile(target, source, 0o644); err != nil {
+			fatal(err)
+		}
+
+		fmt.Fprintf(os.Stderr, "wrote %s (%d %s types)\n", d.Output, len(d.Types), d.Name)
+	}
+
+	if matched == 0 {
+		fatal(fmt.Errorf("no domain named %q", *only))
+	}
 }
 
 func fatal(err error) {
-	fmt.Fprintln(os.Stderr, "gen-inbound-schema:", err)
+	fmt.Fprintln(os.Stderr, "gen-option-schema:", err)
 	os.Exit(1)
 }
 
@@ -187,78 +257,50 @@ func repoRoot() (string, error) {
 	}
 }
 
-func render() ([]byte, error) {
-	registry := &config.Registry{}
-
-	deprecations, err := scanDeprecations()
-	if err != nil {
-		return nil, err
-	}
-
+func render(d domain, deprecations deprecationIndex) ([]byte, error) {
 	type entry struct {
 		Type   string
 		Fields []field
 	}
-	entries := make([]entry, 0, len(config.InboundTypes))
+	entries := make([]entry, 0, len(d.Types))
 
-	for _, inboundType := range config.InboundTypes {
-		options, ok := registry.CreateInboundOptions(inboundType)
+	for _, optionType := range d.Types {
+		options, ok := d.Create(optionType)
 		if !ok {
-			// config.TestInboundTypesAreRegistered guards this, so reaching it
-			// means the generator ran against an inconsistent tree.
-			return nil, fmt.Errorf("inbound type %q is listed in config.InboundTypes but not registered", inboundType)
+			// The config package's registration tests guard this, so reaching
+			// it means the generator ran against an inconsistent tree.
+			return nil, fmt.Errorf("type %q is listed but not registered", optionType)
 		}
 
 		fields := collect(reflect.TypeOf(options))
 		if len(fields) == 0 {
-			return nil, fmt.Errorf("inbound type %q reflected to zero fields", inboundType)
+			return nil, fmt.Errorf("type %q reflected to zero fields", optionType)
 		}
-		markDeprecated(fields, deprecations)
-		entries = append(entries, entry{Type: inboundType, Fields: fields})
+		markDeprecated(fields, deprecations, d.DocDeprecated)
+		entries = append(entries, entry{Type: optionType, Fields: fields})
 	}
 
 	var b bytes.Buffer
-	fmt.Fprintf(&b, `// Code generated by cmd/gen-inbound-schema. DO NOT EDIT.
+	fmt.Fprintf(&b, `// Code generated by cmd/gen-option-schema. DO NOT EDIT.
 //
-// Field inventory reflected from %s %s — the same option structs
+// %s
+//
+// Reflected from %s %s — the same option structs
 // app/pkg/config/registry.go feeds to sing-box's own config parser, so this is
 // what the running binary actually accepts.
 //
-// Regenerate with:  go run ./cmd/gen-inbound-schema
+// Regenerate with:  go generate ./app/pkg/config/
 //
 // This file says which fields EXIST and what shape they are. It deliberately
 // says nothing about which ones matter, what they are called in the UI, or what
-// order to show them in — that is editorial and lives in inboundFields.ts,
-// which is type-checked against the keys below.
+// order to show them in — that is editorial and lives in the matching curation
+// file, which is type-checked against the keys below.
 
-export type InboundFieldKind =
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
-  | '%s'
+import type { OptionFieldInfo } from './optionSchema'
 
-export interface InboundFieldInfo {
-  readonly kind: InboundFieldKind
-  /** Element kind, for kind: 'list'. */
-  readonly item?: InboundFieldKind
-  /**
-   * Still accepted by sing-box, but documented as deprecated. Kept so an
-   * existing config that uses the field can still be edited rather than having
-   * it silently dropped on save.
-   */
-  readonly deprecated?: true
-}
-
-export const INBOUND_INVENTORY = {
+export const %s_INVENTORY = {
 `,
-		singBoxModule, singBoxVersion(),
-		kindAddress, kindBoolean, kindCIDR, kindDuration, kindJSON,
-		kindList, kindNumber, kindObject, kindString,
+		d.Doc, singBoxModule, singBoxVersion(), d.Screaming,
 	)
 
 	for _, e := range entries {
@@ -276,23 +318,23 @@ export const INBOUND_INVENTORY = {
 		b.WriteString("  },\n")
 	}
 
-	b.WriteString(`} as const satisfies Record<string, Record<string, InboundFieldInfo>>
+	fmt.Fprintf(&b, `} as const satisfies Record<string, Record<string, OptionFieldInfo>>
 
-/** Every inbound type the backend registry can construct. */
-export type InboundTypeName = keyof typeof INBOUND_INVENTORY
+/** Every %[1]s type the backend registry can construct. */
+export type %[1]sTypeName = keyof typeof %[2]s_INVENTORY
 
 /**
- * The field keys valid for one inbound type. Curation in inboundFields.ts is
- * keyed by this, so naming a field sing-box does not have — or one it dropped
- * in an upgrade — is a compile error rather than an input that never binds.
+ * The field keys valid for one %[1]s type. Curation is keyed by this, so naming
+ * a field sing-box does not have — or one it dropped in an upgrade — is a
+ * compile error rather than an input that never binds.
  */
-export type InboundFieldKey<T extends InboundTypeName> = Extract<
-  keyof (typeof INBOUND_INVENTORY)[T],
+export type %[1]sFieldKey<T extends %[1]sTypeName> = Extract<
+  keyof (typeof %[2]s_INVENTORY)[T],
   string
 >
 
-export const INBOUND_TYPE_NAMES = Object.keys(INBOUND_INVENTORY) as InboundTypeName[]
-`)
+export const %[2]s_TYPE_NAMES = Object.keys(%[2]s_INVENTORY) as %[1]sTypeName[]
+`, d.Name, d.Screaming)
 
 	return b.Bytes(), nil
 }
@@ -417,10 +459,10 @@ func typeName(t reflect.Type) string {
 }
 
 // markDeprecated flags fields retired either in the sing-box source (found by
-// parsing its doc comments) or in the docs alone (docDeprecatedFields).
-func markDeprecated(fields []field, fromSource deprecationIndex) {
+// parsing its doc comments) or in the docs alone (domain.DocDeprecated).
+func markDeprecated(fields []field, fromSource deprecationIndex, fromDocs map[string]bool) {
 	for i := range fields {
-		if docDeprecatedFields[fields[i].Name] || fromSource.has(fields[i].goStruct, fields[i].goField) {
+		if fromDocs[fields[i].Name] || fromSource.has(fields[i].goStruct, fields[i].goField) {
 			fields[i].Deprecated = true
 		}
 	}
