@@ -42,12 +42,46 @@ const currentRule = ref<any>({
   server: '',
   method: 'default',
   rcode: 'NXDOMAIN',
-  rule_set: '',
+  rule_set: [] as string[],
   domain: [] as string[],
   domain_suffix: [] as string[],
   domain_keyword: [] as string[],
   geosite: [] as string[],
 })
+
+/**
+ * Fields the form actually renders. Everything else on a loaded rule is carried
+ * through untouched — see `preservedFields`.
+ */
+const EDITED_FIELDS = [
+  'action',
+  'server',
+  'method',
+  'rcode',
+  'rule_set',
+  'domain',
+  'domain_suffix',
+  'domain_keyword',
+  'geosite',
+  'no_drop',
+] as const
+
+/**
+ * The parts of the rule being edited that this form has no control for.
+ *
+ * The form rebuilds `currentRule` from a fixed list of keys, so anything else a
+ * rule carried — `strategy`, `clash_mode`, `ip_cidr`, `invert`, `outbound` —
+ * used to be silently destroyed on save. A real rule in this repo's own test
+ * config had `"strategy": "ipv4_only"` erased simply by opening it and pressing
+ * Update.
+ *
+ * They are re-merged on save, but ONLY when the action is unchanged: sing-box
+ * strict-parses DNS rules per action, so carrying a route-only field onto a
+ * rule the operator just switched to `reject` would produce an "unknown field"
+ * failure instead.
+ */
+const preservedFields = ref<Record<string, unknown>>({})
+const originalAction = ref<string>('')
 
 function toArrayField(v: unknown): string[] {
   if (v === undefined || v === null) return []
@@ -144,7 +178,7 @@ function emptyRuleForm() {
     server: '',
     method: 'default',
     rcode: 'NXDOMAIN',
-    rule_set: '',
+    rule_set: [] as string[],
     domain: [] as string[],
     domain_suffix: [] as string[],
     domain_keyword: [] as string[],
@@ -154,6 +188,8 @@ function emptyRuleForm() {
 
 const openAddRuleModal = () => {
   isEditMode.value = false
+  preservedFields.value = {}
+  originalAction.value = ''
   currentRule.value = emptyRuleForm()
   conditionsKey.value++
   showRuleModal.value = true
@@ -164,15 +200,21 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
   editingIndex.value = index
 
   const raw = rule as Record<string, unknown>
+
+  preservedFields.value = Object.fromEntries(
+    Object.entries(raw).filter(([key]) => !EDITED_FIELDS.includes(key as never)),
+  )
+  originalAction.value = (raw.action as string) || 'route'
+
   currentRule.value = {
     action: (raw.action as string) || 'route',
     server: (raw.server as string) || '',
     method: (raw.method as string) || 'default',
     rcode: (raw.rcode as string) || 'NXDOMAIN',
-    // rule_set is a single-select in the UI; the backend allows array — pick the first.
-    rule_set: Array.isArray(raw.rule_set)
-      ? ((raw.rule_set as string[])[0] || '')
-      : ((raw.rule_set as string) || ''),
+    // sing-box accepts a scalar or an array here; normalize to an array. This
+    // used to keep only the first entry, which meant opening and saving a rule
+    // that matched two rule sets silently dropped one of them.
+    rule_set: toArrayField(raw.rule_set),
     domain: toArrayField(raw.domain),
     domain_suffix: toArrayField(raw.domain_suffix),
     domain_keyword: toArrayField(raw.domain_keyword),
@@ -190,9 +232,17 @@ const closeRuleModal = () => {
 const handleSaveRule = async () => {
   // currentRule.* list fields are already string[] from Chips.
   // Strip empty arrays so we don't send `{ domain: [] }` to the backend.
+  // Fields with no control in this form survive an edit, but only while the
+  // action is unchanged — see `preservedFields`.
+  const carried =
+    isEditMode.value && currentRule.value.action === originalAction.value
+      ? preservedFields.value
+      : {}
+
   const processedRule: Record<string, unknown> = {
+    ...carried,
     ...currentRule.value,
-    rule_set: currentRule.value.rule_set ? [currentRule.value.rule_set] : undefined,
+    rule_set: currentRule.value.rule_set.length ? currentRule.value.rule_set : undefined,
     domain: currentRule.value.domain.length ? currentRule.value.domain : undefined,
     domain_suffix: currentRule.value.domain_suffix.length ? currentRule.value.domain_suffix : undefined,
     domain_keyword: currentRule.value.domain_keyword.length ? currentRule.value.domain_keyword : undefined,
@@ -342,13 +392,6 @@ onMounted(() => {
 
     <!-- DNS Rules Table -->
     <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.rules.heading') }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ $t('dns.rules.subheading') }}
-        </p>
-      </div>
-
       <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.rules.empty') }}</p>

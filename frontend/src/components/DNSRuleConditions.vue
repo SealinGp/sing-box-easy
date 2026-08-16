@@ -8,21 +8,54 @@
  * component supplies the DNS-specific field set and labels.
  */
 import { computed } from 'vue'
-import { Select } from '../volt'
+import { useI18n } from 'vue-i18n'
+import { MultiSelect } from '../volt'
 import ChipsField from './ChipsField.vue'
 import Alert from './Alert.vue'
 import { PlusCircleIcon } from '@heroicons/vue/24/outline'
 import { useExclusiveMatcherGroups, useOptionalFields } from '../composables/useMatcherFields'
 
-const ruleSet = defineModel<string>('ruleSet', { required: true })
+/**
+ * `rule_set` is a list on the wire — sing-box types it as
+ * `badoption.Listable[string]`, and `types/dns.ts` already declares
+ * `rule_set?: string[]`. It was edited here as a single Select, and DNSRules
+ * bridged the gap by taking the first element on load and re-wrapping it on
+ * save. That silently discarded data: a rule matching two rule sets opened
+ * showing one, and saving wrote back only that one.
+ *
+ * Now a MultiSelect, matching RouteRuleMatchers.
+ */
+const ruleSet = defineModel<string[]>('ruleSet', { required: true })
 const domain = defineModel<string[]>('domain', { required: true })
 const domainSuffix = defineModel<string[]>('domainSuffix', { required: true })
 const domainKeyword = defineModel<string[]>('domainKeyword', { required: true })
 const geosite = defineModel<string[]>('geosite', { required: true })
 
-defineProps<{
+const props = defineProps<{
   ruleSetOptions: { value: string; label: string }[]
 }>()
+
+const { t } = useI18n()
+
+/**
+ * A rule can name a rule set that was since renamed or deleted. MultiSelect
+ * renders nothing for a value it has no option for, so that tag would vanish
+ * from the form while still living in the rule — and the next save would look
+ * like the operator had removed it. Surface it as a flagged option instead, so
+ * it stays visible, stays selected, and can be removed deliberately.
+ */
+const selectableRuleSets = computed(() => {
+  const options = [...props.ruleSetOptions]
+  const known = new Set(options.map((option) => option.value))
+
+  for (const tag of ruleSet.value ?? []) {
+    if (known.has(tag)) continue
+    known.add(tag)
+    options.push({ value: tag, label: t('dns.rules.form.ruleSetMissing', { tag }) })
+  }
+
+  return options
+})
 
 type MatcherKey = 'domain' | 'domainSuffix' | 'domainKeyword' | 'geosite'
 
@@ -51,7 +84,7 @@ const {
   remove: removeField,
 } = useOptionalFields(matcherKeys, (key) => matcherModels[key].value.length > 0)
 
-const hasRuleSet = computed(() => !!ruleSet.value)
+const hasRuleSet = computed(() => (ruleSet.value?.length ?? 0) > 0)
 const hasMatchers = computed(() =>
   matcherKeys.some((key) => matcherModels[key].value.length > 0),
 )
@@ -90,17 +123,18 @@ const {
           {{ $t('dns.rules.form.mixing.hide') }}
         </button>
       </div>
-      <Select
+      <MultiSelect
         class="w-full"
         optionLabel="label"
         optionValue="value"
         v-model="ruleSet"
-        :options="ruleSetOptions"
-        :filter="true"
-        :showClear="true"
+        :options="selectableRuleSets"
+        display="chip"
+        filter
         :placeholder="$t('dns.rules.form.ruleSetSelect')"
         :filterPlaceholder="$t('dns.rules.form.ruleSetSearch')"
         :emptyFilterMessage="$t('dns.rules.form.ruleSetNoOptions')"
+        :emptyMessage="$t('dns.rules.form.ruleSetEmpty')"
       />
       <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.ruleSetHelp') }}</p>
     </div>
