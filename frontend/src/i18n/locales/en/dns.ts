@@ -25,7 +25,8 @@ export default {
       tcp: 'TCP',
       tls: 'DNS over TLS',
       https: 'DNS over HTTPS',
-      http3: 'DNS over HTTP/3',
+      h3: 'DNS over HTTP/3',
+      tailscale: 'Tailscale',
       quic: 'DNS over QUIC',
       local: 'Local System DNS',
       dhcp: 'DHCP',
@@ -69,6 +70,45 @@ export default {
       hostsFilePathsOptional: '(optional)',
       hostsFilePathsPlaceholder: '/etc/hosts',
       hostsFilePathsHelp: 'One path per line. Loaded in addition to the predefined mappings above.',
+
+      // ââ schema-driven form ââââââââââââââââââââââââââââââââââââââââââââââââ
+      localHint:
+        'A local resolver uses the host’s own DNS settings, so it has no address to configure. Everything below is an optional dialer setting.',
+      addHost: 'Add host',
+      hostsDomainPlaceholder: 'example.com',
+      hostsAddressPlaceholder: '192.0.2.1',
+      hostsHelp: 'Separate multiple addresses for one domain with commas.',
+
+      /*
+       * Labels for fields whose sing-box name is not self-explanatory.
+       *
+       * Deliberately NOT exhaustive — anything absent is humanized from its own
+       * key at render time ('tcp_fast_open' → 'TCP Fast Open'), so a field added
+       * by a future sing-box stays legible without touching this file.
+       */
+      fields: {
+        server: 'Server Address',
+        server_port: 'Port',
+        detour: 'Detour (outbound)',
+        path: 'Path',
+        method: 'HTTP Method',
+        headers: 'HTTP Headers',
+        tls: 'TLS',
+        domain_resolver: 'Domain Resolver',
+        connect_timeout: 'Connect Timeout',
+        fallback_delay: 'Fallback Delay',
+        interface: 'Interface',
+        inet4_range: 'IPv4 Range',
+        inet6_range: 'IPv6 Range',
+        predefined: 'Predefined Hosts',
+        endpoint: 'Tailscale Endpoint',
+        accept_default_resolvers: 'Accept Default Resolvers',
+      },
+    },
+    validation: {
+      tagRequired: 'Tag is required',
+      typeRequired: 'Type is required',
+      serverRequired: 'Server address is required for this DNS type',
     },
     del: {
       title: 'Delete DNS Server',
@@ -129,6 +169,8 @@ export default {
       ruleSetSelect: 'Select or search a rule set',
       ruleSetSearch: 'Type to filter rule sets...',
       ruleSetNoOptions: 'No matching rule sets found',
+      ruleSetMissing: '{tag} — not configured',
+      ruleSetEmpty: 'No rule sets configured yet. Add one under Route → Rule Sets first.',
       ruleSetHelp: 'Use a predefined rule set for this DNS rule',
       // Rule-set vs domain-condition guidance. sing-box ANDs the matchers
       // inside one rule, so mixing the two narrows the scope instead of

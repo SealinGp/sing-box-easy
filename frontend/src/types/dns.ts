@@ -15,7 +15,7 @@ export type DNSServerType =
   | 'tcp'        // TCP DNS
   | 'tls'        // DNS over TLS
   | 'https'      // DNS over HTTPS
-  | 'http3'      // DNS over HTTP/3
+  | 'h3'         // DNS over HTTP/3 — sing-box spells this 'h3', not 'http3'
   | 'quic'       // DNS over QUIC
   | 'dhcp'       // DHCP DNS
   | 'fakeip'     // FakeIP DNS
@@ -120,7 +120,7 @@ export interface RemoteTLSDNSServerOptions extends DNSDialerOptions, DNSServerAd
 // Remote HTTPS DNS Server Options (HTTPS, HTTP3)
 export interface RemoteHTTPSDNSServerOptions extends DNSDialerOptions, DNSServerAddressOptions {
   tag: string
-  type: 'https' | 'http3'
+  type: 'https' | 'h3'
   tls?: TLSOptions
   path?: string
   method?: string
@@ -290,7 +290,7 @@ export function isTLSDNSServer(server: DNSServerOptions): server is RemoteTLSDNS
 }
 
 export function isHTTPSDNSServer(server: DNSServerOptions): server is RemoteHTTPSDNSServerOptions {
-  return server.type === 'https' || server.type === 'http3'
+  return server.type === 'https' || server.type === 'h3'
 }
 
 export function isFakeIPDNSServer(server: DNSServerOptions): server is FakeIPDNSServerOptions {

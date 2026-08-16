@@ -17,7 +17,7 @@ const NON_PROXIED_OUTBOUND_TYPES = ['direct', 'block', 'dns'] as const
 
 // DNS server types that resist GFW poisoning (encrypted transports). A plain
 // udp/tcp/local server can be poisoned unless it is tunneled (has a detour).
-const CLEAN_DNS_TYPES = ['tls', 'https', 'http3', 'quic'] as const
+const CLEAN_DNS_TYPES = ['tls', 'https', 'h3', 'quic'] as const
 
 // Every matcher field a sing-box DNS rule may carry. Used to prove a rule is
 // "pure" for a single field before we append into it — see isPureFieldRule.

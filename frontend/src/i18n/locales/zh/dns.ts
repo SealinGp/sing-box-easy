@@ -25,7 +25,8 @@ export default {
       tcp: 'TCP',
       tls: 'DNS over TLS',
       https: 'DNS over HTTPS',
-      http3: 'DNS over HTTP/3',
+      h3: 'DNS over HTTP/3',
+      tailscale: 'Tailscale',
       quic: 'DNS over QUIC',
       local: '本地系统 DNS',
       dhcp: 'DHCP',
@@ -69,6 +70,41 @@ export default {
       hostsFilePathsOptional: '（可选）',
       hostsFilePathsPlaceholder: '/etc/hosts',
       hostsFilePathsHelp: '每行一个路径。将与上方的预定义映射一同加载。',
+
+      // ── 基于 schema 的表单 ──
+      localHint: '本地解析器使用主机自身的 DNS 设置，因此无需配置地址。以下均为可选的连接选项。',
+      addHost: '添加主机',
+      hostsDomainPlaceholder: 'example.com',
+      hostsAddressPlaceholder: '192.0.2.1',
+      hostsHelp: '同一域名的多个地址请用逗号分隔。',
+
+      /*
+       * 仅为「名字本身讲不清楚」的字段提供中文名，未列出的会在渲染时
+       * 由字段名自动转换。
+       */
+      fields: {
+        server: '服务器地址',
+        server_port: '端口',
+        detour: '出站绕行',
+        path: '路径',
+        method: 'HTTP 方法',
+        headers: 'HTTP 请求头',
+        tls: 'TLS',
+        domain_resolver: '域名解析器',
+        connect_timeout: '连接超时',
+        fallback_delay: '回退延迟',
+        interface: '网卡',
+        inet4_range: 'IPv4 地址段',
+        inet6_range: 'IPv6 地址段',
+        predefined: '预定义主机',
+        endpoint: 'Tailscale 端点',
+        accept_default_resolvers: '接受默认解析器',
+      },
+    },
+    validation: {
+      tagRequired: '标签为必填项',
+      typeRequired: '类型为必填项',
+      serverRequired: '该 DNS 类型必须填写服务器地址',
     },
     del: {
       title: '删除 DNS 服务器',
@@ -129,6 +165,8 @@ export default {
       ruleSetSelect: '选择或搜索规则集',
       ruleSetSearch: '输入以筛选规则集...',
       ruleSetNoOptions: '未找到匹配的规则集',
+      ruleSetMissing: '{tag} —— 未配置',
+      ruleSetEmpty: '尚未配置规则集。请先在“路由 → 规则集”中添加。',
       ruleSetHelp: '为此 DNS 规则使用预定义的规则集',
       // 规则集与域名条件的取舍提示。sing-box 会把同一条规则内的匹配项按“与”
       // 处理，混用只会缩小范围 —— 见 components/DNSRuleConditions.vue。

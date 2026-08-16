@@ -8,46 +8,80 @@ import Badge from './Badge.vue'
 import Table from './Table.vue'
 import Modal from './Modal.vue'
 import { Select } from '../volt'
+import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
+import {
+  DNS_SERVER_TYPE_NAMES,
+  applyTypeDefaults,
+  pruneForType,
+  resolveDNSServerFields,
+  DNS_TYPES_NEEDING_SERVER,
+  type DNSServerTypeName,
+} from '../schemas/dnsServerFields'
 import { useDNSStore } from '../stores/dns'
-import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 
 const toast = useToast()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const dnsStore = useDNSStore()
-const outboundsStore = useOutboundsStore()
 const { dnsServers, loading } = storeToRefs(dnsStore)
-const { outbounds } = storeToRefs(outboundsStore)
 
 // Modal state
 const showServerModal = ref(false)
 const isEditMode = ref(false)
 const editingServerTag = ref<string>('')
-const currentServer = ref<any>({
-  type: 'udp',
-  tag: '',
-  server: '',
-  server_port: 53,
-})
+const DEFAULT_TYPE: DNSServerTypeName = 'udp'
+
+function blankServer(): Record<string, unknown> {
+  return applyTypeDefaults({ tag: '' }, DEFAULT_TYPE)
+}
+
+const currentServer = ref<Record<string, unknown>>(blankServer())
+
+/**
+ * The form model is an open record because a server's fields depend on its
+ * type, and the declared DNSServer union cannot narrow on `type`. This is the
+ * one place the shape is read back as a type name.
+ */
+const currentType = computed(() =>
+  typeof currentServer.value.type === 'string'
+    ? (currentServer.value.type as DNSServerTypeName)
+    : undefined,
+)
 
 // Delete confirmation
 const showDeleteConfirm = ref(false)
 const deletingServer = ref<DNSServer | null>(null)
 
-const serverTypes = computed(() => [
-  { value: 'udp', label: t('dns.servers.types.udp') },
-  { value: 'tcp', label: t('dns.servers.types.tcp') },
-  { value: 'tls', label: t('dns.servers.types.tls') },
-  { value: 'https', label: t('dns.servers.types.https') },
-  { value: 'http3', label: t('dns.servers.types.http3') },
-  { value: 'quic', label: t('dns.servers.types.quic') },
-  { value: 'local', label: t('dns.servers.types.local') },
-  { value: 'dhcp', label: t('dns.servers.types.dhcp') },
-  { value: 'fakeip', label: t('dns.servers.types.fakeip') },
-  { value: 'hosts', label: t('dns.servers.types.hosts') },
-])
+/**
+ * Driven by the generated inventory rather than a hand-written array.
+ *
+ * That array spelled HTTP/3 "http3"; sing-box's constant is "h3" and its
+ * transport registers under that name, so every server this form saved as
+ * "http3" produced a config sing-box could not start. It also predated
+ * `tailscale`. Deriving the list means neither can drift again.
+ *
+ * Labels stay opt-in: a type with no `dns.servers.types.*` entry shows its own
+ * name rather than a raw i18n path.
+ */
+const serverTypes = computed(() =>
+  DNS_SERVER_TYPE_NAMES.map((value) => ({
+    value,
+    label: te(`dns.servers.types.${value}`) ? t(`dns.servers.types.${value}`) : value,
+  })),
+)
+
+/**
+ * Switching type prunes the previous type's fields before seeding the new
+ * one's defaults. There was no type-change handler at all before, so switching
+ * from `https` to `local` in the add dialog carried `server`, `server_port` and
+ * `path` along into the payload — and sing-box decodes DNS options strictly.
+ */
+function changeType(next: unknown) {
+  if (typeof next !== 'string') return
+  currentServer.value = pruneForType(currentServer.value, next as DNSServerTypeName)
+}
 
 const getServerTypeLabel = (type: string) => {
   return serverTypes.value.find(s => s.value === type)?.label || type
@@ -60,40 +94,14 @@ const getServerBadgeVariant = (type: string): 'primary' | 'success' | 'warning' 
   return 'info'
 }
 
-const needsServerAddress = computed(() => {
-  const types = ['udp', 'tcp', 'tls', 'https', 'http3', 'quic']
-  return types.indexOf(currentServer.value.type) !== -1
-})
-
-/**
- * `detour` is a DNS *server* field (its DialerOptions), not a rule field — a
- * rule inherits whatever detour the server it routes to has.
- *
- * Only remote transports dial anywhere, so local/dhcp/fakeip/hosts have no
- * detour to speak of. Empty means "dial directly".
- *
- * Practical note: pointing a resolver through a proxy is how you stop foreign
- * DNS from being tampered with, but the resolver named by
- * route.default_domain_resolver must stay direct — it is what resolves the
- * proxy servers' own hostnames, so routing it through the proxy is circular.
+/*
+ * needsServerAddress / supportsDetour / needsPath used to live here as
+ * hand-maintained type lists. Two of them were byte-identical. All three are
+ * now answered by the generated inventory: a type has `server` if its option
+ * struct embeds DNSServerAddressOptions and `detour` if it embeds
+ * DialerOptions, which is exactly what the reflection sees. See
+ * schemas/dnsServerFields.ts.
  */
-const supportsDetour = computed(() => {
-  const types = ['udp', 'tcp', 'tls', 'https', 'http3', 'quic']
-  return types.indexOf(currentServer.value.type) !== -1
-})
-
-const detourOptions = computed(() => {
-  const options = [{ value: '', label: t('dns.servers.form.detourDirect') }]
-  for (const ob of outbounds.value || []) {
-    if (ob.tag) options.push({ value: ob.tag, label: ob.tag })
-  }
-  return options
-})
-
-const needsPath = computed(() => {
-  const types = ['https', 'http3']
-  return types.indexOf(currentServer.value.type) !== -1
-})
 
 // ─── hosts-type specific helpers ─────────────────────────────────────────────
 // Render a short summary of the row data when type=hosts, so the table cell
@@ -115,98 +123,70 @@ const formatHostsSummary = (server: any): string => {
   return parts.length > 0 ? parts.join(', ') : t('dns.servers.hostsSummary.empty')
 }
 
-// Two-way bridge between the `predefined` object and a textarea where each
-// line is `hostname IP[,IP2,...]`. We keep the format simple and forgiving:
-//   - blank lines and #-comments are skipped
-//   - whitespace between hostname and IPs collapses to a single delimiter
-//   - multiple IPs may be separated by commas or spaces
-// Round-trips cleanly for the common single-IP case in config.json.
-const predefinedHostsText = computed<string>({
-  get(): string {
-    const map = currentServer.value?.predefined as Record<string, string | string[]> | undefined
-    if (!map) return ''
-    return Object.entries(map)
-      .map(([host, val]) => `${host} ${Array.isArray(val) ? val.join(',') : val}`)
-      .join('\n')
-  },
-  set(text: string) {
-    const server = currentServer.value
-    if (!server) return
-    const map: Record<string, string | string[]> = {}
-    for (const raw of text.split('\n')) {
-      const line = raw.trim()
-      if (!line || line.startsWith('#')) continue
-      // First token is the hostname; remainder (split on whitespace OR comma)
-      // is the IP list.
-      const m = line.match(/^(\S+)\s+(.+)$/)
-      if (!m) continue
-      const host = m[1]
-      const rawIps = m[2]
-      if (!host || !rawIps) continue
-      const ips = rawIps.split(/[\s,]+/).filter(Boolean)
-      if (ips.length === 0) continue
-      map[host] = ips.length === 1 ? ips[0]! : ips
-    }
-    // Drop the field entirely when no entries remain, matching the
-    // `omitempty` behaviour on the backend's HostsDNSServerOptions.
-    if (Object.keys(map).length === 0) delete server.predefined
-    else server.predefined = map
-  },
-})
+/**
+ * Client-side validation, mirroring the rules the backend now enforces in
+ * dns_validation.go. Returns an i18n key, or '' when valid.
+ *
+ * Kept in step with the server deliberately: the backend is the authority (it
+ * is what sing-box actually parses), but catching it here means the operator
+ * sees the problem next to the field instead of as a toast after a round trip.
+ */
+function validateDNSServer(server: Record<string, unknown>): string {
+  const tag = server.tag
+  if (typeof tag !== 'string' || !tag.trim()) return 'dns.servers.validation.tagRequired'
 
-// Similar bridge for the optional `path` field (list of hosts-file paths).
-const hostsFilePathsText = computed<string>({
-  get(): string {
-    const p = currentServer.value?.path
-    if (!p) return ''
-    return Array.isArray(p) ? p.join('\n') : String(p)
-  },
-  set(text: string) {
-    const paths = text
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean)
-    if (paths.length === 0) delete currentServer.value.path
-    else currentServer.value.path = paths.length === 1 ? paths[0] : paths
-  },
-})
+  const type = server.type
+  if (typeof type !== 'string' || !type) return 'dns.servers.validation.typeRequired'
+
+  if (DNS_TYPES_NEEDING_SERVER.includes(type as DNSServerTypeName)) {
+    const address = server.server
+    if (typeof address !== 'string' || !address.trim()) {
+      return 'dns.servers.validation.serverRequired'
+    }
+  }
+
+  return ''
+}
 
 const openAddServerModal = () => {
   isEditMode.value = false
-  currentServer.value = {
-    type: 'udp',
-    tag: '',
-    server: '',
-    server_port: 53,
-  }
+  currentServer.value = blankServer()
   showServerModal.value = true
 }
 
 const openEditServerModal = (server: DNSServer) => {
   isEditMode.value = true
   editingServerTag.value = server.tag
-  currentServer.value = { ...server }
+  // No defaults seeded on edit: writing one into a config that deliberately
+  // omitted the key would change behaviour before the operator touched
+  // anything. Any field holding a value still renders.
+  currentServer.value = { ...(server as unknown as Record<string, unknown>) }
   showServerModal.value = true
 }
 
 const closeServerModal = () => {
   showServerModal.value = false
-  currentServer.value = {
-    type: 'udp',
-    tag: '',
-    server: '',
-    server_port: 53,
-  }
+  currentServer.value = blankServer()
 }
 
 const handleSaveServer = async () => {
-  // An empty detour means "direct"; send it as absent rather than "" so the
-  // stored config stays clean.
-  if (!currentServer.value.detour) delete currentServer.value.detour
+  const error = validateDNSServer(currentServer.value)
+  if (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t(error),
+      life: 3000,
+    })
+    return
+  }
 
   try {
     if (isEditMode.value) {
-      await dnsStore.updateDNSServer(editingServerTag.value, currentServer.value)
+      await dnsStore.updateDNSServer(
+        editingServerTag.value,
+        currentServer.value as unknown as DNSServer,
+      )
       toast.add({
         severity: 'success',
         summary: t('common.success'),
@@ -214,7 +194,7 @@ const handleSaveServer = async () => {
         life: 3000
       })
     } else {
-      await dnsStore.addDNSServer(currentServer.value)
+      await dnsStore.addDNSServer(currentServer.value as unknown as DNSServer)
       toast.add({
         severity: 'success',
         summary: t('common.success'),
@@ -267,8 +247,9 @@ const handleDeleteServer = async () => {
 // Load data on mount
 onMounted(() => {
   dnsStore.fetchDNSServers()
-  // Populates the detour picker.
-  outboundsStore.fetchOutbounds()
+  // The detour picker's outbound list is fetched by SchemaFieldControl, and
+  // only when a detour field is actually rendered — so opening this page no
+  // longer costs an outbounds request it may never use.
 })
 </script>
 
@@ -358,12 +339,18 @@ onMounted(() => {
       size="md"
       show-close
     >
-      <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-3">
+        <!--
+          Tag and type live on the DNS server wrapper rather than in any type's
+          option struct, so they are rendered here rather than coming from the
+          schema. Both lock on edit: the tag is what `dns.rules` reference, and
+          changing the type would reinterpret every remaining field.
+        -->
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.tag') }}</label>
             <Input
-              v-model="currentServer.tag"
+              v-model="(currentServer.tag as string)"
               :placeholder="$t('dns.servers.form.tagPlaceholder')"
               :disabled="isEditMode"
             />
@@ -373,123 +360,30 @@ onMounted(() => {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.type') }}</label>
             <Select
               class="w-full"
-              v-model="currentServer.type"
+              :modelValue="currentServer.type"
               :options="serverTypes"
               optionLabel="label"
               optionValue="value"
               :placeholder="$t('dns.servers.form.typePlaceholder')"
               :disabled="isEditMode"
-            />
-          </div>
-        </div>
-
-        <div v-if="needsServerAddress" class="grid grid-cols-3 gap-4">
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.serverAddress') }}</label>
-            <Input
-              v-model="currentServer.server"
-              :placeholder="$t('dns.servers.form.serverAddressPlaceholder')"
-            />
-          </div>
-
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.port') }}</label>
-            <Input
-              v-model.number="currentServer.server_port"
-              type="number"
-              :placeholder="$t('dns.servers.form.portPlaceholder')"
-            />
-          </div>
-        </div>
-
-        <div v-if="supportsDetour">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.detour') }}</label>
-          <Select
-            class="w-full"
-            v-model="currentServer.detour"
-            :options="detourOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="$t('dns.servers.form.detourDirect')"
-          />
-          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.detourHelp') }}</p>
-        </div>
-
-        <div v-if="needsPath">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.path') }}</label>
-          <Input
-            v-model="currentServer.path"
-            :placeholder="$t('dns.servers.form.pathPlaceholder')"
-          />
-          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.pathHelp') }}</p>
-        </div>
-
-        <div v-if="currentServer.type === 'dhcp'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.interface') }}</label>
-          <Input
-            v-model="currentServer.interface"
-            :placeholder="$t('dns.servers.form.interfacePlaceholder')"
-          />
-        </div>
-
-        <div v-if="currentServer.type === 'fakeip'" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet4Range') }}</label>
-            <Input
-              v-model="currentServer.inet4_range"
-              :placeholder="$t('dns.servers.form.inet4RangePlaceholder')"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.servers.form.inet6Range') }}</label>
-            <Input
-              v-model="currentServer.inet6_range"
-              :placeholder="$t('dns.servers.form.inet6RangePlaceholder')"
+              @update:modelValue="changeType"
             />
           </div>
         </div>
 
         <!--
-          Editor for type=hosts. Two-way bridged through computed
-          refs (predefinedHostsText, hostsFilePathsText). Format is
-          intentionally /etc/hosts-like: one entry per line,
-          `hostname IP[,IP2,...]`. Multiple IPs per host stay an
-          array on the wire, matching badoption.Listable on the
-          backend.
+          :key remounts the editor on every type change, dropping the set of
+          fields the operator had added. Without it, switching https -> local
+          would leave https's fields on screen bound to keys the new type does
+          not have.
         -->
-        <div v-if="currentServer.type === 'hosts'" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ $t('dns.servers.form.predefinedHosts') }}
-            </label>
-            <textarea
-              v-model="predefinedHostsText"
-              rows="6"
-              class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-control bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="home.example.com 192.168.1.10
-nas.example.com 192.168.1.20,192.168.1.21"
-            />
-            <p class="mt-1 text-xs text-gray-500">
-              <i18n-t keypath="dns.servers.form.predefinedHostsHelp" scope="global">
-                <template #format><code>hostname IP[,IP2,...]</code></template>
-                <template #hash><code>#</code></template>
-              </i18n-t>
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ $t('dns.servers.form.hostsFilePaths') }} <span class="font-normal text-gray-500">{{ $t('dns.servers.form.hostsFilePathsOptional') }}</span>
-            </label>
-            <textarea
-              v-model="hostsFilePathsText"
-              rows="2"
-              class="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-control bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              :placeholder="$t('dns.servers.form.hostsFilePathsPlaceholder')"
-            />
-            <p class="mt-1 text-xs text-gray-500">{{ $t('dns.servers.form.hostsFilePathsHelp') }}</p>
-          </div>
-        </div>
+        <SchemaFieldsEditor
+          v-if="currentType"
+          :key="currentType"
+          v-model="currentServer"
+          :fields="resolveDNSServerFields(currentType)"
+          :empty-hint="$t('dns.servers.form.localHint')"
+        />
       </div>
 
       <template #footer>
