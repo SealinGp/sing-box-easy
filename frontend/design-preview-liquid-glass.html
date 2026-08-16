@@ -22,6 +22,17 @@
     3. It is hand-written CSS, NOT Tailwind. Class names here are local to the
        preview; the app spells the same thing as `rounded-control`,
        `shadow-surface`, and so on. Each block notes the utility it mirrors.
+
+    COMPACT DENSITY PASS — LANDED
+    ─────────────────────────────
+    The type scale and density tokens below are live in `src/style/tokens.css`,
+    and `.scroll-region` / `.data-table` are live in `src/style/density.css`.
+    Rule 1 applies again: this file and `src/` agree, and must stay that way.
+
+    What the pass changed: a type scale one notch down (13px body), page/card/
+    section gutters at 16px, and — the substance — a height cap, a sticky
+    header, and 35px rows on all nine of the app's tables, in place of 52px.
+    See DESIGN.md §9, §10.1 and §10.2.
   -->
   <style>
     /* ══════════════════════════════════════════════════════════════════════
@@ -62,6 +73,50 @@
       --color-text-tertiary: #9ca3af;
       --color-text-inverse: #ffffff;
       --color-border: rgba(148, 163, 184, 0.28);
+
+      /*
+       * ── Type scale ─────────────────────────────────────────────────
+       *
+       * One notch down from Tailwind's defaults, so a 14" laptop shows
+       * meaningfully more per screen. In the app these override Tailwind's
+       * own `--text-*` tokens inside `@theme`, which retunes all 440
+       * `text-sm` and 318 `text-xs` usages WITHOUT touching any markup —
+       * utilities are emitted as `var(--text-sm)`, not as literal values.
+       *
+       * Default → ours:  xs 12→11 · sm 14→13 · base 16→14
+       *                  lg 18→16 · 2xl 24→20 · 3xl 30→22
+       */
+      --text-xs: 0.6875rem; /* 11px — table headers, hints, badges     */
+      --text-sm: 0.8125rem; /* 13px — body, labels, table cells        */
+      --text-base: 0.875rem; /* 14px — large buttons                   */
+      --text-lg: 1rem; /*      16px — card & section titles            */
+      --text-2xl: 1.25rem; /*  20px                                     */
+      --text-3xl: 1.375rem; /* 22px — page <h2>                        */
+
+      /*
+       * ── Density ────────────────────────────────────────────────────
+       *
+       * Do NOT chase this by overriding Tailwind's global `--spacing`
+       * base unit. Every `p-*`, `gap-*`, `h-4`, `w-55` and `max-w-*` is
+       * `calc(var(--spacing) * n)`, so shrinking it would also shrink
+       * every icon and the sidebar. These are targeted tokens instead.
+       */
+      --space-gutter: 1rem; /* page shell     — was p-8 / 2rem   */
+      --space-card: 1rem; /*   card padding   — was p-6 / 1.5rem */
+      --space-stack: 1rem; /*  section gap    — was space-y-6    */
+
+      --table-cell-px: 0.75rem; /*  was px-6 / 1.5rem  */
+      --table-cell-py: 0.3125rem; /* was py-4 / 1rem    */
+      --table-head-py: 0.375rem;
+      /* No chrome constant. The app's <Table>/<List> MEASURE the space left
+         below them and write `--scroll-max-h` at runtime — three attempts at
+         `calc(100dvh - <constant>)` each failed, finally because Topbar.vue
+         wraps and swings 45px -> 180px. See composables/useFillHeight.ts.
+         The literal below is only the first-paint fallback. */
+      /* Near-opaque: a translucent sticky header lets the rows scrolling
+         underneath read straight through it. */
+      --table-head-bg: rgba(243, 247, 251, 0.97);
+      --table-row-hover: rgba(15, 23, 42, 0.035);
 
       /* ── Radius: three tokens, no exceptions ────────────────────────── */
       --radius-control: 0.625rem; /* 10px — buttons, inputs, chips        */
@@ -140,6 +195,9 @@
         --control-placeholder: #64748b;
         --control-text: #f8fafc;
 
+        --table-head-bg: rgba(14, 19, 26, 0.97);
+        --table-row-hover: rgba(255, 255, 255, 0.045);
+
         --nav-text: #f4f8ff;
         --nav-muted: #a9b8cc;
         --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
@@ -158,7 +216,9 @@
       font-family: var(--font);
       background: var(--color-bg-primary);
       color: var(--color-text-primary);
-      line-height: 1.5;
+      /* 1.5 → 1.45. At 13px body this is the single cheapest vertical win:
+         it removes ~1px per line across every paragraph in the app. */
+      line-height: 1.45;
     }
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -239,38 +299,38 @@
 
     .main {
       min-width: 0;
-      padding: 1.5rem; /* p-6 */
+      padding: var(--space-gutter); /* p-4 — was p-6/p-8 */
       display: grid;
-      gap: 1.5rem;     /* gap-6 */
+      gap: var(--space-stack);      /* gap-4 — was gap-6 */
     }
 
-    /* Card — `liquid-glass rounded-surface`, padding md = p-6 */
+    /* Card — `liquid-glass rounded-surface`, padding md = p-4 (was p-6) */
     .card {
       border-radius: var(--radius-surface);
-      padding: 1.5rem;
+      padding: var(--space-card);
       min-width: 0;
     }
 
     .card-title {
       margin: 0 0 0.25rem;
-      font-size: 1.125rem;
+      font-size: var(--text-lg);
       font-weight: 600;
     }
 
     .card-note {
-      margin: 0 0 1.25rem;
-      font-size: 0.8125rem;
+      margin: 0 0 0.875rem;
+      font-size: var(--text-sm);
       color: var(--color-text-secondary);
     }
 
-    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
-    .stack { display: grid; gap: 0.875rem; }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .stack { display: grid; gap: 0.75rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-stack); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-stack); }
 
     .eyebrow {
-      margin: 0 0 0.5rem;
-      font-size: 0.6875rem;
+      margin: 0 0 0.375rem;
+      font-size: var(--text-xs);
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -292,7 +352,7 @@
       flex-direction: column;
       overflow: hidden;
       border-radius: var(--radius-surface);
-      padding: 1rem 0.75rem;
+      padding: 0.75rem 0.625rem;
       background: var(--nav-surface);
       border: 1px solid var(--nav-border);
       box-shadow: var(--shadow-surface), var(--glass-highlight);
@@ -301,11 +361,11 @@
       color: var(--nav-text);
     }
 
-    .brand { display: flex; align-items: center; gap: 0.75rem; padding: 0 0.5rem 1rem; }
+    .brand { display: flex; align-items: center; gap: 0.625rem; padding: 0 0.375rem 0.75rem; }
 
     .brand-mark {
-      width: 2rem;
-      height: 2rem;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: var(--radius-pill);
       display: grid;
       place-items: center;
@@ -315,8 +375,8 @@
       box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
     }
 
-    .brand h1 { margin: 0; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
-    .brand p { margin: 0; font-size: 0.6875rem; color: var(--nav-muted); }
+    .brand h1 { margin: 0; font-size: var(--text-base); font-weight: 600; letter-spacing: -0.01em; }
+    .brand p { margin: 0; font-size: 0.625rem; color: var(--nav-muted); }
 
     .nav { position: relative; display: grid; gap: 0.25rem; }
 
@@ -332,7 +392,7 @@
       position: absolute;
       top: 0;
       left: 0;
-      height: 2.375rem;
+      height: 2rem;
       width: 100%;
       border-radius: var(--radius-pill);
       z-index: 0;
@@ -351,11 +411,11 @@
       z-index: 1;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      min-height: 2.375rem;
-      padding: 0.625rem 1rem;
+      gap: 0.625rem;
+      min-height: 2rem;
+      padding: 0.375rem 0.75rem;
       border-radius: var(--radius-pill);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       font-weight: 500;
       color: var(--nav-text);
       transition: background-color 200ms ease, color 200ms ease;
@@ -365,28 +425,28 @@
     .nav-item.is-active { color: #fff; }
     .nav-item.is-active svg { color: #fff; }
     .nav-item.is-parent-open { background: var(--nav-quiet); }
-    .nav-item svg { width: 1.125rem; height: 1.125rem; color: var(--nav-muted); flex: 0 0 auto; }
+    .nav-item svg { width: 1rem; height: 1rem; color: var(--nav-muted); flex: 0 0 auto; }
 
     .nav-badge {
       margin-left: auto;
-      padding: 0.0625rem 0.5rem;
+      padding: 0.0625rem 0.4375rem;
       border-radius: var(--radius-pill);
-      font-size: 0.6875rem;
+      font-size: var(--text-xs);
       font-weight: 600;
       background: var(--nav-quiet);
     }
 
     .nav-item.is-active .nav-badge { background: rgba(255, 255, 255, 0.25); color: #fff; }
 
-    .submenu { display: grid; gap: 0.25rem; margin: 0.25rem 0 0 2rem; }
+    .submenu { display: grid; gap: 0.125rem; margin: 0.125rem 0 0 1.5rem; }
 
     .submenu-item {
       display: flex;
       align-items: center;
-      gap: 0.625rem;
-      padding: 0.5rem 1rem;
+      gap: 0.5rem;
+      padding: 0.3125rem 0.75rem;
       border-radius: var(--radius-pill);
-      font-size: 0.8125rem;
+      font-size: var(--text-sm);
       color: var(--nav-text);
     }
 
@@ -413,16 +473,16 @@
     }
 
     .status-link {
-      margin-top: 0.75rem;
+      margin-top: 0.625rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 0.75rem;
+      gap: 0.4375rem;
+      padding: 0.375rem 0.625rem;
       border-radius: var(--radius-control);
       background: rgba(255, 255, 255, 0.48);
       border: 1px solid rgba(148, 163, 184, 0.22);
       box-shadow: var(--glass-highlight);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       font-weight: 600;
     }
 
@@ -432,20 +492,20 @@
 
     .sidebar-footer {
       margin-top: auto;
-      padding-top: 0.875rem;
+      padding-top: 0.75rem;
       border-top: 1px solid var(--nav-border);
       display: flex;
       align-items: center;
-      gap: 0.625rem;
+      gap: 0.5rem;
     }
 
     .avatar {
-      width: 2rem;
-      height: 2rem;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: var(--radius-pill);
       display: grid;
       place-items: center;
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       font-weight: 700;
       color: #fff;
       background: linear-gradient(135deg, #3b87ff, #67e8f9);
@@ -461,7 +521,7 @@
       gap: 0.5rem;
       flex-wrap: wrap;
       border-radius: var(--radius-surface);
-      padding: 0.5rem 1rem;
+      padding: 0.375rem 0.75rem;
       background: var(--nav-surface);
       border: 1px solid var(--nav-border);
       box-shadow: var(--shadow-surface), var(--glass-highlight);
@@ -470,13 +530,15 @@
       color: var(--nav-text);
     }
 
+    /* Sidebar and Topbar rows now share ONE scale. They had drifted apart:
+       the sidebar was `px-4 py-2.5`, the topbar `px-3 py-2`. */
     .topbar-item {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 0.75rem;
+      padding: 0.375rem 0.625rem;
       border-radius: var(--radius-pill);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       font-weight: 500;
       white-space: nowrap;
     }
@@ -497,19 +559,21 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;              /* size md */
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;         /* size md — was 0.5rem 1rem */
       border: 1px solid transparent;
       border-radius: var(--radius-control);
-      font: 600 0.875rem/1.25rem var(--font);
+      font: 600 var(--text-sm) / 1.15rem var(--font);
       cursor: pointer;
       box-shadow: var(--shadow-surface);
       transition: background-color 200ms ease, border-color 200ms ease;
     }
 
-    .btn svg { width: 1rem; height: 1rem; }
-    .btn.sm { padding: 0.375rem 0.75rem; font-size: 0.875rem; gap: 0.375rem; }
-    .btn.lg { padding: 0.625rem 1.5rem; font-size: 1rem; }
+    .btn svg { width: 0.875rem; height: 0.875rem; }
+    /* sm and md deliberately share a font size and differ only in padding —
+       an 11px button label stops reading as a control. */
+    .btn.sm { padding: 0.25rem 0.625rem; font-size: var(--text-sm); gap: 0.25rem; }
+    .btn.lg { padding: 0.5rem 1rem; font-size: var(--text-base); }
 
     .btn.primary { background: var(--color-primary); color: #fff; }
     .btn.primary:hover { background: var(--color-primary-hover); }
@@ -537,8 +601,8 @@
 
     /* Icon-only, circular. The ONLY sanctioned use of pill on a button. */
     .btn.icon {
-      width: 2rem;
-      height: 2rem;
+      width: 1.75rem;
+      height: 1.75rem;
       padding: 0;
       border-radius: var(--radius-pill);
       background: transparent;
@@ -574,24 +638,24 @@
        One declaration serves native inputs, `.select`, and volt's
        `.volt-select`, so all three stay pixel-identical.
        ══════════════════════════════════════════════════════════════════════ */
-    .field { display: grid; gap: 0.375rem; }
+    .field { display: grid; gap: 0.25rem; }
 
     .field > label {
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       font-weight: 500;
       color: var(--color-text-secondary);
     }
 
-    .field .hint { font-size: 0.75rem; color: var(--color-text-tertiary); }
-    .field .error { font-size: 0.875rem; color: var(--color-danger); }
+    .field .hint { font-size: var(--text-xs); color: var(--color-text-tertiary); }
+    .field .error { font-size: var(--text-xs); color: var(--color-danger); }
 
     .input,
     .textarea,
     .volt-select {
       display: block;
       width: 100%;
-      padding: 0.5rem 0.875rem;
-      font: 400 0.875rem/1.25rem var(--font);
+      padding: 0.375rem 0.625rem;
+      font: 400 var(--text-sm) / 1.15rem var(--font);
       color: var(--control-text);
       background: var(--control-bg);
       border: 1px solid var(--control-border);
@@ -618,7 +682,7 @@
     .input[disabled] { background: var(--control-bg-disabled); cursor: not-allowed; opacity: 0.7; }
 
     /* Textareas are the ONE control on the surface radius — multi-line data. */
-    .textarea { border-radius: var(--radius-surface); min-height: 5.5rem; resize: vertical; }
+    .textarea { border-radius: var(--radius-surface); min-height: 4.5rem; resize: vertical; }
 
     /* Invalid is driven by aria-invalid, not a presentational class. */
     .input[aria-invalid='true'] { border-color: var(--color-danger); }
@@ -635,7 +699,7 @@
       user-select: none;
     }
 
-    .volt-select .label { flex: 1 1 auto; padding: 0.5rem 0.875rem; }
+    .volt-select .label { flex: 1 1 auto; padding: 0.375rem 0.625rem; }
     .volt-select .label.is-empty { color: var(--control-placeholder); }
 
     .volt-select .chevron {
@@ -667,8 +731,8 @@
 
     .select-panel .filter {
       width: 100%;
-      padding: 0.375rem 0.75rem;
-      font: 400 0.875rem var(--font);
+      padding: 0.3125rem 0.625rem;
+      font: 400 var(--text-sm) var(--font);
       color: var(--control-text);
       background: rgba(0, 0, 0, 0.03);
       border: 1px solid transparent;
@@ -685,9 +749,9 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 0.75rem;
+      padding: 0.3125rem 0.625rem;
       border-radius: var(--radius-control);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       cursor: pointer;
     }
 
@@ -710,9 +774,9 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.375rem;
+      gap: 0.25rem;
       width: 100%;
-      padding: 0.5rem;
+      padding: 0.375rem;
       background: var(--control-bg);
       border: 1px solid var(--control-border);
       border-radius: var(--radius-control);
@@ -731,7 +795,7 @@
       border-radius: var(--radius-pill);
       background: var(--color-primary-100);
       color: var(--color-primary-700);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       font-weight: 500;
     }
 
@@ -741,7 +805,7 @@
 
     .chip .x { cursor: pointer; opacity: 0.6; font-size: 0.875rem; line-height: 1; }
     .chips-box .entry { flex: 1 1 10rem; border: 0; outline: none; background: transparent;
-      padding: 0.25rem; font: 400 0.875rem var(--font); color: var(--control-text); }
+      padding: 0.125rem 0.25rem; font: 400 var(--text-sm) var(--font); color: var(--control-text); }
 
     /* The "add a matcher" affordance — dashed, so it reads as absent-not-empty */
     .add-field {
@@ -753,7 +817,7 @@
       border: 1px dashed var(--control-border);
       background: transparent;
       color: var(--color-text-secondary);
-      font: 500 0.75rem var(--font);
+      font: 500 var(--text-xs) var(--font);
       cursor: pointer;
     }
 
@@ -789,11 +853,14 @@
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.375rem;
-      padding: 0.125rem 0.625rem;
+      gap: 0.25rem;
+      /* Mirrors Badge.vue size `md` (the default): px-2 py-0.5 text-xs.
+         Was px-2.5 py-0.5 text-sm, a 13px label in a 20px pill — the tallest
+         thing in a table cell that carried no action button. */
+      padding: 0.125rem 0.5rem;
       border-radius: var(--radius-pill);
       border: 1px solid;
-      font-size: 0.875rem;
+      font-size: var(--text-xs);
       font-weight: 600;
     }
 
@@ -823,17 +890,17 @@
     .alert {
       display: flex;
       align-items: flex-start;
-      gap: 0.75rem;
-      padding: 1rem;
+      gap: 0.625rem;
+      padding: 0.75rem;
       border-radius: var(--radius-surface);
       border: 1px solid;
       box-shadow: var(--shadow-surface);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
     }
 
-    .alert svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; }
+    .alert svg { width: 1.125rem; height: 1.125rem; flex: 0 0 auto; }
     .alert .title { font-weight: 500; margin-bottom: 0.25rem; }
     .alert.warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); color: #92400e; }
     .alert.warning svg { color: var(--color-warning); }
@@ -854,7 +921,7 @@
       display: flex;
       align-items: flex-start;
       gap: 0.5rem;
-      padding: 0.75rem;
+      padding: 0.625rem;
       border-radius: var(--radius-surface);
       border: 1px solid var(--glass-border-muted);
       background: var(--glass-bg-strong);
@@ -862,7 +929,7 @@
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       color: var(--color-text-primary);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
     }
 
     .toast[data-p~='success'] {
@@ -885,11 +952,11 @@
 
     .toast .body { flex: 1 1 auto; min-width: 0; }
     .toast .summary { font-weight: 500; }
-    .toast .detail { font-size: 0.8125rem; opacity: 0.9; word-break: break-word; }
+    .toast .detail { font-size: var(--text-xs); opacity: 0.9; word-break: break-word; }
 
     .toast .close {
-      width: 1.75rem;
-      height: 1.75rem;
+      width: 1.5rem;
+      height: 1.5rem;
       border-radius: var(--radius-pill);
       border: 0;
       background: transparent;
@@ -902,13 +969,13 @@
     /* ══════════════════════════════════════════════════════════════════════
        TABS · TABLE · TIMELINE
        ══════════════════════════════════════════════════════════════════════ */
-    .tabs { display: flex; gap: 2rem; border-bottom: 1px solid var(--color-border); margin-bottom: 1.25rem; }
+    .tabs { display: flex; gap: 1.25rem; border-bottom: 1px solid var(--color-border); margin-bottom: 0.875rem; }
 
     .tab {
-      padding: 0.5rem 0.25rem;
+      padding: 0.375rem 0.125rem;
       margin-bottom: -1px;
       border-bottom: 2px solid transparent;
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       font-weight: 500;
       color: var(--color-text-secondary);
     }
@@ -919,31 +986,94 @@
       .tab.is-active { color: var(--color-primary-400); }
     }
 
-    table { width: 100%; border-collapse: collapse; }
-
-    th, td {
-      padding: 0.75rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      white-space: nowrap;
+    /*
+     * ── Tables ──────────────────────────────────────────────────────────
+     *
+     * Mirrors `.scroll-region` + `.data-table` in src/style/density.css.
+     * Class-based, not bare `table`/`th`/`td` element selectors: in the app
+     * this layer must be UNSCOPED (Config.vue's version table renders inside
+     * a PrimeVue Dialog, which teleports to <body> — see DESIGN.md §1), and
+     * an unscoped bare `td { padding }` would reach into PrimeVue's own
+     * internal markup.
+     *
+     * Two things the app's nine tables did not have before this pass:
+     *
+     *   1. A HEIGHT CAP. A 200-node outbound list used to push the page
+     *      furniture off-screen; now the rows scroll inside the card and the
+     *      toolbar above them stays put.
+     *   2. A STICKY HEADER, which only earns its keep once (1) exists.
+     *
+     * `border-collapse: separate` is load-bearing. With `collapse`, Chromium
+     * drops the border on a sticky <th> as soon as it starts sticking, so the
+     * header floats over the rows with no baseline. Borders therefore live on
+     * the cells, and `border-spacing: 0` keeps them hairlines.
+     *
+     * Row maths, measured: 2 × 5px padding + a 20px badge = 30px, or 35px on
+     * rows carrying an `sm` button (see the button rule at the end of this
+     * block). Was 52px.
+     */
+    .scroll-region {
+      overflow: auto;                 /* both axes — x was the only one before */
+      /* First-paint fallback only; the app overwrites --scroll-max-h from a
+         real measurement on mount. */
+      max-height: var(--scroll-max-h, calc(100dvh - 14rem));
+      overscroll-behavior: contain;   /* don't chain to the page at the ends */
     }
 
-    th {
-      font-size: 0.6875rem;
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: var(--table-cell-py) var(--table-cell-px);
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .data-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding-block: var(--table-head-py);
+      font-size: var(--text-xs);
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--color-text-tertiary);
+      /* Near-opaque on purpose. The card behind is glass at 0.84 alpha; a
+         translucent header would let the rows sliding under it read through. */
+      background: var(--table-head-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
-    td { font-size: 0.875rem; }
-    tr:last-child td { border-bottom: 0; }
-    .table-scroll { overflow-x: auto; }
+    .data-table td { font-size: var(--text-sm); }
+    .data-table tbody tr:last-child td { border-bottom: 0; }
+    .data-table tbody tr:hover td { background: var(--table-row-hover); }
+
+    /* Action columns sit hard right and never wrap. */
+    .data-table .col-actions { text-align: right; }
+
+    /*
+     * A row is only as short as its tallest cell, and in practice that is the
+     * action button, not the text. At the shared `sm` padding a button measures
+     * 28px against a badge's 20px, which alone held rows at 39px. Inside a
+     * table it sheds its vertical padding: button 24px, row 35px.
+     *
+     * Scoped to `.data-table` deliberately: `sm` buttons in a toolbar are a
+     * primary target and keep the full hit area. This is the same distinction
+     * the `action` variant already draws (DESIGN.md §5).
+     */
+    .data-table .btn { padding-block: 0.125rem; }
 
     /* Timeline — the marker is intentionally caller-supplied; its colour
        carries meaning (confirmed / predicted / failed). */
     .timeline { display: flex; flex-direction: column; }
-    .tl-event { display: flex; min-height: 2.5rem; }
+    .tl-event { display: flex; min-height: 2rem; }
     .tl-event:last-child { min-height: 0; }
     .tl-sep { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
     .tl-marker { width: 0.75rem; height: 0.75rem; border-radius: var(--radius-pill); }
@@ -954,10 +1084,10 @@
     @media (prefers-color-scheme: dark) {
       .tl-connector { background: #374151; }
     }
-    .tl-content { flex: 1 1 auto; min-width: 0; padding: 0 0 1rem 0.75rem; }
+    .tl-content { flex: 1 1 auto; min-width: 0; padding: 0 0 0.75rem 0.625rem; }
     .tl-content:last-child { padding-bottom: 0; }
-    .tl-title { font-size: 0.875rem; font-weight: 500; }
-    .tl-sub { font-size: 0.75rem; color: var(--color-text-secondary); }
+    .tl-title { font-size: var(--text-sm); font-weight: 500; }
+    .tl-sub { font-size: var(--text-xs); color: var(--color-text-secondary); }
 
     /* ══════════════════════════════════════════════════════════════════════
        MODAL & POPCONFIRM — floating tier
@@ -965,7 +1095,7 @@
     .modal-stage {
       display: grid;
       place-items: center;
-      padding: 1.5rem;
+      padding: 1rem;
       border-radius: var(--radius-surface);
       background: rgba(0, 0, 0, 0.18);
       backdrop-filter: blur(4px);
@@ -979,17 +1109,18 @@
       overflow: hidden;
     }
 
+    /* All three come from volt/Dialog.vue's PT theme — was px-6 py-4. */
     .modal-head,
-    .modal-foot { display: flex; align-items: center; padding: 1rem 1.5rem; }
+    .modal-foot { display: flex; align-items: center; padding: 0.75rem 1rem; }
     .modal-head { justify-content: space-between; border-bottom: 1px solid var(--color-border); }
-    .modal-foot { justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--color-border); }
-    .modal-head h3 { margin: 0; font-size: 1.125rem; font-weight: 600; }
-    .modal-body { padding: 1rem 1.5rem; }
+    .modal-foot { justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--color-border); }
+    .modal-head h3 { margin: 0; font-size: var(--text-lg); font-weight: 600; }
+    .modal-body { padding: 0.75rem 1rem; }
 
     .popconfirm {
       width: 20rem;
       border-radius: var(--radius-surface);
-      padding: 0.75rem;
+      padding: 0.625rem;
     }
 
     .popconfirm .target {
@@ -998,7 +1129,7 @@
       border-radius: var(--radius-control);
       background: rgba(0, 0, 0, 0.05);
       font-family: var(--mono);
-      font-size: 0.875rem;
+      font-size: var(--text-sm);
       font-weight: 600;
       word-break: break-word;
     }
@@ -1039,7 +1170,7 @@
       color: var(--color-text-secondary);
     }
 
-    .elev-demo { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .elev-demo { display: flex; gap: 1rem; flex-wrap: wrap; }
 
     .elev-box {
       width: 9rem;
@@ -1066,6 +1197,23 @@
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .main { padding: 0.75rem; }
     }
+
+    /*
+     * Preview-only: the density comparison strip. Not an app pattern.
+     */
+    .density-note {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.875rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--color-border);
+      font-size: var(--text-xs);
+      color: var(--color-text-secondary);
+    }
+
+    .density-note b { display: block; color: var(--color-text-primary); font-weight: 600; }
+    .density-note s { opacity: 0.55; }
   </style>
 </head>
 <body>
@@ -1140,13 +1288,16 @@
         <section class="liquid-glass card">
           <div class="row" style="justify-content: space-between; align-items: flex-start;">
             <div>
-              <h2 style="margin:0 0 0.25rem; font-size:1.5rem; font-weight:700; letter-spacing:-0.02em;">
+              <h2 style="margin:0 0 0.25rem; font-size:var(--text-3xl); font-weight:700; letter-spacing:-0.02em;">
                 Liquid Glass Design Preview
               </h2>
               <p class="card-note" style="margin:0;">
                 Static mirror of the shipped system. Values are copied from
                 <code>src/style/tokens.css</code>; rules live in <code>DESIGN.md</code>.
                 Follows your OS light/dark setting, exactly like the app.
+                <br />
+                Compact density pass: 13px body, 16px gutters, and tables that
+                scroll inside a card against a pinned header.
               </p>
             </div>
             <div class="row">
@@ -1217,6 +1368,55 @@
                   shadow-float<br />modals · dropdowns
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top: 1rem;">
+            <div>
+              <p class="eyebrow">Type scale — one notch down</p>
+              <table class="data-table">
+                <thead>
+                  <tr><th>Token</th><th>Was</th><th>Now</th><th>Sample</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">--text-xs</td><td><s>12px</s></td><td>11px</td>
+                    <td style="font-size: var(--text-xs);">Table header</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">--text-sm</td><td><s>14px</s></td><td>13px</td>
+                    <td style="font-size: var(--text-sm);">Body &amp; cells</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">--text-base</td><td><s>16px</s></td><td>14px</td>
+                    <td style="font-size: var(--text-base);">Large button</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">--text-lg</td><td><s>18px</s></td><td>16px</td>
+                    <td style="font-size: var(--text-lg);">Card title</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">--text-3xl</td><td><s>30px</s></td><td>22px</td>
+                    <td style="font-size: var(--text-3xl);">Page</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <p class="eyebrow">Density — spacing &amp; rows</p>
+              <table class="data-table">
+                <thead>
+                  <tr><th>Token</th><th>Was</th><th>Now</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="mono">--space-gutter</td><td><s>32px</s> p-8</td><td>16px</td></tr>
+                  <tr><td class="mono">--space-card</td><td><s>24px</s> p-6</td><td>16px</td></tr>
+                  <tr><td class="mono">--space-stack</td><td><s>24px</s> space-y-6</td><td>16px</td></tr>
+                  <tr><td class="mono">--table-cell-px</td><td><s>24px</s> px-6</td><td>12px</td></tr>
+                  <tr><td class="mono">--table-cell-py</td><td><s>16px</s> py-4</td><td>5px</td></tr>
+                  <tr><td class="mono">--scroll-max-h</td><td><s>none</s></td><td>measured</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -1465,7 +1665,11 @@
         <section class="grid-2">
           <div class="liquid-glass card" style="padding-bottom: 0.5rem;">
             <h3 class="card-title">Tabs &amp; table</h3>
-            <p class="card-note">Dense admin rows on a glass surface.</p>
+            <p class="card-note">
+              Rows scroll <em>inside</em> the card against a pinned header, so a
+              200-node outbound list no longer pushes the toolbar off-screen.
+              Scroll the body below — the header stays.
+            </p>
 
             <div class="tabs">
               <span class="tab is-active">Inbounds</span>
@@ -1473,10 +1677,17 @@
               <span class="tab">Rule sets</span>
             </div>
 
-            <div class="table-scroll">
-              <table>
+            <!--
+              The app measures `--scroll-max-h`. It is pinned locally here
+              only so the clipping is visible inside a short preview card.
+            -->
+            <div class="scroll-region" style="--scroll-max-h: 11.5rem;">
+              <table class="data-table">
                 <thead>
-                  <tr><th>Tag</th><th>Type</th><th>Listen</th><th>Port</th><th>Sniff</th><th></th></tr>
+                  <tr>
+                    <th>Tag</th><th>Type</th><th>Listen</th><th>Port</th><th>Sniff</th>
+                    <th class="col-actions">Actions</th>
+                  </tr>
                 </thead>
                 <tbody>
                   <tr>
@@ -1485,7 +1696,7 @@
                     <td class="mono">127.0.0.1</td>
                     <td class="mono">1080</td>
                     <td><span class="badge success"><span class="dot"></span>On</span></td>
-                    <td><button class="btn ghost sm action">Edit</button></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
                   </tr>
                   <tr>
                     <td class="mono">vmess-in</td>
@@ -1493,7 +1704,7 @@
                     <td class="mono">0.0.0.0</td>
                     <td class="mono">10086</td>
                     <td><span class="badge gray">Off</span></td>
-                    <td><button class="btn ghost sm action">Edit</button></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
                   </tr>
                   <tr>
                     <td class="mono">tun-in</td>
@@ -1501,10 +1712,65 @@
                     <td class="mono">—</td>
                     <td class="mono">—</td>
                     <td><span class="badge success"><span class="dot"></span>On</span></td>
-                    <td><button class="btn ghost sm action">Edit</button></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">socks-in</td>
+                    <td><span class="badge info">SOCKS</span></td>
+                    <td class="mono">127.0.0.1</td>
+                    <td class="mono">1081</td>
+                    <td><span class="badge gray">Off</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">http-in</td>
+                    <td><span class="badge info">HTTP</span></td>
+                    <td class="mono">127.0.0.1</td>
+                    <td class="mono">8080</td>
+                    <td><span class="badge success"><span class="dot"></span>On</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">trojan-in</td>
+                    <td><span class="badge info">Trojan</span></td>
+                    <td class="mono">0.0.0.0</td>
+                    <td class="mono">443</td>
+                    <td><span class="badge success"><span class="dot"></span>On</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">vless-in</td>
+                    <td><span class="badge info">VLESS</span></td>
+                    <td class="mono">0.0.0.0</td>
+                    <td class="mono">8443</td>
+                    <td><span class="badge gray">Off</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">ss-in</td>
+                    <td><span class="badge info">Shadowsocks</span></td>
+                    <td class="mono">0.0.0.0</td>
+                    <td class="mono">8388</td>
+                    <td><span class="badge success"><span class="dot"></span>On</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">direct-in</td>
+                    <td><span class="badge warning">Direct</span></td>
+                    <td class="mono">127.0.0.1</td>
+                    <td class="mono">2080</td>
+                    <td><span class="badge gray">Off</span></td>
+                    <td class="col-actions"><button class="btn ghost sm action">Edit</button></td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div class="density-note">
+              <span><b>Row height</b><s>52px</s> → 35px</span>
+              <span><b>Cell padding</b><s>px-6 py-4</s> → 12 / 5px</span>
+              <span><b>Cell text</b><s>14px</s> → 13px</span>
+              <span><b>Header</b><s>static</s> → sticky</span>
             </div>
           </div>
 
@@ -1640,7 +1906,20 @@
         <section class="liquid-glass card">
           <h3 class="card-title">If you are adding UI</h3>
           <p class="card-note">The short version. The full checklist is §12 of DESIGN.md.</p>
-          <ul style="margin:0; padding-left:1.25rem; font-size:0.875rem; display:grid; gap:0.5rem;">
+          <ul style="margin:0; padding-left:1.25rem; font-size:var(--text-sm); display:grid; gap:0.5rem;">
+            <li>
+              Density comes from tokens, never from Tailwind's global
+              <code>--spacing</code> base unit. Every <code>h-4</code>,
+              <code>w-55</code> and <code>max-w-*</code> is
+              <code>calc(var(--spacing) * n)</code>, so retuning it would shrink
+              every icon and the sidebar along with the padding.
+            </li>
+            <li>
+              Tables are <code>.scroll-region</code> + <code>.data-table</code>. Do not
+              re-spell cell padding as utilities — that is how the codebase ended up
+              with <code>px-6 py-4</code> in six files and two other row heights
+              nobody shared.
+            </li>
             <li>
               Radius is <code>rounded-control</code> / <code>rounded-surface</code> /
               <code>rounded-pill</code>. Never <code>rounded-lg</code>. Nav rows are

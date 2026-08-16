@@ -35,10 +35,11 @@ dependency).
 
 | File | Lines | Contains |
 | --- | --- | --- |
-| `style/tokens.css` | 222 | `@theme` tokens + semantic `@utility` definitions. **The source of truth.** |
-| `style/base.css` | 106 | Document defaults, scrollbars, keyframes, reduced-motion |
+| `style/tokens.css` | 280 | `@theme` tokens + semantic `@utility` definitions. **The source of truth.** |
+| `style/base.css` | 111 | Document defaults, scrollbars, keyframes, reduced-motion |
 | `style/glass.css` | 119 | `.liquid-app` backdrop, `.liquid-glass`, `.liquid-glass-float` |
-| `style/controls.css` | 147 | Shared input / textarea / select / `.volt-select` surface |
+| `style/controls.css` | 150 | Shared input / textarea / select / `.volt-select` surface |
+| `style/density.css` | 137 | `.scroll-region` / `.data-table` / `.page-shell` |
 | `style/primevue.css` | 122 | Teleported volt overlays (panels, toasts) |
 | `style/legacy.css` | 57 | ⚠️ Deprecated `!important` shims. Shrink, never grow. |
 
@@ -67,6 +68,7 @@ Layers are scoped as follows, deliberately:
 | Layer | Scoped? | Why |
 | --- | --- | --- |
 | `controls.css` | **No** | Must reach controls inside dialogs |
+| `density.css` | **No** | Defensive — no table teleports *today*, but a table moved into a `<Modal>` would silently lose all its styling |
 | `primevue.css` | **No** | Overlays are teleported to `<body>` |
 | `legacy.css` | **No** | Dark-mode text fixes must reach dialog content |
 | `glass.css` `.liquid-glass` | No | Explicit opt-in class |
@@ -181,9 +183,9 @@ and `--glass-blur` (`blur(24px) saturate(1.25)`).
 
 ## 5. App components (`src/components/`)
 
-`components/index.ts` is the barrel and exports exactly nine:
-`Button`, `Input`, `Textarea`, `Card`, `Modal`, `Alert`, `Badge`, `Loading`,
-`NodeList`. Everything else (`TabNav`, `PopConfirm`, `ConfirmDialog`,
+`components/index.ts` is the barrel and exports exactly thirteen:
+`Button`, `Input`, `Textarea`, `Card`, `Modal`, `Alert`, `Badge`, `Table`,
+`List`, `ListRow`, `ListField`, `Loading`, `NodeList`. Everything else (`TabNav`, `PopConfirm`, `ConfirmDialog`,
 `ChipsField`, `Sidebar`, `Topbar`, …) is imported by path. The barrel's old
 `Select` export is gone: every call site now uses the PrimeVue-backed `Select`
 from `src/volt`.
@@ -198,8 +200,10 @@ from `src/volt`.
 - plus `loading` (renders a spinner, sets `aria-busy`), `disabled`, `fullWidth`,
   `action`, `pill`, `label`
 - Shape is `rounded-control`. `pill` is for **icon-only** circular buttons, never text.
-- `action` drops the resting shadow, for buttons inside toolbars and table rows.
-  `ghost` drops it too, automatically.
+- `action` drops the resting shadow, for buttons inside toolbars and table rows,
+  **and swaps in a shorter padding scale** (`ACTION_SIZES`). That second job is
+  what keeps table rows at 35px — see §10.2. `ghost` drops the shadow too,
+  automatically, but does *not* tighten padding.
 
 ### Inputs & forms
 
@@ -387,6 +391,31 @@ topbar dropdown. It is **not** honoured by the volt PT transitions — see §11.
 - **Body & labels:** `font-medium` / `font-normal`; secondary copy uses
   `--color-text-secondary`
 - **Code & tags:** monospace for identifiers, ports, URLs, and tokens
+- **Body line-height is 1.45**, not 1.5 — see §10.1.
+
+### The scale is one notch down from Tailwind's
+
+`tokens.css` **overrides Tailwind's own `--text-*` tokens** rather than adding
+new names:
+
+| Utility | Tailwind default | Here | Used for |
+| --- | --- | --- | --- |
+| `text-xs` | 12px | **11px** | Table headers, hints, badges |
+| `text-sm` | 14px | **13px** | Body, labels, table cells |
+| `text-base` | 16px | **14px** | Large buttons |
+| `text-lg` | 18px | **16px** | Card & section titles |
+| `text-2xl` | 24px | **20px** | |
+| `text-3xl` | 30px | **22px** | Page `<h2>` |
+
+That is the whole point of overriding rather than adding: utilities are emitted
+as `font-size: var(--text-sm)`, not as a literal, so redefining the token
+retuned all **440** `text-sm` and **318** `text-xs` call sites at once without
+touching a line of markup. It is also one knob to turn if 13px body copy turns
+out to read too small.
+
+**Set the line-height token too.** Tailwind pairs each size with
+`--text-<size>--line-height`. Change only the size and the utility keeps the
+stock leading, so the change buys no vertical space at all.
 
 ---
 
@@ -397,13 +426,199 @@ topbar dropdown. It is **not** honoured by the volt PT transitions — see §11.
   and `relative z-30` (load-bearing: `backdrop-filter` makes the header a
   stacking context, and unpositioned it painted below later page cards, which
   covered its dropdowns; `30` keeps it under the app's `z-50` modals).
-- Standard gutter: `p-6` / `space-y-6` / `gap-6`.
+- Standard gutter: **`p-4` / `space-y-4` / `gap-4`** (16px). Page roots use the
+  `page-shell` class rather than spelling the padding themselves.
 - Card grids use **container queries**, not viewport breakpoints, where the
   container is what actually constrains them —
   `@container` + `@3xl:grid-cols-2 @6xl:grid-cols-3` in `Settings.vue`. The
   sidebar/topbar swap changes available width without changing viewport width,
   so viewport breakpoints would lay the same page out wrongly on one of them.
 - Responsive from `xs` through `2xl` otherwise.
+
+### 10.1 Density
+
+The app is an admin console that people run on 14" laptops and on a router's
+LuCI page. It is tuned for information density, not for marketing whitespace.
+
+| Token | Value | Replaces |
+| --- | --- | --- |
+| `--space-gutter` | 16px | `p-8` (32px) page shells |
+| `--space-card` | 16px | `p-6` (24px) card padding |
+| `--space-stack` | 16px | `space-y-6` |
+| `--table-cell-px` | 12px | `px-6` |
+| `--table-cell-py` | 5px | `py-4` |
+| `--table-head-py` | 6px | `py-3` |
+| `--scroll-max-h` | measured at runtime | nothing — tables had no cap |
+
+`Card`'s padding map moved one step down with it: `sm` 12px, `md` 16px
+(the default, and 41 of 58 call sites), `lg` 24px. `volt/Dialog`'s header,
+content and footer went `px-6 py-4` → `px-4 py-3`, which is the padding for
+every modal in the app.
+
+> ⚠️ **Never chase compactness by overriding Tailwind's global `--spacing`.**
+> Every `p-*`, `gap-*`, `h-4`, `w-55` and `max-w-*` resolves to
+> `calc(var(--spacing) * n)`, so retuning that one variable also shrinks every
+> icon, the sidebar, and every max-width. Use the tokens above and change the
+> utilities in markup alongside them.
+
+### 10.2 Tables
+
+**Every table is `<Table>` (`components/Table.vue`). Do not hand-roll one, and
+do not re-spell cell padding as utilities.** That is exactly how the codebase
+previously ended up with `<td class="px-6 py-4">` in six files plus two one-off
+row heights (`py-2.5`, `py-1.5`) that nothing else shared.
+
+`<Table>` owns the **structure** — the scroll wrapper, the `<table>`/`<thead>`/
+`<tbody>` skeleton, and the loading / empty / data triad that six files used to
+repeat. The **visuals** stay in `style/density.css` (`.scroll-region`,
+`.data-table`), so a raw table still renders correctly if one ever appears.
+
+```html
+<Table :loading="loading" :empty="!rows.length">
+  <template #empty>Nothing here yet</template>
+  <template #head>
+    <th>Tag</th><th class="col-actions">Actions</th>
+  </template>
+  <tr v-for="r in rows" :key="r.tag">
+    <td>{{ r.tag }}</td>
+    <td class="col-actions">…</td>
+  </tr>
+</Table>
+```
+
+- Rows go in the **default slot**, hand-authored. They are not driven off a
+  `rows` prop: the nine tables render checkboxes, badges, index numbers,
+  copy-to-clipboard buttons and PopConfirms in their cells, and a generic cell
+  renderer would need an escape hatch per column and end up longer than the
+  markup it replaced.
+- `columns` renders a plain header for you; `#head` is the escape hatch when a
+  header needs markup of its own (`OutboundsList` puts a select-all checkbox
+  there). ⚠️ `columns` describes the **header only** — body cells are
+  positional, and nothing checks that the counts agree.
+- `:scroll="false"` when an ancestor already scrolls. `Config.vue`'s version
+  list sits in a modal body with its own `overflow-y-auto`; two nested
+  scrollbars are worse than one in the wrong place.
+- `maxHeight` overrides `--scroll-max-h` for one table.
+- Omit both `columns` and `#head` and the `<thead>` is dropped entirely —
+  `DnsProbePanel` is a headerless key/value table.
+
+- `.scroll-region` caps height at `--scroll-max-h` and scrolls **both** axes.
+  Before, wrappers set `overflow-x-auto` and nothing vertical, and two tables
+  had no wrapper at all.
+- `.data-table thead th` is **sticky**, with a near-opaque `--table-head-bg`.
+  A translucent header lets the rows scrolling under it read straight through.
+- Modifiers: `col-actions` (right-aligns), `cell-wrap` (opts out of the default
+  `white-space: nowrap`, for description/URL columns).
+- Rows measure **35px** with an action button, 30px without. Was 52px.
+
+**The cap fills the window, and it is MEASURED, not calculated.**
+`<Table>` and `<List>` both render `.scroll-region` and both call
+`useFillHeight` (`composables/useFillHeight.ts`), which measures the space left
+below the region and writes `--scroll-max-h` on it. `.scroll-region` carries a
+conservative `calc(100dvh - 14rem)` purely so the first paint, before the
+measurement lands, is never an uncapped list.
+
+**Do not replace this with a constant.** Three attempts did, and each was wrong:
+
+1. `calc(100dvh - 8.5rem)` was measured on the sidebar layout only, so every
+   OpenWrt page — the deployment that matters most — overran the window by the
+   top bar's height.
+2. Splitting it into `base` + `extra` fixed that, but then each page shape
+   needed its own override class: a DNS panel with an in-card header spends
+   ~60px more than the Outbounds table, a `<List>` inside a `<Card>` another
+   16px for the card's own bottom padding.
+3. Fatally, `Topbar.vue` uses `flex-wrap`. Measured on this app the header is
+   **45px wide-screen and 180px once it wraps** — a 136px swing, and a router's
+   LuCI page is exactly where it wraps. No constant survives that.
+
+`container-type: size` on `<main>` would have solved 1 and 2 in pure CSS, but
+size containment implies `contain: layout`, which makes `<main>` the containing
+block for the `fixed inset-0` modals that Config, NodeRules and Profile render
+inside it — they would position against `main` instead of the viewport.
+
+Two things in the composable are subtle and were bugs first:
+
+- **Offset is a rect difference plus `scrollTop`, not an `offsetTop` walk.**
+  `offsetTop` is relative to `offsetParent`, which skips statically positioned
+  ancestors — and `<main>` is static, so the chain steps over it to `<body>` and
+  folds the top bar's height back into the answer.
+- **Nothing it measures depends on the region's own height.** Offset comes from
+  the content above, trailing space from the content below, so applying a new
+  max-height cannot change the next measurement and the ResizeObserver
+  converges instead of oscillating.
+
+### 10.3 Lists
+
+**Record-per-row panels are `<List>` + `<ListRow>` + `<ListField>`** — the
+sibling of `<Table>`, with the same props (`loading`, `empty`, `maxHeight`,
+`scroll`) and the same capped scroll region, so an operator moving between the
+Route and Outbounds pages does not meet two different scroll behaviours.
+
+```html
+<List :loading="loading" :empty="!rows.length">
+  <template #empty>Nothing here yet</template>
+  <ListRow v-for="r in rows" :key="r.tag">
+    <ListField :label="$t('…tag')" :value="r.tag" />
+    <template #actions>…</template>
+  </ListRow>
+</List>
+```
+
+`RoutingRuleItem.vue` and `RuleSets.vue` render the same shape — a bordered
+block of label/value pairs with edit + delete on the right — and had drifted
+into two copies of the same utilities, neither with a height cap.
+
+**`<ListField>` renders nothing when its value is empty, and joins arrays.**
+sing-box rules are sparse (a routing rule populates two or three of thirteen
+possible matchers) and every one of the 18 call sites previously carried its own
+`v-if` plus a `formatList()` call. It also takes its colours from tokens, which
+removed 36 raw `text-gray-*` usages that depended on the `legacy.css` shim.
+
+Both were `rounded-surface p-4` around a `grid grid-cols-2 gap-4`. A typical
+rule populates two or three pairs, so the row was mostly padding: 16px inside
+the border, 16px between grid rows, 16px again between rows in the list. A
+three-pair row went **86px → 56px**.
+
+- `rounded-surface` (16px) is a *card* radius. A list row is a control, so
+  `.list-row` uses `--radius-control`.
+- `.list-row-grid` keeps a wide column gap and a near-zero row gap: the pairs read
+  as one block, but the two columns still need separation to avoid looking
+  like a run-on line.
+- `.list-action-btn` gets 4px block padding, landing a 11px label in a 24px
+  box — the WCAG 2.2 minimum. It is free: a row with two or more pairs is
+  already taller than the actions column. **Do not pin its `line-height`**; it
+  inherits the body's 1.45, and forcing `1` drops the box to 19px.
+
+Three things in that file are load-bearing and easy to undo by accident:
+
+1. **Everything sits in `@layer components`.** `@import 'tailwindcss'` sets the
+   order `theme, base, components, utilities`, and an **unlayered** declaration
+   beats every layered one regardless of specificity. While `density.css` was
+   unlayered it silently outranked the whole utility system: `<td class="text-xs">`
+   rendered at 13px and a `<button class="p-1.5">` collapsed to 2px top / 6px
+   side. Inside `components`, utilities win again — which is the relationship
+   you want, since this file sets the *default* for a cell and a utility in the
+   markup is an author saying "not this one".
+2. **`border-collapse: separate`.** With `collapse`, Chromium drops the border
+   on a sticky `<th>` the moment it starts sticking.
+3. **Class-based selectors, never bare `th`/`td`.** The layer is unscoped (see
+   the teleport rule in §1), so element selectors would reach into PrimeVue's
+   own internal markup and fight the `volt/` pass-through themes.
+
+A corollary of (1): **nothing in `density.css` can override a utility**, so row
+height cannot be fixed there. A row is only as short as its tallest cell, and
+that is the action button — 28px at the shared `sm` padding against a badge's
+20px, which held rows at 39px no matter how tight the cell padding got. That is
+what `<Button action>` is for (§5); it swaps in a shorter padding scale and
+brings rows to 35px. **Table action buttons must pass `action`.** This was
+briefly a `.data-table td button` rule instead, which reached hand-rolled icon
+buttons in `Profile.vue` that never opted in and squashed their 30×30px target
+to 30×22px, under the WCAG 2.2 minimum.
+
+**One table opts out of `.scroll-region` on purpose:** `Config.vue`'s version
+history sits in a hand-rolled `fixed inset-0` overlay (not the shared `<Modal>`)
+whose body already carries `overflow-y-auto`. It takes `.data-table` alone, so
+there is no nested scrollbar.
 
 ---
 
@@ -414,16 +629,19 @@ Measured against `src/`. Fix a row here before adding a new rule anywhere above.
 | Drift | Count | Notes |
 | --- | --- | --- |
 | Files relying on the `bg-white` glass shim | 28 `.vue` | vs 3 using `.liquid-glass` explicitly. Blocks deleting the shim in `glass.css`. |
-| Files depending on `legacy.css` dark-mode shims | 67 `.vue` | Every file still using raw `text-gray-N00` without a `dark:` variant. |
-| Raw `<button>` elements | 99 in 28 files | vs 124 `<Button>`. Many are legitimate bespoke affordances (nav rows, chip "add" buttons, icon toggles); a Button variant for them does not exist yet. |
+| Files depending on `legacy.css` dark-mode shims | 68 `.vue` | Every file still using raw `text-gray-N00` without a `dark:` variant. |
+| Raw `<button>` elements | 111 in 30 files | vs 124 `<Button>`. Many are legitimate bespoke affordances (nav rows, chip "add" buttons, icon toggles); a Button variant for them does not exist yet. |
 | Status colours with two spellings | — | Tokens (`--color-success`) vs Tailwind scales (`emerald-500/15`) in Alert/Badge. |
 | Volt transitions ignoring reduced-motion | 4 wrappers | PT `transition` classes are not media-guarded. (`MultiSelect` and `Timeline` have no transition at all.) |
 | Stray numeric shadow | 1 site | `DnsRuleFlow.vue:155` uses `shadow-sm`. |
 | `Loading.vue` has no dark mode | 1 file | `fullScreen` uses `bg-white opacity-90`; text is `text-gray-600`. |
+| Page roots not on `page-shell` | 4 `.vue` | `Config.vue` (viewport-pinned around Monaco) is a deliberate opt-out; `Login`, `InitWizard` and `DNSDiagnostics` are simply not converted yet. |
+| `Config.vue` does not use `<Table>`'s `loading`/`empty` props | 1 `.vue` | Its batch-delete toolbar is a sibling of the table inside the same `v-else`, so hoisting it above `<Table>` would render it while loading and when empty. Keeping the file's own `v-if` chain preserves behaviour. |
 
 Clean, and worth keeping clean: **zero** native `<select>` elements, **zero**
-`violet-*` usages, **zero** stray numeric radius utilities (350 semantic radius
-usages).
+`violet-*` usages, **zero** stray numeric radius utilities, **zero** hand-rolled
+`<table>` elements (9/9 on `<Table>`), and **zero** `<td>`/`<th>` carrying a
+padding utility.
 
 ---
 
@@ -431,6 +649,12 @@ usages).
 
 Before merging UI work:
 
+- [ ] Tables are `<Table>` — no hand-rolled `<table>`, no `px-*`/`py-*`/`text-*` on `<th>`/`<td>`
+- [ ] Buttons inside a table row pass `action` (rows sit at 39px without it)
+- [ ] New rules in `density.css` went inside its `@layer components` block
+- [ ] Page roots use `page-shell`; gutters are `p-4` / `space-y-4` / `gap-4`, not `-6` or `-8`
+- [ ] Density came from the `--space-*` / `--table-*` tokens, **not** from Tailwind's global `--spacing`
+- [ ] A new `--text-*` value also sets its `--text-*--line-height` partner
 - [ ] No `rounded-lg`/`rounded-xl`/`rounded-full` — use `rounded-control` / `rounded-surface` / `rounded-pill`
 - [ ] No `shadow-sm`/`shadow-xl` — use `shadow-surface` / `shadow-float`
 - [ ] No `violet-*` or hard-coded brand hexes — use `primary-*`
