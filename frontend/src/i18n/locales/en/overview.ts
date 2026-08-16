@@ -30,6 +30,10 @@ export default {
     expiresToday: 'Expires today',
     expiresInDays: 'in {days} day | in {days} days',
     usageLabel: 'Traffic used for {name}',
+    update: 'Update all',
+    updateTooltip: 'Fetch every subscription from its provider to refresh traffic and expiry',
+    updated: 'Subscriptions updated',
+    updateFailed: '{count} subscription(s) failed to update: {names}',
   },
   toast: {
     startedOk: 'Service started successfully',

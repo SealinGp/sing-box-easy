@@ -30,6 +30,10 @@ export default {
     expiresToday: '今天到期',
     expiresInDays: '{days} 天后到期',
     usageLabel: '{name} 的流量使用情况',
+    update: '全部更新',
+    updateTooltip: '逐个从机场重新拉取订阅，刷新流量与到期信息',
+    updated: '订阅已更新',
+    updateFailed: '{count} 个订阅更新失败：{names}',
   },
   toast: {
     startedOk: '服务启动成功',

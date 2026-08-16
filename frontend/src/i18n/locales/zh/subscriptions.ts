@@ -2,7 +2,7 @@
 export default {
   title: '订阅',
   subtitle: '管理和更新节点订阅',
-  refresh: '刷新',
+  refresh: '刷新列表',
   updateAll: '全部更新',
   add: '添加订阅',
   loading: '正在加载订阅...',
@@ -75,7 +75,10 @@ export default {
     tooMany: '最多只能添加 {max} 个关键词',
   },
   tooltip: {
-    update: '更新订阅',
+    // 这两个按钮以前同图标同文案，看不出区别：一个只读本地，一个联网改数据。
+    refreshList: '重新读取本面板已保存的订阅，不会联网',
+    updateAll: '逐个从机场重新拉取订阅并导入节点',
+    update: '从机场重新拉取该订阅',
     edit: '编辑订阅',
     del: '删除订阅',
     copy: '复制链接',

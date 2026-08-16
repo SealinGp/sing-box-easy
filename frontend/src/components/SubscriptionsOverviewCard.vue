@@ -11,10 +11,12 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import {
   ArrowTopRightOnSquareIcon,
+  CloudArrowDownIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   RectangleStackIcon,
 } from '@heroicons/vue/24/outline'
+import Button from './Button.vue'
 import { subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
@@ -25,23 +27,102 @@ const { t, locale } = useI18n()
 const notify = useNotify()
 
 const subscriptions = ref<Subscription[]>([])
+/** First paint only. A manual refresh deliberately does NOT set this. */
 const loading = ref(true)
+/** A re-read is in flight — keeps the rows on screen rather than blanking. */
+const refreshing = ref(false)
+/** An operator-triggered provider fetch is in flight. */
+const updating = ref(false)
 /** Set when the fetch failed, so the card can say so instead of showing "0". */
 const failed = ref(false)
+/** Whether any fetch has ever succeeded. Guards the failure fallback below. */
+const loaded = ref(false)
 
 const SUBSCRIPTIONS_ROUTE = '/dashboard/outbounds/subscriptions'
 
-onMounted(async () => {
+/**
+ * @param manual `true` when the read is part of an operator-triggered action.
+ *
+ * The two modes differ in what they do to the card while the request is in
+ * flight. The initial load has nothing to show, so it takes over the card with
+ * a spinner. A manual re-read already has rows on screen — blanking them would
+ * make the card flash and lose the numbers the operator is reading, so it
+ * leaves them up.
+ */
+async function load(manual = false) {
+  if (manual) refreshing.value = true
+  else loading.value = true
+
   try {
     const response = await subscriptionService.getSubscriptions()
     subscriptions.value = response.data.subscriptions || []
+    loaded.value = true
+    // Clear a stale failure so a recovered fetch stops showing the error.
+    failed.value = false
   } catch (err) {
-    failed.value = true
+    // A failed refresh must not discard rows that are already on screen: stale
+    // quota figures beat an error message that replaces them. Only a load that
+    // has never succeeded falls back to the error state. `loaded` is tracked
+    // rather than testing `subscriptions.length`, which cannot tell "fetch
+    // failed" apart from "fetched fine, you have none".
+    if (!loaded.value) failed.value = true
     notify.apiError(err, t('overview.subscriptions.loadFailed'))
   } finally {
     loading.value = false
+    refreshing.value = false
   }
-})
+}
+
+onMounted(() => load())
+
+/**
+ * Pull every subscription from its provider, then re-read.
+ *
+ * This card exists to answer "how much traffic is left and when does it run
+ * out" — and those numbers only move when the provider is contacted. A button
+ * that merely re-read the panel's own database would redraw the same figures,
+ * which is why this is the update, not a refresh.
+ *
+ * Sequential on purpose. This runs on a home router; firing a fetch at every
+ * provider at once is how the panel ends up timing out. The Subscriptions page
+ * does the same.
+ *
+ * One provider failing must not abandon the rest, so each is caught
+ * individually and the failures are reported together at the end.
+ */
+async function updateAll() {
+  if (updating.value || !subscriptions.value.length) return
+  updating.value = true
+
+  // NOT `failed` — that name is already a ref in this component, and
+  // shadowing a reactive value with a plain array is a trap for the next reader.
+  const failures: string[] = []
+  try {
+    for (const subscription of subscriptions.value) {
+      try {
+        await subscriptionService.updateSubscriptionContent(subscription.id)
+      } catch {
+        failures.push(subscription.name)
+      }
+    }
+
+    // Re-read regardless: the ones that did succeed have new figures.
+    await load(true)
+
+    if (failures.length) {
+      notify.error(
+        t('overview.subscriptions.updateFailed', {
+          count: failures.length,
+          names: failures.join(', '),
+        }),
+      )
+    } else {
+      notify.success(t('overview.subscriptions.updated'))
+    }
+  } finally {
+    updating.value = false
+  }
+}
 
 interface SubscriptionRow {
   id: string
@@ -120,18 +201,49 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
-    <div class="flex items-start justify-between gap-3 mb-4">
+  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+    <div class="flex items-center justify-between gap-3 mb-3">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
         {{ $t('overview.subscriptions.title') }}
       </h3>
-      <RouterLink
-        :to="SUBSCRIPTIONS_ROUTE"
-        class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
-      >
-        {{ $t('overview.subscriptions.manage') }}
-        <ArrowTopRightOnSquareIcon class="h-3.5 w-3.5" />
-      </RouterLink>
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <!--
+          This pulls from the providers — it is not a view refresh. The card's
+          whole content is quota and expiry, which only change when the provider
+          is contacted, so re-reading the local database would redraw identical
+          numbers.
+
+          `CloudArrowDownIcon` is the app's mark for "fetch from the provider",
+          shared with the Subscriptions page's Update All and its per-row update
+          button; the circular arrow means "reload the view" and would say the
+          wrong thing here.
+
+          Icon-only, so it carries both `title` (pointer) and `aria-label`
+          (assistive tech).
+        -->
+        <Button
+          v-if="rows.length"
+          variant="ghost"
+          size="sm"
+          action
+          :disabled="loading || refreshing || updating"
+          :title="$t('overview.subscriptions.updateTooltip')"
+          :aria-label="$t('overview.subscriptions.update')"
+          @click="updateAll"
+        >
+          <CloudArrowDownIcon
+            class="h-3.5 w-3.5"
+            :class="{ 'animate-pulse': updating }"
+          />
+        </Button>
+        <RouterLink
+          :to="SUBSCRIPTIONS_ROUTE"
+          class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+        >
+          {{ $t('overview.subscriptions.manage') }}
+          <ArrowTopRightOnSquareIcon class="h-3.5 w-3.5" />
+        </RouterLink>
+      </div>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-6">

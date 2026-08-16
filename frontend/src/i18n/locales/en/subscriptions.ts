@@ -2,7 +2,7 @@
 export default {
   title: 'Subscriptions',
   subtitle: 'Manage and update node subscriptions',
-  refresh: 'Refresh',
+  refresh: 'Reload list',
   updateAll: 'Update All',
   add: 'Add Subscription',
   loading: 'Loading subscriptions...',
@@ -75,7 +75,11 @@ export default {
     tooMany: 'At most {max} keywords are allowed',
   },
   tooltip: {
-    update: 'Update subscription',
+    // These two used to share an icon and near-synonymous labels. One is a
+    // local read; the other goes to the network and rewrites nodes.
+    refreshList: 'Re-read subscriptions saved in this panel. Does not contact providers.',
+    updateAll: 'Fetch every subscription from its provider and re-import nodes',
+    update: 'Fetch this subscription from its provider',
     edit: 'Edit subscription',
     del: 'Delete subscription',
     copy: 'Copy URL',

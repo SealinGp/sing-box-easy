@@ -9,6 +9,7 @@ import Button from "../../components/Button.vue";
 import Modal from "../../components/Modal.vue";
 import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
+import Table from "../../components/Table.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
@@ -17,6 +18,7 @@ import {
   PencilIcon,
   TrashIcon,
   ArrowPathIcon,
+  CloudArrowDownIcon,
   ServerIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -335,14 +337,28 @@ onMounted(() => {
       <p class="text-gray-500 dark:text-gray-400">
         {{ $t("subscriptions.subtitle") }}
       </p>
-      <div class="flex gap-3">
+      <!--
+        These two read as the same button until you know the app: both were
+        `variant="secondary"` with an `ArrowPathIcon` and near-synonymous
+        labels, but they do very different things.
+
+          Reload list  — re-reads what this panel already has. Local, read-only,
+                         instant. Circular arrow = "refresh the view", and it is
+                         the quietest control here.
+          Update all   — walks every subscription, fetches the provider's feed
+                         and re-imports nodes. Network, mutating, slow. It shares
+                         `CloudArrowDownIcon` with the per-row update button,
+                         because it is that same operation applied to every row.
+      -->
+      <div class="flex gap-2">
         <Button
-          variant="secondary"
+          variant="ghost"
           :loading="isLoading && !isUpdating.length"
           @click="loadSubscriptions"
           :disabled="isLoading"
+          :title="$t('subscriptions.tooltip.refreshList')"
         >
-          <ArrowPathIcon class="h-5 w-5" />
+          <ArrowPathIcon class="h-4 w-4" />
           {{ $t("subscriptions.refresh") }}
         </Button>
         <Button
@@ -351,8 +367,9 @@ onMounted(() => {
           :loading="isUpdating.length === subscriptions.length"
           @click="updateAllSubscriptions"
           :disabled="isUpdating.length > 0"
+          :title="$t('subscriptions.tooltip.updateAll')"
         >
-          <ArrowPathIcon class="h-5 w-5" />
+          <CloudArrowDownIcon class="h-4 w-4" />
           {{ $t("subscriptions.updateAll") }}
         </Button>
         <Button
@@ -360,11 +377,11 @@ onMounted(() => {
           @click="showInfoKeywords = true"
           :title="$t('subscriptions.keywords.tooltip')"
         >
-          <TagIcon class="h-5 w-5" />
+          <TagIcon class="h-4 w-4" />
           {{ $t("subscriptions.keywords.button") }}
         </Button>
         <Button @click="openAddModal">
-          <PlusIcon class="h-5 w-5" />
+          <PlusIcon class="h-4 w-4" />
           {{ $t("subscriptions.add") }}
         </Button>
       </div>
@@ -374,204 +391,195 @@ onMounted(() => {
     <div
       class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden"
     >
-      <div
-        v-if="isLoading && subscriptions.length === 0"
-        class="p-12 text-center"
+      <Table
+        :loading="isLoading && subscriptions.length === 0"
+        :empty="subscriptions.length === 0"
       >
-        <div
-          class="inline-flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-pill mb-4"
-        >
-          <ServerIcon class="h-8 w-8 text-primary-600 dark:text-primary-400" />
-        </div>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ $t("subscriptions.loading") }}
-        </p>
-      </div>
-
-      <div v-else-if="subscriptions.length === 0" class="p-12 text-center">
-        <div
-          class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-pill mb-4"
-        >
-          <ServerIcon class="h-8 w-8 text-gray-400" />
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-          {{ $t("subscriptions.empty.title") }}
-        </h3>
-        <p class="text-gray-500 dark:text-gray-400 mb-6">
-          {{ $t("subscriptions.empty.desc") }}
-        </p>
-        <Button @click="openAddModal">
-          <PlusIcon class="h-5 w-5" />
-          {{ $t("subscriptions.add") }}
-        </Button>
-      </div>
-
-      <div v-else>
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.subscription") }}
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.status") }}
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.info") }}
-              </th>
-              <th
-                class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-              >
-                {{ $t("subscriptions.table.actions") }}
-              </th>
-            </tr>
-          </thead>
-          <tbody
-            class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700"
-          >
-            <tr
-              v-for="subscription in subscriptions"
-              :key="subscription.id"
-              class="hover:bg-gray-50 dark:hover:bg-gray-700"
+        <!-- This page's loading state is a labelled placeholder, not a bare
+             spinner, so it overrides Table's default. -->
+        <template #loading>
+          <div class="text-center">
+            <div
+              class="inline-flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-pill mb-4"
             >
-              <!-- Subscription: name + URL (copy) + node count, stacked -->
-              <td class="px-4 py-3 align-top">
-                <div class="flex flex-col gap-1 max-w-[18rem]">
-                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :title="subscription.name">
-                    {{ subscription.name }}
-                  </span>
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span
-                      class="text-xs text-gray-500 dark:text-gray-400 truncate"
-                      :title="subscription.url"
-                    >
-                      {{ subscription.url }}
-                    </span>
-                    <button
-                      type="button"
-                      class="shrink-0 p-0.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                      @click="copyUrl(subscription.url)"
-                      :title="$t('subscriptions.tooltip.copy')"
-                      :aria-label="$t('subscriptions.tooltip.copy')"
-                    >
-                      <ClipboardDocumentIcon class="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </td>
-              <!-- Status: state badge + auto-update/interval + last update, stacked -->
-              <td class="px-4 py-3 align-top">
-                <div class="flex flex-col items-start gap-1.5">
-                  <Badge
-                    :variant="getStatusBadge(subscription).type"
-                    class="inline-flex items-center gap-1"
-                  >
-                    <component
-                      :is="getStatusBadge(subscription).icon"
-                      class="h-3 w-3"
-                    />
-                    {{ getStatusBadge(subscription).text }}
-                  </Badge>
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <Badge
-                      :variant="subscription.auto_update ? 'success' : 'secondary'"
-                      class="inline-flex items-center gap-1"
-                    >
-                      <component
-                        :is="subscription.auto_update ? CheckCircleIcon : XCircleIcon"
-                        class="h-3 w-3"
-                      />
-                      {{
-                        subscription.auto_update
-                          ? $t("subscriptions.enabled")
-                          : $t("subscriptions.disabled")
-                      }}
-                    </Badge>
-                    <span
-                      v-if="subscription.auto_update && subscription.update_interval"
-                      class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
-                      :title="$t('subscriptions.form.updateInterval')"
-                    >
-                      <ClockIcon class="h-3 w-3" />
-                      {{ subscription.update_interval }}
-                    </span>
-                  </div>
-                  <span
-                    class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap"
-                    :title="$t('subscriptions.table.lastUpdate')"
-                  >
-                    {{ $t("subscriptions.table.lastUpdate") }}: {{ formatDate(subscription.last_update) }}
-                  </span>
-                </div>
-              </td>
-              <!-- Plan info: generic key/value entries -->
-              <td class="px-4 py-3 align-top">
-                <div
-                  v-if="subscription.info && subscription.info.length"
-                  class="flex flex-col gap-1"
+              <ServerIcon class="h-8 w-8 text-primary-600 dark:text-primary-400" />
+            </div>
+            <p class="text-gray-500 dark:text-gray-400">
+              {{ $t("subscriptions.loading") }}
+            </p>
+          </div>
+        </template>
+
+        <template #empty>
+          <div
+            class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-pill mb-4"
+          >
+            <ServerIcon class="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            {{ $t("subscriptions.empty.title") }}
+          </h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-3">
+            {{ $t("subscriptions.empty.desc") }}
+          </p>
+          <Button @click="openAddModal">
+            <PlusIcon class="h-5 w-5" />
+            {{ $t("subscriptions.add") }}
+          </Button>
+        </template>
+
+        <template #head>
+          <th>
+            {{ $t("subscriptions.table.subscription") }}
+          </th>
+          <th>
+            {{ $t("subscriptions.table.status") }}
+          </th>
+          <th>
+            {{ $t("subscriptions.table.info") }}
+          </th>
+          <th class="col-actions">
+            {{ $t("subscriptions.table.actions") }}
+          </th>
+        </template>
+
+        <tr
+          v-for="subscription in subscriptions"
+          :key="subscription.id"
+        >
+          <!-- Subscription: name + URL (copy) + node count, stacked -->
+          <td class="align-top cell-wrap">
+            <div class="flex flex-col gap-1 max-w-[18rem]">
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :title="subscription.name">
+                {{ subscription.name }}
+              </span>
+              <div class="flex items-center gap-1 min-w-0">
+                <span
+                  class="text-xs text-gray-500 dark:text-gray-400 truncate"
+                  :title="subscription.url"
                 >
-                  <span
-                    v-for="(entry, i) in subscription.info"
-                    :key="i"
-                    class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap"
-                    :title="`${entry.key}: ${entry.value}`"
-                  >
-                    <span class="text-gray-400 dark:text-gray-500">{{ entry.key }}</span>
-                    <span v-if="entry.value" class="font-medium ml-1">{{ entry.value }}</span>
-                  </span>
-                </div>
-                <span v-else class="text-xs text-gray-300 dark:text-gray-600">—</span>
-              </td>
-              <td
-                class="px-4 py-3 align-top text-right text-sm font-medium"
+                  {{ subscription.url }}
+                </span>
+                <button
+                  type="button"
+                  class="shrink-0 p-0.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                  @click="copyUrl(subscription.url)"
+                  :title="$t('subscriptions.tooltip.copy')"
+                  :aria-label="$t('subscriptions.tooltip.copy')"
+                >
+                  <ClipboardDocumentIcon class="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </td>
+          <!-- Status: state badge + auto-update/interval + last update, stacked -->
+          <td class="align-top">
+            <div class="flex flex-col items-start gap-1.5">
+              <Badge
+                :variant="getStatusBadge(subscription).type"
+                class="inline-flex items-center gap-1"
               >
-                <div class="flex items-center justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    :loading="isUpdating.includes(subscription.id)"
-                    @click="updateSubscription(subscription)"
-                    :disabled="isUpdating.includes(subscription.id)"
-                    :title="$t('subscriptions.tooltip.update')"
-                    :aria-label="$t('subscriptions.tooltip.update')"
-                  >
-                    <!-- Hide the icon while updating: the Button shows only its
-                         spinner and is disabled, so the row can't be re-triggered. -->
-                    <ArrowPathIcon
-                      v-if="!isUpdating.includes(subscription.id)"
-                      class="h-4 w-4"
-                    />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    @click="openEditModal(subscription)"
-                    :title="$t('subscriptions.tooltip.edit')"
-                    :aria-label="$t('subscriptions.tooltip.edit')"
-                  >
-                    <PencilIcon class="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    @click="confirmDelete(subscription)"
-                    :title="$t('subscriptions.tooltip.del')"
-                    :aria-label="$t('subscriptions.tooltip.del')"
-                  >
-                    <TrashIcon class="h-4 w-4" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <component
+                  :is="getStatusBadge(subscription).icon"
+                  class="h-3 w-3"
+                />
+                {{ getStatusBadge(subscription).text }}
+              </Badge>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <Badge
+                  :variant="subscription.auto_update ? 'success' : 'secondary'"
+                  class="inline-flex items-center gap-1"
+                >
+                  <component
+                    :is="subscription.auto_update ? CheckCircleIcon : XCircleIcon"
+                    class="h-3 w-3"
+                  />
+                  {{
+                    subscription.auto_update
+                      ? $t("subscriptions.enabled")
+                      : $t("subscriptions.disabled")
+                  }}
+                </Badge>
+                <span
+                  v-if="subscription.auto_update && subscription.update_interval"
+                  class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+                  :title="$t('subscriptions.form.updateInterval')"
+                >
+                  <ClockIcon class="h-3 w-3" />
+                  {{ subscription.update_interval }}
+                </span>
+              </div>
+              <span
+                class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap"
+                :title="$t('subscriptions.table.lastUpdate')"
+              >
+                {{ $t("subscriptions.table.lastUpdate") }}: {{ formatDate(subscription.last_update) }}
+              </span>
+            </div>
+          </td>
+          <!-- Plan info: generic key/value entries -->
+          <td class="align-top">
+            <div
+              v-if="subscription.info && subscription.info.length"
+              class="flex flex-col gap-1"
+            >
+              <span
+                v-for="(entry, i) in subscription.info"
+                :key="i"
+                class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                :title="`${entry.key}: ${entry.value}`"
+              >
+                <span class="text-gray-400 dark:text-gray-500">{{ entry.key }}</span>
+                <span v-if="entry.value" class="font-medium ml-1">{{ entry.value }}</span>
+              </span>
+            </div>
+            <span v-else class="text-xs text-gray-300 dark:text-gray-600">—</span>
+          </td>
+          <td class="align-top col-actions font-medium">
+            <div class="flex items-center justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                action
+                :loading="isUpdating.includes(subscription.id)"
+                @click="updateSubscription(subscription)"
+                :disabled="isUpdating.includes(subscription.id)"
+                :title="$t('subscriptions.tooltip.update')"
+                :aria-label="$t('subscriptions.tooltip.update')"
+              >
+                <!-- Hide the icon while updating: the Button shows only its
+                     spinner and is disabled, so the row can't be re-triggered.
+                     Shares CloudArrowDownIcon with the header's "update all",
+                     which is this same operation across every row. -->
+                <CloudArrowDownIcon
+                  v-if="!isUpdating.includes(subscription.id)"
+                  class="h-4 w-4"
+                />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                action
+                @click="openEditModal(subscription)"
+                :title="$t('subscriptions.tooltip.edit')"
+                :aria-label="$t('subscriptions.tooltip.edit')"
+              >
+                <PencilIcon class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                action
+                @click="confirmDelete(subscription)"
+                :title="$t('subscriptions.tooltip.del')"
+                :aria-label="$t('subscriptions.tooltip.del')"
+              >
+                <TrashIcon class="h-4 w-4" />
+              </Button>
+            </div>
+          </td>
+        </tr>
+      </Table>
     </div>
 
     <!-- Info-label keywords editor -->
