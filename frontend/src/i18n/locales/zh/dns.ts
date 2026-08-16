@@ -130,6 +130,7 @@ export default {
       server: '服务器',
       conditions: '条件',
       actions: '操作',
+      answerCount: '{count} 条记录',
     },
     actionTypes: {
       route: 'Route - 转发到指定的 DNS 服务器',
@@ -160,6 +161,29 @@ export default {
       rcode: '响应码',
       rcodeHelp: '直接返回给客户端，不再查询上游。用于拦截时通常选 NXDOMAIN。',
       rejectMethodHelp: '拒绝 DNS 请求的方式',
+      // schema 驱动的动作字段标签。只有「人写的标签比 JSON 键名更好」的字段才需要
+      // 在此列出，缺失的会回退到键名的人性化形式（disable_cache -> Disable Cache），
+      // 所以 strategy / disable_cache 故意不列。
+      fields: {
+        server: 'DNS 服务器',
+        strategy: '解析策略',
+        disable_cache: '禁用缓存',
+        rewrite_ttl: '重写 TTL',
+        client_subnet: '客户端子网 (EDNS)',
+        method: '拒绝方式',
+        no_drop: '不静默丢弃',
+        noDropHint: '仅在「default」方式下有效 —— 与「drop」同时使用会被 sing-box 拒绝。',
+        rcode: '响应码',
+        answer: '应答记录',
+        answerHint: '每行一条 DNS 资源记录，例如 "example.com. 3600 IN A 192.0.2.1"。',
+        ns: '权威记录',
+        extra: '附加记录',
+      },
+      errors: {
+        serverRequired: 'route 动作必须指定一个 DNS 服务器。',
+        routeOptionsEmpty: 'route-options 动作至少要设置一项 —— sing-box 会拒绝空的动作。',
+        noDropWithDrop: '「不静默丢弃」不能与「drop」方式同时使用。',
+      },
       conditionsHeading: '条件（至少需要一项）',
       ruleSet: '规则集',
       ruleSetSelect: '选择或搜索规则集',

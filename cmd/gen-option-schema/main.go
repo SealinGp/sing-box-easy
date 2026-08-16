@@ -160,6 +160,27 @@ func domains(registry *config.Registry) []domain {
 			// LocalDNSServerOptions are all `json:"-"`. Nothing to add.
 			DocDeprecated: map[string]bool{},
 		},
+		{
+			Name:      "DNSRuleAction",
+			Screaming: "DNS_RULE_ACTION",
+			Output:    "frontend/src/schemas/dnsRuleActionInventory.generated.ts",
+			Types:     config.DNSRuleActionTypes,
+			Create:    registry.CreateDNSRuleActionOptions,
+			Doc: "DNS rule action options, keyed by the `action` field of an entry in `dns.rules`.\n" +
+				"//\n" +
+				"// THE KEY IS `action`, NOT `type`. A DNS rule carries both: `type` selects the\n" +
+				"// MATCHER shape (\"default\" or \"logical\") and `action` selects what happens once\n" +
+				"// the rule matches. They vary independently, and an omitted `action` means\n" +
+				"// \"route\".\n" +
+				"//\n" +
+				"// These fields share one flat JSON object with the rule's match conditions\n" +
+				"// (`domain`, `rule_set`, `ip_cidr`, ...), which belong to no action and appear in\n" +
+				"// no entry below. Pruning on action change must therefore remove only keys owned\n" +
+				"// by another action — see pruneForeignFields in optionSchema.ts.",
+			// Nothing deprecated: every field of all four action structs is
+			// present and current in 1.12.12, and unchanged through 1.13.11.
+			DocDeprecated: map[string]bool{},
+		},
 	}
 }
 
@@ -197,6 +218,19 @@ var namedKinds = map[string]string{
 	"option.FwMark":           kindNumber,
 	"option.DomainStrategy":   kindString,
 	"option.NetworkList":      kindString,
+
+	// A DNSRCode is an int (option/dns_record.go) but marshals as an RCODE name
+	// — "NXDOMAIN", not 3. Left to reflect.Kind it would render a number spinner
+	// for a fixed string vocabulary.
+	"option.DNSRCode": kindString,
+	// DNSRecordOptions embeds dns.RR, an interface, and marshals as a plain
+	// resource-record string ("a.example. 3600 IN A 192.0.2.1"). Classified by
+	// Kind it is a struct, so answer/ns/extra would come out as lists of objects
+	// and the form would offer a JSON textarea for what is a one-line string.
+	// Reached as a list ELEMENT (Listable[DNSRecordOptions]), which classify
+	// recurses into — collect only walks anonymous embedded structs, so the
+	// dns.RR embed is never flattened.
+	"option.DNSRecordOptions": kindString,
 }
 
 // Deprecated fields stay in every inventory on purpose: existing config.json

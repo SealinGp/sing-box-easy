@@ -16,6 +16,8 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useOutboundsStore } from '../stores/outbounds'
+import { useDNSStore } from '../stores/dns'
+import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 import Input from './Input.vue'
 import ChipsField from './ChipsField.vue'
 import JsonField from './JsonField.vue'
@@ -52,6 +54,13 @@ const { t } = useI18n()
 const outboundsStore = useOutboundsStore()
 const { outbounds } = storeToRefs(outboundsStore)
 
+/**
+ * DNS server tags for a rule's `server`. Same contract as the outbound store
+ * above: fetched lazily, only when such a field is actually rendered.
+ */
+const dnsStore = useDNSStore()
+const { dnsServers } = storeToRefs(dnsStore)
+
 onMounted(() => {
   const wantsOutbounds =
     props.field.control === 'outbound' || props.field.control === 'outbound-list'
@@ -60,6 +69,35 @@ onMounted(() => {
       // Non-fatal: the picker falls back to whatever the record already holds.
     })
   }
+
+  if (props.field.control === 'dns-server' && dnsServers.value.length === 0) {
+    dnsStore.fetchDNSServers().catch(() => {
+      // Non-fatal: the picker falls back to whatever the record already holds.
+    })
+  }
+})
+
+/**
+ * DNS servers for a rule's `server`.
+ *
+ * The label carries the address and transport, not just the tag — picking the
+ * right DNS server for a rule is impossible from a bare tag, which is why this
+ * cannot be a plain 'select' over strings.
+ */
+const dnsServerOptions = computed(() => {
+  const options = (dnsServers.value ?? [])
+    .filter((server) => server.tag)
+    .map((server) => ({ value: server.tag, label: dnsServerOptionLabel(server) }))
+
+  // A rule can name a server that was since renamed or deleted. Dropping it from
+  // the options would clear the select, and the next save would look like the
+  // operator had removed the server themselves.
+  const current = props.value
+  if (typeof current === 'string' && current && !options.some((o) => o.value === current)) {
+    options.push({ value: current, label: t('common.missingTag', { tag: current }) })
+  }
+
+  return options
 })
 
 /** Tags of every other outbound, for a group's member list. */
@@ -204,6 +242,19 @@ function onNumber(raw: string | number) {
     optionLabel="label"
     optionValue="value"
     :disabled="disabled"
+    @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
+  />
+
+  <Select
+    v-else-if="field.control === 'dns-server'"
+    class="w-full"
+    :modelValue="value ?? ''"
+    :options="dnsServerOptions"
+    optionLabel="label"
+    optionValue="value"
+    filter
+    :disabled="disabled"
+    :placeholder="t('dns.rules.serverSelect')"
     @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
 

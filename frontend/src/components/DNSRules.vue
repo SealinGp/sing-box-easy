@@ -8,19 +8,29 @@ import { Select } from '../volt'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
+import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
-import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
 import { storeToRefs } from 'pinia'
+import {
+  actionOf,
+  applyActionDefaults,
+  pruneForeignFields,
+  resolveDNSRuleActionFields,
+  validateDNSRuleAction,
+  type DNSRuleActionTypeName,
+} from '../schemas/dnsRuleActionFields'
 
 const toast = useToast()
 const { t } = useI18n()
 const dnsStore = useDNSStore()
 const routeStore = useRouteStore()
-const { dnsServers } = storeToRefs(dnsStore)
+// The server list is no longer read here — the `dns-server` control in
+// SchemaFieldControl.vue owns that picker now. The store is still prefetched on
+// mount (below) so the select is populated before it is first opened.
 const { ruleSets } = storeToRefs(routeStore)
 
 // Local state for DNS rules
@@ -34,54 +44,89 @@ const showRuleModal = ref(false)
 const conditionsKey = ref(0)
 const isEditMode = ref(false)
 const editingIndex = ref(-1)
-// Form model uses arrays for list fields to match the Chips v-model shape and
-// the sing-box wire format. sing-box also accepts a scalar — openEditRuleModal
-// coerces scalar → [value] on load, and handleSaveRule strips empties.
-const currentRule = ref<any>({
-  action: 'route',
-  server: '',
-  method: 'default',
-  rcode: 'NXDOMAIN',
-  rule_set: [] as string[],
-  domain: [] as string[],
-  domain_suffix: [] as string[],
-  domain_keyword: [] as string[],
-  geosite: [] as string[],
-})
+/**
+ * The rule being edited, as a whole.
+ *
+ * This used to be a fixed 9-key object rebuilt from the loaded rule, with
+ * everything else stashed in a `preservedFields` side-channel and re-merged on
+ * save — but only while the action was unchanged. That allowlist caused three
+ * separate data-loss bugs: `no_drop` was listed but never rendered, so it was
+ * read into nothing and written back as nothing; `strategy` was neither listed
+ * nor rendered, so a real rule in this repo's test config had
+ * `"strategy": "ipv4_only"` erased just by opening it; and a logical rule lost
+ * its `type`/`mode`/`rules` the moment its action changed.
+ *
+ * Now the whole rule is the model. `SchemaFieldsEditor` only touches keys it
+ * renders, and `pruneForeignFields` removes only keys some OTHER action owns.
+ * Anything neither knows about — every match condition, and any field a future
+ * sing-box adds — survives by construction.
+ */
+const currentRule = ref<Record<string, any>>(emptyRuleForm())
 
 /**
- * Fields the form actually renders. Everything else on a loaded rule is carried
- * through untouched — see `preservedFields`.
+ * Wire fields sing-box accepts as either a scalar or an array.
+ *
+ * The five conditions have always needed this. `answer`/`ns`/`extra` need it too
+ * and are new here: badoption.Listable collapses a single-entry list to a bare
+ * string on marshal, so a predefined rule with one answer reads back as
+ * `"answer": "a.example. 3600 IN A 192.0.2.1"`. Left uncoerced, the chips box
+ * would render one chip per CHARACTER.
  */
-const EDITED_FIELDS = [
-  'action',
-  'server',
-  'method',
-  'rcode',
-  'rule_set',
-  'domain',
-  'domain_suffix',
-  'domain_keyword',
-  'geosite',
-  'no_drop',
-] as const
+/**
+ * Conditions, which DNSRuleConditions v-models as arrays. Always materialized,
+ * present in the rule or not — its ChipsFields cannot bind to undefined.
+ */
+const CONDITION_FIELDS = ['rule_set', 'domain', 'domain_suffix', 'domain_keyword', 'geosite'] as const
 
 /**
- * The parts of the rule being edited that this form has no control for.
- *
- * The form rebuilds `currentRule` from a fixed list of keys, so anything else a
- * rule carried — `strategy`, `clash_mode`, `ip_cidr`, `invert`, `outbound` —
- * used to be silently destroyed on save. A real rule in this repo's own test
- * config had `"strategy": "ipv4_only"` erased simply by opening it and pressing
- * Update.
- *
- * They are re-merged on save, but ONLY when the action is unchanged: sing-box
- * strict-parses DNS rules per action, so carrying a route-only field onto a
- * rule the operator just switched to `reject` would produce an "unknown field"
- * failure instead.
+ * The predefined action's record lists. Coerced only when present, so opening a
+ * route rule does not add three empty keys to it.
  */
-const preservedFields = ref<Record<string, unknown>>({})
-const originalAction = ref<string>('')
+const ACTION_LIST_FIELDS = ['answer', 'ns', 'extra'] as const
+
+/** The action driving the schema. Absent means route — see `actionOf`. */
+const currentAction = computed<DNSRuleActionTypeName>(() => actionOf(currentRule.value))
+
+/** The fields this action owns, resolved from the generated inventory. */
+const actionFields = computed(() => resolveDNSRuleActionFields(currentAction.value))
+
+/**
+ * Switching the action prunes the previous one's fields and seeds the new one's
+ * defaults — the analogue of `changeType()` in DNSServers.vue.
+ *
+ * There was no handler here at all before, which is why switching `route` to
+ * `route-options` carried `server` along: the save-time `switch` deleted
+ * method/no_drop/rcode but not server, and DNSRouteOptionsActionOptions has no
+ * field for it, so the save failed on a field the form had stopped showing.
+ */
+function changeAction(action: DNSRuleActionTypeName) {
+  const pruned = pruneForeignFields(currentRule.value, action)
+  // Defaults are for NEW records only. On an existing rule the operator is
+  // changing the action deliberately, so the new action's core fields do need
+  // seeding — but nothing already set is overwritten.
+  currentRule.value = applyActionDefaults(pruned, action)
+}
+
+/**
+ * What a `predefined` rule answers with, for the server column.
+ *
+ * The rcode defaults to NOERROR, not NXDOMAIN. The column used to hardcode
+ * `rcode || 'NXDOMAIN'`, which reported the opposite of the truth for a rule
+ * that omits it — and every rule that answers with records omits it, because
+ * NOERROR is what "here is your answer" means. The same wrong assumption used to
+ * live in the edit form, where it did not merely display wrongly but rewrote the
+ * rule on save.
+ *
+ * Records win over the rcode when both are present: a rule returning a CNAME is
+ * described by that CNAME, not by the "no error" that accompanies it.
+ */
+function predefinedSummary(rule: unknown): string {
+  const raw = rule as Record<string, unknown>
+  const answers = toArrayField(raw.answer)
+  if (answers.length === 1) return answers[0]!
+  if (answers.length > 1) return t('dns.rules.table.answerCount', { count: answers.length })
+  return (raw.rcode as string) || 'NOERROR'
+}
 
 function toArrayField(v: unknown): string[] {
   if (v === undefined || v === null) return []
@@ -121,29 +166,11 @@ const actionTypes = computed(() => [
   { value: 'predefined', label: t('dns.rules.actionTypes.predefined') },
 ])
 
-// Verified against sing-box 1.12.12: uppercase only, and this is the whole set.
-const rcodeOptions = [
-  { value: 'NXDOMAIN', label: 'NXDOMAIN' },
-  { value: 'NOERROR', label: 'NOERROR' },
-  { value: 'SERVFAIL', label: 'SERVFAIL' },
-  { value: 'REFUSED', label: 'REFUSED' },
-  { value: 'FORMERR', label: 'FORMERR' },
-  { value: 'NOTIMP', label: 'NOTIMP' },
-]
-
-const serverOptions = computed(() => {
-  const options = [
-    { value: '', label: t('dns.rules.serverSelect') }
-  ]
-  if (dnsServers.value) {
-    dnsServers.value.forEach(server => {
-      // Label carries the address + transport, not just the tag — picking the
-      // right DNS server for a rule is impossible from a bare tag.
-      options.push({ value: server.tag, label: dnsServerOptionLabel(server) })
-    })
-  }
-  return options
-})
+// The rcode vocabulary, the reject methods and the DNS server picker all used to
+// be built here. They now live in schemas/dnsRuleActionFields.ts (the first two,
+// as curated `select` options) and in SchemaFieldControl.vue (the third, as the
+// `dns-server` control) — next to the field definitions they belong to, and
+// reachable from any future form that needs them.
 
 const ruleSetOptions = computed(() => {
   const options: { value: string; label: string }[] = []
@@ -162,34 +189,27 @@ const ruleSetOptions = computed(() => {
   return options
 })
 
-// sing-box accepts exactly two reject methods (constant/rule.go:40-41).
-// The list previously also offered success/refused/nxdomain, which sing-box
-// rejects outright — "unknown reject method: nxdomain" — so the modal could
-// save a config that passed panel validation and then refused to start.
-// To answer with a specific rcode, use the `predefined` action instead.
-const rejectMethods = computed(() => [
-  { value: 'default', label: t('dns.rules.rejectMethods.default') },
-  { value: 'drop', label: t('dns.rules.rejectMethods.drop') },
-])
 
-function emptyRuleForm() {
-  return {
-    action: 'route',
-    server: '',
-    method: 'default',
-    rcode: 'NXDOMAIN',
-    rule_set: [] as string[],
-    domain: [] as string[],
-    domain_suffix: [] as string[],
-    domain_keyword: [] as string[],
-    geosite: [] as string[],
-  }
+/**
+ * A blank rule. Only the conditions are seeded, as empty arrays for the Chips
+ * v-model; the action's own fields come from `applyActionDefaults`, so their
+ * defaults live in the curation file rather than being restated here.
+ */
+function emptyRuleForm(): Record<string, any> {
+  return applyActionDefaults(
+    {
+      rule_set: [] as string[],
+      domain: [] as string[],
+      domain_suffix: [] as string[],
+      domain_keyword: [] as string[],
+      geosite: [] as string[],
+    },
+    'route',
+  )
 }
 
 const openAddRuleModal = () => {
   isEditMode.value = false
-  preservedFields.value = {}
-  originalAction.value = ''
   currentRule.value = emptyRuleForm()
   conditionsKey.value++
   showRuleModal.value = true
@@ -201,25 +221,26 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
 
   const raw = rule as Record<string, unknown>
 
-  preservedFields.value = Object.fromEntries(
-    Object.entries(raw).filter(([key]) => !EDITED_FIELDS.includes(key as never)),
-  )
-  originalAction.value = (raw.action as string) || 'route'
+  // The whole rule, not a fixed subset. Every key survives — including ones this
+  // form has no control for, and `type`/`mode`/`rules` on a logical rule.
+  //
+  // Note what is NOT done here: no default is seeded. `applyActionDefaults` runs
+  // on create and on an action change, never on open. Seeding one here is
+  // exactly how a predefined rule with no `rcode` — which means NOERROR — used
+  // to be silently rewritten to NXDOMAIN by opening it and pressing Update.
+  const loaded: Record<string, any> = { ...raw }
 
-  currentRule.value = {
-    action: (raw.action as string) || 'route',
-    server: (raw.server as string) || '',
-    method: (raw.method as string) || 'default',
-    rcode: (raw.rcode as string) || 'NXDOMAIN',
-    // sing-box accepts a scalar or an array here; normalize to an array. This
-    // used to keep only the first entry, which meant opening and saving a rule
-    // that matched two rule sets silently dropped one of them.
-    rule_set: toArrayField(raw.rule_set),
-    domain: toArrayField(raw.domain),
-    domain_suffix: toArrayField(raw.domain_suffix),
-    domain_keyword: toArrayField(raw.domain_keyword),
-    geosite: toArrayField(raw.geosite),
+  // sing-box accepts a scalar or an array for these; normalize to an array. This
+  // once kept only the first entry, so opening and saving a rule that matched two
+  // rule sets silently dropped one of them.
+  for (const key of CONDITION_FIELDS) {
+    loaded[key] = toArrayField(loaded[key])
   }
+  for (const key of ACTION_LIST_FIELDS) {
+    if (key in loaded) loaded[key] = toArrayField(loaded[key])
+  }
+
+  currentRule.value = loaded
   conditionsKey.value++
   showRuleModal.value = true
 }
@@ -230,50 +251,44 @@ const closeRuleModal = () => {
 }
 
 const handleSaveRule = async () => {
-  // currentRule.* list fields are already string[] from Chips.
-  // Strip empty arrays so we don't send `{ domain: [] }` to the backend.
-  // Fields with no control in this form survive an edit, but only while the
-  // action is unchanged — see `preservedFields`.
-  const carried =
-    isEditMode.value && currentRule.value.action === originalAction.value
-      ? preservedFields.value
-      : {}
+  // Keep only the fields valid for the selected action. sing-box strict-parses
+  // DNS rules and rejects any field that does not belong to the action —
+  // `method` is reject-only ("unknown field method" on a route rule).
+  //
+  // This replaces a hand-written switch that had to be updated by hand for every
+  // action, and which missed `server` on the route -> route-options edge.
+  // pruneForeignFields derives the same answer from the generated inventory, and
+  // — unlike the switch and the EDITED_FIELDS allowlist it worked with — keeps
+  // every key no action owns: all the match conditions, and `type`/`mode`/`rules`
+  // on a logical rule.
+  const processedRule: Record<string, unknown> = pruneForeignFields(
+    currentRule.value,
+    currentAction.value,
+  )
 
-  const processedRule: Record<string, unknown> = {
-    ...carried,
-    ...currentRule.value,
-    rule_set: currentRule.value.rule_set.length ? currentRule.value.rule_set : undefined,
-    domain: currentRule.value.domain.length ? currentRule.value.domain : undefined,
-    domain_suffix: currentRule.value.domain_suffix.length ? currentRule.value.domain_suffix : undefined,
-    domain_keyword: currentRule.value.domain_keyword.length ? currentRule.value.domain_keyword : undefined,
-    geosite: currentRule.value.geosite.length ? currentRule.value.geosite : undefined,
-  }
-
+  // An empty value is the absence of a setting, not a setting of "". Writing it
+  // through would persist it into config.json as an explicit one — and for a
+  // `false` switch, sing-box's omitempty means absent and false already
+  // serialize identically.
   Object.keys(processedRule).forEach((key) => {
     const v = processedRule[key]
-    if (v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) {
+    if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) {
       delete processedRule[key]
     }
   })
 
-  // Keep only the fields valid for the selected action. sing-box strict-parses
-  // DNS rules and rejects any field that does not belong to the action — e.g.
-  // `method` is reject-only ("unknown field method" on a route rule).
-  switch (processedRule.action) {
-    case 'reject':
-      delete processedRule.server
-      delete processedRule.rcode
-      break
-    case 'predefined':
-      // Answers the query directly; it neither routes to a server nor rejects.
-      delete processedRule.server
-      delete processedRule.method
-      delete processedRule.no_drop
-      break
-    default: // route, route-options
-      delete processedRule.method
-      delete processedRule.no_drop
-      delete processedRule.rcode
+  // Three constraints sing-box only enforces while decoding, which `sing-box
+  // check` reports as an opaque upstream string. Caught here so the operator
+  // sees which field is wrong. See validateDNSRuleAction for each one's source.
+  const invalid = validateDNSRuleAction(processedRule)
+  if (invalid) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t(invalid),
+      life: 4000,
+    })
+    return
   }
 
   loading.value = true
@@ -420,7 +435,7 @@ onMounted(() => {
             <!-- A predefined rule has no server; showing "-" hid the one
                  thing that matters about it, the answer it returns. -->
             <div v-if="(rule as any).action === 'predefined'" class="font-mono text-gray-600 dark:text-gray-400">
-              {{ (rule as any).rcode || 'NXDOMAIN' }}
+              {{ predefinedSummary(rule) }}
             </div>
             <div v-else class="text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
           </td>
@@ -452,31 +467,36 @@ onMounted(() => {
       show-close
     >
       <div class="space-y-4">
-        <!-- Action -->
+        <!--
+          The action select stays outside the schema editor, exactly as the type
+          select does in DNSServers.vue: it is the discriminator that CHOOSES the
+          field set, so it cannot be one of the fields.
+        -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.action') }}</label>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.action" :options="actionTypes" />
+          <Select
+            class="w-full"
+            optionLabel="label"
+            optionValue="value"
+            :modelValue="currentAction"
+            :options="actionTypes"
+            @update:modelValue="changeAction"
+          />
         </div>
 
-        <!-- Server (for route action) -->
-        <div v-if="currentRule.action === 'route'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.server') }}</label>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.server" :options="serverOptions" />
-        </div>
+        <!--
+          Everything the action owns, from the generated inventory. Replaces three
+          hand-written v-if blocks that covered 3 of 15 fields and left
+          `route-options` with an empty form body.
 
-        <!-- Response code (for predefined action) -->
-        <div v-if="currentRule.action === 'predefined'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.rcode') }}</label>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.rcode" :options="rcodeOptions" />
-          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.rcodeHelp') }}</p>
-        </div>
-
-        <!-- Reject Method (for reject action) -->
-        <div v-if="currentRule.action === 'reject'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('dns.rules.form.rejectMethod') }}</label>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="currentRule.method" :options="rejectMethods" />
-          <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.rejectMethodHelp') }}</p>
-        </div>
+          :key remounts on action change so the previous action's added-field
+          state does not leak — the same reason conditionsKey exists below.
+        -->
+        <SchemaFieldsEditor
+          :key="currentAction"
+          v-model="currentRule"
+          :fields="actionFields"
+        />
 
         <!-- Rule Conditions -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-4">

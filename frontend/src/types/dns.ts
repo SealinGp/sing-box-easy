@@ -161,13 +161,20 @@ export type DNSServerOptions =
   | DHCPDNSServerOptions
   | HostsDNSServerOptions
 
-// DNS Rule Action Types
-export type DNSRuleActionType =
-  | 'route'       // Route to specific server
-  | 'return'      // Return with custom options
-  | 'reject'      // Reject the query
+/**
+ * DNS rule actions, from the generated inventory.
+ *
+ * This was hand-written as `'route' | 'return' | 'reject'`, which was wrong in
+ * both directions: `return` is not a sing-box action at all, and `route-options`
+ * and `predefined` were missing. It was the third copy of this list — DNSRules.vue
+ * carried a second, correct one — which is exactly the drift the generator exists
+ * to remove. Now there is one source, checked against the option structs.
+ */
+import type { DNSRuleActionTypeName } from '../schemas/dnsRuleActionInventory.generated'
 
-// DNS Rule Reject Method
+export type DNSRuleActionType = DNSRuleActionTypeName
+
+// DNS Rule Reject Method. sing-box accepts exactly these two (constant/rule.go).
 export type DNSRejectMethod = 'default' | 'drop'
 
 // DNS Rule Type

@@ -83,6 +83,31 @@ func (r *Registry) CreateEndpointOptions(endpointType string) (any, bool) {
 	}
 }
 
+// CreateDNSRuleActionOptions 按 `action` 返回 DNS 规则动作的选项结构。
+//
+// 与其他 Create* 不同, 这个方法不实现任何 sing-box registry 接口 ——
+// DNSRuleAction 自己在 UnmarshalJSONContext 里硬编码了这四个分支, 不走 context
+// 里的 registry。这里存在的唯一理由是给 schema 生成器一个可枚举的入口:
+// Go 的 type switch 无法在运行时遍历, 所以“有哪些 action”必须另有一份列表,
+// 而那份列表必须能被测试对着真实结构体校验。见 DNSRuleActionTypes。
+//
+// 四个分支与 option/rule_action.go 的 _DNSRuleAction 一一对应。route-rule 专用的
+// direct / hijack-dns / sniff / resolve 不在此处, 见 DNSRuleActionTypes 的注释。
+func (r *Registry) CreateDNSRuleActionOptions(action string) (any, bool) {
+	switch action {
+	case C.RuleActionTypeRoute:
+		return new(option.DNSRouteActionOptions), true
+	case C.RuleActionTypeRouteOptions:
+		return new(option.DNSRouteOptionsActionOptions), true
+	case C.RuleActionTypeReject:
+		return new(option.RejectActionOptions), true
+	case C.RuleActionTypePredefined:
+		return new(option.DNSRouteActionPredefined), true
+	default:
+		return nil, false
+	}
+}
+
 // CreateServiceOptions implements option.ServiceOptionsRegistry
 func (r *Registry) CreateServiceOptions(serviceType string) (any, bool) {
 	switch serviceType {

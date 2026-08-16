@@ -118,6 +118,14 @@ export type ControlKind =
    * and that is past where `sing-box check` looks.
    */
   | 'outbound-member'
+  /**
+   * A DNS rule's `server` — pick a DNS server by tag. Its own kind rather than
+   * 'select' for the same reason as 'outbound': the vocabulary is the live
+   * config's `dns.servers` list, not a constant the schema can carry. Unlike a
+   * detour there is no meaningful empty entry — a route action without a server
+   * is rejected, so "" is an error rather than "direct".
+   */
+  | 'dns-server'
   | 'json'
 
 export interface FieldCuration {
@@ -218,6 +226,13 @@ export interface SchemaOptions<TypeName extends string> {
    * therefore appear in no inventory. They survive pruning.
    */
   identityKeys?: readonly string[]
+  /**
+   * The JSON key holding the discriminator. `type` for inbounds, outbounds and
+   * DNS servers; `action` for DNS rule actions, where `type` is already taken —
+   * a DNS rule uses it for the MATCHER shape ("default" / "logical"), which
+   * varies independently of what the rule does once it matches.
+   */
+  typeKey?: string
 }
 
 /**
@@ -232,7 +247,8 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
     labelPrefix,
     shared = {},
     byType = {} as Partial<Record<TypeName, Record<string, FieldCuration>>>,
-    identityKeys = ['tag', 'type'],
+    typeKey = 'type',
+    identityKeys = ['tag', typeKey],
   } = options
 
   /**
@@ -303,7 +319,48 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
     for (const [key, value] of Object.entries(record)) {
       if (identityKeys.includes(key) || key in allowed) next[key] = value
     }
-    next.type = type
+    next[typeKey] = type
+    return next
+  }
+
+  /**
+   * The same job as `pruneForType`, for a record this schema only partly owns.
+   *
+   * `pruneForType` is an ALLOWLIST: it keeps the discriminator, the identity
+   * keys and this type's fields, and drops everything else. That is right for an
+   * inbound, where the schema describes the whole object.
+   *
+   * A DNS rule is not that. One flat JSON object holds both the action's fields
+   * and the rule's match conditions — `domain`, `domain_suffix`, `rule_set`,
+   * `ip_cidr`, `clash_mode`, `invert`, and for a logical rule `type`, `mode` and
+   * a nested `rules` array. None of those belong to any action, so an allowlist
+   * prune would delete the entire matcher on every action change.
+   *
+   * So this is a DENYLIST instead: it removes only keys that some OTHER type in
+   * this inventory owns and this one does not. A key the inventory has never
+   * heard of is kept by construction — which is the opposite of the old
+   * hand-written `EDITED_FIELDS` allowlist in DNSRules.vue, where a field nobody
+   * remembered to list was silently destroyed on save.
+   */
+  function pruneForeignFields(
+    record: Readonly<Record<string, unknown>>,
+    type: TypeName,
+  ): Record<string, unknown> {
+    const allowed = (inventory[type] ?? {}) as Record<string, OptionFieldInfo>
+
+    const foreign = new Set<string>()
+    for (const [name, fields] of Object.entries(inventory)) {
+      if (name === type) continue
+      for (const key of Object.keys(fields)) {
+        if (!(key in allowed)) foreign.add(key)
+      }
+    }
+
+    const next: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(record)) {
+      if (!foreign.has(key)) next[key] = value
+    }
+    next[typeKey] = type
     return next
   }
 
@@ -320,7 +377,7 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
     record: Readonly<Record<string, unknown>>,
     type: TypeName,
   ): Record<string, unknown> {
-    const next: Record<string, unknown> = { ...record, type }
+    const next: Record<string, unknown> = { ...record, [typeKey]: type }
 
     for (const field of resolveFields(type)) {
       if (field.tier === 'advanced') continue
@@ -336,7 +393,7 @@ export function createSchema<TypeName extends string>(options: SchemaOptions<Typ
     return typeof value === 'string' && value in inventory
   }
 
-  return { resolveFields, pruneForType, applyTypeDefaults, isKnownType }
+  return { resolveFields, pruneForType, pruneForeignFields, applyTypeDefaults, isKnownType }
 }
 
 // ── Version gating ───────────────────────────────────────────────────────────

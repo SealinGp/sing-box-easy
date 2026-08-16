@@ -134,6 +134,7 @@ export default {
       server: 'Server',
       conditions: 'Conditions',
       actions: 'Actions',
+      answerCount: '{count} records',
     },
     actionTypes: {
       route: 'Route - Forward to specified DNS server',
@@ -164,6 +165,29 @@ export default {
       rcode: 'Response code',
       rcodeHelp: 'Returned to the client instead of querying a server. NXDOMAIN is the usual choice for blocking.',
       rejectMethodHelp: 'Method to reject DNS requests',
+      // Labels for the schema-driven action fields. Only fields where a human
+      // label beats the JSON key need an entry — anything absent falls back to a
+      // humanized key ("disable_cache" -> "Disable Cache"), which is why
+      // `strategy` and `disable_cache` are not listed.
+      fields: {
+        server: 'DNS Server',
+        rewrite_ttl: 'Rewrite TTL',
+        client_subnet: 'Client Subnet (EDNS)',
+        method: 'Reject Method',
+        no_drop: 'Do Not Drop',
+        noDropHint: 'Only valid with the "default" method — sing-box rejects it alongside "drop".',
+        rcode: 'Response Code',
+        answer: 'Answer Records',
+        answerHint: 'One DNS resource record per entry, e.g. "example.com. 3600 IN A 192.0.2.1".',
+        ns: 'Authority Records',
+        extra: 'Additional Records',
+      },
+      errors: {
+        serverRequired: 'A route action needs a DNS server to route to.',
+        routeOptionsEmpty:
+          'A route-options action must set at least one option — sing-box rejects an empty one.',
+        noDropWithDrop: '"Do Not Drop" cannot be combined with the "drop" method.',
+      },
       conditionsHeading: 'Conditions (at least one required)',
       ruleSet: 'Rule Set',
       ruleSetSelect: 'Select or search a rule set',
