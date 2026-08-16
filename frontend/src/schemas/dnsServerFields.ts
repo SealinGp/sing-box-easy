@@ -34,6 +34,7 @@ import {
   type DNSServerTypeName,
 } from './dnsServerInventory.generated'
 import { createSchema, type FieldCuration } from './optionSchema'
+import { NETWORK_STRATEGIES } from './vocabularies'
 
 /** Every field name across every DNS server type — so the shared map cannot hold a typo. */
 type AnyDNSServerFieldKey = {
@@ -64,6 +65,18 @@ const SHARED: Partial<Record<AnyDNSServerFieldKey, FieldCuration>> = {
   domain_resolver: { tier: 'advanced', order: 110, control: 'json' },
   connect_timeout: { tier: 'advanced', order: 120 },
   fallback_delay: { tier: 'advanced', order: 130 },
+
+  // See the matching block in outboundFields.ts: these reach every type that
+  // embeds DialerOptions, and all three shipped as number inputs for what are
+  // string enums.
+  network_strategy: {
+    tier: 'advanced',
+    order: 140,
+    control: 'select',
+    options: NETWORK_STRATEGIES,
+  },
+  network_type: { tier: 'advanced', order: 150, control: 'chips' },
+  fallback_network_type: { tier: 'advanced', order: 160, control: 'chips' },
 }
 
 /**

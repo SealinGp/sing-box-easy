@@ -219,6 +219,16 @@ var namedKinds = map[string]string{
 	"option.DomainStrategy":   kindString,
 	"option.NetworkList":      kindString,
 
+	// Both are uint8 enums that marshal as NAMES, so reflect.Kind produced a
+	// number spinner for a fixed string vocabulary — and every value typed into
+	// it failed to save. These shipped wrong in the inbound and outbound
+	// inventories (network_strategy, network_type, fallback_network_type all
+	// reach them through the embedded DialerOptions).
+	//   NetworkStrategy: default | fallback | hybrid   (constant/network.go:42-48)
+	//   InterfaceType:   wifi | cellular | ethernet | other (constant/network.go:18-23)
+	"option.NetworkStrategy": kindString,
+	"option.InterfaceType":   kindString,
+
 	// A DNSRCode is an int (option/dns_record.go) but marshals as an RCODE name
 	// — "NXDOMAIN", not 3. Left to reflect.Kind it would render a number spinner
 	// for a fixed string vocabulary.

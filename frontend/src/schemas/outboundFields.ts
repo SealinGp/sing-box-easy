@@ -39,6 +39,7 @@ import {
   type OutboundTypeName,
 } from './outboundInventory.generated'
 import { createSchema, type FieldCuration } from './optionSchema'
+import { NETWORK_STRATEGIES } from './vocabularies'
 
 /** Every field name across every outbound type — so the shared map cannot hold a typo. */
 type AnyOutboundFieldKey = {
@@ -90,6 +91,20 @@ const SHARED: Partial<Record<AnyOutboundFieldKey, FieldCuration>> = {
   network: { tier: 'advanced', order: 130, control: 'select', options: ['tcp', 'udp'] },
   domain_resolver: { tier: 'advanced', order: 140, control: 'json' },
   connect_timeout: { tier: 'advanced', order: 150 },
+
+  // Dialer enums. Curated as selects rather than left to the inferred text /
+  // chips control because the vocabularies are small, closed, and unguessable —
+  // and because these three shipped as NUMBER inputs until the generator learned
+  // that option.NetworkStrategy and option.InterfaceType marshal as names. See
+  // schemas/vocabularies.ts.
+  network_strategy: {
+    tier: 'advanced',
+    order: 160,
+    control: 'select',
+    options: NETWORK_STRATEGIES,
+  },
+  network_type: { tier: 'advanced', order: 170, control: 'chips' },
+  fallback_network_type: { tier: 'advanced', order: 180, control: 'chips' },
 }
 
 /**

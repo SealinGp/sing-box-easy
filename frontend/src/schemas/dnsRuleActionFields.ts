@@ -55,19 +55,12 @@ import {
   type DNSRuleActionTypeName,
 } from './dnsRuleActionInventory.generated'
 import { createSchema, isFieldFilled, type FieldCuration } from './optionSchema'
+import { DOMAIN_STRATEGIES } from './vocabularies'
 
 /** Every field name across every action — so the shared map cannot hold a typo. */
 type AnyDNSRuleActionFieldKey = {
   [T in DNSRuleActionTypeName]: DNSRuleActionFieldKey<T>
 }[DNSRuleActionTypeName]
-
-/**
- * sing-box's domain strategy vocabulary, from option.DomainStrategy's own
- * MarshalJSON (option/types.go). `as_is` is accepted on read but marshals back
- * as "", so it is deliberately absent: removing the field is the same thing and
- * does not leave a value that changes shape on save.
- */
-const DOMAIN_STRATEGIES = ['prefer_ipv4', 'prefer_ipv6', 'ipv4_only', 'ipv6_only'] as const
 
 /**
  * The complete RCODE set sing-box accepts, uppercase only. Carried over from the
