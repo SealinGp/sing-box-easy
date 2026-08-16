@@ -196,7 +196,7 @@ const runPrepare = async () => {
 </script>
 
 <template>
-  <div :class="embedded ? '' : 'bg-white dark:bg-gray-800 rounded-surface shadow p-5'">
+  <div :class="embedded ? '' : 'bg-white dark:bg-gray-800 rounded-surface shadow p-4'">
     <div class="flex items-start justify-between gap-3 mb-1">
       <h3
         :class="

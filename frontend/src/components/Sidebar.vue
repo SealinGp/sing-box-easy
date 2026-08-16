@@ -130,7 +130,7 @@ watch(
 <template>
   <div class="w-55 liquid-sidebar h-full flex flex-col m-3 mr-0 rounded-surface overflow-hidden">
     <!-- Logo/Brand with Menu label -->
-    <div class="p-5 pb-4">
+    <div class="p-4 pb-3">
       <!-- Row 1: icon + name -->
       <div class="flex items-center gap-2">
         <img src="/logo.jpg" alt="Sing Box Easy" class="h-7 w-7 rounded-surface flex-shrink-0 shadow-surface" />
@@ -188,7 +188,7 @@ watch(
     </div>
 
     <!-- Menu Items -->
-    <nav ref="navRef" class="relative flex-1 px-4 pb-4 overflow-y-auto">
+    <nav ref="navRef" class="relative flex-1 px-3 pb-3 overflow-y-auto">
       <!-- Sliding active indicators. These sit behind the rows and carry the
            backgrounds the rows used to paint themselves, so switching pages
            moves one shape instead of cross-fading two. -->
@@ -204,7 +204,7 @@ watch(
               :to="item.path || '#'"
               :data-nav-pill="isActive(item.path) ? 'primary' : null"
               :class="[
-                'relative z-[1] flex items-center justify-between px-4 py-2.5 rounded-pill text-sm font-medium transition-colors duration-200',
+                'relative z-[1] flex items-center justify-between px-3 py-1.5 rounded-pill text-sm font-medium transition-colors duration-200',
                 isActive(item.path)
                   ? 'text-white'
                   : 'liquid-sidebar-text hover:bg-white/40 dark:hover:bg-white/10'
@@ -217,7 +217,7 @@ watch(
               <div v-if="item.badge" class="flex items-center">
                 <span
                   :class="[
-                    'px-2.5 py-1 text-xs font-semibold rounded-pill',
+                    'px-2 py-0.5 text-xs font-semibold rounded-pill',
                     isActive(item.path)
                       ? 'bg-white/25 text-white'
                       : 'bg-white/40 text-gray-900 dark:bg-white/10 dark:text-white'
@@ -240,7 +240,7 @@ watch(
               @click="toggleExpanded(item.name)"
               :data-nav-pill="isParentActive(item) ? 'primary' : null"
               :class="[
-                'relative z-[1] w-full flex items-center justify-between px-4 py-2.5 rounded-pill text-sm font-medium transition-colors duration-200 cursor-pointer',
+                'relative z-[1] w-full flex items-center justify-between px-3 py-1.5 rounded-pill text-sm font-medium transition-colors duration-200 cursor-pointer',
                 isParentActive(item)
                   ? 'text-white'
                   : isExpanded(item.name)
@@ -295,14 +295,14 @@ watch(
             leave-from-class="submenu-expanded"
             leave-to-class="submenu-collapsed"
           >
-            <div v-if="item.children && isExpanded(item.name)" class="submenu-grid ml-8">
+            <div v-if="item.children && isExpanded(item.name)" class="submenu-grid ml-6">
               <ul class="submenu-inner space-y-1">
               <li v-for="child in item.children" :key="child.name">
                 <router-link
                   :to="child.path || '#'"
                   :data-nav-pill="isActive(child.path) ? 'secondary' : null"
                   :class="[
-                    'relative z-[1] flex items-center justify-between px-4 py-2 rounded-pill text-sm transition-colors duration-200',
+                    'relative z-[1] flex items-center justify-between px-3 py-1 rounded-pill text-sm transition-colors duration-200',
                     isActive(child.path)
                       ? 'liquid-item-active-text font-semibold'
                       : 'liquid-sidebar-muted hover:text-gray-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/10'
@@ -341,14 +341,14 @@ watch(
     </nav>
 
     <!-- Footer/User Section (hidden when authentication is disabled) -->
-    <div v-if="authEnabled" class="p-4 border-t border-white/35 dark:border-white/10">
+    <div v-if="authEnabled" class="p-3 border-t border-white/35 dark:border-white/10">
       <div class="flex items-center justify-between gap-2">
         <router-link
           to="/dashboard/profile"
-          class="flex items-center gap-3 px-2 py-1.5 rounded-control hover:bg-white/35 dark:hover:bg-white/10 transition-colors flex-1 min-w-0"
+          class="flex items-center gap-2 px-2 py-1 rounded-control hover:bg-white/35 dark:hover:bg-white/10 transition-colors flex-1 min-w-0"
           :class="{ 'bg-white/45 dark:bg-white/10': isActive('/dashboard/profile') }"
         >
-          <div class="w-8 h-8 rounded-pill bg-gradient-to-br from-blue-500 to-cyan-300 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-surface">
+          <div class="w-7 h-7 rounded-pill bg-gradient-to-br from-blue-500 to-cyan-300 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-surface">
             {{ userInitial }}
           </div>
           <div class="flex-1 min-w-0 text-left">

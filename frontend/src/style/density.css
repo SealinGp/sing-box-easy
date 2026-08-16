@@ -1,0 +1,256 @@
+/*
+ * Density layer — tables, lists and page shells.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * EVERYTHING HERE IS IN `@layer components`. That is load-bearing.
+ *
+ * `@import 'tailwindcss'` establishes the layer order
+ * `theme, base, components, utilities`. Cascade-layer rules say an UNLAYERED
+ * declaration beats every layered one, regardless of specificity or source
+ * order — so while this file was unlayered it silently outranked every
+ * Tailwind utility in the app:
+ *
+ *   <td class="text-xs">   rendered at 13px, not 11px
+ *   <button class="p-1.5"> collapsed to 2px top / 6px side
+ *
+ * Inside `components`, utilities win again, which is the correct relationship:
+ * this file sets the default for a table cell, and a utility in the markup is
+ * an author saying "not this one".
+ *
+ * A consequence worth knowing: NOTHING here can be relied on to override a
+ * utility. Vertical tightening for table action buttons therefore lives in
+ * `Button.vue`'s `action` prop, not in a `.data-table td button` rule.
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * These rules are also deliberately NOT scoped under `.liquid-app`, and every
+ * selector is CLASS-based rather than a bare `th`/`td`. Both follow from the
+ * teleport rule (DESIGN.md §1): an unscoped bare `td { padding: … }` would
+ * reach into PrimeVue's own internal markup (Select panels, MultiSelect
+ * lists) and fight the pass-through themes in `src/volt/*`, and a
+ * `.liquid-app`-scoped rule would silently stop applying to any table that
+ * ends up inside a teleported dialog.
+ */
+
+@layer components {
+
+  /* ── Tables ──────────────────────────────────────────────────────────────
+   *
+   * Before this layer existed, all nine tables in the app hand-rolled their own
+   * cell padding as utilities. `<td class="px-6 py-4">` appeared 30 times across
+   * six files, and two other files had quietly invented their own row heights
+   * (`py-2.5`, `py-1.5`) that nobody else shared. This is the one definition.
+   *
+   * Two things those tables did not have at all:
+   *
+   *   1. A HEIGHT CAP. A 200-node outbound list pushed the toolbar and the page
+   *      heading off-screen; you scrolled the whole document to reach row 40 and
+   *      lost the column headers on the way. Rows now scroll inside the card.
+   *   2. A STICKY HEADER, which only earns its keep once (1) exists.
+   *
+   * Row maths, measured: 2 × 5px padding + a 20px badge = 30px, or 35px on rows
+   * carrying a `<Button size="sm" action>`. Was 52px.
+   */
+
+  .scroll-region {
+    /* Both axes. Before, wrappers set `overflow-x-auto` and nothing vertical —
+       and two tables had no wrapper at all, so wide content broke the layout. */
+    overflow: auto;
+    /*
+     * `--scroll-max-h` is written at runtime by `useFillHeight`, and by the
+     * `maxHeight` prop when a caller pins one. The literal here is ONLY the
+     * first-paint fallback, before the measurement lands — deliberately
+     * conservative, because being a little short for one frame is invisible
+     * whereas being uncapped is a page-length jump.
+     */
+    max-height: var(--scroll-max-h, calc(100dvh - 14rem));
+    /* Don't chain to the page scroll when the body hits either end. */
+    overscroll-behavior: contain;
+  }
+
+  .data-table {
+    width: 100%;
+    /*
+     * `separate` is load-bearing, not a style preference. With
+     * `border-collapse: collapse`, Chromium drops the border on a sticky <th>
+     * the moment it starts sticking, leaving the header floating over the rows
+     * with no baseline. Borders therefore live on the cells; `border-spacing: 0`
+     * keeps them hairlines rather than a lattice.
+     */
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: var(--table-cell-py) var(--table-cell-px);
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-block: var(--table-head-py);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    /* Near-opaque: see the token comment in tokens.css. */
+    background: var(--table-head-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+
+  .data-table td {
+    font-size: var(--text-sm);
+  }
+
+  .data-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .data-table tbody tr:hover td {
+    background: var(--table-row-hover);
+  }
+
+  /*
+   * Cells that must wrap opt in. The default is `nowrap` because a proxy tag,
+   * an address, or a port wrapping mid-token is unreadable — but a description
+   * or a URL column needs the escape hatch.
+   */
+  .data-table .cell-wrap {
+    white-space: normal;
+  }
+
+  /* Action columns sit hard right. */
+  .data-table .col-actions {
+    text-align: right;
+  }
+
+  /*
+   * NOTE: there is deliberately no `.data-table td button { padding-block: … }`
+   * rule here. A row is only as short as its tallest cell, and that is the
+   * action button — but see the layer note at the top of this file: a rule here
+   * cannot beat the button's own padding utility, and when this file WAS
+   * unlayered the same rule reached hand-rolled icon buttons that never asked
+   * for it. Vertical tightening is opt-in via `<Button action>`.
+   */
+
+  /* ── Lists ───────────────────────────────────────────────────────────────
+   *
+   * The visual layer behind `<List>` / `<ListRow>` / `<ListField>`.
+   *
+   * `RoutingRuleItem.vue` and `RuleSets.vue` render the same shape and had
+   * drifted into two copies of the same utilities: a bordered block of
+   * label/value pairs with edit + delete on the right.
+   *
+   * Both were `rounded-surface p-4` wrapping a `grid grid-cols-2 gap-4`. A
+   * typical routing rule populates two or three of those pairs, so the row was
+   * mostly padding — 16px inside the border, 16px between grid rows, and 16px
+   * again between rows in the list. `rounded-surface` (16px) is a *card*
+   * radius; a list row is a control, so it takes `--radius-control`.
+   *
+   * Row gap is near-zero while column gap stays wide: the pairs are short and
+   * read as a block, but the two columns need real separation to not look like
+   * one run-on line.
+   */
+  /*
+   * The row stack. A gap here rather than `space-y-*` in the template so the
+   * spacing travels with the component rather than with each call site.
+   */
+  .list-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .list-row {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    padding: 0.4375rem 0.625rem;
+  }
+
+  /*
+   * Field colours come from tokens, not from `text-gray-700 dark:text-gray-300`
+   * pairs repeated at every call site — 36 of those depended on the
+   * `legacy.css` dark-mode shim.
+   */
+  .list-field {
+    min-width: 0;
+  }
+
+  .list-field-label {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .list-field-value {
+    margin-left: 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .list-row-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+    row-gap: 0.125rem;
+    min-width: 0;
+    font-size: var(--text-sm);
+  }
+
+  .list-row-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.125rem;
+    margin-left: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /*
+   * The edit/delete affordances are bare text links, not <Button>s, so they had
+   * no padding of their own and sat at full body size. Giving them a small,
+   * explicit box keeps them tappable while reading as secondary to the row.
+   * Colour stays in the markup — these two differ (primary vs danger).
+   */
+  .list-action-btn {
+    /*
+     * 4px block padding, not 1px. At an 11px font that lands the box at ~24px,
+     * which is the WCAG 2.2 minimum target size — and it is free here, because
+     * a rule row with two or more label/value pairs is already taller than the
+     * actions column, so the row height does not move.
+     */
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-control);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    /* Deliberately NO line-height here: it inherits the body's 1.45, which is
+       what carries an 11px label to a 24px box. Pinning it to 1 gives 19px. */
+    white-space: nowrap;
+  }
+
+  /*
+   * There were two override classes here — `.layout-topbar` (the OpenWrt shell
+   * spends height on a header the sidebar layout does not) and
+   * `.has-card-header` (DNS panels put a titled block inside the scroll card).
+   * Both are gone: `useFillHeight` measures what is actually above and below
+   * the region, so neither the layout nor the page shape needs a number.
+   *
+   * Do not reintroduce them. The reason the constants could never work is in
+   * that composable's header — the short version is that `Topbar.vue` wraps,
+   * and its height swings 45px → 180px when it does.
+   */
+
+  /* ── Page shells ─────────────────────────────────────────────────────────
+   *
+   * `.page-shell` replaces the `p-8` / `p-6` roots that every view spelled for
+   * itself. Views keep their own `space-y-*` utilities for internal rhythm;
+   * this only owns the outer gutter, so a view that needs a different internal
+   * layout (Config.vue is viewport-pinned around Monaco) can opt out entirely.
+   */
+  .page-shell {
+    padding: var(--space-gutter);
+  }
+}

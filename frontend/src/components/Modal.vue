@@ -68,7 +68,7 @@ const close = () => {
     :class="SIZE_CLASSES[size]"
     :aria-label="title"
   >
-    <div v-if="title || showClose" class="mb-4 flex items-center justify-between">
+    <div v-if="title || showClose" class="mb-3 flex items-center justify-between">
       <h3 v-if="title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
         {{ title }}
       </h3>
@@ -87,7 +87,7 @@ const close = () => {
       <slot />
     </div>
 
-    <div v-if="$slots.footer" class="mt-6 flex justify-end gap-3">
+    <div v-if="$slots.footer" class="mt-4 flex justify-end gap-2">
       <slot name="footer" />
     </div>
   </Dialog>

@@ -88,7 +88,7 @@ const theme: SelectPassThroughOptions = {
     optionLabel: `flex-auto truncate`,
     optionCheckIcon: `w-4 h-4`,
     optionBlankIcon: `w-4 h-4`,
-    emptyMessage: `px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400`,
+    emptyMessage: `px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400`,
     clearIcon: `absolute top-1/2 right-12 -translate-y-1/2 w-4 h-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer transition-colors duration-200`,
     loadingIcon: `w-4 h-4 animate-spin text-gray-500 dark:text-gray-400`,
     /*

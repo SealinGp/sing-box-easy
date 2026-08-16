@@ -318,7 +318,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in">
+  <div class="space-y-4 animate-fade-in">
     <!-- Header: subtitle + actions -->
     <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
@@ -367,7 +367,7 @@ onMounted(async () => {
     </section>
 
     <!-- Filters & Groups Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Filters panel -->
       <section class="space-y-4 flex flex-col">
         <div class="flex items-center justify-between">
@@ -579,7 +579,7 @@ onMounted(async () => {
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+        <div class="p-4 overflow-y-auto space-y-4 flex-1 min-h-0">
           <!-- Basic Settings Section -->
           <div class="space-y-4">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Basic Settings</h4>
@@ -618,7 +618,7 @@ onMounted(async () => {
           </div>
 
           <!-- Rule Matchers Section -->
-          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               Rule Matchers
               <span class="text-[11px] font-normal text-gray-400 normal-case">(Matches node names by keywords, country codes, or emoji)</span>
@@ -697,7 +697,7 @@ onMounted(async () => {
           </div>
 
           <!-- Rule Excludes Section -->
-          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+          <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               Exclude Rules (Deny-list)
               <span class="text-[11px] font-normal text-gray-400 normal-case">(Keep nodes OUT even if they match)</span>
@@ -769,7 +769,7 @@ onMounted(async () => {
           </div>
 
           <!-- urltest Advanced Settings Section -->
-          <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+          <div v-if="filterForm.outbound_type === 'urltest'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Health Check Settings (urltest)</h4>
             <div class="grid grid-cols-1 gap-4">
               <div>
@@ -839,7 +839,7 @@ onMounted(async () => {
         </div>
 
         <!-- Modal Body (Scrollable) -->
-        <div class="p-6 overflow-y-auto space-y-5 flex-1 min-h-0">
+        <div class="p-4 overflow-y-auto space-y-4 flex-1 min-h-0">
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Group Name</label>
             <input

@@ -10,14 +10,24 @@ body {
     'Noto Color Emoji';
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
-  line-height: 1.5;
+  /*
+   * 1.5 → 1.45. At 13px body copy this is the cheapest vertical win in the
+   * file: it removes ~1px per line across every paragraph in the app without
+   * changing a single utility class.
+   */
+  line-height: 1.45;
 }
 
 /* ── Scrollbars ──────────────────────────────────────────────────────── */
 
+/*
+ * 6px, not 8px. Tables now scroll inside their own container, so scrollbars
+ * appear nested inside cards rather than only at the page edge — at 8px that
+ * reads as furniture inside the content.
+ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {

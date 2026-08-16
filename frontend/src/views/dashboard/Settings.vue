@@ -46,8 +46,8 @@ const saveSettings = async () => {
 </script>
 
 <template>
-  <div class="p-4">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{ $t('settings.title') }}</h2>
+  <div class="page-shell">
+    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ $t('settings.title') }}</h2>
 
     <!--
       Cards flow into a responsive grid rather than a single narrow column:
@@ -65,7 +65,7 @@ const saveSettings = async () => {
       a large empty box.
     -->
     <div class="@container">
-      <div class="grid grid-cols-1 @3xl:grid-cols-2 @6xl:grid-cols-3 gap-6 items-start">
+      <div class="grid grid-cols-1 @3xl:grid-cols-2 @6xl:grid-cols-3 gap-4 items-start">
         <!--
           About: what is running and on what, plus the language picker and the
           self-update controls. Deliberately one card — these are the things an
@@ -77,7 +77,7 @@ const saveSettings = async () => {
         <GitHubAuthCard />
 
         <!-- Config version retention -->
-        <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+        <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ $t('settings.versionHistory.title') }}</h3>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {{ $t('settings.versionHistory.desc', { min: limits.min, max: limits.max }) }}

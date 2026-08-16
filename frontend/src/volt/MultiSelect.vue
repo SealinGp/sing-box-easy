@@ -147,7 +147,7 @@ const theme: MultiSelectPassThroughOptions = {
         input: `absolute inset-0 m-0 appearance-none w-4 h-4 peer cursor-pointer opacity-0`,
         icon: `w-2.5 h-2.5 text-white`
     },
-    emptyMessage: `px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400`,
+    emptyMessage: `px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400`,
     /*
      * No open/close animation.
      *

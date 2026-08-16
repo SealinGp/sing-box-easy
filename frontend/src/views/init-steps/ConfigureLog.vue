@@ -102,14 +102,14 @@ const handleSkip = () => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- 加载状态 -->
-    <div v-if="loading" class="flex justify-center py-8">
+    <div v-if="loading" class="flex justify-center py-6">
       <Loading size="lg" :text="$t('init.log.loading')" />
     </div>
 
     <!-- 配置表单 -->
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-4">
       <!-- 成功提示 -->
       <Alert v-if="success" type="success" :title="$t('init.log.savedTitle')">
         {{ $t('init.log.savedDesc') }}

@@ -123,9 +123,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- 检查现有安装状态 -->
-    <div v-if="checkingExisting" class="flex justify-center py-8">
+    <div v-if="checkingExisting" class="flex justify-center py-6">
       <Loading size="lg" :text="$t('init.install.checking')" />
     </div>
 

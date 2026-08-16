@@ -88,7 +88,7 @@ async function copyCode() {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
       {{ $t('settings.githubAuth.title') }}
     </h3>

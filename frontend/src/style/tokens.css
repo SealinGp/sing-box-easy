@@ -71,6 +71,79 @@
   --color-border-dark: rgba(100, 116, 139, 0.34);
 
   /*
+   * ── Type scale ────────────────────────────────────────────────────────
+   *
+   * One notch down from Tailwind's defaults, so a 14" laptop shows
+   * meaningfully more per screen.
+   *
+   * These OVERRIDE Tailwind's own `--text-*` tokens rather than adding new
+   * names, and that is the whole point: utilities are emitted as
+   * `font-size: var(--text-sm)`, not as a literal value, so redefining the
+   * token here retunes all 440 `text-sm` and 318 `text-xs` call sites at
+   * once without touching a single line of markup. It is also one knob to
+   * turn if 13px body copy turns out to read too small.
+   *
+   * Tailwind pairs each size with a line-height token; both must be set, or
+   * the utility keeps the stock leading and the size change buys no vertical
+   * space at all.
+   */
+  --text-xs: 0.6875rem; /*   11px (was 12) — table headers, hints, badges */
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem; /*   13px (was 14) — body, labels, table cells    */
+  --text-sm--line-height: 1.125rem;
+  --text-base: 0.875rem; /*  14px (was 16) — large buttons                */
+  --text-base--line-height: 1.25rem;
+  --text-lg: 1rem; /*        16px (was 18) — card & section titles        */
+  --text-lg--line-height: 1.375rem;
+  --text-xl: 1.125rem; /*    18px (was 20)                                */
+  --text-xl--line-height: 1.5rem;
+  --text-2xl: 1.25rem; /*    20px (was 24)                                */
+  --text-2xl--line-height: 1.625rem;
+  --text-3xl: 1.375rem; /*   22px (was 30) — page <h2>                    */
+  --text-3xl--line-height: 1.75rem;
+
+  /*
+   * ── Density ───────────────────────────────────────────────────────────
+   *
+   * Do NOT chase compactness by overriding Tailwind's global `--spacing`
+   * base unit. Every `p-*`, `gap-*`, `h-4`, `w-55` and `max-w-*` resolves to
+   * `calc(var(--spacing) * n)`, so shrinking it would also shrink every icon
+   * and the sidebar. These are targeted tokens instead; the utilities in
+   * markup were changed by hand alongside them.
+   *
+   * `--space-*` and `--scroll-*` are consumed by `style/density.css`; the
+   * `--table-*` set is consumed by `.data-table` in the same file.
+   */
+  --space-gutter: 1rem; /*  page shell     — was p-8 / 2rem   */
+  --space-card: 1rem; /*    card padding   — was p-6 / 1.5rem */
+  --space-stack: 1rem; /*   section gap    — was space-y-6    */
+
+  --table-cell-px: 0.75rem; /*   was px-6 / 1.5rem */
+  --table-cell-py: 0.3125rem; /* was py-4 / 1rem    */
+  --table-head-py: 0.375rem;
+  /*
+   * NOTE: there is deliberately no `--scroll-*-chrome` constant here any more.
+   *
+   * Three successive attempts to express "fill the window" as
+   * `calc(100dvh - <constant>)` were each wrong: the first measured only the
+   * sidebar layout, the second needed a per-page override for panels with an
+   * in-card header, and the third could not survive `Topbar.vue` wrapping — the
+   * header measures 45px wide-screen and 180px wrapped.
+   *
+   * `<Table>` and `<List>` now MEASURE the space left below them
+   * (`composables/useFillHeight.ts`) and write `--scroll-max-h` themselves.
+   * `.scroll-region` keeps a conservative CSS value only so the first paint,
+   * before the measurement lands, is never an uncapped list.
+   */
+  /*
+   * Near-opaque on purpose. Cards are glass at 0.84 alpha; a translucent
+   * sticky header lets the rows scrolling underneath read straight through
+   * it. Dark override below.
+   */
+  --table-head-bg: rgba(243, 247, 251, 0.97);
+  --table-row-hover: rgba(15, 23, 42, 0.035);
+
+  /*
    * ── Radius ────────────────────────────────────────────────────────────
    *
    * Semantic tokens are the API. `--radius-control` and `--radius-surface`
@@ -196,6 +269,9 @@
     --control-border-hover: rgba(255, 255, 255, 0.34);
     --control-placeholder: #64748b;
     --control-text: #f8fafc;
+
+    --table-head-bg: rgba(14, 19, 26, 0.97);
+    --table-row-hover: rgba(255, 255, 255, 0.045);
   }
 }
 

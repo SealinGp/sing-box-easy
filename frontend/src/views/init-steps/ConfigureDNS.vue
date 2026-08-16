@@ -304,7 +304,7 @@ const handleSkip = () => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- 成功提示 -->
     <Alert v-if="success" type="success" :title="$t('setup.dns.successTitle')">
       {{ $t('setup.dns.successDesc') }}

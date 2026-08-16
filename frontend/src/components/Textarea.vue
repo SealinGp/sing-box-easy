@@ -32,7 +32,8 @@ const describedById = computed(() =>
 // Surface styling (fill, border, focus ring, radius) is inherited from
 // `src/style/controls.css` — see the note in Input.vue.
 const textareaClasses = computed(() =>
-  ['block px-3.5 py-2.5 text-sm resize-y', props.fullWidth ? 'w-full' : ''].join(' '),
+  // Compact density pass: was `px-3.5 py-2.5`.
+  ['block px-2.5 py-1.5 text-sm resize-y', props.fullWidth ? 'w-full' : ''].join(' '),
 )
 </script>
 
@@ -41,7 +42,7 @@ const textareaClasses = computed(() =>
     <label
       v-if="label"
       :for="textareaId"
-      class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
     >
       {{ label }}
       <span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>

@@ -75,13 +75,13 @@ onMounted(() => {
 <template>
   <div>
     <Card>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $t('experimental.cache.title') }}</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ $t('experimental.cache.title') }}</h3>
 
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <!-- Enable Cache File -->
         <div class="flex items-start">
           <div class="flex items-center h-5">
@@ -133,7 +133,7 @@ onMounted(() => {
         </div>
 
         <!-- Advanced Settings -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
           <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $t('experimental.cache.advanced.title') }}</h4>
 
           <div class="space-y-4">

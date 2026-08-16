@@ -43,7 +43,10 @@ const describedById = computed(() =>
  * every other control's radius.
  */
 const inputClasses = computed(() =>
-  ['block px-3.5 py-2 text-sm', props.fullWidth ? 'w-full' : ''].join(' '),
+  // Compact density pass: was `px-3.5 py-2`. Must stay in step with `.select`
+  // in style/controls.css and volt's `.volt-select`, or the three controls
+  // stop being pixel-identical.
+  ['block px-2.5 py-1.5 text-sm', props.fullWidth ? 'w-full' : ''].join(' '),
 )
 </script>
 
@@ -52,7 +55,7 @@ const inputClasses = computed(() =>
     <label
       v-if="label"
       :for="inputId"
-      class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
     >
       {{ label }}
       <span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>

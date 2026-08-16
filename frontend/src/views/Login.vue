@@ -48,7 +48,7 @@ const handleLogin = async () => {
     <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-pill blur-3xl animate-pulse" style="animation-delay: 1s"></div>
 
     <!-- Login Container -->
-    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 p-8 rounded-surface shadow-float relative z-10 animate-slide-up">
+    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-surface shadow-float relative z-10 animate-slide-up">
       <!-- Header -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center p-3 bg-gradient-to-tr from-primary-600 to-indigo-600 rounded-surface shadow-float shadow-primary-500/20 mb-4 animate-bounce" style="animation-duration: 3s">
@@ -59,13 +59,13 @@ const handleLogin = async () => {
       </div>
 
       <!-- Error Alert -->
-      <div v-if="error" class="mb-6 p-4 rounded-surface bg-red-500/15 border border-red-500/30 text-red-200 text-sm flex items-center gap-2 animate-fade-in">
+      <div v-if="error" class="mb-4 p-4 rounded-surface bg-red-500/15 border border-red-500/30 text-red-200 text-sm flex items-center gap-2 animate-fade-in">
         <span class="w-1.5 h-1.5 rounded-pill bg-red-400 animate-ping"></span>
         <span>{{ error }}</span>
       </div>
 
       <!-- Form -->
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <form @submit.prevent="handleLogin" class="space-y-4">
         <!-- Username -->
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">Username</label>
@@ -123,7 +123,7 @@ const handleLogin = async () => {
       </form>
 
       <!-- Footer Help -->
-      <div class="text-center mt-8 pt-6 border-t border-white/5">
+      <div class="text-center mt-8 pt-4 border-t border-white/5">
         <p class="text-xs text-slate-500">
           First run? Try logging in with the default seeded credentials:<br />
           <span class="font-mono text-slate-400 select-all">admin</span> / <span class="font-mono text-slate-400 select-all">admin</span>

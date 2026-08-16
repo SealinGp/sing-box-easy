@@ -1,4 +1,14 @@
 <script setup lang="ts">
+/*
+ * Padding scale shifted one step down for the compact density pass:
+ *   sm 16→12px · md 24→16px · lg 32→24px
+ *
+ * `md` is the default and covers 41 of the 58 call sites, so this single map
+ * is most of the card-level saving. Values are kept as Tailwind utilities
+ * rather than `var(--space-card)` because the class list is built
+ * conditionally here, and a token would only be readable in one of the four
+ * branches.
+ */
 interface Props {
   title?: string
   hoverable?: boolean
@@ -18,13 +28,13 @@ withDefaults(defineProps<Props>(), {
       hoverable ? 'hover:shadow-surface cursor-pointer' : 'shadow-surface',
       {
         'p-0': padding === 'none',
-        'p-4': padding === 'sm',
-        'p-6': padding === 'md',
-        'p-8': padding === 'lg',
+        'p-3': padding === 'sm',
+        'p-4': padding === 'md',
+        'p-6': padding === 'lg',
       },
     ]"
   >
-    <h3 v-if="title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+    <h3 v-if="title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
       {{ title }}
     </h3>
     <slot />

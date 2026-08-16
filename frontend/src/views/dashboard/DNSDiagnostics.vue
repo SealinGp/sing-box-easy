@@ -36,8 +36,8 @@ const onResult = (result: DnsProbeResult | null) => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 @container xl:grid-cols-2 gap-6 items-start">
-    <section class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+  <div class="grid grid-cols-1 @container xl:grid-cols-2 gap-4 items-start">
+    <section class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
         {{ $t('dnsProbe.title') }}
       </h3>
@@ -45,7 +45,7 @@ const onResult = (result: DnsProbeResult | null) => {
       <DnsProbePanel @result="onResult" />
     </section>
 
-    <section class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+    <section class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
         {{ $t('dnsFlow.title') }}
       </h3>

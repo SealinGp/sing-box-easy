@@ -173,20 +173,20 @@ const prevStep = () => {
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-surface shadow-float dark:shadow-float dark:shadow-slate-700/50 p-8 text-center">
+      <div v-if="loading" class="bg-white dark:bg-slate-800 rounded-surface shadow-float dark:shadow-float dark:shadow-slate-700/50 p-6 text-center">
         <div class="inline-block animate-spin rounded-pill h-12 w-12 border-b-2 border-primary-600"></div>
         <p class="mt-4 text-gray-600">{{ $t('wizard.loadingStatus') }}</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-surface p-6">
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-surface p-4">
         <h3 class="text-red-800 font-semibold mb-1">{{ $t('common.error') }}</h3>
         <p class="text-red-600">{{ error }}</p>
       </div>
 
       <!-- Main Content -->
       <div v-else class="bg-white dark:bg-slate-800 rounded-surface shadow-float dark:shadow-float dark:shadow-slate-700/50 mt-9 p-3">
-        <div class="mb-6">
+        <div class="mb-4">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {{ steps[currentStep]?.title }}
           </h2>

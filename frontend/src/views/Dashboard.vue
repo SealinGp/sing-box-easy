@@ -116,7 +116,13 @@ const menuItems = computed<MenuItem[]>(() => [
 </script>
 
 <template>
-  <!-- OpenWrt: horizontal navigation, content below it. -->
+  <!--
+    OpenWrt: horizontal navigation, content below it.
+
+    This header is why `<Table>`/`<List>` measure their available height instead
+    of subtracting a constant from the viewport: it uses `flex-wrap`, so it is
+    45px on a wide screen and 180px once it wraps. See useFillHeight.ts.
+  -->
   <div v-if="isOpenWrt" class="liquid-app flex flex-col h-screen overflow-hidden">
     <Topbar :menu-items="menuItems" />
 

@@ -141,7 +141,10 @@ select:not([data-pc-section]) {
 .select {
   display: block;
   width: 100%;
-  padding: 0.5rem 2.25rem 0.5rem 0.875rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  /* Compact density pass: was `0.5rem 2.25rem 0.5rem 0.875rem` at 14px/20px.
+     Kept in step with <Input>/<Textarea>, which carry the same padding as
+     Tailwind utilities. */
+  padding: 0.375rem 2rem 0.375rem 0.625rem;
+  font-size: var(--text-sm);
+  line-height: 1.125rem;
 }

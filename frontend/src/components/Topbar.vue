@@ -158,8 +158,8 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
     whole subtree into the positioned paint phase. 30 keeps it under the
     app's `z-50` modal overlays.
   -->
-  <header class="liquid-topbar relative z-30 m-3 mb-0 rounded-surface px-4 py-2">
-    <div class="flex items-center gap-3">
+  <header class="liquid-topbar relative z-30 m-3 mb-0 rounded-surface px-3 py-1.5">
+    <div class="flex items-center gap-2">
       <!-- Brand -->
       <router-link to="/dashboard/overview" class="flex items-center gap-2 flex-shrink-0">
         <img src="/logo.jpg" alt="Sing Box Easy" class="h-7 w-7 rounded-surface shadow-surface" />
@@ -198,7 +198,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
               v-if="!item.children"
               :to="item.path || '#'"
               :class="[
-                'flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-medium whitespace-nowrap transition-colors',
+                'flex items-center gap-2 px-3 py-1.5 rounded-pill text-sm font-medium whitespace-nowrap transition-colors',
                 isActive(item.path)
                   ? 'topbar-item-active text-white'
                   : 'topbar-item hover:bg-white/40 dark:hover:bg-white/10',
@@ -237,7 +237,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
                 :aria-expanded="openMenu === item.name"
                 :aria-controls="`topbar-menu-${item.name}`"
                 :class="[
-                  'flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-medium whitespace-nowrap transition-colors cursor-pointer',
+                  'flex items-center gap-2 px-3 py-1.5 rounded-pill text-sm font-medium whitespace-nowrap transition-colors cursor-pointer',
                   isParentActive(item)
                     ? 'topbar-item-active text-white'
                     : openMenu === item.name
@@ -270,7 +270,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
                     <router-link
                       :to="child.path || '#'"
                       :class="[
-                        'flex items-center gap-3 px-3 py-2 rounded-control text-sm whitespace-nowrap transition-colors',
+                        'flex items-center gap-2 px-3 py-1.5 rounded-control text-sm whitespace-nowrap transition-colors',
                         isActive(child.path)
                           ? 'topbar-child-active font-semibold'
                           : 'topbar-item hover:bg-white/45 dark:hover:bg-white/10',
@@ -297,7 +297,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
       <div class="flex items-center gap-1.5 flex-shrink-0">
         <router-link
           to="/dashboard/overview"
-          class="topbar-status flex items-center gap-2 px-2.5 py-1.5 rounded-pill transition-colors"
+          class="topbar-status flex items-center gap-1.5 px-2 py-1 rounded-pill transition-colors"
           :title="serviceTitle"
         >
           <span class="relative flex h-2.5 w-2.5">
@@ -315,7 +315,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 
         <router-link
           to="/dashboard/settings"
-          class="p-2 rounded-control transition-colors"
+          class="p-1.5 rounded-control transition-colors"
           :class="
             isActive('/dashboard/settings')
               ? 'topbar-child-active'
@@ -344,7 +344,7 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 
           <button
             @click="handleLogout"
-            class="p-2 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            class="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
             :title="$t('nav.signOut')"
           >
             <ArrowLeftOnRectangleIcon class="h-4.5 w-4.5" />

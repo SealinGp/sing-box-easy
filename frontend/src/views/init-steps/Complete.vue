@@ -35,14 +35,14 @@ const goToDashboard = () => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- 错误提示 -->
     <Alert v-if="error" type="error" closable @close="error = ''">
       {{ error }}
     </Alert>
 
     <!-- 完成祝贺 -->
-    <Card class="text-center py-8">
+    <Card class="text-center py-6">
       <div class="flex justify-center mb-4">
         <div class="w-20 h-20 bg-green-100 rounded-pill flex items-center justify-center">
           <CheckCircleIcon class="w-12 h-12 text-green-600" />

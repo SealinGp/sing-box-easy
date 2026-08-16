@@ -31,7 +31,10 @@ const theme: DialogPassThroughOptions = {
     // bg-white/bg-gray-800 pair it used to hard-code.
     root: `liquid-glass-float flex flex-col w-full max-w-lg max-h-[90vh] rounded-surface
         transform transition-all duration-200`,
-    header: `flex items-center justify-between px-6 py-4
+    // Compact density pass: header / content / footer were all `px-6 py-4`.
+    // Modal.vue renders with `:show-header="false"` and inherits `content`, so
+    // these three values are the padding for every dialog in the app.
+    header: `flex items-center justify-between px-4 py-3
         border-b border-border`,
     title: `text-lg font-semibold text-gray-900 dark:text-gray-100`,
     headerActions: `flex items-center gap-2`,
@@ -47,9 +50,9 @@ const theme: DialogPassThroughOptions = {
         },
         icon: `w-5 h-5`,
     },
-    content: `px-6 py-4 overflow-y-auto flex-1
+    content: `px-4 py-3 overflow-y-auto flex-1
         text-gray-900 dark:text-gray-100`,
-    footer: `flex items-center justify-end gap-3 px-6 py-4
+    footer: `flex items-center justify-end gap-2 px-4 py-3
         border-t border-border`,
     transition: {
         enterFromClass: 'opacity-0 scale-95',

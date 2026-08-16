@@ -127,7 +127,7 @@ onUnmounted(stopPolling)
 </script>
 
 <template>
-  <div class="p-4 h-screen flex flex-col overflow-hidden">
+  <div class="page-shell h-screen flex flex-col overflow-hidden">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4 shrink-0">
       <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('logs.title') }}</h2>

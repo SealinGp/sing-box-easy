@@ -230,9 +230,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="2xl:grid 2xl:grid-cols-[1fr_400px] 2xl:gap-6">
+  <div class="2xl:grid 2xl:grid-cols-[1fr_400px] 2xl:gap-4">
     <!-- Left column: Main content -->
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- 成功提示 -->
       <Alert v-if="success" type="success" :title="$t('setup.outbounds.successTitle')">
         {{ $t('setup.outbounds.successDesc') }}
@@ -473,7 +473,7 @@ onMounted(() => {
 
         <!-- Empty state -->
         <Card v-if="!loadingOutbounds && currentOutbounds.length === 0">
-          <div class="text-center py-8">
+          <div class="text-center py-6">
             <p class="text-sm text-gray-500">{{ $t('setup.outbounds.noNodes') }}</p>
           </div>
         </Card>

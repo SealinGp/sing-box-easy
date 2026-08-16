@@ -71,10 +71,38 @@ const VARIANTS: Record<Variant, string> = {
     'bg-transparent text-gray-700 dark:text-gray-300 border border-transparent hover:bg-black/5 dark:hover:bg-white/10 focus-visible:ring-gray-400',
 }
 
+// Compact density pass. `sm` and `md` deliberately still share a font size —
+// an 11px button label stops reading as a control — and differ only in padding.
 const SIZES: Record<NonNullable<Props['size']>, string> = {
-  sm: 'px-3 py-1.5 text-sm gap-1.5',
-  md: 'px-4 py-2 text-sm gap-2',
-  lg: 'px-6 py-2.5 text-base gap-2',
+  sm: 'px-2.5 py-1 text-sm gap-1',
+  md: 'px-3 py-1.5 text-sm gap-1.5',
+  lg: 'px-4 py-2 text-base gap-2',
+}
+
+/*
+ * `action` buys back vertical space, and it is the only thing that can.
+ *
+ * A table row is only as short as its tallest cell, and that is the action
+ * button — 28px at the shared `sm` padding, against a badge's 20px. Tightening
+ * the cell padding alone left rows at 39px no matter how small it got.
+ *
+ * This lives here rather than as a `.data-table td button` rule in
+ * density.css, which is what it was first: that selector reached every plain
+ * <button> in a cell, including hand-rolled icon buttons in Profile.vue that
+ * were never part of this pass, and squashed their symmetric `p-1.5` box to
+ * 2px top / 6px side — an asymmetric 30×22px target, under the 24px WCAG 2.2
+ * minimum. Making it opt-in through the prop that already means "this button
+ * is in a toolbar or a table row" (DESIGN.md §5) hits exactly the buttons that
+ * asked for it.
+ *
+ * These REPLACE the size's `py-*` rather than stacking beside it; two
+ * competing padding utilities in one class list resolve by their order in
+ * Tailwind's generated sheet, not by the order written here.
+ */
+const ACTION_SIZES: Record<NonNullable<Props['size']>, string> = {
+  sm: 'px-2.5 py-0.5 text-sm gap-1',
+  md: 'px-3 py-1 text-sm gap-1.5',
+  lg: 'px-4 py-1.5 text-base gap-2',
 }
 
 const classes = computed(() =>
@@ -85,7 +113,7 @@ const classes = computed(() =>
     props.pill ? 'rounded-pill' : 'rounded-control',
     props.action || resolvedVariant.value === 'ghost' ? '' : 'shadow-surface',
     VARIANTS[resolvedVariant.value],
-    SIZES[props.size],
+    (props.action ? ACTION_SIZES : SIZES)[props.size],
     props.fullWidth ? 'w-full' : '',
   ]
     .filter(Boolean)

@@ -112,45 +112,45 @@ onMounted(fetchStatus)
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="page-shell">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
       <!-- Service Status Card -->
-      <div class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
-        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">{{ $t('overview.serviceStatus') }}</h3>
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ $t('overview.serviceStatus') }}</h3>
 
-        <div v-if="loading" class="flex items-center justify-center py-4">
-          <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
+        <div v-if="loading" class="flex items-center justify-center py-3">
+          <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
         </div>
 
-        <div v-else-if="status" class="space-y-4">
-          <div class="flex items-center gap-3">
-            <span :class="statusColor" class="text-3xl">{{ statusIcon }}</span>
-            <span :class="statusColor" class="text-2xl font-bold capitalize">
+        <div v-else-if="status" class="space-y-2">
+          <div class="flex items-center gap-2">
+            <span :class="statusColor" class="text-base leading-none">{{ statusIcon }}</span>
+            <span :class="statusColor" class="text-lg font-bold capitalize">
               {{ statusLabel }}
             </span>
           </div>
 
-          <div v-if="status.pid" class="text-sm text-gray-600 dark:text-gray-400">
+          <div v-if="status.pid" class="text-xs text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">{{ $t('overview.pid') }}:</span> {{ status.pid }}</p>
           </div>
 
-          <div v-if="status.uptime" class="text-sm text-gray-600 dark:text-gray-400">
+          <div v-if="status.uptime" class="text-xs text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">{{ $t('overview.uptime') }}:</span> {{ status.uptime }}</p>
           </div>
 
-          <div v-if="lastStartedRelative" class="text-sm text-gray-600 dark:text-gray-400">
+          <div v-if="lastStartedRelative" class="text-xs text-gray-600 dark:text-gray-400">
             <p>
               <span class="font-semibold">{{ $t('overview.lastStarted') }}:</span>
               <span :title="lastStartedAbsolute"> {{ lastStartedRelative }}</span>
             </p>
           </div>
 
-          <div v-if="status.version" class="text-sm text-gray-600 dark:text-gray-400">
+          <div v-if="status.version" class="text-xs text-gray-600 dark:text-gray-400">
             <p><span class="font-semibold">{{ $t('overview.version') }}:</span> {{ status.version }}</p>
           </div>
 
-          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-3 gap-2">
               <Button
                 @click="handleStart"
@@ -187,7 +187,7 @@ onMounted(fetchStatus)
             </div>
           </div>
 
-          <div class="pt-2">
+          <div>
             <Button
               @click="fetchStatus"
               :disabled="loading || actionLoading"
@@ -200,7 +200,7 @@ onMounted(fetchStatus)
             </Button>
           </div>
 
-          <div class="pt-1 flex items-center gap-4">
+          <div class="flex items-center gap-3">
             <RouterLink
               :to="{ name: 'DashboardLog' }"
               class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"

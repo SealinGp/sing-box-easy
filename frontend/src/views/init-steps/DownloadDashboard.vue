@@ -221,21 +221,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- 检查配置状态 -->
-    <div v-if="checkingConfig" class="flex justify-center py-8">
+    <div v-if="checkingConfig" class="flex justify-center py-6">
       <Loading size="lg" :text="$t('init.dashboard.checking')" />
     </div>
 
     <!-- 未配置 External UI -->
-    <div v-else-if="!clashAPIConfigured" class="space-y-6">
+    <div v-else-if="!clashAPIConfigured" class="space-y-4">
       <Alert type="warning" :title="$t('init.dashboard.notConfiguredTitle')">
         {{ $t('init.dashboard.notConfiguredDesc') }}
       </Alert>
 
       <Card>
-        <div class="text-center py-8">
-          <p class="text-gray-600 mb-6">
+        <div class="text-center py-6">
+          <p class="text-gray-600 mb-4">
             {{ $t('init.dashboard.notConfiguredHint') }}
           </p>
           <div class="flex justify-center gap-3">
@@ -252,7 +252,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 已配置 External UI -->
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-4">
       <!-- 已安装提示 -->
       <Alert v-if="alreadyInstalled && !downloading" type="success" :title="$t('init.dashboard.alreadyTitle')">
         {{ $t('init.dashboard.alreadyDesc') }} <code class="font-mono">{{ externalUIPath }}</code>

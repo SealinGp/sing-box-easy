@@ -64,15 +64,15 @@ const resetToDefaults = () => {
 </script>
 
 <template>
-  <div class="p-8">
-    <div class="mb-6">
+  <div class="page-shell">
+    <div class="mb-4">
       <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('log.title') }}</h2>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
         {{ $t('log.subtitle') }}
       </p>
     </div>
 
-    <div v-if="loading" class="bg-white dark:bg-slate-800 p-8 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+    <div v-if="loading" class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
       <div class="flex items-center justify-center">
         <div class="text-center">
           <div class="animate-spin rounded-pill h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
@@ -81,8 +81,8 @@ const resetToDefaults = () => {
       </div>
     </div>
 
-    <div v-else class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
-      <div class="space-y-6">
+    <div v-else class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+      <div class="space-y-4">
         <!-- Disabled -->
         <div class="flex items-center justify-between">
           <div>

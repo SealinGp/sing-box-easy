@@ -14,7 +14,7 @@ const DIAGNOSTICS_ROUTE = '/dashboard/dns/diagnostics'
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
     <div class="flex items-start justify-between gap-3 mb-4">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
         {{ $t('dnsProbe.title') }}

@@ -109,7 +109,7 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-5">
+  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
       {{ $t('settings.about.title') }}
     </h3>
@@ -124,7 +124,7 @@ const rows = computed(() => {
       halving it truncates hostnames and long kernel strings.
     -->
     <dl v-else class="space-y-2">
-      <div v-for="row in rows" :key="row.key" class="flex items-baseline justify-between gap-6 min-w-0">
+      <div v-for="row in rows" :key="row.key" class="flex items-baseline justify-between gap-4 min-w-0">
         <dt class="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">{{ row.label }}</dt>
         <dd
           class="text-sm text-gray-900 dark:text-gray-100 truncate text-right"

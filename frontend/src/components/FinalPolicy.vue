@@ -118,7 +118,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <Card>
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
         {{ $t('route.finalPolicy.title') }}
@@ -131,7 +131,7 @@ onMounted(() => {
         <div class="inline-block animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-5">
+      <div v-else class="space-y-4">
         <!-- Final outbound -->
         <div class="flex items-center gap-4">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
