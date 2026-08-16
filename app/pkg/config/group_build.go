@@ -152,6 +152,27 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 
 // managedNameSet returns the set of all Filter and Group names, i.e. every tag
 // the rule system owns and may add/remove/rebuild.
+// ManagedOutboundTags returns the outbound tags the node-rules engine owns.
+//
+// BuildGroupOutbounds REPLACES any existing outbound whose tag is in this set,
+// rather than merging into it — so an edit made through the outbounds form to
+// one of these is silently discarded on the next rule apply, and for a Group
+// the rebuilt selector carries only its members, dropping any url/interval/
+// tolerance that had been set.
+//
+// Exported so the UI can say so before the operator spends time on an edit
+// that will not survive. Deriving the same set in TypeScript would be the drift
+// this codebase keeps getting bitten by.
+func ManagedOutboundTags(filters []FilterSpec, groups []GroupSpec) []string {
+	set := managedNameSet(filters, groups)
+	tags := make([]string, 0, len(set))
+	for tag := range set {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags
+}
+
 func managedNameSet(filters []FilterSpec, groups []GroupSpec) map[string]struct{} {
 	set := make(map[string]struct{}, len(filters)+len(groups))
 	for _, f := range filters {

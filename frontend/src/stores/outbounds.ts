@@ -5,6 +5,11 @@ import { outboundService } from '../services'
 
 export const useOutboundsStore = defineStore('outbounds', () => {
   const outbounds = ref<Outbound[]>([])
+  /**
+   * Outbound tags owned by the node-rules engine. See the service comment: an
+   * edit to one of these does not survive the next rule apply.
+   */
+  const managedTags = ref<string[]>([])
   const loading = ref(false)
 
   // Fetch all outbounds
@@ -13,6 +18,7 @@ export const useOutboundsStore = defineStore('outbounds', () => {
     try {
       const { data } = await outboundService.getOutbounds()
       outbounds.value = data.outbounds
+      managedTags.value = data.managed_tags ?? []
       return data.outbounds
     } catch (err: any) {
       console.error('Failed to fetch outbounds:', err)
@@ -96,6 +102,7 @@ export const useOutboundsStore = defineStore('outbounds', () => {
 
   return {
     outbounds,
+    managedTags,
     loading,
     fetchOutbounds,
     addOutbound,

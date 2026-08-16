@@ -7,6 +7,7 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
@@ -20,8 +21,40 @@ func (h *Handler) GetOutbounds(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	response := map[string]any{"outbounds": cfg.Outbounds}
+	response := map[string]any{
+		"outbounds": cfg.Outbounds,
+		// Tags the node-rules engine owns and rebuilds in place. An edit made
+		// to one of these through the outbounds form is discarded on the next
+		// rule apply — for a Group the rebuilt selector carries only its
+		// members, so url/interval/tolerance go too. The UI warns rather than
+		// letting the operator spend time on an edit that will not survive.
+		"managed_tags": h.managedOutboundTags(),
+	}
 	respOK(ctx, c, response)
+}
+
+// managedOutboundTags lists the outbound tags owned by the node-rules engine.
+//
+// Degrades to nil on any error: the warning it drives is a courtesy, and
+// failing the whole outbound list because the rules tables were unreadable
+// would be a bad trade.
+func (h *Handler) managedOutboundTags() []string {
+	if h.nodeRulesManager == nil {
+		return nil
+	}
+	filters, err := h.nodeRulesManager.ListFilters()
+	if err != nil {
+		return nil
+	}
+	groups, err := h.nodeRulesManager.ListGroups()
+	if err != nil {
+		return nil
+	}
+
+	// Names alone decide ownership, so the endpoint tags the matcher would
+	// assign are irrelevant here — passing none keeps this cheap.
+	filterSpecs, groupSpecs, _, _ := noderules.BuildSpecs(filters, groups, nil)
+	return config.ManagedOutboundTags(filterSpecs, groupSpecs)
 }
 
 // GetOutboundByTag returns a specific outbound by tag

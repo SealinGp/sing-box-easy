@@ -8,8 +8,16 @@ export class OutboundService {
     this.api = api
   }
 
-  async getOutbounds(): Promise<BasicResponse<{ outbounds: Outbound[] }>> {
-    const response = await this.api.get<BasicResponse<{ outbounds: Outbound[] }>>('/outbounds')
+  /**
+   * `managed_tags` lists the outbounds the node-rules engine owns and rebuilds
+   * in place. Editing one through the form is discarded on the next apply, so
+   * the UI warns instead of letting the work be lost.
+   */
+  async getOutbounds(): Promise<BasicResponse<{ outbounds: Outbound[]; managed_tags?: string[] }>> {
+    const response =
+      await this.api.get<BasicResponse<{ outbounds: Outbound[]; managed_tags?: string[] }>>(
+        '/outbounds',
+      )
     return response.data
   }
 
