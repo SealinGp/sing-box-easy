@@ -2,7 +2,15 @@
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "types": ["vite/client"],
+
+    /*
+     * "bun" is here so the .test.ts files under src (run by `bun test`) are
+     * type-checked by `vue-tsc -b` alongside the app rather than only
+     * transpiled. The cost is that Bun's globals become visible to app code
+     * too; a stray "bun:test" import in a component would pass vue-tsc and
+     * then fail at `vite build`.
+     */
+    "types": ["vite/client", "bun"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
     /* Linting */
