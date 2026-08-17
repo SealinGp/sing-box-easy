@@ -262,6 +262,17 @@ export default {
       saveFailed: 'Failed to save DNS rule',
       deletedOk: 'DNS rule deleted successfully',
       deleteFailed: 'Failed to delete DNS rule',
+      reordered: 'Rule order saved',
+      reorderFailed: 'Failed to save the new rule order',
+    },
+    reorder: {
+      start: 'Reorder',
+      done: 'Done',
+      save: 'Save order',
+      cancel: 'Cancel',
+      hint: 'Drag rules by the handle to reorder them, then save. Rules are matched top-down — the first match wins.',
+      dirtyHint: 'Order changed — not saved yet.',
+      handle: 'Drag to reorder rule {position}; use the arrow keys to move it one place',
     },
   },
   settings: {

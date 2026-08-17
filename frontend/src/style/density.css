@@ -171,6 +171,15 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-control);
     padding: 0.4375rem 0.625rem;
+    /*
+     * Declared on the base rule, not further down next to the reorder styles,
+     * so `.list-row.is-dragging { transition: none }` (higher specificity, later in
+     * the file) can switch it off for the row under the cursor.
+     */
+    transition:
+      opacity 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease;
   }
 
   /*
@@ -199,6 +208,124 @@
     row-gap: 0.125rem;
     min-width: 0;
     font-size: var(--text-sm);
+  }
+
+  /*
+   * The left gutter — drag handle today. `flex-shrink: 0` because the field
+   * column next to it is `min-w-0` and would otherwise happily squeeze the
+   * handle to nothing when a rule carries one long value.
+   */
+  .list-row-leading {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /*
+   * Reorder affordances. The handle is the ONLY grab point — the row itself
+   * stays `draggable=false` until a pointerdown lands here, so text selection
+   * and the edit/delete buttons keep working in reorder mode.
+   */
+  .list-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-control);
+    color: var(--color-text-secondary);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .list-drag-handle:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+  }
+
+  .list-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  /*
+   * The row being carried. Kept as a faint outline of itself rather than
+   * hidden: it is the slot the rule will occupy, and collapsing it would make
+   * the list jump by one row height while the pointer is still down.
+   *
+   * `transition: none` excludes it from the FLIP below — the browser is
+   * already painting a drag image under the cursor, and animating the source
+   * as well makes the row appear to chase itself.
+   */
+  /*
+   * The row being carried. Kept as a faint outline of itself rather than
+   * hidden: it is the slot the row will occupy, and collapsing it would make
+   * the list jump by one row height while the pointer is still down.
+   *
+   * `transition: none` excludes it from the FLIP below — the browser is
+   * already painting a drag image under the cursor, and animating the source
+   * as well makes the row appear to chase itself. Two classes deliberately:
+   * this must outrank `.row-move`, which `<TransitionGroup>` also puts on this
+   * row when the list re-sorts.
+   */
+  .list-row.is-dragging {
+    opacity: 0.35;
+    border-style: dashed;
+    background: var(--color-bg-tertiary);
+    transition: none;
+  }
+
+  /* Same state in a table. The background goes on the cells, not the <tr>:
+     `.data-table td` paints its own, and a row background sits behind it. */
+  .data-table tbody tr.is-dragging {
+    opacity: 0.35;
+    transition: none;
+  }
+
+  .data-table tbody tr.is-dragging td {
+    background: var(--color-bg-tertiary);
+  }
+
+  /*
+   * The slide. Vue's `<TransitionGroup>` measures each row before and after
+   * the reorder and animates the delta as a transform (FLIP), so rows part to
+   * make room for the carried one instead of blinking into a new order.
+   *
+   * Transform only — no layout property is animated, so the whole thing runs
+   * on the compositor and a 40-row list stays smooth.
+   */
+  .row-move {
+    transition: transform 200ms cubic-bezier(0.2, 0, 0.2, 1);
+  }
+
+  /* A newly added row fades in rather than appearing mid-list fully formed. */
+  .row-enter-active {
+    transition:
+      transform 200ms cubic-bezier(0.2, 0, 0.2, 1),
+      opacity 200ms ease;
+  }
+
+  .row-enter-from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  /*
+   * Motion here is decorative — the drop is committed either way — so honour
+   * the OS setting rather than shipping a preference toggle nobody finds.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .list-row,
+    .row-move,
+    .row-enter-active {
+      transition: none;
+    }
+
+    .row-enter-from {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   .list-row-actions {

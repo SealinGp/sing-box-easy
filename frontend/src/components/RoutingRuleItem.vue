@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
 import type { RouteRule } from '../types/api'
 import PopConfirm from './PopConfirm.vue'
 import ListRow from './ListRow.vue'
@@ -8,6 +9,15 @@ import ListField from './ListField.vue'
 interface Props {
   rule: RouteRule
   index: number
+  /** Reorder mode: show the drag handle, hide edit/delete. */
+  reorderable?: boolean
+  /**
+   * Drag handlers for the row and for its handle, from `useDragReorder`. They
+   * arrive as attribute bags rather than as emits so the mechanics live in one
+   * place — the DNS rules table binds the same two objects to a `<tr>`.
+   */
+  rowAttrs?: Record<string, unknown>
+  handleAttrs?: Record<string, unknown>
 }
 
 interface Emits {
@@ -15,13 +25,25 @@ interface Emits {
   (e: 'delete', index: number): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  reorderable: false,
+  rowAttrs: () => ({}),
+  handleAttrs: () => ({}),
+})
 const emit = defineEmits<Emits>()
 
-// Defensive renderer for list-like matchers. sing-box can return a scalar
-// ("inbound": "dns-in") or an array (["dns-in"]); RoutingRules.vue normalizes
-// at the boundary, but this guard keeps the item safe if any caller forgets.
-// Returns '' for nullish so the v-if (which uses `||`) hides the row.
+function handleEdit() {
+  emit('edit', props.index, props.rule)
+}
+
+function handleDelete() {
+  emit('delete', props.index)
+}
+
+// Defensive renderers for the delete-confirmation summary below. sing-box can
+// return a scalar ("inbound": "dns-in") or an array (["dns-in"]);
+// RoutingRules.vue normalizes at the boundary, but these keep the item safe if
+// any caller forgets.
 function formatList(v: unknown): string {
   if (v === undefined || v === null) return ''
   if (Array.isArray(v)) return v.join(', ')
@@ -33,14 +55,6 @@ function hasValue(v: unknown): boolean {
   if (Array.isArray(v)) return v.length > 0
   if (typeof v === 'string') return v.length > 0
   return true
-}
-
-function handleEdit() {
-  emit('edit', props.index, props.rule)
-}
-
-function handleDelete() {
-  emit('delete', props.index)
 }
 
 /*
@@ -97,7 +111,17 @@ const ruleSummary = computed(() => {
 </script>
 
 <template>
-  <ListRow>
+  <ListRow v-bind="rowAttrs">
+    <template v-if="reorderable" #leading>
+      <button
+        v-bind="handleAttrs"
+        class="list-drag-handle"
+        :aria-label="$t('route.rules.reorder.handle', { position: index + 1 })"
+      >
+        <Bars3Icon class="w-4 h-4" />
+      </button>
+    </template>
+
     <!--
       Thirteen fields, each hidden by <ListField> when the rule does not set it.
       sing-box rules are sparse — a typical one populates two or three — and the
@@ -118,7 +142,9 @@ const ruleSummary = computed(() => {
     <ListField :label="$t('route.ruleItem.sniffer')" :value="rule.sniffer" />
     <ListField :label="$t('route.ruleItem.timeout')" :value="rule.timeout" />
 
-    <template #actions>
+    <!-- Reorder mode hides edit/delete on purpose: both are index-addressed,
+         and the indices are exactly what is in motion. -->
+    <template v-if="!reorderable" #actions>
       <button
         @click="handleEdit"
         class="list-action-btn text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"

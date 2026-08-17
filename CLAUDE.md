@@ -318,10 +318,10 @@ API surface groups (registered in `routes.go`):
 - `/config` — get/update/validate, backup, rollback
 - `/nodes/parse` — parse subscription link batch
 - `/outbounds`, `/outbounds/batch`, `/outbounds/:tag/members`, `/outbounds/groups`
-- `/dns`, `/dns/servers`, `/dns/hosts`, `/dns/rules`
+- `/dns`, `/dns/servers`, `/dns/hosts`, `/dns/rules`. `PUT /dns/rules` (collection, no index) **reorders**, same contract as `PUT /route/rules` below — an `{"order": [...]}` permutation of the current indices. Sending indices rather than rules matters twice as much here: a DNS rule is polymorphic, so re-uploading one would mean the client reproducing sing-box's own decode
 - `/dns/probe` (POST) — resolve a domain the way sing-box does and explain the routing. Backed by `app/pkg/dnsprobe/`, which keeps three sources separate: the **live answer** comes from sing-box's own Clash API `/dns/query` (so hosts, `predefined` actions and FakeIP all apply — no `dig`, which BusyBox lacks); **attribution** is reconstructed offline and flagged `exact: false` whenever a `rule_set` or other runtime-only condition sits ahead of the decision; **logged_matches** is sing-box's own `dns: match[N]` debug line, which is authoritative. Note `N` is `2*index+1`, not the rule index (`dns/router.go`) — verified against sing-box 1.13.11. The log window is derived by diffing snapshots because only the systemd backend honours `TailLogs`' cursor
 - `/inbounds`
-- `/route/rules`, `/route/rule-sets`, `/route/final`
+- `/route/rules`, `/route/rule-sets`, `/route/final`. `PUT /route/rules` (collection, no index) **reorders**: the body is `{"order": [...]}`, a strict permutation of the current indices, and the rule bodies never leave the server. It sits on the collection path because `/route/rules/:index` already owns the next path segment and a static sibling there collides in the Hertz router. Both endpoints are driven by `frontend/src/composables/useDragReorder.ts` — the reorder mode on the Routing Rules card and the DNS Rules table (drag handle, or arrow keys on a focused handle). Reorder mode is a **batch edit**: the list sorts live during each drag, but nothing is written until Save, which sends ONE composed permutation (Cancel restores the list as it was on entry). Rows must be keyed by `reorder.keyAt(i)`, not by array index, or the FLIP animation (`transition` prop on `<List>` / `<Table>`) has nothing to animate
 - `/log`
 - `/experimental/{clash-api,cache-file,v2ray-api}`
 - `/service/{status,start,stop,restart}`

@@ -14,12 +14,21 @@ defineSlots<{
   default: () => VNode[]
   /** Edit / delete affordances. Use `class="list-action-btn"` on each. */
   actions?: () => VNode[]
+  /**
+   * Optional gutter pinned to the row's left edge — a drag handle, a checkbox.
+   * Sits OUTSIDE the `min-w-0` field column so it never shrinks when a long
+   * value pushes on it.
+   */
+  leading?: () => VNode[]
 }>()
 </script>
 
 <template>
   <div class="list-row">
     <div class="flex items-start justify-between">
+      <div v-if="$slots.leading" class="list-row-leading">
+        <slot name="leading" />
+      </div>
       <div class="min-w-0 flex-1">
         <div class="list-row-grid">
           <slot />

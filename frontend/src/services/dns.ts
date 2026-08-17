@@ -64,6 +64,15 @@ export class DNSService {
     return response.data
   }
 
+  // `order` is a permutation of the CURRENT indices, in the order the rules
+  // should end up in. The rule bodies never leave the server — which matters
+  // here because a DNS rule is polymorphic, and re-uploading one would mean
+  // reproducing sing-box's own decode.
+  async reorderDNSRules(order: number[]): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/dns/rules', { order })
+    return response.data
+  }
+
   async updateDNSRule(index: number, rule: DNSRule): Promise<BasicResponse<{ message: string; index: number }>> {
     const response = await this.api.put<BasicResponse<{ message: string; index: number }>>(`/dns/rules/${index}`, rule)
     return response.data

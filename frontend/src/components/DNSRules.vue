@@ -10,9 +10,10 @@ import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
 import {  dnsService } from '../services'
 import { useToast } from 'primevue'
+import { useDragReorder } from '../composables/useDragReorder'
 import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
@@ -196,6 +197,7 @@ const fetchDNSRules = async () => {
   try {
     const { data } = await dnsService.getDNSRules()
     dnsRules.value = data.rules || []
+    reorder.syncKeys(dnsRules.value.length)
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -441,6 +443,40 @@ const getRuleConditionsSummary = (rule: any) => {
   return conditions.length > 0 ? conditions.join(' | ') : t('dns.rules.summary.none')
 }
 
+/* ── Reorder ────────────────────────────────────────────────────────────────
+ *
+ * DNS rules match top-down exactly as route rules do, so their order is policy
+ * too — a `geosite-cn -> local` rule under a catch-all never runs. Same
+ * composable, same live-sorting drag; only the endpoint differs.
+ */
+const reorder = useDragReorder(dnsRules, persistOrder)
+
+/**
+ * Sends the permutation. The table already shows the result, so this only has
+ * to handle the failure: refetch, which restores whatever the config actually
+ * says rather than leaving the rows lying about it.
+ */
+async function persistOrder(order: number[]) {
+  try {
+    await dnsService.reorderDNSRules(order)
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('dns.rules.toast.reordered'),
+      life: 2000,
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('dns.rules.toast.reorderFailed'),
+      life: 3000,
+    })
+    await fetchDNSRules()
+    throw err
+  }
+}
+
 // Load data on mount
 onMounted(() => {
   fetchDNSRules()
@@ -451,16 +487,46 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-end mb-2">
+    <div class="flex justify-end items-center gap-2 mb-2">
+      <!-- Reorder is a MODE, and a BATCHED one: turning it on swaps the index
+           column for a drag handle and hides edit/delete, and nothing is
+           written until Save — a five-row cleanup is one config write, not
+           five. -->
+      <template v-if="reorder.enabled.value">
+        <Button @click="reorder.cancel()" variant="secondary" :disabled="reorder.saving.value">
+          {{ $t('dns.rules.reorder.cancel') }}
+        </Button>
+        <Button @click="reorder.save()" variant="primary" :disabled="reorder.saving.value">
+          <ArrowsUpDownIcon class="h-5 w-5 mr-2" />
+          {{ reorder.dirty.value ? $t('dns.rules.reorder.save') : $t('dns.rules.reorder.done') }}
+        </Button>
+      </template>
+
+      <Button
+        v-else-if="dnsRules.length > 1"
+        @click="reorder.start()"
+        variant="secondary"
+      >
+        <ArrowsUpDownIcon class="h-5 w-5 mr-2" />
+        {{ $t('dns.rules.reorder.start') }}
+      </Button>
+
       <Button @click="openAddRuleModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
         {{ $t('dns.rules.add') }}
       </Button>
     </div>
 
+    <p v-if="reorder.enabled.value" class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+      {{ $t('dns.rules.reorder.hint') }}
+      <span v-if="reorder.dirty.value" class="text-amber-600 dark:text-amber-400 font-medium">
+        {{ $t('dns.rules.reorder.dirtyHint') }}
+      </span>
+    </p>
+
     <!-- DNS Rules Table -->
     <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
-      <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0">
+      <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0" transition>
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.rules.empty') }}</p>
           <Button @click="openAddRuleModal" variant="primary" size="sm">
@@ -477,8 +543,28 @@ onMounted(() => {
           <th class="col-actions">{{ $t('dns.rules.table.actions') }}</th>
         </template>
 
-        <tr v-for="(rule, index) in dnsRules" :key="index">
-          <td class="text-gray-900 dark:text-gray-100">{{ index + 1 }}</td>
+        <!-- Keyed by rule identity, not by index — index keys would make every
+             reorder a text patch, which cannot animate. `rowAttrs` carries the
+             drag handlers; it is empty off reorder mode. -->
+        <tr
+          v-for="(rule, index) in dnsRules"
+          :key="reorder.keyAt(index)"
+          v-bind="reorder.rowAttrs(index)"
+        >
+          <td class="text-gray-900 dark:text-gray-100">
+            <!-- The handle takes the index column's place rather than adding a
+                 column: the position number is what the drag is changing, and
+                 a table that grows a column on mode change shifts every cell. -->
+            <button
+              v-if="reorder.enabled.value"
+              v-bind="reorder.handleAttrs(index)"
+              class="list-drag-handle"
+              :aria-label="$t('dns.rules.reorder.handle', { position: index + 1 })"
+            >
+              <Bars3Icon class="w-4 h-4" />
+            </button>
+            <template v-else>{{ index + 1 }}</template>
+          </td>
           <td>
             <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
               {{ (rule as any).action || 'route' }}
@@ -498,7 +584,9 @@ onMounted(() => {
             </div>
           </td>
           <td class="col-actions font-medium">
-            <div class="flex items-center justify-end gap-1">
+            <!-- Hidden in reorder mode on purpose: both are index-addressed,
+                 and the indices are exactly what is in motion. -->
+            <div v-if="!reorder.enabled.value" class="flex items-center justify-end gap-1">
               <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm" action>
                 <PencilIcon class="h-4 w-4" />
               </Button>

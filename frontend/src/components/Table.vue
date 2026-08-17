@@ -62,12 +62,22 @@ interface Props {
    * nested scrollbars are worse than one in the wrong place.
    */
   scroll?: boolean
+  /**
+   * Animates rows sliding to new positions (Vue's FLIP `<TransitionGroup>`,
+   * rendered as the `<tbody>`).
+   *
+   * Opt-in, and it only does anything if the caller keys rows by a STABLE
+   * identity rather than by array index: with index keys Vue patches cell text
+   * in place and no `<tr>` ever moves, so there is nothing to animate.
+   */
+  transition?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
   empty: false,
   scroll: true,
+  transition: false,
 })
 
 defineSlots<{
@@ -127,7 +137,23 @@ useFillHeight(region, noFill)
           </slot>
         </tr>
       </thead>
-      <tbody>
+      <!--
+        Two branches rather than a dynamic `<component :is>`: `<TransitionGroup>`
+        adds a per-child FLIP bookkeeping pass on every patch, and eight of the
+        nine tables never reorder. See `<List>` for why there is no leave
+        transition.
+      -->
+      <TransitionGroup
+        v-if="props.transition"
+        tag="tbody"
+        move-class="row-move"
+        enter-active-class="row-enter-active"
+        enter-from-class="row-enter-from"
+      >
+        <slot />
+      </TransitionGroup>
+
+      <tbody v-else>
         <slot />
       </tbody>
     </table>

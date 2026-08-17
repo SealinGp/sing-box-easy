@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
 import Card from './Card.vue'
 import { Dialog, Select } from '../volt'
 import Button from './Button.vue'
@@ -23,6 +24,7 @@ import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
+import { useDragReorder } from '../composables/useDragReorder'
 
 // sing-box accepts scalar OR array on the wire for every list-like matcher
 // (e.g. "inbound": "dns-in" is equivalent to ["dns-in"]). The backend
@@ -96,6 +98,7 @@ const fetchRouteRules = async () => {
   try {
     const { data } = await routeService.getRouteRules()
     rules.value = (data.rules || []).map(normalizeRouteRule)
+    reorder.syncKeys(rules.value.length)
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -416,6 +419,40 @@ function submitDeleteRule(index: number) {
   handleDeleteRule(index)
 }
 
+/* ── Reorder ────────────────────────────────────────────────────────────────
+ *
+ * All the drag mechanics live in `useDragReorder` — the same composable drives
+ * the DNS rules table. This file only supplies what is specific to route
+ * rules: how a permutation is sent, and what to say about it.
+ */
+const reorder = useDragReorder(rules, persistOrder)
+
+/**
+ * Sends the permutation. The list already shows the result, so this only has
+ * to handle the failure: refetch, which restores whatever the config actually
+ * says rather than leaving the rows lying about it.
+ */
+async function persistOrder(order: number[]) {
+  try {
+    await routeService.reorderRouteRules(order)
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('route.rules.toast.reordered'),
+      life: 2000,
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('route.rules.toast.reorderFailed'),
+      life: 3000,
+    })
+    await fetchRouteRules()
+    throw err
+  }
+}
+
 // Load data on mount
 onMounted(() => {
   fetchRouteRules()
@@ -430,22 +467,69 @@ onMounted(() => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {{ $t('route.rules.title') }}
         </h3>
-        <button
-          @click="showWizard = true"
-          class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
-        >
-          {{ $t('route.rules.add') }}
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Reorder is a MODE, and a BATCHED one: turning it on swaps every
+               row's edit/delete cluster for a drag handle, and nothing is
+               written until Save — a five-row cleanup is one config write, not
+               five. -->
+          <template v-if="reorder.enabled.value">
+            <button
+              @click="reorder.cancel()"
+              :disabled="reorder.saving.value"
+              class="px-3 py-1.5 text-sm font-medium rounded-control border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              {{ $t('route.rules.reorder.cancel') }}
+            </button>
+            <button
+              @click="reorder.save()"
+              :disabled="reorder.saving.value"
+              class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <ArrowsUpDownIcon class="w-4 h-4" />
+              {{ reorder.dirty.value ? $t('route.rules.reorder.save') : $t('route.rules.reorder.done') }}
+            </button>
+          </template>
+
+          <button
+            v-else
+            @click="reorder.start()"
+            :disabled="rules.length < 2"
+            class="px-3 py-1.5 text-sm font-medium rounded-control border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowsUpDownIcon class="w-4 h-4" />
+            {{ $t('route.rules.reorder.start') }}
+          </button>
+
+          <button
+            @click="showWizard = true"
+            class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
+          >
+            {{ $t('route.rules.add') }}
+          </button>
+        </div>
       </div>
 
-      <List :loading="loading" :empty="rules.length === 0">
+      <p v-if="reorder.enabled.value" class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+        {{ $t('route.rules.reorder.hint') }}
+        <span v-if="reorder.dirty.value" class="text-amber-600 dark:text-amber-400 font-medium">
+          {{ $t('route.rules.reorder.dirtyHint') }}
+        </span>
+      </p>
+
+      <List :loading="loading" :empty="rules.length === 0" transition>
         <template #empty>{{ $t('route.rules.empty') }}</template>
 
+        <!-- Keyed by rule identity, not by index — index keys would make every
+             reorder a text patch, which cannot animate. `rowAttrs` carries the
+             drag handlers; it is empty off reorder mode. -->
         <RoutingRuleItem
           v-for="(rule, index) in rules"
-          :key="index"
+          :key="reorder.keyAt(index)"
           :rule="rule"
           :index="index"
+          :reorderable="reorder.enabled.value"
+          :row-attrs="reorder.rowAttrs(index)"
+          :handle-attrs="reorder.handleAttrs(index)"
           @edit="startEditRule"
           @delete="submitDeleteRule"
         />

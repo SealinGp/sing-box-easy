@@ -26,6 +26,14 @@ export class RouteService {
     return response.data
   }
 
+  // `order` is a permutation of the CURRENT indices, in the order the rules
+  // should end up in — the rule bodies never leave the server, so a reorder
+  // cannot lose a field the form does not know about.
+  async reorderRouteRules(order: number[]): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/route/rules', { order })
+    return response.data
+  }
+
   async updateRouteRule(index: number, rule: RouteRule): Promise<BasicResponse<{ message: string; index: number }>> {
     const response = await this.api.put<BasicResponse<{ message: string; index: number }>>(`/route/rules/${index}`, rule)
     return response.data

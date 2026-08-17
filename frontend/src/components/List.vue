@@ -41,12 +41,21 @@ interface Props {
    * with two nested scrollbars.
    */
   scroll?: boolean
+  /**
+   * Animates rows sliding to new positions (Vue's FLIP `<TransitionGroup>`).
+   *
+   * Opt-in, and it only does anything if the caller keys rows by a STABLE
+   * identity rather than by array index: with index keys Vue patches text in
+   * place and no element ever moves, so there is nothing to animate.
+   */
+  transition?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
   empty: false,
   scroll: true,
+  transition: false,
 })
 
 defineSlots<{
@@ -91,7 +100,29 @@ useFillHeight(region, noFill)
     :class="props.scroll ? 'scroll-region' : undefined"
     :style="props.maxHeight ? { '--scroll-max-h': props.maxHeight } : undefined"
   >
-    <div class="list-rows">
+    <!--
+      Two branches rather than a dynamic `<component :is>`: `<TransitionGroup>`
+      adds a per-child FLIP bookkeeping pass on every patch, and every other
+      list in the app renders a plain stack.
+
+      No leave transition on purpose. Animating a removal needs the leaving row
+      pulled out of flow (`position: absolute`) or the rows below jump to close
+      the gap and then slide again — and pinning an absolute row's width inside
+      a flex column costs more than the effect is worth. Removal is instant;
+      the rows below it still slide up via `move`.
+    -->
+    <TransitionGroup
+      v-if="props.transition"
+      tag="div"
+      class="list-rows"
+      move-class="row-move"
+      enter-active-class="row-enter-active"
+      enter-from-class="row-enter-from"
+    >
+      <slot />
+    </TransitionGroup>
+
+    <div v-else class="list-rows">
       <slot />
     </div>
   </div>

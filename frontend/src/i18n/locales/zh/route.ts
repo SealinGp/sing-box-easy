@@ -218,6 +218,17 @@ export default {
       updateFailed: '更新路由规则失败',
       deleted: '路由规则删除成功',
       deleteFailed: '删除路由规则失败',
+      reordered: '规则顺序已保存',
+      reorderFailed: '保存规则顺序失败',
+    },
+    reorder: {
+      start: '调整顺序',
+      done: '完成',
+      save: '保存顺序',
+      cancel: '取消',
+      hint: '按住左侧拖动图标拖拽规则调整顺序，改完点击保存。规则自上而下匹配，命中第一条即生效。',
+      dirtyHint: '顺序已修改，尚未保存。',
+      handle: '拖动以调整第 {position} 条规则的顺序；也可用方向键上下移动',
     },
     confirm: {
       delete: '确定要删除这条规则吗？',
