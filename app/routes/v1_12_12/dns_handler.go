@@ -353,6 +353,44 @@ func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, map[string]any{"message": "DNS rule added successfully"})
 }
 
+// ReorderDNSRules reorders DNS rules according to a permutation of indices.
+//
+// Registered on the collection path (PUT /dns/rules) for the same reason as
+// the route one: `/dns/rules/:index` already owns the next path segment, and a
+// static sibling there collides in the Hertz router.
+//
+// Note this one moves already-decoded `option.DNSRule` values around rather
+// than re-parsing anything — the polymorphic decode that AddDNSRule has to do
+// by hand is exactly what a reorder must NOT repeat.
+func (h *Handler) ReorderDNSRules(ctx context.Context, c *app.RequestContext) {
+	var body ReorderRulesRequest
+	if err := c.Bind(&body); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+		if cfg.DNS == nil {
+			return fmt.Errorf("no DNS configuration")
+		}
+
+		reordered, err := applyOrder(cfg.DNS.Rules, body.Order)
+		if err != nil {
+			return err
+		}
+
+		cfg.DNS.Rules = reordered
+		return nil
+	})
+
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{"message": "DNS rules reordered successfully"})
+}
+
 // UpdateDNSRule updates a DNS rule at specific index
 func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")

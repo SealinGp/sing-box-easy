@@ -52,6 +52,82 @@ func (h *Handler) AddRouteRule(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, map[string]any{"message": "route rule added successfully"})
 }
 
+// ReorderRulesRequest is a permutation of the CURRENT rule indices, in the
+// order the rules should end up in. Shared by the route and DNS rule lists.
+//
+// Deliberately not "here are all the rules again": both lists are evaluated
+// top-down, so ordering is the only thing a drag changes, and echoing 40 rules
+// back through a form-normalised client is how fields get silently dropped.
+// Sending indices means the rule objects never leave the server — which
+// matters twice as much for DNS rules, whose polymorphic decode the client's
+// round-trip would have to reproduce exactly.
+type ReorderRulesRequest struct {
+	Order []int `json:"order"`
+}
+
+// applyOrder rearranges `items` into the sequence named by `order`.
+//
+// `order` must be a STRICT permutation of the item indices — every index
+// exactly once. Anything looser would duplicate or drop a rule, and for a
+// top-down matcher list that is silent traffic misrouting rather than a
+// visible error, so it is rejected instead of best-effort repaired.
+//
+// Returns a new slice; the input is left untouched.
+func applyOrder[T any](items []T, order []int) ([]T, error) {
+	if len(order) != len(items) {
+		return nil, fmt.Errorf("order must list all %d rules, got %d", len(items), len(order))
+	}
+
+	seen := make([]bool, len(items))
+	reordered := make([]T, 0, len(items))
+	for _, idx := range order {
+		if idx < 0 || idx >= len(items) {
+			return nil, fmt.Errorf("index %d out of range", idx)
+		}
+		if seen[idx] {
+			return nil, fmt.Errorf("index %d listed more than once", idx)
+		}
+		seen[idx] = true
+		reordered = append(reordered, items[idx])
+	}
+
+	return reordered, nil
+}
+
+// ReorderRouteRules reorders route rules according to a permutation of indices.
+//
+// Registered on the COLLECTION path (PUT /route/rules) rather than something
+// like /route/rules/order because `/route/rules/:index` already owns that
+// position in the Hertz router, and a static sibling there collides.
+func (h *Handler) ReorderRouteRules(ctx context.Context, c *app.RequestContext) {
+	var body ReorderRulesRequest
+	if err := c.Bind(&body); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+		if cfg.Route == nil {
+			return fmt.Errorf("no route configuration")
+		}
+
+		reordered, err := applyOrder(cfg.Route.Rules, body.Order)
+		if err != nil {
+			return err
+		}
+
+		cfg.Route.Rules = reordered
+		return nil
+	})
+
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+
+	respOK(ctx, c, map[string]any{"message": "route rules reordered successfully"})
+}
+
 // UpdateRouteRule updates a route rule at specific index
 func (h *Handler) UpdateRouteRule(ctx context.Context, c *app.RequestContext) {
 	indexStr := c.Param("index")

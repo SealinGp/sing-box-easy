@@ -79,6 +79,8 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	auth.GET("/dns/rules", handler.GetDNSRules)
 	auth.POST("/dns/rules", handler.AddDNSRule)
+	// Collection-level PUT = reorder, as for /route/rules.
+	auth.PUT("/dns/rules", handler.ReorderDNSRules)
 	auth.PUT("/dns/rules/:index", handler.UpdateDNSRule)
 	auth.DELETE("/dns/rules/:index", handler.DeleteDNSRule)
 
@@ -92,6 +94,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// Route Management APIs
 	auth.GET("/route/rules", handler.GetRouteRules)
 	auth.POST("/route/rules", handler.AddRouteRule)
+	// Collection-level PUT = reorder. `/route/rules/:index` owns the next path
+	// segment, so a static `/route/rules/order` would collide in the router.
+	auth.PUT("/route/rules", handler.ReorderRouteRules)
 	auth.PUT("/route/rules/:index", handler.UpdateRouteRule)
 	auth.DELETE("/route/rules/:index", handler.DeleteRouteRule)
 
