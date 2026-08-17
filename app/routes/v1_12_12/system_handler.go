@@ -2,8 +2,10 @@ package v1_13_0
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
+	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sysinfo"
 	"github.com/cloudwego/hertz/pkg/app"
 )
@@ -33,13 +35,24 @@ type SystemInfoResponse struct {
 	// SingBoxVersion is the installed sing-box binary's version, or "unknown"
 	// when the binary is missing or not executable.
 	SingBoxVersion string `json:"sing_box_version"`
+	// Disks reports free space on the filesystems the panel writes to. A full
+	// filesystem otherwise surfaces as an opaque driver error (SQLite reports
+	// SQLITE_CANTOPEN when it cannot create its journal), so the operator needs
+	// to see this before they go hunting for a permissions bug.
+	Disks []sysinfo.DiskUsage `json:"disks"`
 }
 
 // GetSystemInfo returns host and version details for the About card.
 //
 // GET /system/info
 func (h *Handler) GetSystemInfo(ctx context.Context, c *app.RequestContext) {
-	host := sysinfo.Collect()
+	// The config directory and the database directory are the two places a
+	// write can fail; they are usually the same filesystem, and CollectDisks
+	// collapses them when they are.
+	host := sysinfo.Collect(
+		filepath.Dir(h.configManager.GetConfigPath()),
+		filepath.Dir(database.Path()),
+	)
 
 	respOK(ctx, c, SystemInfoResponse{
 		SystemType:      string(h.systemType),
@@ -53,5 +66,6 @@ func (h *Handler) GetSystemInfo(ctx context.Context, c *app.RequestContext) {
 		AppVersion:      appupdate.Current(),
 		AppVersionKnown: appupdate.IsKnown(),
 		SingBoxVersion:  h.serviceController.Version(),
+		Disks:           host.Disks,
 	})
 }

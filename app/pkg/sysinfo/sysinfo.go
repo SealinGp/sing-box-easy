@@ -34,6 +34,9 @@ type Info struct {
 	// Distribution is a human-readable OS name, e.g. "OpenWrt 23.05.2" or
 	// "Debian GNU/Linux 12 (bookworm)".
 	Distribution string `json:"distribution"`
+	// Disks reports free space on the filesystems this panel writes to, one
+	// entry per distinct filesystem. Empty when statfs is unavailable.
+	Disks []DiskUsage `json:"disks"`
 }
 
 const (
@@ -42,8 +45,14 @@ const (
 )
 
 // Collect gathers host information from the standard Linux locations.
-func Collect() Info {
-	return collect(osReleasePath, kernelInfoPath)
+//
+// diskPaths are the directories whose free space the operator needs to see —
+// typically the sing-box config directory and the panel's database directory.
+// Paths sharing a filesystem are reported once.
+func Collect(diskPaths ...string) Info {
+	info := collect(osReleasePath, kernelInfoPath)
+	info.Disks = CollectDisks(diskPaths...)
+	return info
 }
 
 // collect is the testable core of Collect, with the file locations injected.

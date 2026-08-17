@@ -18,6 +18,9 @@ var (
 	engine  *xorm.Engine
 	once    sync.Once
 	dbMutex sync.RWMutex
+	// path is the resolved database file location, kept so callers can report
+	// the filesystem it lives on (see sysinfo.CollectDisks).
+	path string
 )
 
 const (
@@ -31,6 +34,7 @@ func Init(dbPath string) error {
 		if dbPath == "" {
 			dbPath = DefaultDatabasePath
 		}
+		path = dbPath
 
 		// Ensure directory exists
 		dir := filepath.Dir(dbPath)
@@ -75,6 +79,13 @@ func Init(dbPath string) error {
 	})
 
 	return initErr
+}
+
+// Path returns the database file location, empty before Init runs.
+func Path() string {
+	dbMutex.RLock()
+	defer dbMutex.RUnlock()
+	return path
 }
 
 // GetEngine returns the XORM engine instance

@@ -100,6 +100,13 @@ export default {
     cores: '{count} 核',
     notInstalled: '未安装',
     loadFailed: '加载系统信息失败',
+    storage: {
+      title: '存储空间',
+      free: '剩余 {free}',
+      detail: '已用 {used} / {total}（{percent}%）',
+      criticalHint:
+        '该分区空间即将耗尽。保存订阅或配置将会失败，且报错信息只会提示数据库错误、不会提到磁盘。请清理空间，或将数据目录迁移到更大的分区。',
+    },
     layout: {
       title: '导航布局',
       desc: '强制使用指定布局以便预览（包括首次加载时的渲染效果）。仅开发版可用，选择会在刷新后保留。',

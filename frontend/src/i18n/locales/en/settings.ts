@@ -102,6 +102,13 @@ export default {
     cores: '{count} core | {count} cores',
     notInstalled: 'Not installed',
     loadFailed: 'Failed to load system information',
+    storage: {
+      title: 'Storage',
+      free: '{free} free',
+      detail: '{used} of {total} used ({percent}%)',
+      criticalHint:
+        'This filesystem is almost full. Saving subscriptions or config will start failing with a database error that does not mention the disk. Free space, or move the data directory to a larger filesystem.',
+    },
     layout: {
       title: 'Navigation layout',
       desc: 'Force a layout to preview it, including how it paints on first load. Development builds only — the choice is remembered across reloads.',

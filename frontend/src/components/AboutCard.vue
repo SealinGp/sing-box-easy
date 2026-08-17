@@ -16,6 +16,7 @@ import { useDeployment, type LayoutOverride } from '../composables/useDeployment
 import { useNotify } from '../composables/useNotify'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import AppUpdateCard from './AppUpdateCard.vue'
+import StorageUsage from './StorageUsage.vue'
 import type { SystemInfo } from '../types/api'
 
 const { t } = useI18n()
@@ -135,6 +136,9 @@ const rows = computed(() => {
         </dd>
       </div>
     </dl>
+
+    <!-- Storage — dropped entirely when the host reports no filesystems. -->
+    <StorageUsage v-if="!loading" :disks="info?.disks ?? []" />
 
     <!-- Language -->
     <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">

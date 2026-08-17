@@ -419,6 +419,28 @@ export interface AuthStatus {
 }
 
 // Host details for the Settings "About" card. Requires authentication.
+/**
+ * Free space on one filesystem the panel writes to.
+ *
+ * A full filesystem surfaces to the operator as an opaque driver error — SQLite
+ * reports "unable to open database file (14)" when it cannot create its journal,
+ * which reads like a permissions problem and is not one. Showing this next to
+ * the host details makes the real cause obvious.
+ */
+export interface DiskUsage {
+  /** The queried path, e.g. the sing-box config directory. */
+  path: string
+  /** Mount point of the backing filesystem, empty when it cannot be resolved. */
+  mount_point: string
+  /** Backing device ("/dev/sdd1", "tmpfs"), empty when unknown. */
+  device: string
+  total_bytes: number
+  used_bytes: number
+  /** Space an unprivileged writer can still consume — the number that matters. */
+  free_bytes: number
+  used_percent: number
+}
+
 export interface SystemInfo {
   system_type: SystemType
   service_backend: 'systemd' | 'procd' | 'process'
@@ -431,5 +453,7 @@ export interface SystemInfo {
   app_version: string
   app_version_known: boolean
   sing_box_version: string
+  /** One entry per distinct filesystem; empty when statfs is unavailable. */
+  disks: DiskUsage[]
 }
 

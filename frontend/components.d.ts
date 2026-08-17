@@ -60,6 +60,7 @@ declare module 'vue' {
     SchemaFieldsEditor: typeof import('./src/components/SchemaFieldsEditor.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     SmartRoutingRuleWizard: typeof import('./src/components/SmartRoutingRuleWizard.vue')['default']
+    StorageUsage: typeof import('./src/components/StorageUsage.vue')['default']
     SubscriptionInfoKeywords: typeof import('./src/components/SubscriptionInfoKeywords.vue')['default']
     SubscriptionsOverviewCard: typeof import('./src/components/SubscriptionsOverviewCard.vue')['default']
     Table: typeof import('./src/components/Table.vue')['default']

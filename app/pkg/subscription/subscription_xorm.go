@@ -131,7 +131,7 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 
 	_, err := session.Insert(dbSub)
 	if err != nil {
-		return fmt.Errorf("failed to add subscription: %w", err)
+		return fmt.Errorf("failed to add subscription: %w", database.AnnotateWriteError(err))
 	}
 
 	logger.Info("Subscription added", zap.String("id", sub.ID), zap.String("name", sub.Name))
@@ -174,7 +174,7 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 
 	_, err = session.ID(id).Cols(cols...).Update(dbSub)
 	if err != nil {
-		return fmt.Errorf("failed to update subscription: %w", err)
+		return fmt.Errorf("failed to update subscription: %w", database.AnnotateWriteError(err))
 	}
 
 	logger.Info("Subscription updated", zap.String("id", id), zap.String("name", sub.Name))
@@ -188,7 +188,7 @@ func (m *ManagerXORM) Delete(id string) error {
 
 	affected, err := session.ID(id).Delete(&repo.Subscription{})
 	if err != nil {
-		return fmt.Errorf("failed to delete subscription: %w", err)
+		return fmt.Errorf("failed to delete subscription: %w", database.AnnotateWriteError(err))
 	}
 
 	if affected == 0 {
