@@ -779,8 +779,17 @@ onMounted(async () => {
                   <input
                     v-model="filterForm.test_interval"
                     class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-2.5 py-1.5 text-sm text-gray-950 dark:text-white focus:outline-none"
-                    placeholder="10s"
+                    placeholder="3m"
                   />
+                  <!--
+                    Every member is dialled on each tick, so a short interval on
+                    a large filter is a sustained flood. The server clamps the
+                    rate regardless; this explains why a typed value may not be
+                    what ends up in the config.
+                  -->
+                  <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    {{ $t('nodeRules.intervalHint') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Tolerance (ms)</label>

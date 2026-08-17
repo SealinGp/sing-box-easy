@@ -23,6 +23,8 @@ export default {
   priorityLabel: 'Priority',
   priorityHint: 'lower number = matched first',
   urltestSettings: 'urltest health check',
+  intervalHint:
+    'Every node in this filter is tested on each tick, so short intervals on large filters generate sustained load. The server raises the interval automatically when the filter is big.',
   testUrl: 'Test URL',
   testInterval: 'Interval',
   testTolerance: 'Tolerance (ms)',

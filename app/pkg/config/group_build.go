@@ -210,20 +210,64 @@ func normalizeFilterType(t string) string {
 	return "urltest"
 }
 
+// urltest health-check pacing.
+//
+// A urltest group dials EVERY member on every tick, so the sustained probe rate
+// is members/interval. Left unbounded that is a foot-gun with real consequences:
+// a 272-node group on a 10s interval is ~27 proxy handshakes per second, and
+// four such groups (525 nodes) saturate an OpenWrt router badly enough that
+// sing-box's own rule-set downloads time out during startup. sing-box treats a
+// rule-set init failure as fatal, so the box lands in a procd crash loop —
+// observed in the field, which is why these bounds exist.
+const (
+	// DefaultURLTestInterval matches sing-box's own default, applied when a
+	// Filter leaves the interval unset or sets something unparseable.
+	DefaultURLTestInterval = 3 * time.Minute
+	// MinURLTestInterval is an absolute floor. Small groups may legitimately
+	// want fast failover, but nothing needs sub-10s probing.
+	MinURLTestInterval = 10 * time.Second
+	// maxProbesPerSecond bounds members/interval. 4/s keeps even a very large
+	// group well inside what a router can absorb while still re-testing a
+	// 272-node group about once a minute.
+	maxProbesPerSecond = 4
+)
+
+// effectiveURLTestInterval resolves the interval actually written to the config,
+// bounding the probe rate for large groups.
+//
+// The clamp deliberately applies to operator-set values too, not just the
+// default: existing Filters already have "10s" persisted, so fixing only the
+// default would leave every current install broken.
+func effectiveURLTestInterval(configured string, members int) time.Duration {
+	interval, err := time.ParseDuration(configured)
+	if configured == "" || err != nil || interval <= 0 {
+		interval = DefaultURLTestInterval
+	}
+
+	// Floor from the group's size, so a bigger group is probed more gently.
+	floor := time.Duration(members) * time.Second / maxProbesPerSecond
+	if floor < MinURLTestInterval {
+		floor = MinURLTestInterval
+	}
+
+	if interval < floor {
+		return floor
+	}
+	return interval
+}
+
 // buildURLTestOptions assembles a urltest outbound's options, attaching the
-// health-check url/interval/tolerance when provided. An unparseable interval is
-// silently omitted (sing-box then applies its own default) rather than failing
-// the whole rebuild.
+// health-check url/tolerance when provided.
+//
+// The interval is ALWAYS written explicitly. Omitting it and letting sing-box
+// apply its own default reads as tidier, but it means the panel cannot promise
+// a bounded probe rate — and the rate is the thing that took a router down.
 func buildURLTestOptions(members []string, f FilterSpec) *option.URLTestOutboundOptions {
 	opts := &option.URLTestOutboundOptions{Outbounds: members}
 	if f.TestURL != "" {
 		opts.URL = f.TestURL
 	}
-	if f.TestInterval != "" {
-		if d, err := time.ParseDuration(f.TestInterval); err == nil {
-			opts.Interval = badoption.Duration(d)
-		}
-	}
+	opts.Interval = badoption.Duration(effectiveURLTestInterval(f.TestInterval, len(members)))
 	if f.TestTolerance > 0 {
 		opts.Tolerance = uint16(f.TestTolerance)
 	}

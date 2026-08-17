@@ -81,9 +81,16 @@ export interface FilterInput {
 }
 
 // Defaults for a new urltest filter (mirror app/pkg/noderules defaults).
+//
+// test_interval was '10s'. A urltest group dials every member on each tick, so
+// a large filter on 10s is tens of proxy handshakes per second, sustained — it
+// starved a router until sing-box's own startup downloads timed out. '3m' is
+// sing-box's own default. The backend additionally clamps the probe rate
+// (config.effectiveURLTestInterval), so a short value here cannot melt a big
+// group even if an operator types one.
 export const URLTEST_DEFAULTS = {
   test_url: 'http://www.gstatic.com/generate_204',
-  test_interval: '10s',
+  test_interval: '3m',
   test_tolerance: 200,
 } as const
 

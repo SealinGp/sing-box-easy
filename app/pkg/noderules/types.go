@@ -42,8 +42,17 @@ const (
 
 // urltest health-check defaults, applied when a Filter leaves them unset.
 const (
-	DefaultURLTestURL       = "http://www.gstatic.com/generate_204"
-	DefaultURLTestInterval  = "10s"
+	DefaultURLTestURL = "http://www.gstatic.com/generate_204"
+	// DefaultURLTestInterval matches sing-box's own default. It used to be
+	// "10s", which meant every Filter probed all of its members six times a
+	// minute — with several large Filters that is tens of proxy handshakes per
+	// second, sustained, and it starved a router badly enough that sing-box's
+	// startup rule-set downloads timed out and procd crash-looped.
+	//
+	// The value is only a default; config.effectiveURLTestInterval additionally
+	// clamps the resulting probe rate, which is what repairs Filters that
+	// already have "10s" persisted.
+	DefaultURLTestInterval  = "3m"
 	DefaultURLTestTolerance = 200
 )
 

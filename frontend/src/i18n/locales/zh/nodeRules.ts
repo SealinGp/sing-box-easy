@@ -23,6 +23,8 @@ export default {
   priorityLabel: '优先级',
   priorityHint: '数值越小越先匹配',
   urltestSettings: 'urltest 延迟测试',
+  intervalHint:
+    '每次测试都会连接该过滤器下的所有节点，因此节点较多时使用过短的间隔会产生持续的高负载。节点数量较多时，服务端会自动放大该间隔。',
   testUrl: '测试地址',
   testInterval: '测试间隔',
   testTolerance: '容差 (ms)',
