@@ -13,6 +13,12 @@ export default {
   sourceNone: '查看实时日志需要 sing-box 以 systemd（journald）方式运行，或已配置 log.output 日志文件。',
   sourceFile: '正在读取已配置的 log.output 日志文件。',
   sourceSyslog: '正在从系统日志（logread）读取 sing-box 日志。',
+  startupFailure: {
+    title: 'sing-box 启动失败',
+    hint:
+      '该行已被固定显示：在 debug 级别下它会在几秒内被刷走。远程规则集下载失败会直接导致启动中断 —— 请在「路由 → 规则集」中检查其下载出站。',
+    dismiss: '关闭',
+  },
   toast: {
     fetchFailed: '获取日志失败',
   },

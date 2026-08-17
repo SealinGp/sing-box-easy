@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { serviceControlService } from '../../services'
 import { useToast } from 'primevue/usetoast'
+import { parseLogLine, isStartupFailure, type LogLevel } from '../../utils/logLine'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -46,11 +47,47 @@ const onScroll = () => {
   autoScroll.value = nearBottom
 }
 
+/**
+ * The most recent startup failure, kept OUTSIDE the bounded `lines` window.
+ *
+ * At `level: debug` sing-box logs every DNS lookup, so a `FATAL start service`
+ * is pushed out of a 500-line buffer within seconds — the one line the operator
+ * needs is the first one lost. Pinning it means it survives both the ring
+ * buffer and scrolling.
+ */
+const startupFailure = ref('')
+
+const dismissStartupFailure = () => {
+  startupFailure.value = ''
+}
+
 const appendLines = (incoming: string[]) => {
   if (!incoming.length) return
+
+  // Scan before truncation, so a failure in a burst larger than MAX_LINES is
+  // still caught.
+  for (const line of incoming) {
+    if (isStartupFailure(line)) startupFailure.value = parseLogLine(line).text
+  }
+
   const combined = lines.value.concat(incoming)
   lines.value = combined.length > MAX_LINES ? combined.slice(combined.length - MAX_LINES) : combined
   if (autoScroll.value) void scrollToBottom()
+}
+
+/**
+ * Lines are parsed once here rather than per-render: the viewer polls every
+ * 1.5s and re-renders the whole window each time.
+ */
+const parsedLines = computed(() => lines.value.map(parseLogLine))
+
+const LEVEL_CLASS: Record<LogLevel, string> = {
+  fatal: 'text-red-300 font-semibold bg-red-950/40',
+  error: 'text-red-400',
+  warn: 'text-amber-300',
+  info: 'text-gray-200',
+  debug: 'text-gray-500',
+  trace: 'text-gray-600',
 }
 
 const fetchOnce = async () => {
@@ -177,6 +214,33 @@ onUnmounted(stopPolling)
       <span v-if="sourceNote" class="text-xs text-amber-600 dark:text-amber-400">{{ sourceNote }}</span>
     </div>
 
+    <!--
+      Pinned startup failure. Sits above the log surface because the line it
+      reports is, by construction, the one most likely to have scrolled away.
+    -->
+    <div
+      v-if="startupFailure"
+      class="mb-2 shrink-0 rounded-surface border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-2"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-red-700 dark:text-red-300">
+            {{ $t('logs.startupFailure.title') }}
+          </p>
+          <p class="mt-0.5 text-xs text-red-600 dark:text-red-400">
+            {{ $t('logs.startupFailure.hint') }}
+          </p>
+          <pre class="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px] text-red-800 dark:text-red-200">{{ startupFailure }}</pre>
+        </div>
+        <button
+          @click="dismissStartupFailure"
+          class="shrink-0 text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+        >
+          {{ $t('logs.startupFailure.dismiss') }}
+        </button>
+      </div>
+    </div>
+
     <!-- Log surface -->
     <div
       ref="logContainer"
@@ -191,10 +255,11 @@ onUnmounted(stopPolling)
       </div>
       <div v-else>
         <div
-          v-for="(line, i) in lines"
+          v-for="(line, i) in parsedLines"
           :key="i"
-          class="whitespace-pre-wrap break-all text-gray-200 hover:bg-white/5 px-1 -mx-1 rounded"
-        >{{ line }}</div>
+          class="whitespace-pre-wrap break-all hover:bg-white/5 px-1 -mx-1 rounded"
+          :class="LEVEL_CLASS[line.level]"
+        >{{ line.text }}</div>
       </div>
     </div>
   </div>
