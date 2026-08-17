@@ -306,6 +306,7 @@ export default {
       type: '类型：',
       format: '格式：',
       url: 'URL：',
+      downloadDetour: '下载出站：',
       updateInterval: '更新间隔：',
     },
     modal: {
@@ -321,6 +322,13 @@ export default {
       urlPlaceholder: '规则集 URL',
       updateInterval: '更新间隔',
       updateIntervalPlaceholder: '如 1d、12h、30m',
+      downloadDetour: '下载出站 (download_detour)',
+      detourDefault: '默认（route final 出站）',
+      detourHint: 'sing-box 下载该规则集时使用的出站。',
+      detourGroupWarning:
+        '这是一个 {type} 分组。sing-box 在启动阶段下载规则集，且下载失败会直接导致启动失败；此时分组尚未选出可用节点，启动就会一直卡住，节点较多时会让服务陷入崩溃重启循环。建议改用 direct 类型的出站。',
+      detourUnsetWarning:
+        '未设置时，sing-box 会使用 route final 出站。如果它是 selector 或 urltest 分组，下载会阻塞启动直到分组就绪，可能导致服务反复重启。建议明确选择一个 direct 出站。',
     },
     types: {
       remote: '远程',

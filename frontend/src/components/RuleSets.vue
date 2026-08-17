@@ -14,6 +14,7 @@ import type { RuleSet } from '../types/api'
 import { routeService } from '../services'
 import { useToast } from 'primevue'
 import { useRouteStore } from '../stores/route'
+import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 import { useConfirm } from '../composables/useConfirm'
 
@@ -22,6 +23,10 @@ const { t } = useI18n()
 const { confirm } = useConfirm()
 const routeStore = useRouteStore()
 const { ruleSets, loading } = storeToRefs(routeStore)
+// Needed to offer download_detour choices and to tell a proxy group apart from
+// a direct outbound when warning about the startup deadlock.
+const outboundsStore = useOutboundsStore()
+const { outbounds } = storeToRefs(outboundsStore)
 
 // State for dialog
 const showAddRuleSetDialog = ref(false)
@@ -90,6 +95,60 @@ const currentRuleSetUrl = computed({
       ruleSetForm.value.url = val
     }
   }
+})
+
+const currentRuleSetDownloadDetour = computed({
+  get: () => (editingRuleSet.value ? editingRuleSet.value.ruleSet.download_detour : ruleSetForm.value.download_detour) ?? '',
+  set: (val) => {
+    // Empty means "unset" — sing-box then dials through route.final. Store it
+    // as undefined rather than "" so the key is omitted from the config.
+    const next = val || undefined
+    if (editingRuleSet.value) {
+      editingRuleSet.value.ruleSet.download_detour = next
+    } else {
+      ruleSetForm.value.download_detour = next
+    }
+  }
+})
+
+/**
+ * Outbound tags offered as the download detour.
+ *
+ * Direct-type outbounds are listed first because they are the only ones that
+ * are always safe here (see detourWarning): a rule-set download happens during
+ * startup, before any proxy group has settled.
+ */
+const detourOptions = computed(() => {
+  const groupTypes = new Set(['selector', 'urltest'])
+  const entries = outbounds.value.map((ob: any) => ({
+    label: groupTypes.has(ob.type) ? `${ob.tag} (${ob.type})` : ob.tag,
+    value: ob.tag,
+    type: ob.type as string,
+  }))
+  const rank = (t: string) => (t === 'direct' ? 0 : groupTypes.has(t) ? 2 : 1)
+  entries.sort((a, b) => rank(a.type) - rank(b.type))
+  return [{ label: t('route.ruleSets.form.detourDefault'), value: '', type: '' }, ...entries]
+})
+
+/**
+ * Warn when the chosen detour is a proxy group.
+ *
+ * sing-box initialises remote rule-sets during startup and treats a failure as
+ * fatal. If the download goes through a selector/urltest group, startup cannot
+ * finish until that group has a healthy node — and a large urltest group has
+ * not converged yet at that point. The observed result is
+ * "initialize rule-set: ... timeout: no recent network activity" followed by a
+ * procd crash loop. A direct outbound has no such dependency.
+ */
+const detourWarning = computed(() => {
+  if (currentRuleSetType.value !== 'remote') return ''
+  const selected = currentRuleSetDownloadDetour.value
+  if (!selected) return t('route.ruleSets.form.detourUnsetWarning')
+  const match = outbounds.value.find((ob: any) => ob.tag === selected)
+  if (match && (match.type === 'selector' || match.type === 'urltest')) {
+    return t('route.ruleSets.form.detourGroupWarning', { type: match.type })
+  }
+  return ''
 })
 
 const currentRuleSetUpdateInterval = computed({
@@ -285,6 +344,9 @@ async function handleDeleteRuleSet(tag: string) {
 // Load data on mount
 onMounted(() => {
   routeStore.fetchRuleSets()
+  // Failure is non-fatal: the detour picker degrades to just the "default"
+  // entry rather than blocking rule-set editing entirely.
+  outboundsStore.fetchOutbounds().catch(() => undefined)
 })
 </script>
 
@@ -311,6 +373,10 @@ onMounted(() => {
           <ListField :label="$t('route.ruleSets.fields.type')" :value="ruleSet.type" />
           <ListField :label="$t('route.ruleSets.fields.format')" :value="ruleSet.format" />
           <ListField :label="$t('route.ruleSets.fields.url')" :value="ruleSet.url" />
+          <ListField
+            :label="$t('route.ruleSets.fields.downloadDetour')"
+            :value="ruleSet.download_detour"
+          />
           <ListField
             :label="$t('route.ruleSets.fields.updateInterval')"
             :value="ruleSet.update_interval"
@@ -403,6 +469,34 @@ onMounted(() => {
           :label="$t('route.ruleSets.form.url')"
           :placeholder="$t('route.ruleSets.form.urlPlaceholder')"
         />
+
+        <!--
+          download_detour decides which outbound sing-box dials to FETCH this
+          rule-set. It only applies to remote sets, and getting it wrong is how
+          a box ends up in a startup crash loop — hence the warning below.
+        -->
+        <div v-if="currentRuleSetType === 'remote'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {{ $t('route.ruleSets.form.downloadDetour') }}
+          </label>
+          <Select
+            v-model="currentRuleSetDownloadDetour"
+            :options="detourOptions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('route.ruleSets.form.detourDefault')"
+            class="w-full"
+          />
+          <p
+            v-if="detourWarning"
+            class="mt-1.5 text-xs text-amber-600 dark:text-amber-400 leading-relaxed"
+          >
+            {{ detourWarning }}
+          </p>
+          <p v-else class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('route.ruleSets.form.detourHint') }}
+          </p>
+        </div>
 
         <Input
           v-model="currentRuleSetUpdateInterval"

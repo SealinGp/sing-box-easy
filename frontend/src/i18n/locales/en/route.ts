@@ -318,6 +318,7 @@ export default {
       type: 'Type:',
       format: 'Format:',
       url: 'URL:',
+      downloadDetour: 'Download Detour:',
       updateInterval: 'Update Interval:',
     },
     modal: {
@@ -333,6 +334,13 @@ export default {
       urlPlaceholder: 'Rule set URL',
       updateInterval: 'Update Interval',
       updateIntervalPlaceholder: 'e.g., 1d, 12h, 30m',
+      downloadDetour: 'Download Detour',
+      detourDefault: 'Default (route final outbound)',
+      detourHint: 'Which outbound sing-box dials to download this rule set.',
+      detourGroupWarning:
+        'This is a {type} group. sing-box downloads rule sets during startup and treats a failure as fatal, so startup cannot finish until the group picks a healthy node — which it has not done yet at that point. A large group here can leave the service in a crash loop. Prefer a direct outbound.',
+      detourUnsetWarning:
+        'With no detour set, sing-box uses the route final outbound. If that is a selector or urltest group, the download blocks startup until the group settles and can crash-loop the service. Pick a direct outbound to be safe.',
     },
     types: {
       remote: 'Remote',
