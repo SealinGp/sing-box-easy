@@ -8,6 +8,7 @@ import { useNotify } from '../../composables/useNotify'
 import { formatRelativeTime } from '../../utils/relativeTime'
 import SubscriptionsOverviewCard from '../../components/SubscriptionsOverviewCard.vue'
 import DnsProbeCard from '../../components/DnsProbeCard.vue'
+import RouteProbeCard from '../../components/RouteProbeCard.vue'
 import { DocumentTextIcon, CommandLineIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
@@ -224,6 +225,14 @@ onMounted(fetchStatus)
 
       <!-- "Where does this domain actually go?" without leaving the dashboard -->
       <DnsProbeCard />
+
+      <!--
+        And where would the connection to it go? The pair answers the two
+        halves of one question: DNS decides the address, routing decides the
+        outbound. Both are predictions made BEFORE any traffic exists, which is
+        what makes them useful right after a config edit.
+      -->
+      <RouteProbeCard />
     </div>
   </div>
 </template>

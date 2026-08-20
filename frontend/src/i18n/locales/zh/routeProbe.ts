@@ -16,6 +16,8 @@ export default {
     sourceIp: '来源 IP',
   },
 
+  openSimulator: '完整模拟',
+  rulesHidden: '另有 {count} 条规则未显示',
   ladder: '规则链',
   decidedBy: '由规则 {index} 决定',
   noRuleMatched: '没有规则命中',

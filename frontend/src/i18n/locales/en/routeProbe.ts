@@ -16,6 +16,8 @@ export default {
     sourceIp: 'Source IP',
   },
 
+  openSimulator: 'Full simulator',
+  rulesHidden: '{count} more rule(s) not shown',
   ladder: 'Rule ladder',
   decidedBy: 'Decided by rule {index}',
   noRuleMatched: 'No rule matched',

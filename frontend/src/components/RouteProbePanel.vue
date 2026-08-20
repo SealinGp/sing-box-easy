@@ -32,15 +32,17 @@ import {
   type RouteRuleEvaluation,
 } from '../types/routeprobe'
 
+const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
+
 const { t } = useI18n()
 const notify = useNotify()
 
 const destination = ref('')
 const port = ref<number>(443)
 const network = ref<string>('tcp')
-const inbound = ref<string>('')
+const inbound = ref<string | null>('')
 const sourceIp = ref('')
-const protocol = ref<string>('')
+const protocol = ref<string | null>('')
 const showAdvanced = ref(false)
 const running = ref(false)
 const result = ref<RouteProbeResult | null>(null)
@@ -52,18 +54,17 @@ const inboundTags = ref<string[]>([])
 
 const networkOptions = ROUTE_NETWORKS.map((value) => ({ value, label: value.toUpperCase() }))
 
-// Empty means "do not assume", which leaves `protocol` rules undecidable —
+// Unset means "do not assume", which leaves `protocol` rules undecidable —
 // honest, but it marks every prediction on such a config inexact. Naming the
 // protocol is usually all it takes to get an exact answer.
-const protocolOptions = [
-  { value: '', label: t('routeProbe.unknownProtocol') },
-  ...SNIFFED_PROTOCOLS.map((value) => ({ value, label: value.toUpperCase() })),
-]
+const protocolOptions = SNIFFED_PROTOCOLS.map((value) => ({
+  value,
+  label: value.toUpperCase(),
+}))
 
-const inboundOptions = computed(() => [
-  { value: '', label: t('routeProbe.anyInbound') },
-  ...inboundTags.value.map((tag) => ({ value: tag, label: tag })),
-])
+const inboundOptions = computed(() =>
+  inboundTags.value.map((tag) => ({ value: tag, label: tag })),
+)
 
 const canRun = computed(() => destination.value.trim().length > 0 && !running.value)
 
@@ -121,6 +122,32 @@ const stateLabel = (state: RouteMatchState) => t(`routeProbe.state.${state}`)
 const isDecidingRule = (rule: RouteRuleEvaluation) =>
   result.value !== null && rule.index === result.value.matched_index
 
+/**
+ * What the ladder shows.
+ *
+ * The full walk on a real config is 27 rows, which would swamp the Overview
+ * page and bury the one line the reader came for. Compact keeps only the rungs
+ * that carry information: the rule that decided, plus any that matched without
+ * deciding (a `sniff` or `resolve` that changed what the rules below it saw)
+ * and any that could not be evaluated — those are the reason the verdict might
+ * be wrong, so hiding them would hide the caveat while keeping the claim.
+ */
+const visibleRules = computed(() => {
+  if (!result.value) return []
+  if (!props.compact) return result.value.rules
+  return result.value.rules.filter(
+    (rule) =>
+      rule.index === result.value!.matched_index ||
+      rule.state === 'matched' ||
+      rule.state === 'unevaluated',
+  )
+})
+
+const hiddenRuleCount = computed(() => {
+  if (!result.value) return 0
+  return result.value.rules.length - visibleRules.value.length
+})
+
 /** Rule sets that could not be read, across every rule. */
 const brokenRuleSets = computed(() => {
   if (!result.value) return []
@@ -136,7 +163,7 @@ const outboundSourceLabel = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="@container space-y-4">
     <!-- Input -->
     <div class="space-y-2">
       <div class="flex flex-col @md:flex-row gap-2">
@@ -179,11 +206,27 @@ const outboundSourceLabel = computed(() => {
         </label>
         <label class="block">
           <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $t('routeProbe.fields.inbound') }}</span>
-          <Select v-model="inbound" :options="inboundOptions" optionLabel="label" optionValue="value" class="w-full" />
+          <Select
+            v-model="inbound"
+            :options="inboundOptions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('routeProbe.anyInbound')"
+            showClear
+            class="w-full"
+          />
         </label>
         <label class="block">
           <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $t('routeProbe.fields.protocol') }}</span>
-          <Select v-model="protocol" :options="protocolOptions" optionLabel="label" optionValue="value" class="w-full" />
+          <Select
+            v-model="protocol"
+            :options="protocolOptions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="$t('routeProbe.unknownProtocol')"
+            showClear
+            class="w-full"
+          />
         </label>
         <label class="block">
           <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $t('routeProbe.fields.sourceIp') }}</span>
@@ -254,7 +297,7 @@ const outboundSourceLabel = computed(() => {
         </p>
 
         <div
-          v-for="rule in result.rules"
+          v-for="rule in visibleRules"
           :key="rule.index"
           class="rounded-control border px-3 py-2"
           :class="[stateClass(rule.state), isDecidingRule(rule) ? 'ring-2 ring-primary-500/40' : '']"
@@ -283,6 +326,11 @@ const outboundSourceLabel = computed(() => {
             </span>
           </div>
         </div>
+
+        <!-- Never let the compact view read as "these are all the rules". -->
+        <p v-if="hiddenRuleCount > 0" class="text-xs text-gray-400 dark:text-gray-500">
+          {{ $t('routeProbe.rulesHidden', { count: hiddenRuleCount }) }}
+        </p>
       </div>
     </template>
   </div>
