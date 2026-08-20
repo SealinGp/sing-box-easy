@@ -22,6 +22,7 @@ type evaluator struct {
 	loader    *ruleset.Loader
 	inbound   string
 	clashMode string
+	protocol  string
 	target    ruleset.Target
 }
 
@@ -251,6 +252,16 @@ func (e *evaluator) matchDefault(rule option.DefaultRule) (ruleset.Verdict, []st
 		if e.clashMode == "" {
 			unevaluated = append(unevaluated, "clash_mode")
 		} else if !strings.EqualFold(raw.ClashMode, e.clashMode) {
+			return no()
+		}
+	}
+
+	// The sniffed application protocol. Undecidable unless the caller says
+	// what it would be — sniffing needs bytes on the wire, and there are none.
+	if len(raw.Protocol) > 0 {
+		if e.protocol == "" {
+			unevaluated = append(unevaluated, "protocol")
+		} else if !containsFold(raw.Protocol, e.protocol) {
 			return no()
 		}
 	}
@@ -485,7 +496,6 @@ func runtimeOnlyConditions(raw option.RawDefaultRule) []string {
 			conditions = append(conditions, name)
 		}
 	}
-	add(len(raw.Protocol) > 0, "protocol")
 	add(len(raw.Client) > 0, "client")
 	add(len(raw.AuthUser) > 0, "auth_user")
 	add(len(raw.User) > 0, "user")

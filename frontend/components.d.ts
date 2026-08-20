@@ -49,6 +49,7 @@ declare module 'vue' {
     NodeList: typeof import('./src/components/NodeList.vue')['default']
     OutboundsList: typeof import('./src/components/OutboundsList.vue')['default']
     PopConfirm: typeof import('./src/components/PopConfirm.vue')['default']
+    RouteProbePanel: typeof import('./src/components/RouteProbePanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouteRuleMatchers: typeof import('./src/components/RouteRuleMatchers.vue')['default']
     RouterView: typeof import('vue-router')['RouterView']

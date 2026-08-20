@@ -10,6 +10,7 @@ const tabs = computed(() => [
   { path: '/dashboard/route/rules', label: t('route.tabs.rules') },
   { path: '/dashboard/route/rule-sets', label: t('route.tabs.ruleSets') },
   { path: '/dashboard/route/final-policy', label: t('route.tabs.finalPolicy') },
+  { path: '/dashboard/route/diagnostics', label: t('route.tabs.diagnostics') },
 ])
 </script>
 

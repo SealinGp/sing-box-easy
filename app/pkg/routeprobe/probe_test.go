@@ -368,3 +368,36 @@ func TestLogicalRuleTriState(t *testing.T) {
 		t.Error("AND rule matched with only one operand satisfied")
 	}
 }
+
+// A config with a `protocol` rule near the top would otherwise leave every
+// probe marked inexact, which trains the reader to ignore the warning that
+// matters. Naming the protocol decides it.
+func TestProtocolCondition(t *testing.T) {
+	options := configWith([]option.Rule{
+		routeRule(option.RawDefaultRule{
+			Protocol: badoption.Listable[string]{"dns"},
+		}, option.RuleAction{Action: C.RuleActionTypeHijackDNS}),
+		routeRule(option.RawDefaultRule{}, routeTo("catch-all")),
+	}, "direct", "direct")
+
+	unknown := runOrFail(t, options, Options{Destination: "example.com"})
+	if unknown.Exact {
+		t.Error("Exact = true without a protocol")
+	}
+	if unknown.Rules[0].State != MatchStateUnevaluated {
+		t.Errorf("state = %q, want unevaluated", unknown.Rules[0].State)
+	}
+
+	tls := runOrFail(t, options, Options{Destination: "example.com", Protocol: "tls"})
+	if !tls.Exact {
+		t.Error("Exact = false once the protocol is known")
+	}
+	if tls.Outbound != "catch-all" {
+		t.Errorf("Outbound = %q, want catch-all", tls.Outbound)
+	}
+
+	dns := runOrFail(t, options, Options{Destination: "example.com", Protocol: "dns"})
+	if dns.Action != C.RuleActionTypeHijackDNS {
+		t.Errorf("Action = %q, want hijack-dns", dns.Action)
+	}
+}

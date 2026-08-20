@@ -109,8 +109,9 @@ type Result struct {
 	ResolveError string `json:"resolve_error,omitempty"`
 
 	Port    uint16 `json:"port"`
-	Network string `json:"network"`
-	Inbound string `json:"inbound,omitempty"`
+	Network  string `json:"network"`
+	Inbound  string `json:"inbound,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
 
 	Rules []RuleEvaluation `json:"rules"`
 	// MatchedIndex is the rule that decided, or -1 when the destination falls
@@ -157,6 +158,11 @@ type Options struct {
 	// carry `clash_mode: global` escape-hatch rules that are otherwise
 	// undecidable.
 	ClashMode string
+	// Protocol is the application protocol sing-box would sniff, e.g. "tls".
+	// Optional, but worth offering: a config with a single `protocol: dns`
+	// rule near the top would otherwise leave EVERY probe marked inexact,
+	// which trains the reader to ignore the warning that matters.
+	Protocol string
 	// Resolve turns a domain into an address so address rules can be decided.
 	Resolve Resolver
 }
@@ -194,6 +200,7 @@ func Run(options *option.Options, opts Options) (*Result, error) {
 		Port:         port,
 		Network:      network,
 		Inbound:      strings.TrimSpace(opts.Inbound),
+		Protocol:     strings.ToLower(strings.TrimSpace(opts.Protocol)),
 		Rules:        []RuleEvaluation{},
 		MatchedIndex: -1,
 		Exact:        true,
@@ -237,6 +244,7 @@ func Run(options *option.Options, opts Options) (*Result, error) {
 		loader:    loader,
 		inbound:   result.Inbound,
 		clashMode: strings.TrimSpace(opts.ClashMode),
+		protocol:  strings.ToLower(strings.TrimSpace(opts.Protocol)),
 		target:    target,
 	}
 	evaluator.walk(options, result)

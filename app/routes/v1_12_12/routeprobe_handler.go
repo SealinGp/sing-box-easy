@@ -21,6 +21,10 @@ type RouteProbeRequest struct {
 	Inbound string `json:"inbound"`
 	// SourceIP is the client address, for source_ip_cidr rules.
 	SourceIP string `json:"source_ip"`
+	// Protocol is the application protocol sing-box would sniff ("tls",
+	// "http", "dns", …). Supplying it decides `protocol` rules, which are
+	// otherwise undecidable because sniffing needs bytes on the wire.
+	Protocol string `json:"protocol"`
 }
 
 // ProbeRoute predicts the outbound a destination would leave through.
@@ -45,6 +49,7 @@ func (h *Handler) ProbeRoute(ctx context.Context, c *app.RequestContext) {
 		Network:     req.Network,
 		Inbound:     req.Inbound,
 		SourceIP:    req.SourceIP,
+		Protocol:    req.Protocol,
 	}
 
 	// Both extras come from the running instance and both are optional: a

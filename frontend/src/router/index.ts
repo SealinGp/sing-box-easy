@@ -18,6 +18,7 @@ const DNSSettings = () => import(/* webpackChunkName: "dns-settings" */ '../comp
 const DNSDiagnostics = () => import(/* webpackChunkName: "dns-diagnostics" */ '../views/dashboard/DNSDiagnostics.vue')
 const Route = () => import(/* webpackChunkName: "route" */ '../views/dashboard/Route.vue')
 const RoutingRules = () => import(/* webpackChunkName: "routing-rules" */ '../components/RoutingRules.vue')
+const RouteDiagnostics = () => import(/* webpackChunkName: "route-diagnostics" */ '../views/dashboard/RouteDiagnostics.vue')
 const RuleSets = () => import(/* webpackChunkName: "rule-sets" */ '../components/RuleSets.vue')
 const FinalPolicy = () => import(/* webpackChunkName: "final-policy" */ '../components/FinalPolicy.vue')
 const Experimental = () => import(/* webpackChunkName: "experimental" */ '../views/dashboard/Experimental.vue')
@@ -139,6 +140,11 @@ const routes: RouteRecordRaw[] = [
             path: 'final-policy',
             name: 'FinalPolicy',
             component: FinalPolicy,
+          },
+          {
+            path: 'diagnostics',
+            name: 'RouteDiagnostics',
+            component: RouteDiagnostics,
           },
         ],
       },

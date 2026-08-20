@@ -1,5 +1,6 @@
 import type { ApiService } from './api'
 import type { BasicResponse, RouteRule, RuleSet } from '../types/api'
+import type { RouteProbeRequest, RouteProbeResult } from '../types/routeprobe'
 
 // One rule that references a rule-set tag, and how a cascade delete changes it.
 export interface RuleSetReference {
@@ -14,6 +15,17 @@ export class RouteService {
 
   constructor(api: ApiService) {
     this.api = api
+  }
+
+  /**
+   * Predicts where a destination would be routed, without sending any traffic.
+   *
+   * POST rather than GET: the server may ask the running sing-box to resolve
+   * the name, so the call has a side effect on the resolver cache.
+   */
+  async probe(request: RouteProbeRequest): Promise<RouteProbeResult> {
+    const response = await this.api.post<BasicResponse<RouteProbeResult>>('/route/probe', request)
+    return response.data.data
   }
 
   async getRouteRules(): Promise<BasicResponse<{ rules: RouteRule[] }>> {
