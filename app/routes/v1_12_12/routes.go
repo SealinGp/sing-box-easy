@@ -99,6 +99,11 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.PUT("/route/rules", handler.ReorderRouteRules)
 	auth.PUT("/route/rules/:index", handler.UpdateRouteRule)
 	auth.DELETE("/route/rules/:index", handler.DeleteRouteRule)
+	// Diagnostics: predict the outbound a destination would leave through,
+	// BEFORE any connection is made. POST because it may ask the running
+	// sing-box to resolve the name. Static sibling of /route/rules, so no
+	// wildcard collision — nothing owns `/route/:x`.
+	auth.POST("/route/probe", handler.ProbeRoute)
 
 	// Route Rule-sets
 	auth.GET("/route/rule-sets", handler.GetRuleSets)

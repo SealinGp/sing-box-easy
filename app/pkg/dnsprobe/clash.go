@@ -158,3 +158,38 @@ func (c *ClashClient) Query(name, qType string) (*LiveResult, error) {
 
 	return result, nil
 }
+
+// Mode returns the running instance's Clash mode (rule / global / direct).
+//
+// Configs commonly carry `clash_mode` escape-hatch rules — "when I flip the
+// dashboard to global, send everything through the proxy" — and those rules sit
+// near the top, ahead of everything else. Without the current mode they are
+// undecidable, which makes every prediction below them a guess. It is one HTTP
+// call to turn the most common source of uncertainty into a fact.
+func (c *ClashClient) Mode() (string, error) {
+	request, err := http.NewRequest(http.MethodGet, c.baseURL+"/configs", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to build clash api request: %w", err)
+	}
+	if c.secret != "" {
+		request.Header.Set("Authorization", "Bearer "+c.secret)
+	}
+
+	response, err := c.http.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("clash api unreachable at %s: %w", c.baseURL, err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("clash api returned status %d", response.StatusCode)
+	}
+
+	var decoded struct {
+		Mode string `json:"mode"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&decoded); err != nil {
+		return "", fmt.Errorf("failed to decode clash api response: %w", err)
+	}
+	return decoded.Mode, nil
+}
