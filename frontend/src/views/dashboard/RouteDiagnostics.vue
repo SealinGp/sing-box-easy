@@ -11,7 +11,7 @@ import RouteProbePanel from '../../components/RouteProbePanel.vue'
 </script>
 
 <template>
-  <div class="page-shell">
+  <div class="space-y-4 pt-2">
     <Card>
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
         {{ $t('routeProbe.title') }}
