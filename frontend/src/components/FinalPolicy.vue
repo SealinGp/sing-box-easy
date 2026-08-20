@@ -118,7 +118,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4 pt-2">
     <Card>
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
         {{ $t('route.finalPolicy.title') }}

@@ -124,10 +124,10 @@
       --radius-pill: 9999px;      /*      — badges, nav rows, icon buttons */
 
       /* ── Elevation: two levels ──────────────────────────────────────── */
-      --shadow-surface: 0 8px 22px rgba(15, 23, 42, 0.045);
-      --shadow-surface-hover: 0 12px 28px rgba(15, 23, 42, 0.065);
-      --shadow-float: 0 12px 28px rgba(15, 23, 42, 0.1);
-      --shadow-float-lg: 0 24px 60px rgba(15, 23, 42, 0.16);
+      --shadow-surface: 0 0 0 rgba(15, 23, 42, 0);
+      --shadow-surface-hover: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-float: 0 2px 8px rgba(15, 23, 42, 0.06);
+      --shadow-float-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
       --shadow-focus: 0 0 0 3px rgba(21, 117, 255, 0.18);
 
       /* ── Liquid glass ───────────────────────────────────────────────── */
@@ -149,9 +149,9 @@
       /* Preview-only helpers (not app tokens). */
       --nav-text: #172033;
       --nav-muted: #64748b;
-      --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
-        rgba(255, 255, 255, 0.82);
-      --nav-border: rgba(255, 255, 255, 0.58);
+      --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+        #fbfdff;
+      --nav-border: rgba(148, 163, 184, 0.2);
       --nav-hover: rgba(255, 255, 255, 0.4);
       --nav-quiet: rgba(255, 255, 255, 0.35);
       --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
@@ -176,10 +176,10 @@
         --color-text-inverse: #0f172a;
         --color-border: rgba(255, 255, 255, 0.12);
 
-        --shadow-surface: 0 10px 24px rgba(0, 0, 0, 0.18);
-        --shadow-surface-hover: 0 14px 32px rgba(0, 0, 0, 0.24);
-        --shadow-float: 0 14px 32px rgba(0, 0, 0, 0.36);
-        --shadow-float-lg: 0 30px 70px rgba(0, 0, 0, 0.46);
+        --shadow-surface: 0 0 0 rgba(0, 0, 0, 0);
+        --shadow-surface-hover: 0 1px 2px rgba(0, 0, 0, 0.2);
+        --shadow-float: 0 2px 8px rgba(0, 0, 0, 0.24);
+        --shadow-float-lg: 0 8px 24px rgba(0, 0, 0, 0.32);
         --shadow-focus: 0 0 0 3px rgba(107, 165, 255, 0.26);
 
         --glass-bg: rgba(10, 15, 22, 0.84);
@@ -200,9 +200,9 @@
 
         --nav-text: #f4f8ff;
         --nav-muted: #a9b8cc;
-        --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
-          rgba(9, 14, 21, 0.94);
-        --nav-border: rgba(255, 255, 255, 0.14);
+        --nav-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+          #0d1219;
+        --nav-border: rgba(255, 255, 255, 0.1);
         --nav-hover: rgba(255, 255, 255, 0.1);
         --nav-quiet: rgba(255, 255, 255, 0.08);
       }
@@ -356,8 +356,6 @@
       background: var(--nav-surface);
       border: 1px solid var(--nav-border);
       box-shadow: var(--shadow-surface), var(--glass-highlight);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
       color: var(--nav-text);
     }
 
@@ -372,7 +370,7 @@
       font-weight: 700;
       color: #fff;
       background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
+      box-shadow: 0 3px 10px rgba(21, 117, 255, 0.18);
     }
 
     .brand h1 { margin: 0; font-size: var(--text-base); font-weight: 600; letter-spacing: -0.01em; }
@@ -398,7 +396,7 @@
       z-index: 0;
       pointer-events: none;
       background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
+      box-shadow: 0 3px 10px rgba(21, 117, 255, 0.18);
       transition:
         transform 320ms var(--easing),
         width 320ms var(--easing),
@@ -525,8 +523,6 @@
       background: var(--nav-surface);
       border: 1px solid var(--nav-border);
       box-shadow: var(--shadow-surface), var(--glass-highlight);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
       color: var(--nav-text);
     }
 
@@ -546,7 +542,7 @@
     .topbar-item.is-active {
       color: #fff;
       background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-      box-shadow: 0 6px 18px rgba(21, 117, 255, 0.28);
+      box-shadow: 0 3px 10px rgba(21, 117, 255, 0.18);
     }
 
     .topbar-item:hover:not(.is-active) { background: var(--nav-hover); }
@@ -841,7 +837,7 @@
       height: 1.125rem;
       border-radius: var(--radius-pill);
       background: #fff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
     }
 
     .toggle.off { background: var(--control-border); justify-content: flex-start; }
@@ -1214,6 +1210,7 @@
 
     .density-note b { display: block; color: var(--color-text-primary); font-weight: 600; }
     .density-note s { opacity: 0.55; }
+
   </style>
 </head>
 <body>
@@ -1362,7 +1359,7 @@
               <p class="eyebrow">Elevation — two levels</p>
               <div class="elev-demo">
                 <div class="elev-box" style="box-shadow: var(--shadow-surface), var(--glass-highlight);">
-                  shadow-surface<br />cards · chrome
+                  shadow-surface<br />cards · chrome<br />(casts nothing)
                 </div>
                 <div class="elev-box" style="box-shadow: var(--shadow-float), var(--glass-highlight);">
                   shadow-float<br />modals · dropdowns

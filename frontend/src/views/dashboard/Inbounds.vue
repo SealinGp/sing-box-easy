@@ -309,7 +309,7 @@ onMounted(fetchInbounds)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden">
       <Table :loading="loading && inbounds.length === 0" :empty="inbounds.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('inbounds.empty') }}</p>

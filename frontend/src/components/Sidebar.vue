@@ -372,19 +372,26 @@ watch(
 <style scoped>
 .liquid-sidebar {
   height: calc(100% - 1.5rem);
+  /*
+   * OPAQUE, not glass. Translucency plus `backdrop-filter` puts the page in
+   * motion underneath the bar as you scroll, and a pane you can see the
+   * content sliding behind reads as hovering in front of it — the same
+   * "floating" complaint the shadow was blamed for. A flat fill anchors it.
+   * The gradient is kept, at a strength that only shapes the surface rather
+   * than revealing anything through it.
+   */
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
-    rgba(255, 255, 255, 0.82) !important;
-  border: 1px solid rgba(255, 255, 255, 0.58);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+    #fbfdff !important;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   /*
    * `surface`, not `float`: the sidebar rests on the page, it is not an
-   * overlay above it. The previous bespoke `0 24px 70px / 0.16` sat above even
-   * --shadow-float-lg (the modal tier), which made the bar read as a banner
-   * hovering over the app. Using the token also keeps dark mode in step.
+   * overlay above it. `--shadow-surface` casts nothing at all now (see the
+   * elevation note in style/tokens.css) — separation comes from the fill
+   * against the page tint and from the border. `--glass-highlight` stays:
+   * the lit top edge is what keeps the panel from looking like a flat patch.
    */
   box-shadow: var(--shadow-surface), var(--glass-highlight);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .liquid-sidebar-text {
@@ -537,9 +544,9 @@ watch(
 @media (prefers-color-scheme: dark) {
   .liquid-sidebar {
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
-      rgba(9, 14, 21, 0.94) !important;
-    border-right-color: rgba(255, 255, 255, 0.14);
+      linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+      #0d1219 !important;
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .liquid-sidebar-text {

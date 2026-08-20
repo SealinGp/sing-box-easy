@@ -357,19 +357,23 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 
 <style scoped>
 .liquid-topbar {
+  /*
+   * OPAQUE, not glass — same reasoning as `.liquid-sidebar`: content visibly
+   * travelling under a translucent bar is what makes it read as floating in
+   * front of the page. It matters more here than in the sidebar, because a
+   * top bar sits directly over the scrolling column.
+   */
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
-    rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+    #fbfdff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   /*
    * `surface`, not `float` — see the design tokens: float is for things
-   * genuinely above the page (dropdowns, modals). The bar rests on it. The
-   * dropdowns it opens keep `shadow-float`, which is what earns the contrast
-   * between the two.
+   * genuinely above the page (dropdowns, modals). The bar rests on it, and
+   * `surface` now casts no shadow at all. The dropdowns it opens keep
+   * `shadow-float`, which is what earns the contrast between the two.
    */
   box-shadow: var(--shadow-surface), var(--glass-highlight);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .topbar-item {
@@ -404,9 +408,9 @@ const serviceTitle = computed(() => `sing-box — ${serviceLabel.value}`)
 @media (prefers-color-scheme: dark) {
   .liquid-topbar {
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
-      rgba(9, 14, 21, 0.94);
-    border-color: rgba(255, 255, 255, 0.14);
+      linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+      #0d1219;
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .topbar-item {

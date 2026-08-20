@@ -161,23 +161,37 @@ A sidebar or top-bar entry uses `rounded-pill`; a `<Button>` uses
 
 | Token | Utility | Value (light) | Use for |
 | --- | --- | --- | --- |
-| `--shadow-surface` | `shadow-surface` | `0 8px 22px rgba(15,23,42,.045)` | Things resting on the page: cards, panels, **the sidebar and top bar** |
-| `--shadow-float` | `shadow-float` | `0 12px 28px rgba(15,23,42,.1)` | Things genuinely above it: dropdowns, modals, toasts, popovers |
+| `--shadow-surface` | `shadow-surface` | `0 0 0 rgba(15,23,42,0)` — **casts nothing** | Things resting on the page: cards, panels, **the sidebar and top bar** |
+| `--shadow-float` | `shadow-float` | `0 2px 8px rgba(15,23,42,.06)` | Things genuinely above it: dropdowns, modals, toasts, popovers |
 
-`--shadow-surface-hover` and `--shadow-float-lg` are the hover/modal-mask steps.
-`--shadow-focus` (`0 0 0 3px rgba(21,117,255,.18)`) is the shared focus ring.
-The numeric scale (`shadow-sm` … `shadow-2xl`) is remapped onto these two so a
-stray utility cannot punch a hard drop shadow through the glass, but new code
-should use the semantic names.
+`--shadow-surface-hover` (`0 1px 2px /.05`) and `--shadow-float-lg`
+(`0 8px 24px /.1`) are the hover/modal-mask steps. `--shadow-focus`
+(`0 0 0 3px rgba(21,117,255,.18)`) is the shared focus ring. The numeric scale
+(`shadow-sm` … `shadow-2xl`) is remapped onto these two so a stray utility
+cannot punch a hard drop shadow through the glass, but new code should use the
+semantic names.
 
-The sidebar and top bar sit on the **surface** tier on purpose. They previously
-carried a bespoke `0 24px 70px / 0.16`, which is above even `--shadow-float-lg`
-(the modal tier) and made the chrome read as a banner hovering over the app. The
-dropdowns those bars open keep `shadow-float` — that difference is what earns
-the contrast between "chrome" and "thing on top of chrome".
+**Resting means resting.** The surface tier casts no shadow at all: a card is
+separated from the page by its fill against the page tint and by its 1px
+border, not by being lifted off it. This is the second attempt at the problem,
+and the first one is worth recording because the instinct is a trap — the
+original `0 8px 22px / .045` was made *fainter* (`.045` → `.028`) and the
+sidebar still read as floating, only more weakly. Perceived height is carried
+by **blur radius and Y-offset**, not by alpha: a large, soft, displaced shadow
+is precisely what an object suspended above the page looks like, at any
+opacity. Shrink the geometry, not the ink.
 
-Glass surfaces additionally carry `--glass-highlight`, a 1px inset top stroke,
-and `--glass-blur` (`blur(24px) saturate(1.25)`).
+The sidebar and top bar are also **opaque** — a flat fill, no `--glass-blur`.
+Content visibly travelling underneath a translucent pane is its own floating
+cue, independent of any shadow, and it is strongest on the top bar, which sits
+directly over the scrolling column. Glass is still correct for things that
+genuinely overlay the page: dropdown panels, modals, popovers. Those keep
+`shadow-float` and the blur, and that difference is what earns the contrast
+between "chrome" and "thing on top of chrome".
+
+Both bars keep `--glass-highlight`, the 1px inset top stroke — a lit top edge
+is what stops a shadowless panel from reading as a flat patch. `--glass-blur`
+(`blur(24px) saturate(1.25)`) remains in use on the float tier.
 
 ---
 

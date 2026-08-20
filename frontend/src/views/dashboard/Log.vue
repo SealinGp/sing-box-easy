@@ -72,7 +72,7 @@ const resetToDefaults = () => {
       </p>
     </div>
 
-    <div v-if="loading" class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+    <div v-if="loading" class="bg-white dark:bg-slate-800 p-6 rounded-surface shadow-surface">
       <div class="flex items-center justify-center">
         <div class="text-center">
           <div class="animate-spin rounded-pill h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
@@ -81,7 +81,7 @@ const resetToDefaults = () => {
       </div>
     </div>
 
-    <div v-else class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+    <div v-else class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
       <div class="space-y-4">
         <!-- Disabled -->
         <div class="flex items-center justify-between">

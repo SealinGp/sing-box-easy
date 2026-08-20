@@ -186,11 +186,26 @@
    * (cards, panels); `float` is for things genuinely above it (dropdown
    * panels, modals, toasts). The numeric scale is overridden to match, so a
    * stray `shadow-xl` cannot punch a hard drop shadow through the glass.
+   *
+   * `surface` casts NOTHING. That is deliberate, and it is not the same edit
+   * as "make the shadow fainter" — which was tried first and did not work.
+   * Perceived height is carried by BLUR RADIUS and Y-OFFSET, not by alpha: a
+   * large, soft, displaced shadow is literally what an object hanging above
+   * the page looks like, so lowering only the alpha produced a *fainter
+   * floating* sidebar rather than one that sits down. Cards and chrome are
+   * separated by their fill against the page tint and by their 1px border;
+   * they do not need to be lifted off it as well.
+   *
+   * The zero value is written as a transparent shadow rather than `none`
+   * because these tokens get composed — `box-shadow: var(--shadow-surface),
+   * var(--glass-highlight)`. `none` is illegal inside a shadow list, so the
+   * whole declaration would be invalid at computed-value time and would take
+   * the inset highlight down with it.
    */
-  --shadow-surface: 0 8px 22px rgba(15, 23, 42, 0.045);
-  --shadow-surface-hover: 0 12px 28px rgba(15, 23, 42, 0.065);
-  --shadow-float: 0 12px 28px rgba(15, 23, 42, 0.1);
-  --shadow-float-lg: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --shadow-surface: 0 0 0 rgba(15, 23, 42, 0);
+  --shadow-surface-hover: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-float: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-float-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
   --shadow-focus: 0 0 0 3px rgba(21, 117, 255, 0.18);
 
   --shadow-2xs: var(--shadow-surface);
@@ -249,10 +264,10 @@
     --color-border-light: rgba(255, 255, 255, 0.08);
     --color-border-dark: rgba(255, 255, 255, 0.22);
 
-    --shadow-surface: 0 10px 24px rgba(0, 0, 0, 0.18);
-    --shadow-surface-hover: 0 14px 32px rgba(0, 0, 0, 0.24);
-    --shadow-float: 0 14px 32px rgba(0, 0, 0, 0.36);
-    --shadow-float-lg: 0 30px 70px rgba(0, 0, 0, 0.46);
+    --shadow-surface: 0 0 0 rgba(0, 0, 0, 0);
+    --shadow-surface-hover: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-float: 0 2px 8px rgba(0, 0, 0, 0.24);
+    --shadow-float-lg: 0 8px 24px rgba(0, 0, 0, 0.32);
     --shadow-focus: 0 0 0 3px rgba(107, 165, 255, 0.26);
 
     --glass-bg: rgba(10, 15, 22, 0.84);

@@ -389,7 +389,7 @@ onMounted(() => {
 
     <!-- Subscriptions List -->
     <div
-      class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden"
+      class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden"
     >
       <Table
         :loading="isLoading && subscriptions.length === 0"

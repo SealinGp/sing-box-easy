@@ -201,7 +201,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
     <div class="flex items-center justify-between gap-3 mb-3">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
         {{ $t('overview.subscriptions.title') }}

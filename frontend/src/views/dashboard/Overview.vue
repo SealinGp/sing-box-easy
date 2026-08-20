@@ -116,7 +116,7 @@ onMounted(fetchStatus)
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
       <!-- Service Status Card -->
-      <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50">
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
         <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ $t('overview.serviceStatus') }}</h3>
 
         <div v-if="loading" class="flex items-center justify-center py-3">

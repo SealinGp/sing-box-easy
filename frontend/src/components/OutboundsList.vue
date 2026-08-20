@@ -553,7 +553,7 @@ onMounted(() => {
     </div>
 
     <div
-      class="bg-white dark:bg-slate-800 rounded-surface shadow dark:shadow-float dark:shadow-slate-700/50 overflow-hidden"
+      class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden"
     >
       <!--
         The select-all checkbox means this header needs markup, not just
