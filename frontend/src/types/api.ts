@@ -75,13 +75,28 @@ export interface ServiceStatus {
   version?: string
 }
 
-// A bounded chunk of recent sing-box logs returned by GET /service/logs.
+/**
+ * Where a log feed's lines came from.
+ *
+ * `syslog` is OpenWrt's logread; `memory` is the panel's own in-process ring,
+ * which is the only source with no history across a restart — the viewer says
+ * so rather than showing an empty buffer as though nothing had happened.
+ */
+export type LogSourceKind = 'journald' | 'syslog' | 'file' | 'memory' | 'none'
+
+/**
+ * A bounded chunk of recent log lines.
+ *
+ * Shared by GET /service/logs (sing-box) and GET /system/logs (the panel), so
+ * the viewer switches feeds by swapping a URL rather than by branching on which
+ * log it is showing.
+ */
 export interface ServiceLogs {
   lines: string[]
   // Opaque journald cursor; feed back on the next poll for incremental fetch.
+  // Always empty for sources that cannot resume from a position.
   cursor: string
-  // Where the lines came from: journald (systemd), file (log.output), or none.
-  source: 'journald' | 'file' | 'none'
+  source: LogSourceKind
 }
 
 // Metadata for a stored historical config version (no content).

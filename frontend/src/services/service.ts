@@ -22,6 +22,21 @@ export class ServiceControlService {
     return response.data
   }
 
+  /**
+   * The panel's own recent log lines.
+   *
+   * Same response shape as getServiceLogs, deliberately — see ServiceLogs.
+   * There is no cursor parameter because a ring buffer has no resumable
+   * position; the client re-reads the window instead, which is what an empty
+   * cursor already means to it.
+   */
+  async getAppLogs(lines = 300): Promise<BasicResponse<ServiceLogs>> {
+    const response = await this.api.get<BasicResponse<ServiceLogs>>(
+      `/system/logs?lines=${lines}`,
+    )
+    return response.data
+  }
+
   async startService(): Promise<BasicResponse<any>> {
     const response = await this.api.post<BasicResponse<{ message: string }>>('/service/start')
     return response.data

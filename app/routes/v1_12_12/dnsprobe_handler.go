@@ -61,3 +61,66 @@ func (h *Handler) logTailer() dnsprobe.LogTailer {
 		return chunk.Lines, chunk.Cursor, nil
 	}
 }
+
+// StreamProbeDNS runs a probe and reports each phase as it completes.
+//
+// WHAT IS ACTUALLY BEING STREAMED
+// ───────────────────────────────
+// The phases, because the phases are where the time goes. A probe holds the
+// client for a live query over the Clash API, then a fixed 250ms log settle,
+// then two log reads — and, with compare_servers on, one query to every
+// configured resolver. Unary, that is one silent wait and then everything at
+// once. Streamed, the rule ladder is on screen before the live query returns.
+//
+// What is NOT streamed is the per-rule verdict. dnsprobe.Attribute walks every
+// rule in one synchronous pass, so pacing the rungs would mean the server
+// sleeping between them. The client paces them and says so — see
+// useRuleSequencer. A tool that exists to explain timing must not fake its own.
+//
+// POST /dns/probe/stream
+func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
+	var req DNSProbeRequest
+	if err := c.Bind(&req); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	cfg, err := h.configManager.GetConfig()
+	if err != nil {
+		respErr(ctx, c, CodeConfigError, err.Error())
+		return
+	}
+
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	stream := NewSSEStream(c)
+
+	// Returning an error from the stage callback aborts the probe. That matters
+	// most for compare_servers, whose remaining work is a query to every
+	// configured upstream — real traffic, sent on behalf of a client that has
+	// already hung up.
+	onStage := func(stage dnsprobe.Stage, partial *dnsprobe.Result) error {
+		if Done(streamCtx) {
+			return context.Canceled
+		}
+		return stream.Event(string(stage), partial)
+	}
+
+	result, err := dnsprobe.RunStaged(&cfg.Options, dnsprobe.Options{
+		Domain:         req.Domain,
+		QueryType:      req.Type,
+		CompareServers: req.CompareServers,
+		Tailer:         h.logTailer(),
+	}, onStage)
+	if err != nil {
+		// Invalid input. Everything else degrades into the result itself.
+		logStreamEnd("dns-probe", stream.Error(CodeValidationError, err.Error()))
+		return
+	}
+
+	// The terminal event carries the whole result, so a client that missed or
+	// ignored the intermediate stages still ends up with exactly what the unary
+	// endpoint would have returned.
+	logStreamEnd("dns-probe", stream.Event("done", result))
+}

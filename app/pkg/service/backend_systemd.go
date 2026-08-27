@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -134,4 +135,26 @@ func (b *systemdBackend) TailLogs(lines int, afterCursor string) (LogChunk, erro
 
 	logLines, cursor := splitJournalOutput(string(out))
 	return LogChunk{Lines: logLines, Cursor: cursor, Source: LogSourceJournald}, nil
+}
+
+// FollowLogs follows the journal for this unit.
+//
+// `-f` blocks on new entries, which is the real push: journald wakes us, we do
+// not ask. `--after-cursor` resumes exactly where the initial window ended, so
+// the handover from the seed request to the stream drops nothing and repeats
+// nothing — the one case the polling viewer could never get right, because
+// every poll re-read a fixed tail window.
+//
+// `-n 0` is deliberate: the seed request already delivered the backlog, and
+// without it journalctl replays its default 10 lines into a viewer that
+// already has them.
+func (b *systemdBackend) FollowLogs(ctx context.Context) (<-chan FollowEvent, error) {
+	args := []string{
+		"-u", singBoxServiceName,
+		"--no-pager",
+		"-o", "short-iso",
+		"-f",
+		"-n", "0",
+	}
+	return startCommand(ctx, "journalctl", args, nil)
 }

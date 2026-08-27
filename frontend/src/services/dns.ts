@@ -1,6 +1,7 @@
 import type { ApiService } from './api'
 import type { BasicResponse, DNS, DNSServer, DNSRule } from '../types/api'
 import type { DnsProbeRequest, DnsProbeResult } from '../types/dnsprobe'
+import { openStream } from './stream'
 
 export class DNSService {
   private api: ApiService
@@ -112,5 +113,43 @@ export class DNSService {
   async probe(request: DnsProbeRequest): Promise<DnsProbeResult> {
     const response = await this.api.post<BasicResponse<DnsProbeResult>>('/dns/probe', request)
     return response.data.data
+  }
+
+  /**
+   * The same probe, reported phase by phase.
+   *
+   * Worth the extra call site because the phases carry real latency — a live
+   * query over the Clash API, a fixed 250ms log settle, and (with
+   * compare_servers) one query to every configured resolver. Unary, that is one
+   * silent wait; streamed, the rule ladder is on screen before the live query
+   * returns.
+   *
+   * `onStage` receives partial results; the promise resolves with the complete
+   * one. Aborting the signal cancels the probe server-side, which matters most
+   * for compare_servers: its remaining work is real traffic to every upstream.
+   */
+  async probeStream(
+    request: DnsProbeRequest,
+    onStage: (stage: string, partial: DnsProbeResult) => void,
+    signal: AbortSignal,
+  ): Promise<DnsProbeResult | null> {
+    let final: DnsProbeResult | null = null
+    let failure: Error | null = null
+
+    await openStream('/dns/probe/stream', {
+      body: request,
+      signal,
+      onEvent: (name, data) => {
+        const partial = data as DnsProbeResult
+        if (name === 'done') final = partial
+        else onStage(name, partial)
+      },
+      onError: (err) => {
+        failure = err
+      },
+    })
+
+    if (failure) throw failure
+    return final
   }
 }

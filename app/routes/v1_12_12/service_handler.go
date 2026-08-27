@@ -3,9 +3,16 @@ package v1_13_0
 import (
 	"context"
 	"strconv"
+	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"github.com/cloudwego/hertz/pkg/app"
 )
+
+// keepAliveInterval bounds how long a log stream may stay silent before it
+// sends a comment frame. sing-box at `level: info` on an idle link logs nothing
+// for minutes, and an intermediate proxy reads that as a dead connection.
+const keepAliveInterval = 20 * time.Second
 
 // GetServiceStatus returns the current status of sing-box service, enriched
 // with PID and start time so the overview page can show "last started N ago".
@@ -82,4 +89,88 @@ func (h *Handler) GetServiceLogs(ctx context.Context, c *app.RequestContext) {
 		"cursor": chunk.Cursor,
 		"source": chunk.Source,
 	})
+}
+
+// StreamServiceLogs pushes sing-box log lines to the client as they are
+// written, over SSE.
+//
+// WHY THIS EXISTS ALONGSIDE GetServiceLogs
+// ────────────────────────────────────────
+// The polling viewer re-read a fixed tail window every 1.5s. On the two
+// backends with no cursor (procd, file) that means it re-serialized up to 500
+// lines per tick and diffed them client-side, and a line written just after a
+// poll waited the full interval to appear. Neither is fatal, but both are pure
+// waste on a router.
+//
+// GetServiceLogs is NOT replaced. It still serves the initial window — the
+// backlog the viewer opens with — and it remains the fallback when a proxy
+// between here and the browser will not pass a stream. A viewer that polls is
+// worse than one that streams; a viewer that shows nothing is worse than both.
+//
+// Query params:
+//   - cursor: journald cursor from the seed request, so the stream resumes
+//     exactly where the backlog ended. Ignored by the other backends, which
+//     have no cursor to resume from.
+func (h *Handler) StreamServiceLogs(ctx context.Context, c *app.RequestContext) {
+	// Cancelled on every return path below, which is what kills the child
+	// process the systemd and procd followers hold open. See service/follow.go.
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	events, err := h.serviceController.FollowLogs(streamCtx)
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+
+	stream := NewSSEStream(c)
+
+	// No log source on this host. Say so as a first-class event and close:
+	// the client then falls back to polling, which will report the same
+	// `source: none` and render the existing explanation.
+	if events == nil {
+		logStreamEnd("logs", stream.Event("unsupported", map[string]any{
+			"source": service.LogSourceNone,
+		}))
+		return
+	}
+
+	keepAlive := time.NewTicker(keepAliveInterval)
+	defer keepAlive.Stop()
+
+	for {
+		select {
+		case <-streamCtx.Done():
+			return
+
+		case event, ok := <-events:
+			if !ok {
+				// The follower stopped on its own — the child exited, or the
+				// file went away. Tell the client rather than just hanging up,
+				// so it can decide to fall back instead of reconnecting into
+				// the same dead end.
+				logStreamEnd("logs", stream.Event("ended", map[string]any{}))
+				return
+			}
+			if len(event.Lines) == 0 {
+				continue
+			}
+			if err := stream.Event("lines", map[string]any{
+				"lines":  event.Lines,
+				"cursor": event.Cursor,
+			}); err != nil {
+				// The client is gone. Returning cancels streamCtx, which kills
+				// the child. Ignoring this error is exactly how a journalctl
+				// leaks per closed tab.
+				logStreamEnd("logs", err)
+				return
+			}
+
+		case <-keepAlive.C:
+			if err := stream.Comment(); err != nil {
+				logStreamEnd("logs", err)
+				return
+			}
+		}
+	}
 }

@@ -81,3 +81,54 @@ describe('isStartupFailure', () => {
     expect(isStartupFailure(WARN)).toBe(false)
   })
 })
+
+/**
+ * The panel's own log, added when the Logs page grew a second tab.
+ *
+ * zap's production encoder emits one JSON object per line with a LOWERCASE
+ * level, which nothing in the sing-box path matches — so before this every line
+ * of the panel's log, errors included, rendered as undifferentiated grey info.
+ */
+describe('structured (zap) lines', () => {
+  it('reads the level from a JSON entry', () => {
+    const line = '{"level":"error","timestamp":"2026-08-27T16:00:00.000+0800","caller":"app/svr.go:42","msg":"boom"}'
+    expect(parseLogLine(line).level).toBe('error')
+  })
+
+  it('renders as a readable line, not as raw JSON', () => {
+    const line = '{"level":"info","timestamp":"2026-08-27T16:00:00.000+0800","caller":"app/svr.go:42","msg":"listening"}'
+    const { text } = parseLogLine(line)
+
+    expect(text).toContain('listening')
+    expect(text).toContain('INFO')
+    expect(text).not.toContain('"level"')
+  })
+
+  it('keeps fields the operator chose to log', () => {
+    const line = '{"level":"warn","msg":"slow","elapsed_ms":1200,"tag":"proxy"}'
+    const { text } = parseLogLine(line)
+
+    expect(text).toContain('elapsed_ms=1200')
+    expect(text).toContain('tag=proxy')
+  })
+
+  it('maps panic levels onto fatal, which is the only one the UI paints red', () => {
+    expect(parseLogLine('{"level":"dpanic","msg":"x"}').level).toBe('fatal')
+    expect(parseLogLine('{"level":"panic","msg":"x"}').level).toBe('fatal')
+  })
+
+  // A sing-box line that merely begins with a brace must not be swallowed by
+  // the JSON path — it has to fall through to the token scan.
+  it('falls through when a brace-leading line is not JSON', () => {
+    const line = '{not json} ERROR something failed'
+    const parsed = parseLogLine(line)
+
+    expect(parsed.level).toBe('error')
+    expect(parsed.text).toBe(line)
+  })
+
+  it('falls through for JSON without a recognised level', () => {
+    const line = '{"foo":"bar"}'
+    expect(parseLogLine(line).text).toBe(line)
+  })
+})

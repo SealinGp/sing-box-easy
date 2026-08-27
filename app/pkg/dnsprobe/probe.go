@@ -93,12 +93,52 @@ type Options struct {
 	Tailer LogTailer
 }
 
+// Stage names the phases a probe passes through, in order. A caller that wants
+// to report progress receives each one as it completes.
+//
+// These are the REAL phases, not a decomposition invented for the UI. Each has
+// latency a user can feel:
+//
+//	StageAttribution  the offline rule walk — microseconds, effectively instant
+//	StageLive         a query through sing-box's Clash API — a network RTT
+//	StageLogged       logSettleDelay (250ms) plus two log reads and a diff
+//	StageServers      one query per configured resolver, fanned out
+//
+// Note what is NOT here: a per-RULE stage. The rule walk is one synchronous
+// pass, so emitting a stage per rule would mean sleeping between rules to
+// manufacture a progression that does not exist. The UI paces the rungs itself
+// and says that it is doing so; a diagnostic must not misreport its own timing.
+type Stage string
+
+const (
+	StageAttribution Stage = "attribution"
+	StageLive        Stage = "live"
+	StageLogged      Stage = "logged"
+	StageServers     Stage = "servers"
+)
+
+// StageFunc is called as each stage completes, with the result built so far.
+//
+// The Result pointer is the live one and keeps being written after the call
+// returns, so an implementation must serialize what it needs before returning
+// rather than retaining the pointer.
+//
+// Returning an error aborts the probe — used when the client has disconnected
+// and the remaining work (which includes querying every configured resolver)
+// would be for nobody.
+type StageFunc func(stage Stage, partial *Result) error
+
 // Run performs a probe against the supplied config.
 //
 // It never fails wholesale: each source (live answer, attribution, comparison)
 // degrades independently so a probe still explains what it can when sing-box
 // is stopped or the Clash API is off.
 func Run(cfg *option.Options, opts Options) (*Result, error) {
+	return RunStaged(cfg, opts, nil)
+}
+
+// RunStaged is Run with progress reporting. onStage may be nil.
+func RunStaged(cfg *option.Options, opts Options, onStage StageFunc) (*Result, error) {
 	domain, err := NormalizeQueryDomain(opts.Domain)
 	if err != nil {
 		return nil, err
@@ -119,11 +159,25 @@ func Run(cfg *option.Options, opts Options) (*Result, error) {
 		Servers:       []ServerResult{},
 	}
 
+	// report runs the callback, if any, and propagates an abort.
+	report := func(stage Stage) error {
+		if onStage == nil {
+			return nil
+		}
+		return onStage(stage, result)
+	}
+
 	var dns *option.DNSOptions
 	if cfg != nil {
 		dns = cfg.DNS
 	}
 	result.Attribution = Attribute(dns, domain)
+
+	// Emitted first and on its own because it is the only stage that is
+	// instant: the ladder can be on screen before the live query has returned.
+	if err := report(StageAttribution); err != nil {
+		return result, nil
+	}
 
 	// Snapshot the log before the query. Only lines that appear afterwards can
 	// belong to this probe — see collectLoggedMatches for why the tailer's
@@ -136,6 +190,9 @@ func Run(cfg *option.Options, opts Options) (*Result, error) {
 	}
 
 	result.Live, result.LiveError = queryLive(cfg, domain, queryType)
+	if err := report(StageLive); err != nil {
+		return result, nil
+	}
 
 	if opts.Tailer != nil {
 		result.LoggedMatches, result.LogStatus, result.LogError =
@@ -146,10 +203,16 @@ func Run(cfg *option.Options, opts Options) (*Result, error) {
 		result.ResolvedServer = DescribeServer(
 			dns.Servers, effectiveServerTag(result.LoggedMatches, result.Attribution))
 	}
+	if err := report(StageLogged); err != nil {
+		return result, nil
+	}
 
 	if opts.CompareServers && dns != nil {
 		result.Servers = QueryServers(dns.Servers, domain, queryType)
 		result.Disagreement = hasDisagreement(result.Servers)
+		if err := report(StageServers); err != nil {
+			return result, nil
+		}
 	}
 
 	return result, nil

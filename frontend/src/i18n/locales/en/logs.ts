@@ -22,4 +22,17 @@ export default {
   toast: {
     fetchFailed: 'Failed to fetch logs',
   },
+  transport: {
+    // Shown only when the stream could not be used.
+    poll: 'polling (stream unavailable)',
+  },
+  tabs: {
+    singbox: 'sing-box',
+    app: 'sing-box-easy',
+  },
+  // The panel's own log lives in an in-process ring buffer, so its limitation
+  // is permanent rather than a misconfiguration — hence a note that is always
+  // shown, not one that appears when something is wrong.
+  sourceMemory: 'The panel\u2019s own log is kept in memory and starts empty after a restart or an update.',
+  emptyApp: 'No panel log lines yet.',
 }

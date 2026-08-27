@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -56,6 +57,17 @@ type Backend interface {
 	// TailLogs returns the most recent log lines from this backend's log
 	// source. lines is already clamped by the caller.
 	TailLogs(lines int, afterCursor string) (LogChunk, error)
+	// FollowLogs pushes new lines as they are written, until ctx is
+	// cancelled. The returned channel is closed when the follower stops.
+	//
+	// A backend with no readable log source returns (nil, nil) rather than an
+	// error: "there is nowhere to read logs from" is a supported state the UI
+	// already explains via LogChunk.Source, not a failure.
+	//
+	// Callers MUST cancel ctx when they stop reading. Two of the three
+	// implementations hold a child process open for the life of the follow —
+	// see follow.go.
+	FollowLogs(ctx context.Context) (<-chan FollowEvent, error)
 }
 
 // DetectSystemType detects whether the system is OpenWrt, Debian, or other.

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -236,6 +237,19 @@ func (c *Controller) ForceStop() error {
 // source. See LogChunk for cursor semantics.
 func (c *Controller) TailLogs(lines int, afterCursor string) (LogChunk, error) {
 	return c.backend.TailLogs(clampLines(lines), afterCursor)
+}
+
+// FollowLogs pushes new sing-box log lines until ctx is cancelled.
+//
+// Returns (nil, nil) when this backend has no readable log source — the caller
+// should fall back to polling TailLogs rather than reporting a failure, because
+// there is nothing wrong: sing-box is simply logging to stdout with no init
+// system capturing it.
+//
+// The caller MUST cancel ctx when it stops reading. The systemd and procd
+// backends hold a child process open for the life of the follow.
+func (c *Controller) FollowLogs(ctx context.Context) (<-chan FollowEvent, error) {
+	return c.backend.FollowLogs(ctx)
 }
 
 // logOutputPath returns the configured sing-box log.output file path, or ""

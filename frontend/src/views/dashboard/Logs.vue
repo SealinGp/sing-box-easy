@@ -1,36 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { serviceControlService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import { parseLogLine, isStartupFailure, type LogLevel } from '../../utils/logLine'
+import { useLogStream, MAX_LINES, type LogFeed } from '../../composables/useLogStream'
 
 const { t } = useI18n()
 const toast = useToast()
 
-// Bounded recent history + poll cadence. The viewer keeps only the most recent
-// MAX_LINES lines so memory stays flat for a long-running, chatty proxy.
-const MAX_LINES = 500
-const POLL_MS = 1500
-const INITIAL_LINES = 300
+/**
+ * Which log is on screen.
+ *
+ * Two feeds, one viewer. They answer different questions — "what is the proxy
+ * doing?" versus "what is the panel doing?" — and the second was previously
+ * unanswerable without shell access, which is a poor state for a tool whose
+ * job is to remove the need for shell access.
+ */
+const feed = ref<LogFeed>('singbox')
+
+const TABS: { value: LogFeed; labelKey: string }[] = [
+  { value: 'singbox', labelKey: 'logs.tabs.singbox' },
+  { value: 'app', labelKey: 'logs.tabs.app' },
+]
 
 const lines = ref<string[]>([])
-const cursor = ref('')
-const source = ref<'journald' | 'syslog' | 'file' | 'none' | ''>('')
-const polling = ref(true)
+const streaming = ref(true)
 const autoScroll = ref(true)
-const initialLoading = ref(true)
-const errored = ref(false)
 
 const logContainer = ref<HTMLElement | null>(null)
-let timer: ReturnType<typeof setInterval> | null = null
-
-const sourceNote = computed(() => {
-  if (source.value === 'none') return t('logs.sourceNone')
-  if (source.value === 'file') return t('logs.sourceFile')
-  if (source.value === 'syslog') return t('logs.sourceSyslog')
-  return ''
-})
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -75,9 +72,61 @@ const appendLines = (incoming: string[]) => {
   if (autoScroll.value) void scrollToBottom()
 }
 
+const replaceLines = (incoming: string[]) => {
+  for (const line of incoming) {
+    if (isStartupFailure(line)) startupFailure.value = parseLogLine(line).text
+  }
+  lines.value = incoming
+  if (autoScroll.value) void scrollToBottom()
+}
+
 /**
- * Lines are parsed once here rather than per-render: the viewer polls every
- * 1.5s and re-renders the whole window each time.
+ * Transport, source and connection state all live in the composable — this view
+ * only decides what to do with the lines.
+ */
+const stream = useLogStream({ feed, onLines: appendLines, onReplace: replaceLines })
+const { source, transport, errored, initialLoading } = stream
+
+/**
+ * Switching tabs blanks the buffer immediately.
+ *
+ * The composable restarts the feed and will replace the lines when the new
+ * window arrives, but that is a round trip away. Leaving the old log on screen
+ * under the new tab's label for even a moment presents one service's output as
+ * another's, which is the single most misleading thing this page could do.
+ */
+const selectFeed = (next: LogFeed) => {
+  if (feed.value === next) return
+  lines.value = []
+  startupFailure.value = ''
+  feed.value = next
+}
+
+const sourceNote = computed(() => {
+  if (source.value === 'none') return t('logs.sourceNone')
+  if (source.value === 'file') return t('logs.sourceFile')
+  if (source.value === 'syslog') return t('logs.sourceSyslog')
+  // Always shown for the panel's own log, because its limitation is permanent
+  // rather than a misconfiguration: the buffer is the life of the process.
+  if (source.value === 'memory') return t('logs.sourceMemory')
+  return ''
+})
+
+/**
+ * Which transport is carrying the feed.
+ *
+ * Surfaced rather than hidden because the two behave differently in a way the
+ * operator can see: a streamed line appears the moment sing-box writes it, a
+ * polled one can be up to 1.5s late. Someone timing a reconnect needs to know
+ * which they are looking at.
+ */
+const transportNote = computed(() =>
+  transport.value === 'poll' ? t('logs.transport.poll') : '',
+)
+
+/**
+ * Lines are parsed once here rather than per-render: a burst re-renders the
+ * whole window.
  */
 const parsedLines = computed(() => lines.value.map(parseLogLine))
 
@@ -90,59 +139,12 @@ const LEVEL_CLASS: Record<LogLevel, string> = {
   trace: 'text-gray-600',
 }
 
-const fetchOnce = async () => {
-  try {
-    // First call seeds a full window; subsequent calls fetch only what's new
-    // via the journald cursor.
-    const lineCount = cursor.value ? MAX_LINES : INITIAL_LINES
-    const { data } = await serviceControlService.getServiceLogs(lineCount, cursor.value)
-    source.value = data.source
-    if (cursor.value) {
-      appendLines(data.lines || [])
-    } else {
-      // Initial load: replace the buffer wholesale.
-      lines.value = (data.lines || []).slice(-MAX_LINES)
-      if (autoScroll.value) void scrollToBottom()
-    }
-    // Keep the previous cursor when none is returned (no new entries this tick).
-    if (data.cursor) cursor.value = data.cursor
-    errored.value = false
-  } catch (err: any) {
-    errored.value = true
-    if (initialLoading.value) {
-      toast.add({
-        severity: 'error',
-        summary: t('common.error'),
-        detail: err.message || t('logs.toast.fetchFailed'),
-        life: 3000,
-      })
-    }
-  } finally {
-    initialLoading.value = false
-  }
-}
-
-const tick = () => {
-  if (typeof document !== 'undefined' && document.hidden) return
-  void fetchOnce()
-}
-
-const startPolling = () => {
-  if (timer === null) timer = setInterval(tick, POLL_MS)
-}
-const stopPolling = () => {
-  if (timer !== null) {
-    clearInterval(timer)
-    timer = null
-  }
-}
-
-const togglePolling = () => {
-  polling.value = !polling.value
-  if (polling.value) {
-    startPolling()
+const toggleStreaming = () => {
+  streaming.value = !streaming.value
+  if (streaming.value) {
+    void stream.start()
   } else {
-    stopPolling()
+    stream.stop()
   }
 }
 
@@ -156,11 +158,20 @@ const jumpToBottom = () => {
 }
 
 onMounted(async () => {
-  await fetchOnce()
-  if (polling.value) startPolling()
+  await stream.start()
+  if (errored.value) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('logs.toast.fetchFailed'),
+      life: 3000,
+    })
+  }
 })
 
-onUnmounted(stopPolling)
+// The composable unregisters its own stream and timer on unmount — including
+// aborting the fetch, which is what lets the server kill the journalctl child
+// it is holding open for this tab.
 </script>
 
 <template>
@@ -189,15 +200,45 @@ onUnmounted(stopPolling)
         </button>
 
         <button
-          @click="togglePolling"
+          @click="toggleStreaming"
           class="px-4 py-2 text-sm font-medium rounded-control transition-colors"
-          :class="polling
+          :class="streaming
             ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40'
             : 'text-white bg-primary-600 hover:bg-primary-700'"
         >
-          {{ polling ? $t('logs.pause') : $t('logs.resume') }}
+          {{ streaming ? $t('logs.pause') : $t('logs.resume') }}
         </button>
       </div>
+    </div>
+
+    <!--
+      Feed switch. Buttons rather than <TabNav>, which is route-driven: these
+      two views share one viewer and one set of controls, so a route per feed
+      would remount the whole page — tearing down the stream and re-fetching a
+      window — to change a single variable.
+
+      Styled to match TabNav all the same, because to the reader they are the
+      same affordance as the tabs on every other page.
+    -->
+    <div class="mb-2 shrink-0 border-b border-gray-200 dark:border-gray-700">
+      <nav class="-mb-px flex space-x-4" role="tablist">
+        <button
+          v-for="tab in TABS"
+          :key="tab.value"
+          type="button"
+          role="tab"
+          :aria-selected="feed === tab.value"
+          @click="selectFeed(tab.value)"
+          :class="[
+            'py-1 px-0.5 border-b-2 font-medium text-sm transition-colors cursor-pointer',
+            feed === tab.value
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300',
+          ]"
+        >
+          {{ $t(tab.labelKey) }}
+        </button>
+      </nav>
     </div>
 
     <!-- Status row -->
@@ -205,12 +246,16 @@ onUnmounted(stopPolling)
       <span class="flex items-center gap-1.5">
         <span
           class="w-2 h-2 rounded-pill"
-          :class="polling && !errored ? 'bg-green-500 animate-pulse' : errored ? 'bg-red-500' : 'bg-gray-400'"
+          :class="streaming && !errored ? 'bg-green-500 animate-pulse' : errored ? 'bg-red-500' : 'bg-gray-400'"
         ></span>
         <span class="text-gray-600 dark:text-gray-400">
-          {{ errored ? $t('logs.disconnected') : polling ? $t('logs.live') : $t('logs.paused') }}
+          {{ errored ? $t('logs.disconnected') : streaming ? $t('logs.live') : $t('logs.paused') }}
         </span>
       </span>
+      <!-- Which transport is carrying the feed. A polled line can be up to
+           1.5s late where a streamed one cannot, and someone timing a
+           reconnect needs to know which they are watching. -->
+      <span v-if="transportNote" class="text-xs text-gray-500 dark:text-gray-400">{{ transportNote }}</span>
       <span v-if="sourceNote" class="text-xs text-amber-600 dark:text-amber-400">{{ sourceNote }}</span>
     </div>
 
@@ -219,7 +264,7 @@ onUnmounted(stopPolling)
       reports is, by construction, the one most likely to have scrolled away.
     -->
     <div
-      v-if="startupFailure"
+      v-if="startupFailure && feed === 'singbox'"
       class="mb-2 shrink-0 rounded-surface border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-2"
     >
       <div class="flex items-start justify-between gap-3">
@@ -251,7 +296,7 @@ onUnmounted(stopPolling)
         <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-500"></div>
       </div>
       <div v-else-if="lines.length === 0" class="flex items-center justify-center h-full text-gray-500">
-        {{ $t('logs.empty') }}
+        {{ feed === 'app' ? $t('logs.emptyApp') : $t('logs.empty') }}
       </div>
       <div v-else>
         <div

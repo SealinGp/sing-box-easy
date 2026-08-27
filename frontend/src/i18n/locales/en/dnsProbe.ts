@@ -42,4 +42,12 @@ export default {
   toast: {
     failed: 'DNS lookup failed',
   },
+  stage: {
+    // The server's own phase names (dnsprobe.Stage). Each is a real wait, not
+    // a step invented to fill a progress bar.
+    attribution: 'Walking the rules\u2026',
+    live: 'Asking sing-box to resolve it\u2026',
+    logged: 'Reading sing-box\u2019s own decision from the log\u2026',
+    servers: 'Comparing the configured resolvers\u2026',
+  },
 }

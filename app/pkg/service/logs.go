@@ -138,13 +138,7 @@ var panelSyslogTag = regexp.MustCompile(`(?:^|\s)sing-box-easy(?:\[\d+\])?:`)
 func filterSyslogLines(out string, lines int) []string {
 	tail := newRingBuffer(lines)
 	for _, line := range strings.Split(out, "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		if panelSyslogTag.MatchString(line) {
-			continue
-		}
-		if singBoxSyslogTag.MatchString(line) || procdSingBoxInstance.MatchString(line) {
+		if keepSingBoxSyslogLine(line) {
 			tail.push(line)
 		}
 	}
@@ -184,4 +178,19 @@ func (r *ringBuffer) slice() []string {
 		out[i] = r.buf[(r.start+i)%r.size]
 	}
 	return out
+}
+
+// keepSingBoxSyslogLine is filterSyslogLines' predicate, per line.
+//
+// Extracted so the follower applies exactly the same rule as the tail rather
+// than a second, drifting copy of it — the two views must never disagree about
+// whether a line belongs to sing-box.
+func keepSingBoxSyslogLine(line string) bool {
+	if strings.TrimSpace(line) == "" {
+		return false
+	}
+	if panelSyslogTag.MatchString(line) {
+		return false
+	}
+	return singBoxSyslogTag.MatchString(line) || procdSingBoxInstance.MatchString(line)
 }

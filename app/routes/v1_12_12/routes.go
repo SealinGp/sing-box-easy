@@ -66,6 +66,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// Diagnostics: resolve a domain through sing-box and explain which rule
 	// handled it. POST because it performs live queries.
 	auth.POST("/dns/probe", handler.ProbeDNS)
+	// SSE. Same probe, reported phase by phase — see StreamProbeDNS for what
+	// is genuinely streamed and what deliberately is not.
+	auth.POST("/dns/probe/stream", handler.StreamProbeDNS)
 	auth.PUT("/dns", handler.UpdateDNS)
 
 	auth.GET("/dns/servers", handler.GetDNSServers)
@@ -133,6 +136,13 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// Service Control APIs
 	auth.GET("/service/status", handler.GetServiceStatus)
 	auth.GET("/service/logs", handler.GetServiceLogs)
+	// SSE. Seeded by the request above: the client fetches the backlog, then
+	// opens this with the cursor it came back with.
+	auth.GET("/service/logs/stream", handler.StreamServiceLogs)
+	// The panel's OWN log — the second tab on the Logs page. Same shape as the
+	// pair above so the viewer swaps URLs rather than branching.
+	auth.GET("/system/logs", handler.GetAppLogs)
+	auth.GET("/system/logs/stream", handler.StreamAppLogs)
 	auth.POST("/service/start", handler.StartService)
 	auth.POST("/service/stop", handler.StopService)
 	auth.POST("/service/restart", handler.RestartService)

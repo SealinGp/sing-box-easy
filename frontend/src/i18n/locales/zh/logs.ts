@@ -22,4 +22,13 @@ export default {
   toast: {
     fetchFailed: '获取日志失败',
   },
+  transport: {
+    poll: '轮询中（流式不可用）',
+  },
+  tabs: {
+    singbox: 'sing-box',
+    app: 'sing-box-easy',
+  },
+  sourceMemory: '面板自身日志保存在内存中，重启或更新后会从空开始。',
+  emptyApp: '暂无面板日志。',
 }

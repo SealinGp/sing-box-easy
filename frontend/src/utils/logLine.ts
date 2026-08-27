@@ -45,12 +45,70 @@ const CRASH_LOOP = /in a crash loop/i
 /** A fatal abort during startup, as opposed to a fatal at any other time. */
 const START_SERVICE_FATAL = /FATAL.*start service/i
 
+/**
+ * The panel's own log at info level and above is zap's production encoder:
+ * one JSON object per line, with a LOWERCASE level. Nothing in the sing-box
+ * path matches that shape, so without this every line of the panel's log —
+ * errors included — renders as undifferentiated grey `info`.
+ *
+ * Only attempted for lines that start with `{`, so this costs one character
+ * comparison on the sing-box feed. In dev the panel uses zap's development
+ * encoder instead, which emits an uppercase token the normal path already
+ * handles.
+ */
+const ZAP_LEVELS: Record<string, LogLevel> = {
+  fatal: 'fatal',
+  panic: 'fatal',
+  dpanic: 'fatal',
+  error: 'error',
+  warn: 'warn',
+  info: 'info',
+  debug: 'debug',
+}
+
+function parseStructured(text: string): ParsedLogLine | null {
+  if (text.charCodeAt(0) !== 0x7b /* { */) return null
+
+  let entry: Record<string, unknown>
+  try {
+    entry = JSON.parse(text)
+  } catch {
+    // A line that merely starts with a brace. Fall through to the token scan.
+    return null
+  }
+  if (typeof entry.level !== 'string') return null
+
+  const level = ZAP_LEVELS[entry.level.toLowerCase()]
+  if (!level) return null
+
+  // Rendered back as a readable line rather than as raw JSON: the viewer is
+  // for reading, and `{"level":"info","ts":...,"caller":...}` buries the one
+  // field anybody is looking for.
+  const parts = [
+    typeof entry.timestamp === 'string' ? entry.timestamp : '',
+    entry.level.toUpperCase(),
+    typeof entry.caller === 'string' ? entry.caller : '',
+    typeof entry.msg === 'string' ? entry.msg : '',
+  ].filter(Boolean)
+
+  // Anything zap attached beyond the standard keys is context the operator
+  // asked for by logging it, so it is kept rather than dropped.
+  const extras = Object.entries(entry)
+    .filter(([key]) => !['level', 'timestamp', 'ts', 'caller', 'msg', 'stacktrace'].includes(key))
+    .map(([key, value]) => `${key}=${typeof value === 'string' ? value : JSON.stringify(value)}`)
+
+  return { level, text: [...parts, ...extras].join(' ') }
+}
+
 export function parseLogLine(line: string): ParsedLogLine {
   const text = stripAnsi(line)
 
   if (CRASH_LOOP.test(text)) {
     return { level: 'fatal', text }
   }
+
+  const structured = parseStructured(text)
+  if (structured) return structured
 
   const token = text.match(LEVEL_TOKEN)?.[1]
   if (!token) {

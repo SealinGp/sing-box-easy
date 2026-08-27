@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -179,4 +180,17 @@ func (b *procdBackend) TailLogs(lines int, _ string) (LogChunk, error) {
 		return tailFile(path, lines)
 	}
 	return tailLogread(lines)
+}
+
+// FollowLogs follows the configured log file when there is one, and otherwise
+// follows the syslog ring buffer via `logread -f`.
+//
+// The same tag filter the tail path uses is applied here, and for the same
+// reason: this panel logs to syslog too, so an unfiltered follow interleaves
+// our own JSON into the sing-box log view.
+func (b *procdBackend) FollowLogs(ctx context.Context) (<-chan FollowEvent, error) {
+	if path := b.logPath(); path != "" {
+		return followFile(ctx, path)
+	}
+	return startCommand(ctx, "logread", []string{"-f"}, keepSingBoxSyslogLine)
 }

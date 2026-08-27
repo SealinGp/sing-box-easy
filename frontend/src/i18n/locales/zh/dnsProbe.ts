@@ -41,4 +41,10 @@ export default {
   toast: {
     failed: 'DNS 查询失败',
   },
+  stage: {
+    attribution: '正在走查规则\u2026',
+    live: '正在让 sing-box 解析\u2026',
+    logged: '正在从日志中读取 sing-box 的判定\u2026',
+    servers: '正在比对已配置的解析器\u2026',
+  },
 }

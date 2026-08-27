@@ -207,3 +207,16 @@ func (b *processBackend) TailLogs(lines int, _ string) (LogChunk, error) {
 	}
 	return tailFile(path, lines)
 }
+
+// FollowLogs tails the configured log.output file.
+//
+// Returns (nil, nil) when sing-box logs to stdout only: there is nothing to
+// follow, and the UI already explains that case from LogChunk.Source rather
+// than treating it as an error.
+func (b *processBackend) FollowLogs(ctx context.Context) (<-chan FollowEvent, error) {
+	path := b.logPath()
+	if path == "" {
+		return nil, nil
+	}
+	return followFile(ctx, path)
+}

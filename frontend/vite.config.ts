@@ -104,6 +104,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5100',
         changeOrigin: true,
+        // The log tail and the DNS probe are SSE. Nothing extra is needed here
+        // — http-proxy streams a chunked response through untouched, and this
+        // was verified end to end against the dev server. The buffering that
+        // does bite SSE lives in production reverse proxies, and the server
+        // answers it there with `X-Accel-Buffering: no` (see sse.go).
       },
     },
   },

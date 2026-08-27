@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/applog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -52,8 +53,14 @@ func Init(level string) error {
 	}
 	config.Level = zap.NewAtomicLevelAt(lvl)
 
-	// Always output to stdout
+	// stdout, plus an in-memory ring the panel can serve back to its own Logs
+	// page. Registering the sink can only fail on a duplicate scheme, which is
+	// not worth refusing to start over — the log simply is not readable from
+	// the UI, and stdout is unaffected.
 	config.OutputPaths = []string{"stdout"}
+	if err := applog.Register(); err == nil {
+		config.OutputPaths = append(config.OutputPaths, applog.Scheme+"://ring")
+	}
 	config.ErrorOutputPaths = []string{"stderr"}
 
 	built, err := config.Build(zap.AddCallerSkip(1))
