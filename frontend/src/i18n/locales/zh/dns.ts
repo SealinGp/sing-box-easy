@@ -143,11 +143,8 @@ export default {
       drop: 'Drop - 不作任何响应',
     },
     summary: {
-      ruleSet: '规则集：{value}',
-      domain: '域名：{value}',
-      suffix: '后缀：{value}',
-      keyword: '关键词：{value}',
-      geosite: 'GeoSite：{value}',
+      // 每个字段的标签已移除：条件列改用 `dns.rules.form.fields.*`（缺失时由字段名生成），
+      // 与流程预览共用，因此表单没有控件的条件也能正确显示名称。
       none: '无条件',
     },
     modal: {

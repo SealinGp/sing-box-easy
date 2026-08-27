@@ -296,19 +296,11 @@ export default {
     },
   },
   ruleItem: {
+    // The row's other labels resolve through `route.rules.fields.*` (humanized
+    // from the JSON key when untranslated), shared with the form and the flow
+    // preview. Only `action` needs its own entry: the form's label is
+    // "Action *", and the asterisk has no place in a read-only row.
     action: 'Action:',
-    outbound: 'Outbound:',
-    inbound: 'Inbound:',
-    protocol: 'Protocol:',
-    network: 'Network:',
-    domain: 'Domain:',
-    domainSuffix: 'Domain Suffix:',
-    geosite: 'GeoSite:',
-    geoip: 'GeoIP:',
-    ruleSet: 'Rule Set:',
-    port: 'Port:',
-    sniffer: 'Sniffer:',
-    timeout: 'Timeout:',
   },
   ruleSets: {
     title: 'Rule Sets',

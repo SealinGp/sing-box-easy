@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Bars3Icon } from '@heroicons/vue/24/outline'
 import type { RouteRule } from '../types/api'
 import PopConfirm from './PopConfirm.vue'
 import ListRow from './ListRow.vue'
 import ListField from './ListField.vue'
+import { ALL_MATCHER_KEYS } from '../schemas/routeRuleMatcherFields'
+import { actionOf, resolveRouteRuleActionFields } from '../schemas/routeRuleActionFields'
+import { isFieldFilled } from '../schemas/optionSchema'
+import { humanizeFieldName } from '../utils/fieldLabels'
 
 interface Props {
   rule: RouteRule
@@ -32,6 +37,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits<Emits>()
 
+const { t, te } = useI18n()
+
 function handleEdit() {
   emit('edit', props.index, props.rule)
 }
@@ -56,6 +63,84 @@ function hasValue(v: unknown): boolean {
   if (typeof v === 'string') return v.length > 0
   return true
 }
+
+/* ── Fields ─────────────────────────────────────────────────────────────────
+ *
+ * The row reads in the SAME ORDER as the flow preview inside the edit dialog:
+ * every filled condition first, then what the rule does about them. The old
+ * markup led with `action` + `outbound`, which is the order sing-box evaluates
+ * a rule in reversed — matchers are tested first and the action only applies
+ * once they all pass, and a list that opens with the outcome makes the two
+ * halves of a rule read backwards between the list and the dialog.
+ *
+ * It is also derived from the same inventory the preview walks, rather than the
+ * thirteen hand-listed fields it used to carry. Those thirteen covered 11 of
+ * the 37 matchers and 2 of the ~45 action fields, so a rule matching on
+ * `ip_cidr` (which this repo's own init wizard emits) or `source_ip_cidr`
+ * displayed as if it had no conditions at all.
+ */
+
+/** Boolean matchers carry their statement in the label — see RuleFlowPreview. */
+const BOOLEAN_MARK = '✓'
+
+interface DisplayField {
+  key: string
+  label: string
+  value: string
+}
+
+/**
+ * `route.rules.fields.*`, humanized from the JSON key when untranslated — the
+ * same resolution the schema-driven form and the flow preview use.
+ *
+ * The trailing colon is normalized on rather than baked into the locale,
+ * because most of these labels are shared with the form, where a colon would be
+ * wrong.
+ */
+function fieldLabel(key: string, labelKey = `route.rules.fields.${key}`): string {
+  const raw = te(labelKey) ? t(labelKey) : humanizeFieldName(key)
+  return `${raw.replace(/[:：]\s*$/, '')}:`
+}
+
+function displayValue(value: unknown): string {
+  return typeof value === 'boolean' ? BOOLEAN_MARK : formatList(value)
+}
+
+const record = computed(() => props.rule as Record<string, unknown>)
+
+/**
+ * WHEN — every filled matcher, in inventory order.
+ *
+ * `invert` is pulled out of the chain for the same reason the preview does it:
+ * it does not narrow the match, it flips the whole result.
+ */
+const conditions = computed<DisplayField[]>(() =>
+  ALL_MATCHER_KEYS.filter((key) => key !== 'invert' && isFieldFilled(record.value[key])).map(
+    (key) => ({
+      key,
+      label: fieldLabel(key),
+      value: displayValue(record.value[key]),
+    }),
+  ),
+)
+
+const inverted = computed(() => isFieldFilled(record.value.invert))
+
+/**
+ * THEN — the fields the effective action owns, filled ones only.
+ *
+ * `actionOf` supplies the "route" default for a rule that omitted `action`, so
+ * its `outbound` is still listed.
+ */
+const outcomeFields = computed<DisplayField[]>(() =>
+  resolveRouteRuleActionFields(actionOf(record.value))
+    .filter((field) => isFieldFilled(record.value[field.key]))
+    .map((field) => ({
+      key: field.key,
+      label: fieldLabel(field.key, field.labelKey),
+      value: displayValue(record.value[field.key]),
+    })),
+)
 
 /*
  * A routing rule has no user-assigned name, so the delete confirmation would
@@ -89,7 +174,7 @@ const IDENTIFYING_MATCHERS = [
 const MAX_MATCHER_CHARS = 24
 
 const ruleSummary = computed(() => {
-  const rule = props.rule as Record<string, unknown>
+  const rule = record.value
   // `action` defaults to "route" when omitted — mirror that here so a rule
   // without an explicit action still reads sensibly.
   const destination = props.rule.outbound || props.rule.action || 'route'
@@ -123,24 +208,29 @@ const ruleSummary = computed(() => {
     </template>
 
     <!--
-      Thirteen fields, each hidden by <ListField> when the rule does not set it.
-      sing-box rules are sparse — a typical one populates two or three — and the
-      old markup carried a `v-if="hasValue(…)"` plus a `formatList(…)` call on
-      every single line. <ListField> hides empties and joins arrays itself.
+      WHEN … THEN, the same order the dialog's RuleFlowPreview reads in.
+      <ListField> hides anything empty and joins arrays itself; sing-box rules
+      are sparse, so a typical row still renders two or three of these.
     -->
+    <ListField
+      v-if="inverted"
+      :label="fieldLabel('invert')"
+      :value="BOOLEAN_MARK"
+    />
+    <ListField
+      v-for="condition in conditions"
+      :key="`when-${condition.key}`"
+      :label="condition.label"
+      :value="condition.value"
+    />
+
     <ListField :label="$t('route.ruleItem.action')" :value="rule.action" />
-    <ListField :label="$t('route.ruleItem.outbound')" :value="rule.outbound" />
-    <ListField :label="$t('route.ruleItem.inbound')" :value="rule.inbound" />
-    <ListField :label="$t('route.ruleItem.protocol')" :value="rule.protocol" />
-    <ListField :label="$t('route.ruleItem.network')" :value="rule.network" />
-    <ListField :label="$t('route.ruleItem.domain')" :value="rule.domain" />
-    <ListField :label="$t('route.ruleItem.domainSuffix')" :value="rule.domain_suffix" />
-    <ListField :label="$t('route.ruleItem.geosite')" :value="rule.geosite" />
-    <ListField :label="$t('route.ruleItem.geoip')" :value="rule.geoip" />
-    <ListField :label="$t('route.ruleItem.ruleSet')" :value="rule.rule_set" />
-    <ListField :label="$t('route.ruleItem.port')" :value="rule.port" />
-    <ListField :label="$t('route.ruleItem.sniffer')" :value="rule.sniffer" />
-    <ListField :label="$t('route.ruleItem.timeout')" :value="rule.timeout" />
+    <ListField
+      v-for="field in outcomeFields"
+      :key="`then-${field.key}`"
+      :label="field.label"
+      :value="field.value"
+    />
 
     <!-- Reorder mode hides edit/delete on purpose: both are index-addressed,
          and the indices are exactly what is in motion. -->

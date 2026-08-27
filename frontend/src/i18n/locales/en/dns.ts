@@ -147,11 +147,10 @@ export default {
       drop: 'Drop - Send no response at all',
     },
     summary: {
-      ruleSet: 'Rule Set: {value}',
-      domain: 'Domain: {value}',
-      suffix: 'Suffix: {value}',
-      keyword: 'Keyword: {value}',
-      geosite: 'GeoSite: {value}',
+      // The per-field labels used to live here. The conditions cell now
+      // resolves them through `dns.rules.form.fields.*` (humanized from the
+      // JSON key when untranslated), shared with the flow preview — so a
+      // condition this form has no control for is still named correctly.
       none: 'No conditions',
     },
     modal: {

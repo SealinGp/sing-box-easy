@@ -17,6 +17,8 @@ import { useDragReorder } from '../composables/useDragReorder'
 import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
+import { isFieldFilled } from '../schemas/optionSchema'
+import { humanizeFieldName } from '../utils/fieldLabels'
 import {
   actionOf,
   applyActionDefaults,
@@ -29,7 +31,7 @@ import {
 } from '../schemas/dnsRuleActionFields'
 
 const toast = useToast()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const dnsStore = useDNSStore()
 const routeStore = useRouteStore()
 // The server list is no longer read here — the `dns-server` control in
@@ -103,11 +105,14 @@ const actionFields = computed(() => resolveDNSRuleActionFields(currentAction.val
  * preview, which is the honest behaviour: the rule is matching on it either way.
  */
 const STRUCTURAL_KEYS = ['action', 'type', 'mode', 'rules', 'invert']
-const conditionKeys = computed(() =>
-  Object.keys(currentRule.value).filter(
+
+function conditionKeysOf(rule: Readonly<Record<string, unknown>>): string[] {
+  return Object.keys(rule).filter(
     (key) => !ALL_ACTION_KEYS.includes(key) && !STRUCTURAL_KEYS.includes(key),
-  ),
-)
+  )
+}
+
+const conditionKeys = computed(() => conditionKeysOf(currentRule.value))
 
 /**
  * The outcome, as a phrase, for the flow preview. Each action names the field
@@ -414,33 +419,47 @@ const handleDeleteRule = async () => {
   }
 }
 
-const getRuleConditionsSummary = (rule: any) => {
-  const conditions = []
+/**
+ * `dns.rules.form.fields.*`, humanized from the JSON key when untranslated —
+ * the same resolution `RuleFlowPreview` uses for this namespace.
+ */
+function conditionLabel(key: string): string {
+  const labelKey = `dns.rules.form.fields.${key}`
+  return te(labelKey) ? t(labelKey) : humanizeFieldName(key)
+}
 
-  // Handle rule_set - could be array, string, or undefined
-  if (rule.rule_set) {
-    if (Array.isArray(rule.rule_set) && rule.rule_set.length > 0) {
-      conditions.push(t('dns.rules.summary.ruleSet', { value: rule.rule_set.join(', ') }))
-    } else if (typeof rule.rule_set === 'string' && rule.rule_set.trim()) {
-      conditions.push(t('dns.rules.summary.ruleSet', { value: rule.rule_set }))
-    }
-  }
+/**
+ * The conditions cell, derived the way the flow preview derives them.
+ *
+ * This used to hand-check five fields — rule_set, domain, domain_suffix,
+ * domain_keyword, geosite — and report every other rule as "No conditions". A
+ * DNS rule matching on `query_type`, `outbound`, `network`, `port`,
+ * `process_name` or `ip_cidr` therefore displayed as an unconditional
+ * catch-all, which is the single most alarming thing a DNS rule can look like
+ * and was purely an artefact of this function. Subtracting the action's own
+ * fields instead means a condition the form has no control for still shows,
+ * exactly as it does in the preview inside the modal.
+ *
+ * `invert` becomes a NOT prefix rather than a listed condition: it does not
+ * narrow the match, it flips the result.
+ */
+const getRuleConditionsSummary = (rule: unknown) => {
+  const record = rule as Record<string, unknown>
 
-  // Handle arrays for other fields
-  if (Array.isArray(rule.domain) && rule.domain.length) {
-    conditions.push(t('dns.rules.summary.domain', { value: rule.domain.join(', ') }))
-  }
-  if (Array.isArray(rule.domain_suffix) && rule.domain_suffix.length) {
-    conditions.push(t('dns.rules.summary.suffix', { value: rule.domain_suffix.join(', ') }))
-  }
-  if (Array.isArray(rule.domain_keyword) && rule.domain_keyword.length) {
-    conditions.push(t('dns.rules.summary.keyword', { value: rule.domain_keyword.join(', ') }))
-  }
-  if (Array.isArray(rule.geosite) && rule.geosite.length) {
-    conditions.push(t('dns.rules.summary.geosite', { value: rule.geosite.join(', ') }))
-  }
+  const parts = conditionKeysOf(record)
+    .filter((key) => isFieldFilled(record[key]))
+    .map((key) => {
+      const value = record[key]
+      // A boolean condition is its own statement; there is no value worth
+      // printing beside it.
+      if (typeof value === 'boolean') return conditionLabel(key)
+      return `${conditionLabel(key)}: ${toArrayField(value).join(', ')}`
+    })
 
-  return conditions.length > 0 ? conditions.join(' | ') : t('dns.rules.summary.none')
+  if (parts.length === 0) return t('dns.rules.summary.none')
+
+  const body = parts.join(' | ')
+  return isFieldFilled(record.invert) ? `${t('rule.flow.invertPrefix')} ${body}` : body
 }
 
 /* ── Reorder ────────────────────────────────────────────────────────────────
@@ -537,9 +556,13 @@ onMounted(() => {
 
         <template #head>
           <th>{{ $t('dns.rules.table.index') }}</th>
+          <!-- WHEN before THEN, the order sing-box evaluates a rule in and the
+               order the modal's RuleFlowPreview reads it back in. The table
+               used to lead with the action and the server, which puts the
+               outcome ahead of what triggers it. -->
+          <th>{{ $t('dns.rules.table.conditions') }}</th>
           <th>{{ $t('dns.rules.table.action') }}</th>
           <th>{{ $t('dns.rules.table.server') }}</th>
-          <th>{{ $t('dns.rules.table.conditions') }}</th>
           <th class="col-actions">{{ $t('dns.rules.table.actions') }}</th>
         </template>
 
@@ -566,6 +589,11 @@ onMounted(() => {
             <template v-else>{{ index + 1 }}</template>
           </td>
           <td>
+            <div class="text-gray-900 dark:text-gray-100 truncate max-w-md" :title="getRuleConditionsSummary(rule)">
+              {{ getRuleConditionsSummary(rule) }}
+            </div>
+          </td>
+          <td>
             <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
               {{ (rule as any).action || 'route' }}
             </Badge>
@@ -577,11 +605,6 @@ onMounted(() => {
               {{ predefinedSummary(rule) }}
             </div>
             <div v-else class="text-gray-900 dark:text-gray-100">{{ (rule as any).server || '-' }}</div>
-          </td>
-          <td>
-            <div class="text-gray-900 dark:text-gray-100 truncate max-w-md" :title="getRuleConditionsSummary(rule)">
-              {{ getRuleConditionsSummary(rule) }}
-            </div>
           </td>
           <td class="col-actions font-medium">
             <!-- Hidden in reorder mode on purpose: both are index-addressed,

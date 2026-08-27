@@ -284,19 +284,9 @@ export default {
     },
   },
   ruleItem: {
+    // 其余标签走 `route.rules.fields.*`（缺失时由字段名生成），与表单、流程预览共用。
+    // 只有 action 需要单独定义：表单里是“动作 *”，只读行不该带星号。
     action: '动作：',
-    outbound: '出站：',
-    inbound: '入站：',
-    protocol: '协议：',
-    network: '网络：',
-    domain: '域名：',
-    domainSuffix: '域名后缀：',
-    geosite: 'GeoSite：',
-    geoip: 'GeoIP：',
-    ruleSet: '规则集：',
-    port: '端口：',
-    sniffer: '嗅探器：',
-    timeout: '超时：',
   },
   ruleSets: {
     title: '规则集',
