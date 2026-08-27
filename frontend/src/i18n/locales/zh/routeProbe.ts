@@ -17,24 +17,14 @@ export default {
   },
 
   openSimulator: '完整模拟',
-  rulesHidden: '另有 {count} 条规则未显示',
-  ladder: '规则链',
   decidedBy: '由规则 {index} 决定',
   noRuleMatched: '没有规则命中',
   address: '地址',
   resolvedBySingBox: '由 sing-box 解析',
   resolveFailed: '域名解析失败（{error}），依赖地址的规则无法判定。',
-  continuesMatching: '命中但继续匹配',
-  couldNotEvaluate: '无法判定：{fields}',
   inexact: '仅供参考：该判定之前有 {count} 条规则无法判定，其中任意一条都可能先命中。',
   ruleSetsUnavailable: '以下规则集无法读取，引用它们的规则无法判定：',
 
-  state: {
-    matched: '命中',
-    not_matched: '未命中',
-    unevaluated: '无法判定',
-    skipped: '未到达',
-  },
 
   outboundSource: {
     rule: '来自规则',

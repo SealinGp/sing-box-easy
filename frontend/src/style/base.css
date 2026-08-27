@@ -106,11 +106,25 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+/*
+ * Reveal: the entrance for content that arrives asynchronously.
+ *
+ * Differs from .animate-slide-up in one way that matters — `both` fill mode, so
+ * an `animation-delay` holds the element at the FIRST keyframe (invisible)
+ * rather than painting it at its final state and then snapping back to the
+ * start when the delay expires. Without it a staggered group flashes fully
+ * formed before it animates, which is worse than not animating at all.
+ */
+.animate-reveal {
+  animation: slide-up 0.28s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-spin,
   .animate-pulse,
   .animate-fade-in,
-  .animate-slide-up {
+  .animate-slide-up,
+  .animate-reveal {
     animation: none;
   }
 }

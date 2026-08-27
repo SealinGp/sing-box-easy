@@ -11,4 +11,5 @@ export default {
   predicted: '推测命中',
   runtimeOnly: '需要运行时状态：{fields}',
   loadFailed: '加载 DNS 配置失败',
+  noConditions: '（无条件）',
 }

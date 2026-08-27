@@ -21,4 +21,27 @@ export default {
     continues: '(matching continues to the next rule)',
     then: { label: 'Then' },
   },
+  /**
+   * The rule ladder — the lamp strip both diagnostics pages render.
+   *
+   * Shared for the same reason `flow` is: DNS and route rules are different
+   * families, but "which rung fired, and what happened above it" is one
+   * question and must not be answered in two vocabularies.
+   */
+  ladder: {
+    title: 'Rule walk',
+    skip: 'Skip',
+    replay: 'Replay',
+    continues: 'matching continues',
+    couldNotEvaluate: 'could not evaluate: {fields}',
+    hidden: '{count} more rules not shown',
+    state: {
+      matched: 'matched',
+      not_matched: 'no match',
+      unevaluated: 'unknown',
+      // Not "no match": the walk had already stopped, so this rule was never
+      // consulted. Saying "no match" would assert a comparison that never ran.
+      skipped: 'not reached',
+    },
+  },
 }

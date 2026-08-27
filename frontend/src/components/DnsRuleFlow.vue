@@ -9,11 +9,25 @@
  * library. That keeps the embedded frontend small, which matters on the OpenWrt
  * builds where the whole binary has to fit in the router's overlay.
  *
- * When a probe result is supplied, the rung that handled the query is
- * highlighted so the diagram doubles as an explanation of a concrete lookup.
+ * WHAT THIS USED TO THROW AWAY
+ * ────────────────────────────
+ * `probe.attribution.rules[]` has always carried a verdict per rule — `state`,
+ * a rendered `summary`, and the conditions that could not be decided — and this
+ * component ignored all of it. It re-derived its own summary from the raw config
+ * (a second `summarize()` that could drift from the backend's), re-derived its
+ * own list of runtime-only fields, and then highlighted exactly ONE rung. A rule
+ * the query was tested against and failed rendered identically to a rule that
+ * was never reached, which are opposite facts about the same lookup.
+ *
+ * The per-rule data now drives the ladder, and the ladder's lamps distinguish
+ * the four outcomes. The standalone case — no probe yet — still renders from the
+ * config, because the diagram has to be readable before anything is probed; that
+ * path is the only reason a local `summarize` survives.
  */
 import { computed } from 'vue'
-import { ArrowDownIcon } from '@heroicons/vue/24/outline'
+import { useI18n } from 'vue-i18n'
+import RuleLadder from './RuleLadder.vue'
+import { markUnreached, type LadderRung } from '../types/ruleLadder'
 import type { DnsProbeResult } from '../types/dnsprobe'
 
 const props = defineProps<{
@@ -21,22 +35,21 @@ const props = defineProps<{
   dns: any | null
   /** Optional probe to highlight against the ladder. */
   probe?: DnsProbeResult | null
+  /**
+   * Changes once per probe run, so the walk restarts even when the new result
+   * is identical to the last — see useRuleSequencer.
+   */
+  runToken?: number
 }>()
 
-interface Rung {
-  index: number
-  summary: string
-  action: string
-  server: string
-  strategy: string
-  /** Conditions that cannot be decided without sing-box's runtime state. */
-  unevaluated: string[]
-}
+const { t } = useI18n()
 
 /**
- * Renders a rule's conditions compactly. Mirrors the backend's summary so the
- * diagram and the probe panel describe the same rule the same way, and works
- * standalone so the diagram renders before any probe has run.
+ * Renders a rule's conditions compactly.
+ *
+ * Used ONLY when there is no probe. Once one arrives the backend's own summary
+ * wins, so the diagram and the probe panel cannot describe the same rule two
+ * different ways.
  */
 const summarize = (rule: Record<string, any>): string => {
   const parts: string[] = []
@@ -58,7 +71,7 @@ const summarize = (rule: Record<string, any>): string => {
   }
   if (rule.clash_mode) parts.push(`clash_mode=${rule.clash_mode}`)
 
-  return parts.length ? parts.join(' ') : '(no conditions)'
+  return parts.length ? parts.join(' ') : t('dnsFlow.noConditions')
 }
 
 /** Condition keys the panel cannot evaluate without sing-box's runtime state. */
@@ -69,30 +82,19 @@ const RUNTIME_ONLY = [
   'protocol', 'network', 'port', 'port_range', 'query_type',
 ]
 
-const rungs = computed<Rung[]>(() => {
-  const rules: Record<string, any>[] = props.dns?.rules ?? []
-  return rules.map((rule, index) => ({
-    index,
-    summary: summarize(rule),
-    action: rule.action || 'route',
-    server: rule.server ?? '',
-    strategy: rule.strategy ?? '',
-    unevaluated: RUNTIME_ONLY.filter((key) => {
-      const value = rule[key]
-      return Array.isArray(value) ? value.length > 0 : Boolean(value)
-    }),
-  }))
-})
-
 const servers = computed<Record<string, any>[]>(() => props.dns?.servers ?? [])
 const finalServer = computed<string>(() => props.dns?.final ?? '')
 const finalStrategy = computed<string>(() => props.dns?.strategy ?? '')
 
-/** Index of the rung a probe was attributed to, or -1. */
-const highlightedIndex = computed(() => {
+/**
+ * Which rung handled the query.
+ *
+ * sing-box's OWN logged decision wins over the offline reconstruction — it is
+ * the only source here that observed the lookup rather than predicting it.
+ */
+const matchedIndex = computed(() => {
   const probe = props.probe
   if (!probe) return -1
-  // Prefer sing-box's own logged decision over the reconstruction.
   const logged = probe.logged_matches?.[probe.logged_matches.length - 1]
   if (logged && logged.config_index >= 0) return logged.config_index
   return probe.attribution?.matched_index ?? -1
@@ -103,10 +105,6 @@ const highlightIsConfirmed = computed(() => {
   const last = logged[logged.length - 1]
   return Boolean(last && last.config_index >= 0)
 })
-
-const finalHighlighted = computed(
-  () => Boolean(props.probe) && highlightedIndex.value < 0,
-)
 
 /** Tag → server, so a rung can show what it routes to. */
 const serverByTag = computed(() => {
@@ -123,6 +121,55 @@ const describeServer = (tag: string) => {
   const address = server.server ? `${server.server}${server.server_port ? ':' + server.server_port : ''}` : ''
   return [server.type, address].filter(Boolean).join(' ')
 }
+
+/** "route(local)" / "reject" — what the rung does, in one token. */
+const outcomeOf = (action: string, server: string, strategy: string) => {
+  const head = action === 'route' && server ? `${action}(${server})` : action
+  return strategy ? `${head} · ${strategy}` : head
+}
+
+/**
+ * The ladder.
+ *
+ * With a probe, every rung's verdict comes from the backend. Without one, the
+ * rungs render from the config with no verdict at all — `unevaluated` rather
+ * than a fabricated "no match", because nothing has been compared yet.
+ */
+const rungs = computed<LadderRung[]>(() => {
+  const probe = props.probe
+  const configRules: Record<string, any>[] = props.dns?.rules ?? []
+
+  if (!probe?.attribution?.rules?.length) {
+    return configRules.map((rule, index) => ({
+      index,
+      state: 'unevaluated' as const,
+      summary: summarize(rule),
+      outcome: outcomeOf(rule.action || 'route', rule.server ?? '', rule.strategy ?? ''),
+      deciding: false,
+      unevaluated: RUNTIME_ONLY.filter((key) => {
+        const value = rule[key]
+        return Array.isArray(value) ? value.length > 0 : Boolean(value)
+      }),
+    }))
+  }
+
+  const mapped: LadderRung[] = probe.attribution.rules.map((rule) => ({
+    index: rule.index,
+    state: rule.state,
+    summary: rule.summary,
+    outcome: outcomeOf(rule.action, rule.server ?? '', rule.strategy ?? ''),
+    deciding: rule.index === matchedIndex.value,
+    unevaluated: rule.unevaluated,
+  }))
+
+  // Everything below the decision was never consulted — see ruleLadder.ts.
+  return markUnreached(mapped, matchedIndex.value)
+})
+
+/** A probe ran and nothing matched, so `dns.final` answered it. */
+const finalHighlighted = computed(
+  () => Boolean(props.probe) && matchedIndex.value < 0,
+)
 </script>
 
 <template>
@@ -138,87 +185,47 @@ const describeServer = (tag: string) => {
           {{ probe ? probe.domain : $t('dnsFlow.query') }}
         </span>
         <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('dnsFlow.entersRules') }}</span>
-      </div>
-
-      <!-- Ladder -->
-      <ol class="space-y-1.5">
-        <li v-for="rung in rungs" :key="rung.index">
-          <div class="flex items-stretch gap-2">
-            <div class="flex flex-col items-center pt-1">
-              <ArrowDownIcon class="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
-            </div>
-
-            <div
-              class="flex-1 rounded-control border px-3 py-2 transition-colors"
-              :class="
-                rung.index === highlightedIndex
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 shadow-sm'
-                  : 'border-gray-200 dark:border-gray-700'
-              "
-            >
-              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span class="text-xs font-mono text-gray-400">#{{ rung.index }}</span>
-                <span class="text-sm font-mono text-gray-800 dark:text-gray-200 break-all">{{ rung.summary }}</span>
-                <span
-                  v-if="rung.index === highlightedIndex"
-                  class="ml-auto px-2 py-0.5 rounded-pill text-[10px] font-semibold"
-                  :class="
-                    highlightIsConfirmed
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-amber-400/25 text-amber-800 dark:text-amber-300'
-                  "
-                >
-                  {{ highlightIsConfirmed ? $t('dnsFlow.matched') : $t('dnsFlow.predicted') }}
-                </span>
-              </div>
-
-              <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span class="text-gray-500 dark:text-gray-400">&rarr;</span>
-                <span class="font-mono font-medium text-gray-700 dark:text-gray-300">
-                  {{ rung.action === 'route' && rung.server ? rung.server : rung.action }}
-                </span>
-                <span v-if="rung.server && describeServer(rung.server)" class="text-gray-400">
-                  ({{ describeServer(rung.server) }})
-                </span>
-                <span v-if="rung.strategy" class="px-1.5 py-0.5 rounded-pill bg-gray-100 dark:bg-gray-700 text-[10px]">
-                  {{ rung.strategy }}
-                </span>
-                <span v-if="rung.unevaluated.length" class="text-amber-600 dark:text-amber-400">
-                  {{ $t('dnsFlow.runtimeOnly', { fields: rung.unevaluated.join(', ') }) }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </li>
-      </ol>
-
-      <!-- Fallthrough -->
-      <div class="flex items-stretch gap-2">
-        <div class="flex flex-col items-center pt-1">
-          <ArrowDownIcon class="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
-        </div>
-        <div
-          class="flex-1 rounded-control border border-dashed px-3 py-2"
+        <!-- Whether the highlighted rung is sing-box's own record or our
+             reconstruction. The distinction is the whole reason the probe reads
+             the log at all, so it is not buried in a tooltip. -->
+        <span
+          v-if="probe && matchedIndex >= 0"
+          class="ml-auto px-2 py-0.5 rounded-pill text-[10px] font-semibold"
           :class="
-            finalHighlighted
-              ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40'
-              : 'border-gray-300 dark:border-gray-600'
+            highlightIsConfirmed
+              ? 'bg-emerald-600 text-white'
+              : 'bg-amber-400/25 text-amber-800 dark:text-amber-300'
           "
         >
-          <div class="flex flex-wrap items-baseline gap-2">
-            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ $t('dnsFlow.final') }}</span>
-            <span class="text-sm font-mono font-medium text-gray-800 dark:text-gray-200">
-              {{ finalServer || '—' }}
-            </span>
-            <span v-if="finalServer && describeServer(finalServer)" class="text-xs text-gray-400">
-              ({{ describeServer(finalServer) }})
-            </span>
-            <span v-if="finalStrategy" class="px-1.5 py-0.5 rounded-pill bg-gray-100 dark:bg-gray-700 text-[10px]">
-              {{ finalStrategy }}
-            </span>
-          </div>
-        </div>
+          {{ highlightIsConfirmed ? $t('dnsFlow.matched') : $t('dnsFlow.predicted') }}
+        </span>
       </div>
+
+      <RuleLadder :rungs="rungs" :matched-index="matchedIndex" :run-token="runToken">
+        <template #fallthrough="{ revealed }">
+          <div
+            class="rounded-control border border-dashed px-3 py-2 transition-all duration-200"
+            :class="
+              finalHighlighted && revealed
+                ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+                : 'border-gray-300 dark:border-gray-600'
+            "
+          >
+            <div class="flex flex-wrap items-baseline gap-2">
+              <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ $t('dnsFlow.final') }}</span>
+              <span class="text-sm font-mono font-medium text-gray-800 dark:text-gray-200">
+                {{ finalServer || '—' }}
+              </span>
+              <span v-if="finalServer && describeServer(finalServer)" class="text-xs text-gray-400">
+                ({{ describeServer(finalServer) }})
+              </span>
+              <span v-if="finalStrategy" class="px-1.5 py-0.5 rounded-pill bg-gray-100 dark:bg-gray-700 text-[10px]">
+                {{ finalStrategy }}
+              </span>
+            </div>
+          </div>
+        </template>
+      </RuleLadder>
 
       <!-- Server legend -->
       <div v-if="servers.length" class="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700">

@@ -11,4 +11,5 @@ export default {
   predicted: 'predicted',
   runtimeOnly: 'needs runtime state: {fields}',
   loadFailed: 'Failed to load the DNS configuration',
+  noConditions: '(no conditions)',
 }

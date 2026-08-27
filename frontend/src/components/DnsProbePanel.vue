@@ -9,7 +9,7 @@
  * condition needing runtime state) sat ahead of the decision — a confidently
  * wrong "rule #4 matched" would be worse than admitting uncertainty.
  */
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowPathIcon,
@@ -31,7 +31,18 @@ import {
 
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 
-const emit = defineEmits<{ (e: 'result', result: DnsProbeResult | null): void }>()
+const emit = defineEmits<{
+  /**
+   * `runToken` changes once per probe run, on the first stage that lands.
+   *
+   * The result object alone cannot serve as the identity: a streamed probe
+   * replaces it once per PHASE, so anything keyed on it would restart four
+   * times per run — and two consecutive probes of the same domain produce
+   * equal-looking results, so nothing derived from the content can tell them
+   * apart either. A counter is the only honest answer.
+   */
+  (e: 'result', result: DnsProbeResult | null, runToken: number): void
+}>()
 
 const { t } = useI18n()
 const notify = useNotify()
@@ -48,25 +59,92 @@ const result = ref<DnsProbeResult | null>(null)
 
 const canRun = computed(() => domain.value.trim().length > 0 && !running.value)
 
+/**
+ * The phase the probe is in, for the progress line.
+ *
+ * These are the server's own stage names (dnsprobe.Stage) — the phases where
+ * the time actually goes — not a decomposition invented here.
+ */
+const stage = ref<string>('')
+
+/**
+ * Bumped when the first data of a run arrives — NOT when the run starts.
+ *
+ * Starting the clock at submit would re-key the panel while the PREVIOUS
+ * result is still on screen (a re-probe deliberately keeps it there rather than
+ * blanking), so the old content would play the entrance animation. Waiting for
+ * the first stage means the animation always marks the arrival of something
+ * new, which is the only thing it is meant to say.
+ */
+const runToken = ref(0)
+
+let controller: AbortController | null = null
+/** Whether this run has already claimed its token. */
+let tokenClaimed = false
+
+/** Publishes a result upward, taking a fresh token on the run's first data. */
+const publish = (probe: DnsProbeResult | null) => {
+  if (!tokenClaimed) {
+    tokenClaimed = true
+    runToken.value += 1
+  }
+  result.value = probe
+  emit('result', probe, runToken.value)
+}
+
+/**
+ * Runs the probe over SSE, publishing each phase as it lands.
+ *
+ * The partial result is emitted upward too, so the rule ladder next to this
+ * panel renders from the attribution the moment it arrives — before the live
+ * query has returned, and long before compare_servers has finished walking
+ * every upstream.
+ *
+ * Falls back to the unary endpoint if the stream cannot be used: a probe that
+ * answers all at once is worse than one that answers progressively, and much
+ * better than one that does not answer.
+ */
 const run = async () => {
   if (!canRun.value) return
   running.value = true
+  stage.value = ''
+  tokenClaimed = false
+  controller?.abort()
+  controller = new AbortController()
+
+  const request = {
+    domain: domain.value.trim(),
+    type: queryType.value,
+    compare_servers: compareServers.value,
+  }
+
   try {
-    const probe = await dnsService.probe({
-      domain: domain.value.trim(),
-      type: queryType.value,
-      compare_servers: compareServers.value,
-    })
-    result.value = probe
-    emit('result', probe)
+    const probe = await dnsService.probeStream(
+      request,
+      (name, partial) => {
+        stage.value = name
+        publish(partial)
+      },
+      controller.signal,
+    )
+    // A stream that closed without a terminal event told us nothing complete;
+    // the unary call is the honest way to finish rather than presenting the
+    // last partial as final.
+    publish(probe ?? (await dnsService.probe(request)))
   } catch (err) {
-    result.value = null
-    emit('result', null)
-    notify.apiError(err, t('dnsProbe.toast.failed'))
+    try {
+      publish(await dnsService.probe(request))
+    } catch {
+      publish(null)
+      notify.apiError(err, t('dnsProbe.toast.failed'))
+    }
   } finally {
+    stage.value = ''
     running.value = false
   }
 }
+
+onUnmounted(() => controller?.abort())
 
 const stateClass = (state: MatchState) => {
   switch (state) {
@@ -150,7 +228,14 @@ const logStatusMessage = computed(() => {
         blocks: read in order they explain how the result was reached, which is
         the whole question being asked.
       -->
-      <section>
+      <!--
+        Keyed on the run, not on the result: a streamed probe replaces the
+        result once per phase, and keying on it would replay the entrance four
+        times per query. The key remounts the section, which is what re-arms the
+        CSS animation — a class alone only fires on first mount, so a second
+        probe would update the numbers in place and silently.
+      -->
+      <section :key="`timeline-${runToken}`" class="animate-reveal">
         <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
           {{ $t('dnsTimeline.title') }}
         </h4>
@@ -162,7 +247,12 @@ const logStatusMessage = computed(() => {
       </section>
 
       <!-- Rule ladder -->
-      <section v-if="!props.compact && result.attribution.rules.length">
+      <section
+        v-if="!props.compact && result.attribution.rules.length"
+        :key="`rules-${runToken}`"
+        class="animate-reveal"
+        style="animation-delay: 70ms"
+      >
         <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
           {{ $t('dnsProbe.ruleEvaluation') }}
         </h4>
@@ -191,7 +281,7 @@ const logStatusMessage = computed(() => {
       </section>
 
       <!-- Upstream comparison -->
-      <section v-if="result.servers.length">
+      <section v-if="result.servers.length" :key="`upstreams-${runToken}`" class="animate-reveal">
         <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
           {{ $t('dnsProbe.upstreams') }}
           <span
@@ -228,9 +318,16 @@ const logStatusMessage = computed(() => {
       {{ $t('dnsProbe.hint') }}
     </p>
 
-    <div v-if="running && !result" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+    <!--
+      Kept visible once a result exists, because a streamed probe HAS a partial
+      result while it is still working: the ladder renders off the attribution
+      while the live query and the upstream comparison are still outstanding.
+      Hiding this at the first partial would claim the probe had finished.
+    -->
+    <div v-if="running" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
       <ArrowPathIcon class="h-4 w-4 animate-spin" />
-      {{ $t('dnsProbe.running') }}
+      <span v-if="stage">{{ $t(`dnsProbe.stage.${stage}`) }}</span>
+      <span v-else>{{ $t('dnsProbe.running') }}</span>
     </div>
   </div>
 </template>

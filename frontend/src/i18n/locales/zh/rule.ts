@@ -17,4 +17,19 @@ export default {
     continues: '（继续匹配下一条规则）',
     then: { label: '则' },
   },
+  ladder: {
+    title: '规则走查',
+    skip: '跳过',
+    replay: '重放',
+    continues: '继续匹配',
+    couldNotEvaluate: '无法判定：{fields}',
+    hidden: '另有 {count} 条规则未显示',
+    state: {
+      matched: '已匹配',
+      not_matched: '未匹配',
+      unevaluated: '未知',
+      // 不是“未匹配”：走查已经停止，这条规则根本没有被比较过。
+      skipped: '未到达',
+    },
+  },
 }

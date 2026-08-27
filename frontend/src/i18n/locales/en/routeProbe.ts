@@ -17,24 +17,14 @@ export default {
   },
 
   openSimulator: 'Full simulator',
-  rulesHidden: '{count} more rule(s) not shown',
-  ladder: 'Rule ladder',
   decidedBy: 'Decided by rule {index}',
   noRuleMatched: 'No rule matched',
   address: 'Address',
   resolvedBySingBox: 'resolved by sing-box',
   resolveFailed: 'Could not resolve the name ({error}). Address-based rules could not be decided.',
-  continuesMatching: 'matches but keeps going',
-  couldNotEvaluate: 'Could not evaluate: {fields}',
   inexact: 'Best guess: {count} rule(s) ahead of this decision could not be evaluated, and any of them could have matched first.',
   ruleSetsUnavailable: 'Some rule sets could not be read, so rules using them could not be decided:',
 
-  state: {
-    matched: 'matched',
-    not_matched: 'no match',
-    unevaluated: 'unknown',
-    skipped: 'not reached',
-  },
 
   outboundSource: {
     rule: 'from a rule',

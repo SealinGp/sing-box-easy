@@ -21,15 +21,15 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
+import RuleLadder from './RuleLadder.vue'
 import { Select } from '../volt'
 import { routeService, inboundService } from '../services'
 import { useNotify } from '../composables/useNotify'
+import { markUnreached, type LadderRung } from '../types/ruleLadder'
 import {
   ROUTE_NETWORKS,
   SNIFFED_PROTOCOLS,
   type RouteProbeResult,
-  type RouteMatchState,
-  type RouteRuleEvaluation,
 } from '../types/routeprobe'
 
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
@@ -99,28 +99,31 @@ const run = async () => {
   }
 }
 
-const stateClass = (state: RouteMatchState) => {
-  switch (state) {
-    case 'matched':
-      return 'border-primary-500 bg-primary-50 dark:bg-primary-950/40'
-    case 'unevaluated':
-      return 'border-amber-400 bg-amber-50/60 dark:bg-amber-950/20'
-    case 'skipped':
-      return 'border-gray-200 dark:border-gray-700 opacity-40'
-    default:
-      return 'border-gray-200 dark:border-gray-700 opacity-60'
-  }
-}
-
-const stateLabel = (state: RouteMatchState) => t(`routeProbe.state.${state}`)
-
 /**
- * The rule that decided, if any. A non-terminal rule can match without
- * deciding — `sniff` and `resolve` change what the rules below them see and
- * then hand over — so "matched" and "decided" are not the same row.
+ * The ladder, in the shared shape.
+ *
+ * The per-rule verdicts, the lamp colours and the sequencing all live in
+ * <RuleLadder> now — this panel only says which of ITS fields map onto a rung.
+ * The DNS diagram renders the same component, which is the point: the two
+ * probes answer the same question and used to answer it in different amounts of
+ * detail.
  */
-const isDecidingRule = (rule: RouteRuleEvaluation) =>
-  result.value !== null && rule.index === result.value.matched_index
+const rungs = computed<LadderRung[]>(() => {
+  if (!result.value) return []
+  const matchedIndex = result.value.matched_index
+  const mapped: LadderRung[] = visibleRules.value.map((rule) => ({
+    index: rule.index,
+    state: rule.state,
+    summary: rule.summary,
+    outcome: rule.outcome ? `${rule.action}(${rule.outcome})` : rule.action,
+    deciding: rule.index === matchedIndex,
+    // A matched rule that does not decide is the confusing case: `sniff` and
+    // `resolve` change what the rules below them see and then hand over.
+    continues: rule.state === 'matched' && !rule.terminal,
+    unevaluated: rule.unevaluated,
+  }))
+  return markUnreached(mapped, matchedIndex)
+})
 
 /**
  * What the ladder shows.
@@ -290,48 +293,9 @@ const outboundSourceLabel = computed(() => {
         </p>
       </div>
 
-      <!-- The ladder -->
-      <div class="space-y-1.5">
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          {{ $t('routeProbe.ladder') }}
-        </p>
-
-        <div
-          v-for="rule in visibleRules"
-          :key="rule.index"
-          class="rounded-control border px-3 py-2"
-          :class="[stateClass(rule.state), isDecidingRule(rule) ? 'ring-2 ring-primary-500/40' : '']"
-        >
-          <div class="flex items-start gap-2">
-            <span class="text-xs font-mono text-gray-400 mt-0.5 w-6 flex-shrink-0">{{ rule.index }}</span>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-mono text-gray-700 dark:text-gray-300 break-words">{{ rule.summary }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                &rarr; {{ rule.action }}<span v-if="rule.outcome">({{ rule.outcome }})</span>
-                <!--
-                  A matched rule that does not decide is the single most
-                  confusing thing in the ladder, so it is called out rather
-                  than left to be inferred from the highlight.
-                -->
-                <span v-if="rule.state === 'matched' && !rule.terminal" class="italic">
-                  · {{ $t('routeProbe.continuesMatching') }}
-                </span>
-              </p>
-              <p v-if="rule.unevaluated?.length" class="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                {{ $t('routeProbe.couldNotEvaluate', { fields: rule.unevaluated.join(', ') }) }}
-              </p>
-            </div>
-            <span class="text-xs px-2 py-0.5 rounded-pill bg-white/60 dark:bg-black/20 flex-shrink-0">
-              {{ stateLabel(rule.state) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Never let the compact view read as "these are all the rules". -->
-        <p v-if="hiddenRuleCount > 0" class="text-xs text-gray-400 dark:text-gray-500">
-          {{ $t('routeProbe.rulesHidden', { count: hiddenRuleCount }) }}
-        </p>
-      </div>
+      <!-- The ladder. Lamps, states and the top-to-bottom walk all live in
+           <RuleLadder>; the DNS diagram renders the same component. -->
+      <RuleLadder :rungs="rungs" :matched-index="result.matched_index" :hidden-count="hiddenRuleCount" />
     </template>
   </div>
 </template>
