@@ -9,10 +9,12 @@ import (
 
 // fakeHost records every command and answers the queries Apply/Revert make.
 type fakeHost struct {
-	calls     []string
-	uciShow   string // response to `uci show firewall`
-	dnsServer string // response to `uci -q get dhcp.@dnsmasq[0].server`
-	failOn    string // substring of a command that should fail
+	calls            []string
+	uciShow          string // response to `uci show firewall`
+	dnsServer        string // response to `uci -q get dhcp.@dnsmasq[0].server`
+	rebindDomain     string // response to `uci -q get dhcp.@dnsmasq[0].rebind_domain`
+	rebindProtection string // response to `uci -q get ...rebind_protection`; "" is absent
+	failOn           string // substring of a command that should fail
 }
 
 func (f *fakeHost) run(name string, args ...string) (string, error) {
@@ -26,6 +28,15 @@ func (f *fakeHost) run(name string, args ...string) (string, error) {
 		return f.uciShow, nil
 	case strings.Contains(cmd, "get dhcp.@dnsmasq[0].server"):
 		return f.dnsServer, nil
+	case strings.Contains(cmd, "get dhcp.@dnsmasq[0].rebind_domain"):
+		return f.rebindDomain, nil
+	case strings.Contains(cmd, "get dhcp.@dnsmasq[0].rebind_protection"):
+		// An absent option exits non-zero on a real box, and OpenWrt's init
+		// script then defaults the protection on.
+		if f.rebindProtection == "" {
+			return "", os.ErrNotExist
+		}
+		return f.rebindProtection, nil
 	}
 	return "", nil
 }

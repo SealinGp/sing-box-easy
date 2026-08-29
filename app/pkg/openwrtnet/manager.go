@@ -74,9 +74,28 @@ func (m *Manager) Apply(plan Plan) error {
 			return err
 		}
 	}
+
 	if plan.NeedsDNSRedirect() {
-		if err := m.redirectDNS(plan.DNSUpstream(), &st); err != nil {
+		// The exemption is staged before the redirect so the two land in the
+		// same dnsmasq restart. There is never a window where dnsmasq
+		// forwards to sing-box while still filtering the private addresses
+		// sing-box answers with.
+		//
+		// It is gated on the redirect for the same reason: rebind protection
+		// only strips answers that arrive from an upstream server, and
+		// sing-box is not one until dnsmasq points at it.
+		exempted, err := m.stageRebindSync(plan.LANDomains, &st)
+		if err != nil {
 			return err
+		}
+		redirected, err := m.stageDNSRedirect(plan.DNSUpstream(), &st)
+		if err != nil {
+			return err
+		}
+		if exempted || redirected {
+			if err := m.commitDNSMasq(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -97,12 +116,12 @@ func (m *Manager) Revert() error {
 	if err != nil {
 		return err
 	}
-	if !st.ZoneCreated && !st.DNSChanged {
+	if !st.ZoneCreated && !st.DNSChanged && len(st.RebindDomains) == 0 {
 		return nil
 	}
 
 	var problems []string
-	if st.DNSChanged {
+	if st.DNSChanged || len(st.RebindDomains) > 0 {
 		if err := m.restoreDNS(st); err != nil {
 			problems = append(problems, err.Error())
 		}
@@ -203,8 +222,10 @@ func (m *Manager) removeZone() error {
 	return nil
 }
 
-// redirectDNS points dnsmasq at sing-box, recording the previous upstreams.
-func (m *Manager) redirectDNS(upstream string, st *state) error {
+// stageDNSRedirect points dnsmasq at sing-box, recording the previous
+// upstreams. Nothing is committed: the caller batches every dhcp edit into a
+// single commit and restart.
+func (m *Manager) stageDNSRedirect(upstream string, st *state) (bool, error) {
 	current, err := m.run("uci", "-q", "get", "dhcp.@dnsmasq[0].server")
 	// A missing option exits non-zero; that is "no upstream configured", not a
 	// failure, and the empty result is what we want to record.
@@ -215,7 +236,7 @@ func (m *Manager) redirectDNS(upstream string, st *state) error {
 
 	if isAlreadyRedirected(servers, upstream) {
 		st.DNSChanged = true
-		return nil
+		return false, nil
 	}
 
 	// Only capture the original once. Re-applying must not record our own
@@ -224,26 +245,45 @@ func (m *Manager) redirectDNS(upstream string, st *state) error {
 		st.PriorServers = servers
 	}
 
-	if err := m.setDNSServers([]string{upstream}); err != nil {
-		return err
+	if err := m.stageDNSServers([]string{upstream}); err != nil {
+		return false, err
 	}
 	st.DNSChanged = true
 	logger.Info("dnsmasq redirected to sing-box",
 		zap.String("upstream", upstream), zap.Strings("previous", st.PriorServers))
-	return nil
+	return true, nil
 }
 
+// restoreDNS undoes both dhcp edits in a single commit and restart, so the
+// router never runs with one half applied — in particular never forwards to
+// sing-box with the rebind protection already unexempted, the state that
+// silently blanks every LAN name.
 func (m *Manager) restoreDNS(st state) error {
-	if err := m.setDNSServers(st.PriorServers); err != nil {
-		return err
+	dirty, removeErr := m.stageRebindRemove(st.RebindDomains)
+
+	if st.DNSChanged {
+		if err := m.stageDNSServers(st.PriorServers); err != nil {
+			return err
+		}
+		dirty = true
 	}
-	logger.Info("dnsmasq upstream restored", zap.Strings("servers", st.PriorServers))
+	if dirty {
+		if err := m.commitDNSMasq(); err != nil {
+			return err
+		}
+	}
+	if removeErr != nil {
+		return removeErr
+	}
+	if st.DNSChanged {
+		logger.Info("dnsmasq upstream restored", zap.Strings("servers", st.PriorServers))
+	}
 	return nil
 }
 
-// setDNSServers replaces the dnsmasq upstream list. An empty list clears the
+// stageDNSServers replaces the dnsmasq upstream list. An empty list clears the
 // option entirely, which is how dnsmasq falls back to resolv.conf.
-func (m *Manager) setDNSServers(servers []string) error {
+func (m *Manager) stageDNSServers(servers []string) error {
 	// Ignore the delete error: the option is legitimately absent when nothing
 	// was configured.
 	_, _ = m.run("uci", "-q", "delete", "dhcp.@dnsmasq[0].server")
@@ -257,6 +297,11 @@ func (m *Manager) setDNSServers(servers []string) error {
 			return fmt.Errorf("failed to set the dnsmasq upstream: %w", err)
 		}
 	}
+	return nil
+}
+
+// commitDNSMasq flushes the staged dhcp edits and reloads dnsmasq once.
+func (m *Manager) commitDNSMasq() error {
 	if _, err := m.run("uci", "commit", "dhcp"); err != nil {
 		return fmt.Errorf("failed to commit the dhcp config: %w", err)
 	}

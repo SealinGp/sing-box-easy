@@ -21,6 +21,11 @@ type state struct {
 	// is meaningful: it means no upstream was configured and Revert should
 	// clear the option rather than write one.
 	PriorServers []string `json:"prior_servers,omitempty"`
+	// RebindDomains are the rebind-protection exemptions this package added.
+	// Recording the names we wrote — rather than re-deriving them from the
+	// config at revert time — is what keeps a later config edit from stranding
+	// an exemption, or from deleting one the operator added by hand.
+	RebindDomains []string `json:"rebind_domains,omitempty"`
 }
 
 func (m *Manager) loadState() (state, error) {
