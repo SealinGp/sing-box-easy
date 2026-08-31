@@ -120,6 +120,9 @@ func (h *Handler) DeleteFilter(ctx context.Context, c *app.RequestContext) {
 type groupRequest struct {
 	Name      string   `json:"name"`
 	FilterIDs []string `json:"filter_ids"`
+	// ExtraTags: outbounds the Group names directly (e.g. `direct`), which no
+	// Filter can collect on its own.
+	ExtraTags []string `json:"extra_tags"`
 	Priority  int      `json:"priority"`
 }
 
@@ -141,6 +144,7 @@ func (h *Handler) CreateGroup(ctx context.Context, c *app.RequestContext) {
 	created, err := h.nodeRulesManager.CreateGroup(&noderules.Group{
 		Name:      req.Name,
 		FilterIDs: req.FilterIDs,
+		ExtraTags: req.ExtraTags,
 		Priority:  req.Priority,
 	})
 	if err != nil {
@@ -161,6 +165,7 @@ func (h *Handler) UpdateGroup(ctx context.Context, c *app.RequestContext) {
 		ID:        id,
 		Name:      req.Name,
 		FilterIDs: req.FilterIDs,
+		ExtraTags: req.ExtraTags,
 		Priority:  req.Priority,
 	})
 	if err != nil {

@@ -55,6 +55,16 @@ type FilterSpec struct {
 type GroupSpec struct {
 	Name        string
 	FilterNames []string
+	// ExtraTags are outbound tags the Group names directly, appended after its
+	// Filter members in the given order. This is how a `direct` bypass entry
+	// joins a group selector: `direct` is never collected by a Filter's
+	// matchers automatically (see IsOptInMemberType), so without this a group
+	// could only ever contain generated Filter outbounds.
+	//
+	// Tags that resolve to nothing are dropped rather than written: sing-box
+	// fails at START on an unknown selector member, and `sing-box check` does
+	// not catch it.
+	ExtraTags []string
 }
 
 // BuildGroupOutbounds rebuilds the rule-managed Filter and Group outbounds from
@@ -101,13 +111,21 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 		order = append(order, f.Name)
 	}
 
-	// 2. Build Group outbounds referencing only emitted Filters.
+	// 2. Build Group outbounds referencing emitted Filters plus any directly
+	//    named outbounds (ExtraTags) that actually resolve.
+	existingTags := make(map[string]struct{}, len(existing))
+	for _, ob := range existing {
+		if ob.Tag != "" {
+			existingTags[ob.Tag] = struct{}{}
+		}
+	}
+
 	for _, g := range groups {
 		if g.Name == "" {
 			continue
 		}
-		members := make([]string, 0, len(g.FilterNames))
-		seen := make(map[string]struct{}, len(g.FilterNames))
+		members := make([]string, 0, len(g.FilterNames)+len(g.ExtraTags))
+		seen := make(map[string]struct{}, len(g.FilterNames)+len(g.ExtraTags))
 		for _, fn := range g.FilterNames {
 			if !emittedFilter[fn] {
 				continue
@@ -117,6 +135,24 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 			}
 			seen[fn] = struct{}{}
 			members = append(members, fn)
+		}
+		for _, tag := range g.ExtraTags {
+			if tag == "" || tag == g.Name {
+				// A selector listing itself hangs sing-box at start.
+				continue
+			}
+			if _, dup := seen[tag]; dup {
+				continue
+			}
+			_, exists := existingTags[tag]
+			if !exists && !emittedFilter[tag] {
+				// Names an outbound that is not in the config (renamed,
+				// deleted, or a Filter that came out empty). Writing it would
+				// stop sing-box from starting.
+				continue
+			}
+			seen[tag] = struct{}{}
+			members = append(members, tag)
 		}
 		if len(members) == 0 {
 			continue

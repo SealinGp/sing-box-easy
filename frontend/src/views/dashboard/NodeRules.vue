@@ -268,10 +268,16 @@ async function removeFilter(f: Filter) {
 
 // ---- Group editor state ----
 const editingGroupId = ref<string | null>(null)
-const groupForm = reactive<{ name: string; priority: number; filter_ids: string[] }>({
+const groupForm = reactive<{
+  name: string
+  priority: number
+  filter_ids: string[]
+  extra_tags: string[]
+}>({
   name: '',
   priority: 0,
   filter_ids: [],
+  extra_tags: [],
 })
 
 function startCreateGroup() {
@@ -279,6 +285,7 @@ function startCreateGroup() {
   groupForm.name = ''
   groupForm.priority = (groups.value.length + 1) * 10
   groupForm.filter_ids = []
+  groupForm.extra_tags = []
 }
 
 function startEditGroup(g: Group) {
@@ -286,6 +293,32 @@ function startEditGroup(g: Group) {
   groupForm.name = g.name
   groupForm.priority = g.priority
   groupForm.filter_ids = [...g.filter_ids]
+  groupForm.extra_tags = [...(g.extra_tags ?? [])]
+}
+
+// A group may also name outbounds directly — the `direct` bypass entry a
+// selector usually wants next to its regions. Filters never collect `direct`
+// on their own, so this picker is the only route to it.
+const groupTagQuery = ref('')
+const groupTagOpen = ref(false)
+const filteredGroupTags = computed<string[]>(() => {
+  const q = groupTagQuery.value.trim().toLowerCase()
+  const all = q ? endpointTags.value.filter((tag) => tag.toLowerCase().includes(q)) : endpointTags.value
+  return all.slice(0, 50)
+})
+
+function addGroupTag(tag: string) {
+  if (!tag || groupForm.extra_tags.includes(tag)) return
+  groupForm.extra_tags = [...groupForm.extra_tags, tag]
+}
+
+function pickGroupTag(tag: string) {
+  addGroupTag(tag)
+  groupTagQuery.value = ''
+}
+
+function removeGroupTag(tag: string) {
+  groupForm.extra_tags = groupForm.extra_tags.filter((t) => t !== tag)
 }
 
 function cancelGroupEdit() {
@@ -300,7 +333,12 @@ function toggleGroupFilter(id: string) {
 
 async function saveGroup() {
   notice.value = ''
-  const input = { name: groupForm.name.trim(), priority: groupForm.priority, filter_ids: groupForm.filter_ids }
+  const input = {
+    name: groupForm.name.trim(),
+    priority: groupForm.priority,
+    filter_ids: groupForm.filter_ids,
+    extra_tags: groupForm.extra_tags,
+  }
   if (!input.name) {
     notice.value = t('nodeRules.nameRequired')
     return
@@ -507,7 +545,15 @@ onMounted(async () => {
                   <span v-for="fid in g.filter_ids" :key="fid" class="px-2 py-0.5 rounded-surface text-[11px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium">
                     {{ filterName(fid) }}
                   </span>
-                  <span v-if="!g.filter_ids.length" class="text-xs text-gray-400 italic">{{ t('nodeRules.noFilters') }}</span>
+                  <span
+                    v-for="tag in (g.extra_tags ?? [])"
+                    :key="`t${tag}`"
+                    class="px-2 py-0.5 rounded-surface text-[11px] bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium"
+                    :title="t('nodeRules.groupTagBadgeTitle')"
+                  >
+                    {{ tag }}
+                  </span>
+                  <span v-if="!g.filter_ids.length && !(g.extra_tags ?? []).length" class="text-xs text-gray-400 italic">{{ t('nodeRules.noFilters') }}</span>
                 </div>
               </div>
               <div class="flex gap-0.5 shrink-0">
@@ -960,6 +1006,67 @@ onMounted(async () => {
             <div v-if="!filters.length" class="text-xs text-gray-400 py-1">
               No filters available. Please add a filter first.
             </div>
+          </div>
+
+          <!--
+            Outbounds named directly. Separate from the filter chips above
+            because they are a different kind of member: a `direct` outbound is
+            never collected by a filter's matchers, so it can only reach a group
+            through here.
+          -->
+          <div class="space-y-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400">
+              {{ t('nodeRules.groupExtraTags') }}
+              <span class="font-normal text-gray-400">{{ t('nodeRules.groupExtraTagsHint') }}</span>
+            </label>
+
+            <div v-if="groupForm.extra_tags.length" class="flex flex-wrap gap-1">
+              <span
+                v-for="tag in groupForm.extra_tags"
+                :key="tag"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-control text-[11px] bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium"
+              >
+                {{ tag }}
+                <button type="button" class="text-emerald-500 hover:text-red-500 cursor-pointer" @click="removeGroupTag(tag)">
+                  <XMarkIcon class="h-3 w-3" />
+                </button>
+              </span>
+            </div>
+
+            <div v-if="endpointTags.length" class="relative">
+              <input
+                v-model="groupTagQuery"
+                class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-primary-500 w-full"
+                :placeholder="t('nodeRules.groupAddTag')"
+                @focus="groupTagOpen = true"
+                @blur="groupTagOpen = false"
+              />
+              <div
+                v-if="groupTagOpen"
+                class="node-rule-popover absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-surface border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 text-xs"
+              >
+                <button
+                  v-for="tag in filteredGroupTags"
+                  :key="tag"
+                  type="button"
+                  class="flex w-full items-center gap-1.5 cursor-pointer px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-primary-950/30 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
+                  :title="tag"
+                  @mousedown.prevent="pickGroupTag(tag)"
+                >
+                  <span class="truncate">{{ tag }}</span>
+                  <span
+                    v-if="isOptionalTag(tag)"
+                    class="ml-auto shrink-0 px-1.5 py-0.5 rounded-pill text-[9px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                  >
+                    {{ t('nodeRules.directBadge') }}
+                  </span>
+                </button>
+                <div v-if="!filteredGroupTags.length" class="px-3 py-2 text-gray-400 text-center">
+                  {{ t('nodeRules.noNodeMatches') }}
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-xs text-gray-400 py-1">{{ t('nodeRules.groupTagsEmpty') }}</div>
           </div>
         </div>
 

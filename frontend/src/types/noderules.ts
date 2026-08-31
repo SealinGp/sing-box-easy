@@ -29,11 +29,16 @@ export interface Filter {
   updated_at?: string
 }
 
-// Group = the user's "Group Node": an ordered set of Filters.
+// Group = the user's "Group Node": an ordered set of Filters, plus any
+// outbounds named directly.
 export interface Group {
   id: string
   name: string
   filter_ids: string[]
+  // extra_tags: outbound tags this group names directly, appended after its
+  // filter members. A filter's matchers never collect a `direct` outbound on
+  // their own, so this is the only way a bypass entry joins a group selector.
+  extra_tags: string[]
   priority: number
   created_at?: string
   updated_at?: string
@@ -102,5 +107,6 @@ export const URLTEST_DEFAULTS = {
 export interface GroupInput {
   name: string
   filter_ids: string[]
+  extra_tags: string[]
   priority: number
 }

@@ -302,10 +302,15 @@ func (m *ManagerXORM) CreateGroup(g *Group) (*Group, error) {
 	if err != nil {
 		return nil, err
 	}
+	extras, err := marshalIDs(g.ExtraTags)
+	if err != nil {
+		return nil, err
+	}
 	row := &repo.GroupRule{
 		ID:        fmt.Sprintf("group_%d", time.Now().UnixNano()),
 		Name:      g.Name,
 		FilterIDs: ids,
+		ExtraTags: extras,
 		Priority:  g.Priority,
 	}
 	if _, err := m.e.Insert(row); err != nil {
@@ -333,8 +338,12 @@ func (m *ManagerXORM) UpdateGroup(g *Group) (*Group, error) {
 	if err != nil {
 		return nil, err
 	}
-	row := &repo.GroupRule{Name: g.Name, FilterIDs: ids, Priority: g.Priority}
-	if _, err := m.e.ID(g.ID).Cols("name", "filter_ids", "priority").Update(row); err != nil {
+	extras, err := marshalIDs(g.ExtraTags)
+	if err != nil {
+		return nil, err
+	}
+	row := &repo.GroupRule{Name: g.Name, FilterIDs: ids, ExtraTags: extras, Priority: g.Priority}
+	if _, err := m.e.ID(g.ID).Cols("name", "filter_ids", "extra_tags", "priority").Update(row); err != nil {
 		return nil, fmt.Errorf("failed to update group %q: %w", g.ID, err)
 	}
 	return m.GetGroup(g.ID)
@@ -418,10 +427,15 @@ func groupFromRow(r *repo.GroupRule) (*Group, error) {
 	if err != nil {
 		return nil, fmt.Errorf("group %q has invalid filter_ids: %w", r.ID, err)
 	}
+	extras, err := unmarshalIDs(r.ExtraTags)
+	if err != nil {
+		return nil, fmt.Errorf("group %q has invalid extra_tags: %w", r.ID, err)
+	}
 	return &Group{
 		ID:        r.ID,
 		Name:      r.Name,
 		FilterIDs: ids,
+		ExtraTags: extras,
 		Priority:  r.Priority,
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
@@ -456,7 +470,7 @@ func marshalIDs(ids []string) (string, error) {
 	}
 	b, err := json.Marshal(ids)
 	if err != nil {
-		return "", fmt.Errorf("failed to encode filter_ids: %w", err)
+		return "", fmt.Errorf("failed to encode tag list: %w", err)
 	}
 	return string(b), nil
 }

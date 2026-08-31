@@ -52,7 +52,11 @@ func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs 
 				names = append(names, f.Name)
 			}
 		}
-		groupSpecs = append(groupSpecs, config.GroupSpec{Name: g.Name, FilterNames: names})
+		groupSpecs = append(groupSpecs, config.GroupSpec{
+			Name:        g.Name,
+			FilterNames: names,
+			ExtraTags:   g.ExtraTags,
+		})
 	}
 	return filterSpecs, groupSpecs, membership, others
 }

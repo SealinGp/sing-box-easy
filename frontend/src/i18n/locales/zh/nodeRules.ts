@@ -36,6 +36,12 @@ export default {
   // direct 出站只能通过这种方式加入过滤器。
   includeNode: '搜索要加入的节点…',
   directBadge: '直连',
+  // 分组中直接指定的出站(不经过过滤器) —— 例如 direct。
+  groupExtraTags: '直接加入的出站',
+  groupExtraTagsHint: '— 按节点名选择,例如 direct 直连出口',
+  groupAddTag: '搜索要加入的出站…',
+  groupTagBadgeTitle: '由该分组直接指定,并非过滤器匹配所得',
+  groupTagsEmpty: '暂无可选出站,请先点击「预览」。',
   // 排除项(黑名单):即使命中匹配项也不会加入该规则的节点。
   excludes: '排除节点',
   excludesHint: '— 已匹配但被排除(如把 relay_bwh_us1 从美国规则中剔除)',

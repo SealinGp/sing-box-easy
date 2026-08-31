@@ -36,6 +36,12 @@ export default {
   // matcher. The only way a `direct` outbound joins a filter.
   includeNode: 'Search a node to include…',
   directBadge: 'direct',
+  // Group members named directly (not via a filter) — e.g. `direct`.
+  groupExtraTags: 'Outbounds in this group',
+  groupExtraTagsHint: '— picked by tag, e.g. a direct bypass entry',
+  groupAddTag: 'Search an outbound to add…',
+  groupTagBadgeTitle: 'named directly by this group, not matched by a filter',
+  groupTagsEmpty: 'No outbounds known yet. Run a preview first.',
   // Exclude (deny-list): nodes kept out even when a matcher hits them.
   excludes: 'Except nodes',
   excludesHint: '— matched but kept out (e.g. drop relay_bwh_us1 from US)',

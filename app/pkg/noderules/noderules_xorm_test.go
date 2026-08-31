@@ -146,3 +146,46 @@ func TestManager_DeleteFilterScrubsGroups(t *testing.T) {
 		t.Fatalf("group membership after scrub = %v, want [%s]", got.FilterIDs, us.ID)
 	}
 }
+
+// TestManager_GroupExtraTagsRoundTrip pins that a Group's directly-named
+// outbounds (the `direct` bypass case) survive create, read and update. They
+// live in their own column, so a missed Cols() on update would silently drop
+// them on the next edit.
+func TestManager_GroupExtraTagsRoundTrip(t *testing.T) {
+	m := newTestManager(t)
+
+	asia, _ := m.CreateFilter(&Filter{Name: "Asia", OutboundType: "urltest"})
+	created, err := m.CreateGroup(&Group{
+		Name:      "All",
+		FilterIDs: []string{asia.ID},
+		ExtraTags: []string{"direct"},
+	})
+	if err != nil {
+		t.Fatalf("create group: %v", err)
+	}
+	if len(created.ExtraTags) != 1 || created.ExtraTags[0] != "direct" {
+		t.Fatalf("created extra_tags = %v, want [direct]", created.ExtraTags)
+	}
+
+	updated, err := m.UpdateGroup(&Group{
+		ID:        created.ID,
+		Name:      "All",
+		FilterIDs: []string{asia.ID},
+		ExtraTags: []string{"direct", "bypass-cn"},
+	})
+	if err != nil {
+		t.Fatalf("update group: %v", err)
+	}
+	if len(updated.ExtraTags) != 2 || updated.ExtraTags[1] != "bypass-cn" {
+		t.Fatalf("updated extra_tags = %v, want [direct bypass-cn]", updated.ExtraTags)
+	}
+
+	// Clearing must persist as empty, not fall back to the stored value.
+	cleared, err := m.UpdateGroup(&Group{ID: created.ID, Name: "All", FilterIDs: []string{asia.ID}})
+	if err != nil {
+		t.Fatalf("clear extra tags: %v", err)
+	}
+	if len(cleared.ExtraTags) != 0 {
+		t.Fatalf("cleared extra_tags = %v, want empty", cleared.ExtraTags)
+	}
+}

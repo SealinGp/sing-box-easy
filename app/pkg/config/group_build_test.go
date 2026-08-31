@@ -180,3 +180,52 @@ func TestOptInTags(t *testing.T) {
 		t.Errorf("EndpointTags = %v, want %v", endpoints, want)
 	}
 }
+
+// TestBuildGroupOutbounds_GroupExtraTags covers a Group naming outbounds
+// directly — the `direct` bypass entry a selector usually wants alongside its
+// region filters. Extras keep their given order after the filter members, an
+// extra naming an outbound that does not exist is dropped (sing-box refuses to
+// START on an unknown member), and a self-reference is dropped too (a selector
+// listing itself hangs at start).
+func TestBuildGroupOutbounds_GroupExtraTags(t *testing.T) {
+	existing := []Outbound{
+		endpoint("HK-1"),
+		{Tag: "direct", Type: "direct", Options: &option.DirectOutboundOptions{}},
+	}
+
+	filters := []FilterSpec{
+		{Name: "Asia", OutboundType: "urltest", MemberTags: []string{"HK-1"}},
+	}
+	groups := []GroupSpec{
+		{Name: "All", FilterNames: []string{"Asia"}, ExtraTags: []string{"direct", "ghost", "All"}},
+	}
+
+	got := BuildGroupOutbounds(existing, filters, groups)
+
+	all, ok := findOB(got, "All")
+	if !ok {
+		t.Fatal("group 'All' not built")
+	}
+	if want := []string{"Asia", "direct"}; !slices.Equal(membersOf(t, all), want) {
+		t.Errorf("All members = %v, want %v", membersOf(t, all), want)
+	}
+}
+
+// TestBuildGroupOutbounds_GroupExtraTagsOnly verifies a Group whose only members
+// are extras is still emitted — "everything through direct" is a legitimate
+// group, and skipping it would silently drop a group the operator built.
+func TestBuildGroupOutbounds_GroupExtraTagsOnly(t *testing.T) {
+	existing := []Outbound{{Tag: "direct", Type: "direct", Options: &option.DirectOutboundOptions{}}}
+
+	got := BuildGroupOutbounds(existing, nil, []GroupSpec{
+		{Name: "Bypass", ExtraTags: []string{"direct"}},
+	})
+
+	bypass, ok := findOB(got, "Bypass")
+	if !ok {
+		t.Fatal("group 'Bypass' not built")
+	}
+	if want := []string{"direct"}; !slices.Equal(membersOf(t, bypass), want) {
+		t.Errorf("Bypass members = %v, want %v", membersOf(t, bypass), want)
+	}
+}

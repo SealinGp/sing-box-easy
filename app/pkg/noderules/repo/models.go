@@ -39,9 +39,14 @@ func (FilterRule) TableName() string {
 //
 // FilterIDs is a JSON-encoded ordered array of FilterRule.ID.
 type GroupRule struct {
-	ID        string    `xorm:"'id' pk varchar(255)" json:"id"`
-	Name      string    `xorm:"'name' notnull unique index" json:"name"`
-	FilterIDs string    `xorm:"'filter_ids' text" json:"filter_ids"`
+	ID        string `xorm:"'id' pk varchar(255)" json:"id"`
+	Name      string `xorm:"'name' notnull unique index" json:"name"`
+	FilterIDs string `xorm:"'filter_ids' text" json:"filter_ids"`
+	// ExtraTags is a JSON-encoded ordered array of outbound tags the Group names
+	// directly, appended after its Filter members. It exists for outbounds a
+	// Filter can never collect on its own — chiefly `direct`, the bypass entry a
+	// group selector usually wants alongside its regions.
+	ExtraTags string    `xorm:"'extra_tags' text" json:"extra_tags"`
 	Priority  int       `xorm:"'priority' notnull default(0) index" json:"priority"`
 	CreatedAt time.Time `xorm:"created" json:"created_at"`
 	UpdatedAt time.Time `xorm:"updated" json:"updated_at"`
