@@ -626,13 +626,16 @@ func (au *AutoUpdater) rebuildNodeRules(outbounds []config.Outbound, subID strin
 		return nil, fmt.Errorf("failed to list groups: %w", err)
 	}
 
-	endpointTags := config.EndpointTags(outbounds)
-	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, endpointTags)
+	pool := noderules.NodePool{
+		Endpoints: config.EndpointTags(outbounds),
+		OptIn:     config.OptInTags(outbounds),
+	}
+	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
 	rebuilt := config.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
 
 	logger.Info("Rebuilt node-rules groups",
 		zap.String("subscription", subID),
-		zap.Int("endpoints", len(endpointTags)),
+		zap.Int("endpoints", len(pool.Endpoints)),
 		zap.Int("filters", len(filterSpecs)),
 		zap.Int("groups", len(groupSpecs)),
 		zap.Int("unmatched", len(others)))

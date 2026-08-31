@@ -32,6 +32,10 @@ export default {
   addMatcher: '添加匹配项',
   addCountry: '搜索国家/地区代码…',
   noCodeMatches: '没有匹配的代码',
+  // 匹配项中的节点选择器:添加精确匹配该节点名称的 keyword 匹配项。
+  // direct 出站只能通过这种方式加入过滤器。
+  includeNode: '搜索要加入的节点…',
+  directBadge: '直连',
   // 排除项(黑名单):即使命中匹配项也不会加入该规则的节点。
   excludes: '排除节点',
   excludesHint: '— 已匹配但被排除(如把 relay_bwh_us1 从美国规则中剔除)',

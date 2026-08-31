@@ -66,6 +66,11 @@ export interface PreviewResult {
   endpoints: number
   filters: PreviewFilter[]
   unmatched: string[]
+  // optional: outbounds that may be a filter member only when a matcher names
+  // them explicitly — today the `direct` outbounds. They never fall through to
+  // the fallback filter, so they appear in neither `members` nor `unmatched`
+  // until some filter claims one; the pickers read them from here.
+  optional?: string[]
 }
 
 // Payloads for create/update.

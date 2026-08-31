@@ -64,6 +64,19 @@ func filterClaims(f *Filter, tag, lowerTag string) bool {
 	return filterMatches(f, tag, lowerTag) && !filterExcluded(f, tag, lowerTag)
 }
 
+// NodePool is the candidate set the matcher runs over.
+//
+// The split exists because not every legal group member may be collected
+// automatically. Endpoints are real exit nodes: one that matches no Filter falls
+// through to the fallback. OptIn tags (today the `direct` outbounds) join a
+// Filter ONLY when its matchers name them, and never reach the fallback — a
+// urltest that quietly acquired `direct` would elect it on every probe and route
+// everything unproxied.
+type NodePool struct {
+	Endpoints []string
+	OptIn     []string
+}
+
 // AssignFilters maps endpoint tags to Filters using multi-match semantics: an
 // endpoint joins EVERY non-fallback Filter whose matchers it satisfies AND whose
 // excludes it does not (an excluded tag is treated as not claimed by that
@@ -76,9 +89,14 @@ func filterClaims(f *Filter, tag, lowerTag string) bool {
 // membership under multi-match, but it keeps output deterministic and mirrors
 // the UI ordering.
 //
+// Opt-in tags (pool.OptIn) are evaluated against the same matchers but are
+// excluded from the fallback: an opt-in tag no Filter claims simply joins
+// nothing, and is not reported in `others` either (it is not "unmatched" in the
+// sense the preview means — it was never up for automatic collection).
+//
 // The function is pure: no I/O, no config dependency. It is safe to call for a
 // dry-run preview.
-func AssignFilters(endpointTags []string, filters []*Filter) (membership map[string][]string, others []string) {
+func AssignFilters(pool NodePool, filters []*Filter) (membership map[string][]string, others []string) {
 	membership = make(map[string][]string)
 
 	// Partition into fallback (there should be exactly one) and the rest.
@@ -101,7 +119,7 @@ func AssignFilters(endpointTags []string, filters []*Filter) (membership map[str
 		return ranked[i].ID < ranked[j].ID
 	})
 
-	for _, tag := range endpointTags {
+	for _, tag := range pool.Endpoints {
 		lower := strings.ToLower(tag)
 		matchedAny := false
 		for _, f := range ranked {
@@ -114,6 +132,16 @@ func AssignFilters(endpointTags []string, filters []*Filter) (membership map[str
 			others = append(others, tag)
 			if fallback != nil {
 				membership[fallback.ID] = append(membership[fallback.ID], tag)
+			}
+		}
+	}
+
+	// Opt-in tags: claimed only on an explicit match, never by the fallback.
+	for _, tag := range pool.OptIn {
+		lower := strings.ToLower(tag)
+		for _, f := range ranked {
+			if filterClaims(f, tag, lower) {
+				membership[f.ID] = append(membership[f.ID], tag)
 			}
 		}
 	}

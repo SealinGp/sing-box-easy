@@ -21,6 +21,19 @@ func EndpointTags(outbounds []Outbound) []string {
 	return out
 }
 
+// OptInTags returns the tags of every outbound that may be a Filter member only
+// on explicit request (today: `direct`). They are offered to the matcher
+// alongside EndpointTags but are never assigned to the fallback Filter.
+func OptInTags(outbounds []Outbound) []string {
+	out := make([]string, 0, 2)
+	for _, ob := range outbounds {
+		if IsOptInMemberType(ob.Type) {
+			out = append(out, ob.Tag)
+		}
+	}
+	return out
+}
+
 // FilterSpec describes one Filter to materialize as a generated group outbound.
 // MemberTags are the endpoint tags assigned to this Filter (already determined
 // by the node-rules matcher). The package is intentionally free of any

@@ -74,17 +74,32 @@ const filterForm = reactive<{
   test_tolerance: URLTEST_DEFAULTS.test_tolerance,
 })
 
-// All endpoint node tags currently known (from the latest preview): the union of
-// every filter's members plus the unmatched list. Drives the "exclude a node"
-// picker so users can deny a specific outbound by its exact tag.
+// Opt-in tags reported by the preview: outbounds that are legal filter members
+// but are never collected automatically — today the `direct` outbounds. They are
+// absent from `members`/`unmatched` until a filter claims one, so they have to
+// come from the preview's own `optional` list.
+const optionalTags = computed<string[]>(() => preview.value?.optional ?? [])
+
+// All node tags currently known (from the latest preview): the union of every
+// filter's members, the unmatched list and the opt-in list. Drives both node
+// pickers so users can name a specific outbound — a `direct` one included — by
+// its exact tag.
 const endpointTags = computed<string[]>(() => {
   const p = preview.value
   if (!p) return []
   const seen = new Set<string>()
   for (const pf of p.filters) for (const tag of pf.members) seen.add(tag)
   for (const tag of p.unmatched) seen.add(tag)
+  for (const tag of p.optional ?? []) seen.add(tag)
   return [...seen].sort((a, b) => a.localeCompare(b))
 })
+
+// A `direct` outbound only ever joins a filter by an explicit matcher, so the
+// picker labels it — picking one is a deliberate "bypass" member, not the same
+// act as picking a proxy node.
+function isOptionalTag(tag: string): boolean {
+  return optionalTags.value.includes(tag)
+}
 
 // Search box for the "exclude a node" combobox. Filtered case-insensitively and
 // capped so a large subscription doesn't render thousands of options at once.
@@ -104,6 +119,24 @@ const excludeOpen = ref(false)
 function pickExcludeNode(tag: string) {
   addExcludeNode(tag)
   excludeQuery.value = ''
+}
+
+// "Include a node" picker — the mirror of the exclude picker, over the same tag
+// pool. Adds an exact-tag keyword matcher, which is the only way a `direct`
+// outbound can join a filter (the matcher never collects one on its own).
+const includeQuery = ref('')
+const includeOpen = ref(false)
+const filteredIncludeNodes = computed<string[]>(() => {
+  const q = includeQuery.value.trim().toLowerCase()
+  const all = q ? endpointTags.value.filter((tag) => tag.toLowerCase().includes(q)) : endpointTags.value
+  return all.slice(0, 50)
+})
+
+// Picking a node adds it as a keyword matcher and resets the search so the list
+// shows every node again, ready for another pick.
+function pickIncludeNode(tag: string) {
+  addMatcherNode(tag)
+  includeQuery.value = ''
 }
 
 // Country-code matcher picker — same searchable-dropdown UX as the exclude
@@ -163,6 +196,14 @@ function addMatcher(type: MatcherType = 'keyword', value = '') {
 
 function removeMatcher(idx: number) {
   filterForm.matchers = filterForm.matchers.filter((_, i) => i !== idx)
+}
+
+// Match a specific node by its exact tag (keyword match). De-dupes so picking
+// the same node twice is a no-op.
+function addMatcherNode(tag: string) {
+  if (!tag) return
+  if (filterForm.matchers.some((m) => m.type === 'keyword' && m.value === tag)) return
+  filterForm.matchers = [...filterForm.matchers, { type: 'keyword', value: tag }]
 }
 
 function addCodeMatcher(code: string) {
@@ -658,6 +699,45 @@ onMounted(async () => {
                 + Add Emoji
               </button>
 
+              <!--
+                Node Picker: adds an exact-tag keyword matcher. This is how a
+                `direct` outbound joins a filter — the matcher never collects one
+                automatically, so without an explicit pick it is unreachable.
+              -->
+              <div v-if="endpointTags.length" class="relative">
+                <input
+                  v-model="includeQuery"
+                  class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-primary-500 w-48"
+                  :placeholder="t('nodeRules.includeNode')"
+                  @focus="includeOpen = true"
+                  @blur="includeOpen = false"
+                />
+                <div
+                  v-if="includeOpen"
+                  class="node-rule-popover absolute z-20 mt-1 max-h-48 w-64 overflow-y-auto rounded-surface border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 text-xs"
+                >
+                  <button
+                    v-for="tag in filteredIncludeNodes"
+                    :key="tag"
+                    type="button"
+                    class="flex w-full items-center gap-1.5 cursor-pointer px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-primary-950/30 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
+                    :title="tag"
+                    @mousedown.prevent="pickIncludeNode(tag)"
+                  >
+                    <span class="truncate">{{ tag }}</span>
+                    <span
+                      v-if="isOptionalTag(tag)"
+                      class="ml-auto shrink-0 px-1.5 py-0.5 rounded-pill text-[9px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                    >
+                      {{ t('nodeRules.directBadge') }}
+                    </span>
+                  </button>
+                  <div v-if="!filteredIncludeNodes.length" class="px-3 py-2 text-gray-400 text-center">
+                    {{ t('nodeRules.noNodeMatches') }}
+                  </div>
+                </div>
+              </div>
+
               <!-- Country Picker Searchable Input -->
               <div v-if="keywords.length" class="relative">
                 <input
@@ -747,11 +827,17 @@ onMounted(async () => {
                     v-for="tag in filteredExcludeNodes"
                     :key="tag"
                     type="button"
-                    class="block w-full cursor-pointer truncate px-3 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+                    class="flex w-full items-center gap-1.5 cursor-pointer px-3 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
                     :title="tag"
                     @mousedown.prevent="pickExcludeNode(tag)"
                   >
-                    {{ tag }}
+                    <span class="truncate">{{ tag }}</span>
+                    <span
+                      v-if="isOptionalTag(tag)"
+                      class="ml-auto shrink-0 px-1.5 py-0.5 rounded-pill text-[9px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                    >
+                      {{ t('nodeRules.directBadge') }}
+                    </span>
                   </button>
                   <div v-if="!filteredExcludeNodes.length" class="px-3 py-2 text-gray-400 text-center">
                     {{ t('nodeRules.noNodeMatches') }}

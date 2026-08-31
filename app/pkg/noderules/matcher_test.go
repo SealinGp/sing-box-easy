@@ -30,7 +30,7 @@ func TestAssignFilters_MultiMatch(t *testing.T) {
 		"US West 9.9.9.9:443 | sub_a",         // matches nothing -> Other
 	}
 
-	membership, others := AssignFilters(tags, []*Filter{asia, youtube, other})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{asia, youtube, other})
 
 	if want := []string{tags[0], tags[1]}; !slices.Equal(membership["f_asia"], want) {
 		t.Errorf("Asia members = %v, want %v", membership["f_asia"], want)
@@ -60,7 +60,7 @@ func TestAssignFilters_Excludes(t *testing.T) {
 		"🇺🇸 美国 04 host:36004 | sub_1", // matches US, not excluded -> US
 		"relay_bwh_us2",             // matches US, not excluded -> US
 	}
-	membership, others := AssignFilters(tags, []*Filter{us, other})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{us, other})
 
 	if want := []string{tags[1], tags[2]}; !slices.Equal(membership["f_us"], want) {
 		t.Errorf("US members = %v, want %v", membership["f_us"], want)
@@ -86,7 +86,7 @@ func TestAssignFilters_CodeSynonyms(t *testing.T) {
 		"🇭🇰 04 | sub_a",
 		"东京 05 | sub_a", // not HK -> Other
 	}
-	membership, others := AssignFilters(tags, []*Filter{hk, other})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{hk, other})
 
 	if got := len(membership["f_hk"]); got != 4 {
 		t.Errorf("HK matched %d tags, want 4 (%v)", got, membership["f_hk"])
@@ -104,7 +104,7 @@ func TestAssignFilters_KeywordCollision(t *testing.T) {
 	other := fallback()
 
 	tags := []string{"Seoul South Korea | sub_a", "Pyongyang North Korea | sub_a"}
-	membership, _ := AssignFilters(tags, []*Filter{korea, other})
+	membership, _ := AssignFilters(NodePool{Endpoints: tags}, []*Filter{korea, other})
 
 	if got := len(membership["f_kr"]); got != 2 {
 		t.Errorf("bare keyword 'Korea' matched %d, want 2 (substring incl. North Korea)", got)
@@ -117,7 +117,7 @@ func TestAssignFilters_EmojiMatcher(t *testing.T) {
 	other := fallback()
 
 	tags := []string{"🇭🇰 Node 1 | sub_a", "Plain JP | sub_a"}
-	membership, others := AssignFilters(tags, []*Filter{hk, other})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{hk, other})
 
 	if want := []string{"🇭🇰 Node 1 | sub_a"}; !slices.Equal(membership["f_hk"], want) {
 		t.Errorf("HK emoji members = %v, want %v", membership["f_hk"], want)
@@ -134,7 +134,7 @@ func TestAssignFilters_FallbackOnlyForZeroMatch(t *testing.T) {
 	other := fallback()
 
 	tags := []string{"日本 01 | sub_a", "Mars 02 | sub_a"}
-	membership, others := AssignFilters(tags, []*Filter{jp, other})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{jp, other})
 
 	if _, inOther := membership[FallbackFilterID]; len(membership[FallbackFilterID]) != 1 || !inOther {
 		t.Errorf("fallback members = %v, want exactly [Mars]", membership[FallbackFilterID])
@@ -149,12 +149,52 @@ func TestAssignFilters_FallbackOnlyForZeroMatch(t *testing.T) {
 func TestAssignFilters_NoFallback(t *testing.T) {
 	jp := filter("f_jp", "Japan", 10, code("JP"))
 	tags := []string{"日本 01 | sub_a", "Mars 02 | sub_a"}
-	membership, others := AssignFilters(tags, []*Filter{jp})
+	membership, others := AssignFilters(NodePool{Endpoints: tags}, []*Filter{jp})
 
 	if _, ok := membership[FallbackFilterID]; ok {
 		t.Errorf("no fallback configured, but fallback key present: %v", membership)
 	}
 	if !slices.Equal(others, []string{"Mars 02 | sub_a"}) {
 		t.Errorf("others = %v, want [Mars]", others)
+	}
+}
+
+// TestAssignFilters_OptInClaimedOnlyByExplicitMatch verifies the `direct`
+// outbound case: an opt-in tag joins a Filter that names it, and is neither
+// swallowed by the fallback nor reported as unmatched when nothing claims it.
+func TestAssignFilters_OptInClaimedOnlyByExplicitMatch(t *testing.T) {
+	bypass := filter("f_bypass", "Bypass", 10, kw("direct"))
+	other := fallback()
+
+	pool := NodePool{
+		Endpoints: []string{"🇯🇵 JP 1.1.1.1:443"},
+		OptIn:     []string{"direct", "direct-cn"},
+	}
+
+	membership, others := AssignFilters(pool, []*Filter{bypass, other})
+
+	if want := []string{"direct", "direct-cn"}; !slices.Equal(membership["f_bypass"], want) {
+		t.Errorf("Bypass members = %v, want %v", membership["f_bypass"], want)
+	}
+	if want := []string{pool.Endpoints[0]}; !slices.Equal(membership[FallbackFilterID], want) {
+		t.Errorf("fallback members = %v, want %v (opt-in tags must not fall through)", membership[FallbackFilterID], want)
+	}
+	if want := []string{pool.Endpoints[0]}; !slices.Equal(others, want) {
+		t.Errorf("others = %v, want %v", others, want)
+	}
+}
+
+// TestAssignFilters_OptInNeverFallsBack pins that an unclaimed opt-in tag joins
+// nothing at all — a urltest that acquired `direct` would elect it every probe.
+func TestAssignFilters_OptInNeverFallsBack(t *testing.T) {
+	other := fallback()
+
+	membership, others := AssignFilters(NodePool{OptIn: []string{"direct"}}, []*Filter{other})
+
+	if len(membership[FallbackFilterID]) != 0 {
+		t.Errorf("fallback members = %v, want empty", membership[FallbackFilterID])
+	}
+	if len(others) != 0 {
+		t.Errorf("others = %v, want empty", others)
 	}
 }

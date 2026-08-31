@@ -32,6 +32,10 @@ export default {
   addMatcher: 'Add matcher',
   addCountry: 'Search a country code…',
   noCodeMatches: 'No matching codes',
+  // Node picker inside the matchers section: adds an exact-tag keyword
+  // matcher. The only way a `direct` outbound joins a filter.
+  includeNode: 'Search a node to include…',
+  directBadge: 'direct',
   // Exclude (deny-list): nodes kept out even when a matcher hits them.
   excludes: 'Except nodes',
   excludesHint: '— matched but kept out (e.g. drop relay_bwh_us1 from US)',

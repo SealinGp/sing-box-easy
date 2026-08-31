@@ -2,7 +2,7 @@ package noderules
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/config"
 
-// BuildSpecs runs the matcher over the current endpoint tags and translates the
+// BuildSpecs runs the matcher over the current node pool and translates the
 // rules into config build specs, returning the raw membership/others for
 // preview and diagnostics.
 //
@@ -14,8 +14,8 @@ import "github.com/SealinGp/sing-box-easy/app/pkg/config"
 // This function is pure (no I/O). Callers wrap config.BuildGroupOutbounds with
 // the returned specs inside a config.Manager.UpdateConfig closure to apply, or
 // just read membership for a dry-run preview.
-func BuildSpecs(filters []*Filter, groups []*Group, endpointTags []string) (filterSpecs []config.FilterSpec, groupSpecs []config.GroupSpec, membership map[string][]string, others []string) {
-	membership, others = AssignFilters(endpointTags, filters)
+func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs []config.FilterSpec, groupSpecs []config.GroupSpec, membership map[string][]string, others []string) {
+	membership, others = AssignFilters(pool, filters)
 
 	byID := make(map[string]*Filter, len(filters))
 	for _, f := range filters {

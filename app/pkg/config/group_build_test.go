@@ -156,3 +156,27 @@ func TestBuildGroupOutbounds_Immutability(t *testing.T) {
 		t.Errorf("input group was mutated: %v", opts.Outbounds)
 	}
 }
+
+// TestOptInTags verifies the `direct` outbounds are offered as opt-in members
+// while the other pseudo-outbounds and groups are not, and that they stay out
+// of the auto-collected endpoint pool.
+func TestOptInTags(t *testing.T) {
+	outbounds := []Outbound{
+		{Tag: "jp-01", Type: "vmess"},
+		{Tag: "direct", Type: "direct"},
+		{Tag: "bypass-cn", Type: "direct"},
+		{Tag: "block", Type: "block"},
+		{Tag: "dns-out", Type: "dns"},
+		{Tag: "Asia", Type: "urltest"},
+	}
+
+	optIn := OptInTags(outbounds)
+	if want := []string{"direct", "bypass-cn"}; !slices.Equal(optIn, want) {
+		t.Errorf("OptInTags = %v, want %v", optIn, want)
+	}
+
+	endpoints := EndpointTags(outbounds)
+	if want := []string{"jp-01"}; !slices.Equal(endpoints, want) {
+		t.Errorf("EndpointTags = %v, want %v", endpoints, want)
+	}
+}

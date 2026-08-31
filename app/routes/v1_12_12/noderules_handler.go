@@ -221,14 +221,14 @@ type previewFilter struct {
 	Members      []string `json:"members"`
 }
 
-// buildPreview runs the matcher over the given endpoint tags and returns a
+// buildPreview runs the matcher over the given node pool and returns a
 // frontend-friendly per-Filter breakdown plus the unmatched tags.
-func (h *Handler) buildPreview(endpointTags []string) ([]previewFilter, []string, error) {
+func (h *Handler) buildPreview(pool noderules.NodePool) ([]previewFilter, []string, error) {
 	filters, err := h.nodeRulesManager.ListFilters()
 	if err != nil {
 		return nil, nil, err
 	}
-	membership, others := noderules.AssignFilters(endpointTags, filters)
+	membership, others := noderules.AssignFilters(pool, filters)
 	out := make([]previewFilter, 0, len(filters))
 	for _, f := range filters {
 		members := membership[f.ID]
@@ -252,16 +252,23 @@ func (h *Handler) PreviewNodeRules(ctx context.Context, c *app.RequestContext) {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
 	}
-	endpointTags := config.EndpointTags(cfg.Outbounds)
-	preview, others, err := h.buildPreview(endpointTags)
+	pool := noderules.NodePool{
+		Endpoints: config.EndpointTags(cfg.Outbounds),
+		OptIn:     config.OptInTags(cfg.Outbounds),
+	}
+	preview, others, err := h.buildPreview(pool)
 	if err != nil {
 		nodeRulesErr(ctx, c, err)
 		return
 	}
+	// `optional` is the pool the UI may offer for explicit inclusion/exclusion
+	// (the `direct` outbounds). They are absent from `unmatched` by design, so
+	// without this the picker could not see them at all.
 	respOK(ctx, c, map[string]any{
-		"endpoints": len(endpointTags),
+		"endpoints": len(pool.Endpoints),
 		"filters":   preview,
 		"unmatched": others,
+		"optional":  pool.OptIn,
 	})
 }
 
@@ -286,10 +293,13 @@ func (h *Handler) ApplyNodeRules(ctx context.Context, c *app.RequestContext) {
 		unmatched      int
 	)
 	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		endpointTags := config.EndpointTags(cfg.Outbounds)
-		filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, endpointTags)
+		pool := noderules.NodePool{
+			Endpoints: config.EndpointTags(cfg.Outbounds),
+			OptIn:     config.OptInTags(cfg.Outbounds),
+		}
+		filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
 		cfg.Outbounds = config.BuildGroupOutbounds(cfg.Outbounds, filterSpecs, groupSpecs)
-		endpoints = len(endpointTags)
+		endpoints = len(pool.Endpoints)
 		unmatched = len(others)
 		emittedFilters = len(filterSpecs)
 		emittedGroups = len(groupSpecs)

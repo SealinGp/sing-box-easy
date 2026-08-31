@@ -14,12 +14,31 @@ var nonEndpointTypes = map[string]struct{}{
 	"dns":      {},
 }
 
+// optInMemberTypes are outbound types that are legal members of a generated
+// selector/urltest but are NEVER collected automatically.
+//
+// `direct` is a usable exit — a "bypass" entry inside a region selector is a
+// perfectly ordinary thing to want — but it must be named explicitly. Folding it
+// into the auto-collected pool would let the fallback Filter ("Other") swallow
+// it, and a urltest whose members include direct always elects direct (it wins
+// every latency probe), which silently routes everything unproxied.
+var optInMemberTypes = map[string]struct{}{
+	"direct": {},
+}
+
 // IsEndpointType reports whether an outbound type denotes a real exit node (as
 // opposed to a group or pseudo-outbound). Used to decide which outbounds the
 // node-rules matcher is allowed to collect into Filters.
 func IsEndpointType(outboundType string) bool {
 	_, special := nonEndpointTypes[outboundType]
 	return !special
+}
+
+// IsOptInMemberType reports whether an outbound type may join a Filter only when
+// a Filter's matchers name it explicitly. See optInMemberTypes.
+func IsOptInMemberType(outboundType string) bool {
+	_, ok := optInMemberTypes[outboundType]
+	return ok
 }
 
 // groupNameMarkers are the substrings that mark a selector/urltest as a node
