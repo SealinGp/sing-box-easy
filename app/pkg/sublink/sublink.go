@@ -35,6 +35,15 @@ const (
 	// (JSON for sing-box, YAML for clash, …) instead of the canonical
 	// base64-encoded URI list this parser expects.
 	subscriptionUserAgent = "sbe-fetcher/1.0"
+
+	// subscriptionFallbackUserAgent is the retry UA, used only after the
+	// neutral one is refused. Some panels gate the other way round: they serve
+	// a whitelist of known proxy clients and answer HTTP 404 to everything
+	// else, so a neutral UA gets no subscription at all. v2rayN is the least
+	// destructive client to impersonate — panels that negotiate on it return
+	// the base64 URI list, not a client-native config — and a Clash profile is
+	// now importable anyway (see the clash package).
+	subscriptionFallbackUserAgent = "v2rayN/6.23"
 )
 
 // httpClient is a package-level req client with a bounded timeout.
@@ -267,6 +276,13 @@ func (l *SubLink) ListNodesWithMetaOpts(lines []string, opts FetchOptions) ([]*n
 			nodes = append(nodes, l.parseBody(decoded)...)
 			continue
 		}
+
+		// A pasted Clash profile. Only reachable for a multi-line paste that
+		// the caller passed as one string, which is how the UI sends it.
+		if parsed, err := l.parseNonBase64Body([]byte(line), "pasted content"); err == nil {
+			nodes = append(nodes, parsed...)
+			continue
+		}
 		// Unrecognized line: skip silently (a 200-node paste shouldn't fail
 		// because one entry is malformed).
 	}
@@ -332,6 +348,20 @@ func (l *SubLink) fetchNodesWithMeta(sub_url string, client *req.Client) ([]*nod
 	if err != nil {
 		return nil, nil, fmt.Errorf("http get failed: %w", err)
 	}
+	// UA gating: a 4xx here is often the panel refusing an unknown client
+	// rather than a bad URL or expired token. Retry once as a known client
+	// before giving up — see subscriptionFallbackUserAgent.
+	if shouldRetryWithClientUA(resp.StatusCode) {
+		logger.Warn("subscription fetch rejected, retrying with a client user-agent",
+			zap.String("url", sub_url),
+			zap.Int("status", resp.StatusCode))
+		retry, retryErr := client.R().
+			SetHeader("User-Agent", subscriptionFallbackUserAgent).
+			Get(sub_url)
+		if retryErr == nil && retry.StatusCode < 400 {
+			resp = retry
+		}
+	}
 	if resp.StatusCode >= 400 {
 		return nil, nil, fmt.Errorf("subscription server returned http %d", resp.StatusCode)
 	}
@@ -348,9 +378,13 @@ func (l *SubLink) fetchNodesWithMeta(sub_url string, client *req.Client) ([]*nod
 
 	nodes, err := decodeSubscriptionBody(respStr)
 	if err != nil {
-		// Most common cause: the subscription server returned the wrong
-		// format because it sniffed the User-Agent. See the comment on
-		// subscriptionUserAgent for the mitigation.
+		// Not base64. Before reporting that, try the two other shapes seen in
+		// the wild: a Clash/Mihomo YAML profile, and a plain (un-encoded) URI
+		// list. Both are common enough that failing here would reject a
+		// perfectly usable subscription.
+		if parsed, convErr := l.parseNonBase64Body([]byte(respStr), sub_url); convErr == nil {
+			return parsed, meta, nil
+		}
 		preview := respStr
 		if len(preview) > 80 {
 			preview = preview[:80] + "..."
