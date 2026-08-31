@@ -84,7 +84,7 @@ bunx <tool>
 - `app/pkg/process/` - Process discovery and signaling helpers (pgrep/SIGTERM/SIGHUP)
 - `app/pkg/database/` - SQLite database management, migrations, and JSON import
 - `app/pkg/subscription/` - Subscription CRUD + cron AutoUpdater (database-backed)
-- `app/pkg/noderules/` - Outbound Node Rules: Filters (keyword/tag-matched node buckets) + Groups (sets of Filters). Pure matcher + XORM manager; `BuildSpecs`/`config.BuildGroupOutbounds` materialize selector/urltest groups on each subscription update. The matcher runs over a `NodePool` with two halves: `Endpoints` (real exit nodes — one matching nothing falls through to the fallback Filter) and `OptIn` (`config.OptInTags`, today the `direct` outbounds). An opt-in tag joins a Filter only when a matcher names it and NEVER reaches the fallback — a urltest that quietly acquired `direct` elects it on every probe (zero latency wins) and silently routes everything unproxied. `POST /node-rules/preview` returns them as `optional` so the UI's node pickers can offer them
+- `app/pkg/noderules/` - Outbound Node Rules: Filters (keyword/tag-matched node buckets) + Groups (sets of Filters). Pure matcher + XORM manager; `BuildSpecs`/`config.BuildGroupOutbounds` materialize selector/urltest groups on each subscription update. The matcher runs over a `NodePool` with two halves: `Endpoints` (real exit nodes — one matching nothing falls through to the fallback Filter) and `OptIn` (`config.OptInTags`, today the `direct` outbounds). An opt-in tag joins a Filter only when a matcher names it and NEVER reaches the fallback — a urltest that quietly acquired `direct` elects it on every probe (zero latency wins) and silently routes everything unproxied. `POST /node-rules/preview` returns them as `optional` so the UI's node pickers can offer them. **A `code` matcher sees only the display name** (`displayName` in `tagparts.go`), never the whole tag: a tag ends in the node's endpoint, so matching all of it let the SERVER's hostname vote — every node on `s4.usghq.ps1ksydn.com` matched US through `usghq`, so Hong Kong and Taiwan joined a US-only filter and its urltest then sent that traffic out through Hong Kong. ASCII synonyms additionally require word boundaries, because a two-letter code is a substring of ordinary words (`us` in Belarus/Cyprus, `in` in Singapore/link, `de` in Sweden); CJK synonyms and emoji flags have no boundaries and stay plain substrings. `keyword`/`emoji` matchers still see the FULL tag — operators paste whole tags as excludes to pin one node, and widening those would silently re-admit the node they were written to remove
 - `app/pkg/initstate/` - Initialization state management (database-backed)
 - `app/pkg/sublink/` - Node parsing and subscription fetching. The canonical feed is a base64 list of proxy URIs, but two other shapes are common enough that rejecting them loses a working subscription, so `foreign.go` handles them **after** base64 decoding fails (a well-formed feed never reaches it): a Clash/Mihomo YAML profile, and a plain-text URI list. Fetching also carries a **User-Agent fallback**: the request goes out under a neutral `sbe-fetcher/1.0` because many panels content-negotiate a client-native config on a known client name — but some gate the other way and answer 404 to everything not on a client whitelist, so a 4xx (and only a 4xx — a 5xx is the panel failing at a request it accepted) is retried once as `v2rayN/6.23`
 - `app/pkg/sublink/clash/` - Imports the `proxies:` list of a Clash/Mihomo profile as nodes. Everything else in the profile (rules, proxy-groups, DNS) is ignored on purpose — sing-box-easy owns routing itself. Proxies are kept as raw maps rather than typed structs: the key set differs per proxy type and providers add vendor keys freely, so the accessors in `value.go` do the narrowing. A type sing-box has no outbound for is returned in a `Skipped` list and logged, not swallowed — a subscription that silently imports 40 of 50 nodes reads as a panel bug. TLS is forced on for the TLS-framed protocols (trojan/hysteria2/anytls), where Clash omits `tls: true` because there is nothing to toggle and a missing block would dial plaintext. Two decode details matter: a list entry that is not a mapping makes yaml.v3 return a `*yaml.TypeError` **after** decoding every sibling it could, so that error is tolerated (the bad rows become `Skipped`) while a real syntax error stays fatal; and tags are made unique here, because an outbound tag is a primary key to sing-box — a repeated provider name fails `sing-box check` and rolls back the whole config update, naming the tag but neither of the feed entries that collided
@@ -149,6 +149,72 @@ The application uses SQLite with XORM ORM for persistent storage:
 5. Parsed nodes can be added to outbounds as batch
 6. Auto-update can be configured per subscription
 7. All subscription data persisted in database with ACID guarantees
+
+### Subscription outbound tags
+
+A node imported from a subscription is tagged `<name> <fingerprint> | <subID>`:
+the provider's display name, 8 hex characters of md5 over `server:port`, and the
+owning subscription's ID. Only the middle part is machine-made — it exists to
+keep tags unique when a provider ships two nodes with the same name, which
+sing-box requires (a duplicate tag fails `sing-box check`).
+
+The endpoint used to be spelled out (`… s4.usghq.ps1ksydn.com:37219 | sub_x`).
+Hashing it shortens tags by ~40% on a real feed (53 → 31 characters average) and
+removes a hostname that a `code` matcher was reading as evidence of the node's
+country. The cost is stated rather than hidden: you can no longer read a node's
+endpoint out of `config.json`, so identifying one means hashing the candidate
+endpoint (`config.FingerprintEndpointKey`) and grepping for it. md5 is an
+identity function here, not a security primitive.
+
+Two compatibility paths keep the format change from being destructive:
+
+- `fingerprintLegacyTag` (auto_updater.go) converts an old tag and re-matches
+  it, so a refresh migrates the format as **renames**, not delete-plus-add. The
+  difference is not cosmetic: a delete drops the node from every selector and
+  urltest that references it (`renameMap` in `applyChanges` carries a rename
+  across, a deletion does not). Measured on a real config: 34 updated, 0 added,
+  0 deleted, and every group kept its members.
+- `legacyTagValue` (noderules/tagparts.go) converts a saved matcher/exclude
+  value that IS a full old-format tag. An exclude that matches nothing fails
+  silently — it re-admits exactly the node an operator removed on purpose.
+
+Every path that mints a node tag uses this shape — the subscription updater, the
+batch add behind `POST /outbounds/batch`, and the single add behind
+`POST /outbounds` — via `config.OutboundTagCandidates`, whose first element is
+the tag to write and whose rest are the shapes an older build produced. The
+"already exists" check on both add paths tests every candidate, so re-pasting
+links that were added before the change is still a skip rather than a second
+copy under a new tag. A bare display name is deliberately not a candidate: two
+providers legitimately ship a "香港 01".
+
+Route rules that name a node tag directly are NOT rewritten; they normally name
+a group, which is stable.
+
+### Subscription official link
+
+A subscription carries `official_url` — the provider's own site, where an
+operator tops up or renews. It is auto-filled on refresh from whichever source
+the feed offers (`app/pkg/subscription/official_url.go`): the
+`profile-web-page-url` response header first, then an info entry whose label
+says so ("官网：https://…"). `siteLabelKeywords` is deliberately narrower than
+`DefaultInfoLabelKeywords` — a 客服 (support) entry is metadata and often holds
+a URL, but it is not where "top up" should go.
+
+Two rules matter:
+
+- **Fill only while empty** (`officialURLToPersist`). Providers move domains and
+  mirrors keep reporting the old one, so an operator who corrects the link by
+  hand must be able to trust that the next refresh leaves it alone.
+- **http(s) only, enforced twice.** The value is third-party text that ends up
+  in an `href`, so `javascript:`/`data:` must never reach the DOM.
+  `NormalizeOfficialURL` guards the write (handler + refresh) and
+  `frontend/src/utils/safeExternalUrl.ts` guards the render — not redundancy: a
+  row written before the rule existed, or by any other API client, still reaches
+  the render path. Both promote a bare domain to https, and the frontend adds
+  `rel="noopener noreferrer"` since the target page is provider-chosen.
+
+The name in `Subscriptions.vue` and `SubscriptionsOverviewCard.vue` becomes that
+link when one is known, and stays plain text otherwise.
 
 ### Subscription info nodes
 
@@ -332,7 +398,7 @@ API surface groups (registered in `routes.go`):
 - `/experimental/{clash-api,cache-file,v2ray-api}`
 - `/service/{status,start,stop,restart}`
 - `/service/logs` (GET) — the backlog window, and the fallback feed. `/service/logs/stream` (GET, **SSE**) — the same log, pushed. The unary call is seeded first and returns a journald cursor the stream resumes from, so the handover drops nothing and repeats nothing — the one case polling could never get right, since only the systemd backend implements the cursor and the others re-served the same window every tick. Backed by `Backend.FollowLogs` (`app/pkg/service/follow.go`): `journalctl -f` on systemd, `logread -f` on procd, and a seek-based poll for a plain `log.output` file. **The two exec-based followers hold a child process open for the life of the connection**, so the handler cancels its context on every return path and `startCommand` kills the child in a `defer` — an ignored write error is one orphaned `journalctl` per closed browser tab. A backend with no log source returns `(nil, nil)`, not an error, and the client falls back to polling
-- `/subscriptions` + `/subscriptions/:id/update`
+- `/subscriptions` + `/subscriptions/:id/update`. The body carries `official_url` (see "Subscription official link"); a value that is not an http(s) link is rejected with `CodeBadRequest` rather than stored, because it is served back to every client of this API and rendered as a link
 - `/node-rules` (full ruleset), `/node-rules/{apply,preview,keywords,templates}`, `/node-rules/templates/:id/apply`, `/node-rules/filters[/:id]`, `/node-rules/groups[/:id]` — Outbound Node Rules CRUD + dry-run/apply
 - `/scheduler/{status,start,stop,trigger,jobs}` — cron auto-updater control
 - `/install`, `/install/task/:task_id`, `/install/status`, `/update`
