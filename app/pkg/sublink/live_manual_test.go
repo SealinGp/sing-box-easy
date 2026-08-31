@@ -18,6 +18,7 @@ func TestLiveSubscription(t *testing.T) {
 		t.Fatalf("ListNodesWithMeta: %v", err)
 	}
 	t.Logf("userinfo: %q", meta.Userinfo)
+	t.Logf("site url: %q", meta.SiteURL)
 	t.Logf("nodes: %d", len(nodes))
 	counts := map[string]int{}
 	for _, n := range nodes {

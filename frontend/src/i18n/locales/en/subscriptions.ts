@@ -18,6 +18,7 @@ export default {
     info: 'Plan Info',
     nodes: 'Nodes',
     lastUpdate: 'Last Update',
+    id: 'ID',
     autoUpdate: 'Auto Update',
     actions: 'Actions',
   },
@@ -37,6 +38,9 @@ export default {
     name: 'Name',
     namePlaceholder: 'Enter subscription name',
     url: 'Subscription URL',
+    officialUrl: 'Official site',
+    officialUrlHint:
+      "The provider's own page — top up, renew, read notices. Filled in automatically on the next update when the feed reports one; set it yourself and updates leave it alone.",
     autoUpdate: 'Auto Update',
     updateInterval: 'Update Interval',
     updateIntervalHint:
@@ -51,7 +55,6 @@ export default {
     proxyUrlHint: 'e.g. socks5://127.0.0.1:7893 or http://127.0.0.1:7890 (your sing-box socks/http inbound).',
   },
   del: {
-    title: 'Delete Subscription',
     confirmHeading: 'Delete subscription?',
     confirmDesc: 'This action cannot be undone. The subscription and all its nodes will be permanently removed.',
   },
@@ -83,6 +86,8 @@ export default {
     edit: 'Edit subscription',
     del: 'Delete subscription',
     copy: 'Copy URL',
+    copyId: 'Copy subscription ID',
+    openSite: 'Open {name} — provider site',
   },
   notify: {
     loadError: 'Error loading subscriptions',
@@ -91,8 +96,6 @@ export default {
     deletedOk: 'Subscription deleted successfully',
     deleteError: 'Error deleting subscription',
     updateError: 'Error updating subscription',
-    copiedOk: 'URL copied to clipboard',
-    copyFailed: 'Failed to copy URL',
     synced: 'Subscription "{name}" synced: {summary}',
     noChanges: 'no changes',
     added: '+{n} added',
@@ -104,6 +107,7 @@ export default {
     urlRequired: 'URL is required',
     urlScheme: 'URL must use http or https',
     urlInvalid: 'Invalid URL format',
+    officialUrlScheme: 'Official site must be an http or https link',
     intervalRequired: 'Update interval is required when auto-update is enabled',
     intervalInvalid: 'Invalid interval format (e.g., 24h, 7d, 30min, 2w)',
     intervalMin: 'Interval must be at least 1 hour',

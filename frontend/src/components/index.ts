@@ -8,6 +8,9 @@ export { default as Card } from './Card.vue'
 export { default as Modal } from './Modal.vue'
 export { default as Alert } from './Alert.vue'
 export { default as Badge } from './Badge.vue'
+// Copy-to-clipboard that confirms ON the icon rather than in a corner toast —
+// the feedback belongs where the pointer already is.
+export { default as CopyIcon } from './CopyIcon.vue'
 export { default as Table } from './Table.vue'
 export type { TableColumn } from './Table.vue'
 // `List` is `Table`'s sibling for record-per-row panels; both cap their height

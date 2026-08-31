@@ -199,12 +199,18 @@ func (l *SubLink) ListNodes(lines []string) ([]*node.SubNode, error) {
 }
 
 // FetchMeta carries subscription metadata captured during a fetch that is NOT
-// part of the node list. Currently the raw `Subscription-Userinfo` response
-// header (e.g. "upload=…; download=…; total=…; expire=…"), the cross-provider
-// standard airports use to report account traffic and plan expiry — independent
-// of the (provider-specific, localized) "info node" mechanism some feeds embed.
+// part of the node list:
+//
+//   - Userinfo, the raw `Subscription-Userinfo` response header (e.g.
+//     "upload=…; download=…; total=…; expire=…"), the cross-provider standard
+//     airports use to report account traffic and plan expiry — independent of
+//     the (provider-specific, localized) "info node" mechanism some feeds embed.
+//   - SiteURL, the raw `profile-web-page-url` header: the provider's own page,
+//     where an operator tops up or renews. Passed through unvalidated; the
+//     subscription package decides what is safe to store and link.
 type FetchMeta struct {
 	Userinfo string
+	SiteURL  string
 }
 
 // ListNodesWithMeta is ListNodes plus the response metadata from the first
@@ -255,8 +261,13 @@ func (l *SubLink) ListNodesWithMetaOpts(lines []string, opts FetchOptions) ([]*n
 			}
 			// Keep the first non-empty userinfo seen (subscription refresh
 			// passes exactly one URL, so this is simply "this feed's userinfo").
-			if meta.Userinfo == "" && m != nil && m.Userinfo != "" {
-				meta.Userinfo = m.Userinfo
+			if m != nil {
+				if meta.Userinfo == "" && m.Userinfo != "" {
+					meta.Userinfo = m.Userinfo
+				}
+				if meta.SiteURL == "" && m.SiteURL != "" {
+					meta.SiteURL = m.SiteURL
+				}
 			}
 			nodes = append(nodes, modeNodes...)
 			continue
@@ -369,7 +380,10 @@ func (l *SubLink) fetchNodesWithMeta(sub_url string, client *req.Client) ([]*nod
 	// Capture the standard account-metadata header before reading the body.
 	// http.Header.Get canonicalizes the key, so the wire-lowercase
 	// "subscription-userinfo" is matched here.
-	meta := &FetchMeta{Userinfo: resp.Header.Get("Subscription-Userinfo")}
+	meta := &FetchMeta{
+		Userinfo: resp.Header.Get("Subscription-Userinfo"),
+		SiteURL:  resp.Header.Get("Profile-Web-Page-Url"),
+	}
 
 	respStr, err := resp.ToString()
 	if err != nil {

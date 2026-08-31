@@ -190,6 +190,11 @@ export interface Subscription {
   // resolves via DoH then dials by IP, 'proxy' fetches through proxy_url.
   fetch_mode?: '' | 'clean_dns' | 'proxy'
   proxy_url?: string
+  // The provider's own site (top up / renew / notices). Auto-filled from the
+  // feed on refresh while empty; an operator edit is never overwritten. Always
+  // pass it through `safeExternalUrl` before putting it in an href — it is
+  // third-party text.
+  official_url?: string
 }
 
 // Payload of GET/PUT /settings/subscription-info-keywords.

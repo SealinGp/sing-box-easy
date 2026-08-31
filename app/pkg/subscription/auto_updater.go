@@ -313,6 +313,17 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 		logger.Warn("Failed to update subscription info", zap.String("id", sub.ID), zap.Error(ierr))
 	}
 
+	// Step 7: Fill in the provider's own site, if the feed named one and the
+	// field is still empty. Only when empty: an operator who corrected the link
+	// (providers move domains, and a mirror often reports the old one) must not
+	// have that correction undone by the next refresh.
+	if site := officialURLToPersist(sub.OfficialURL, meta.SiteURL, info); site != "" {
+		if serr := au.subscriptionManager.UpdateOfficialURL(sub.ID, site); serr != nil {
+			logger.Warn("Failed to update subscription official url",
+				zap.String("id", sub.ID), zap.Error(serr))
+		}
+	}
+
 	return result, nil
 }
 

@@ -6,6 +6,8 @@ export default {
   saving: 'Saving...',
   cancel: 'Cancel',
   copy: 'Copy',
+  copied: 'Copied',
+  copyFailed: 'Copy failed — select the text and press Ctrl+C',
   add: 'Add',
   update: 'Update',
   edit: 'Edit',

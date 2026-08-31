@@ -2,19 +2,37 @@ package subscription
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
 	"github.com/sagernet/sing-box/option"
 )
 
 // TestMain initializes the global logger so code paths that log (e.g. the
-// node-rules rebuild) don't panic on a nil logger during tests.
+// node-rules rebuild) don't panic on a nil logger during tests, plus one
+// process-wide SQLite database for the store tests (database.Init is guarded by
+// sync.Once, so it can only run once per process — hence a single TestMain for
+// the whole package rather than one per file).
 func TestMain(m *testing.M) {
 	logger.InitDefault()
-	os.Exit(m.Run())
+
+	dir, err := os.MkdirTemp("", "subscription_test")
+	if err != nil {
+		panic(err)
+	}
+	if err := database.Init(filepath.Join(dir, "test.db")); err != nil {
+		panic(err)
+	}
+
+	code := m.Run()
+
+	_ = database.Close()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
 }
 
 // fakeRules is an in-memory NodeRulesProvider for testing the rebuild path

@@ -49,6 +49,10 @@ func (h *Handler) AddSubscription(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	if !normalizeOfficialURL(ctx, c, &sub) {
+		return
+	}
+
 	if err := h.subscriptionManager.Add(sub); err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -70,6 +74,10 @@ func (h *Handler) UpdateSubscription(ctx context.Context, c *app.RequestContext)
 		return
 	}
 
+	if !normalizeOfficialURL(ctx, c, &sub) {
+		return
+	}
+
 	if err := h.subscriptionManager.Update(id, sub); err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -79,6 +87,26 @@ func (h *Handler) UpdateSubscription(ctx context.Context, c *app.RequestContext)
 		"message": "subscription updated successfully",
 		"id":      id,
 	})
+}
+
+// normalizeOfficialURL validates and canonicalizes an operator-supplied site
+// link in place, reporting the error itself. Returns false when the request has
+// already been answered and the handler must stop.
+//
+// The field ends up in an href in the UI, so a scheme that can execute is
+// refused at the boundary rather than filtered at render time — the value is
+// also served to any other client of this API.
+func normalizeOfficialURL(ctx context.Context, c *app.RequestContext, sub *subscription.Subscription) bool {
+	if sub.OfficialURL == "" {
+		return true
+	}
+	normalized := subscription.NormalizeOfficialURL(sub.OfficialURL)
+	if normalized == "" {
+		respErr(ctx, c, CodeBadRequest, "official_url must be an http(s) link")
+		return false
+	}
+	sub.OfficialURL = normalized
+	return true
 }
 
 // DeleteSubscription deletes a subscription

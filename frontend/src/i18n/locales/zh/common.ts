@@ -6,6 +6,8 @@ export default {
   saving: '保存中...',
   cancel: '取消',
   copy: '复制',
+  copied: '已复制',
+  copyFailed: '复制失败——请手动选中文本后按 Ctrl+C',
   add: '添加',
   update: '更新',
   edit: '编辑',

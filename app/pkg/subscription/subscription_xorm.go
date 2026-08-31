@@ -67,6 +67,7 @@ func (m *ManagerXORM) List() ([]*Subscription, error) {
 			Info:           unmarshalInfo(dbSub.Info),
 			FetchMode:      dbSub.FetchMode,
 			ProxyURL:       dbSub.ProxyURL,
+			OfficialURL:    dbSub.OfficialURL,
 			CreatedAt:      dbSub.CreatedAt,
 			UpdatedAt:      dbSub.UpdatedAt,
 		}
@@ -100,6 +101,7 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 		Info:           unmarshalInfo(dbSub.Info),
 		FetchMode:      dbSub.FetchMode,
 		ProxyURL:       dbSub.ProxyURL,
+		OfficialURL:    dbSub.OfficialURL,
 		CreatedAt:      dbSub.CreatedAt,
 		UpdatedAt:      dbSub.UpdatedAt,
 	}
@@ -127,6 +129,7 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 		LastUpdate:     sub.LastUpdate,
 		FetchMode:      sub.FetchMode,
 		ProxyURL:       sub.ProxyURL,
+		OfficialURL:    sub.OfficialURL,
 	}
 
 	_, err := session.Insert(dbSub)
@@ -163,8 +166,9 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 		UpdateInterval: sub.UpdateInterval,
 		FetchMode:      sub.FetchMode,
 		ProxyURL:       sub.ProxyURL,
+		OfficialURL:    sub.OfficialURL,
 	}
-	cols := []string{"name", "url", "auto_update", "update_interval", "fetch_mode", "proxy_url"}
+	cols := []string{"name", "url", "auto_update", "update_interval", "fetch_mode", "proxy_url", "official_url"}
 
 	// Only include last_update when an explicit value is provided.
 	if !sub.LastUpdate.IsZero() {
@@ -263,6 +267,34 @@ func (m *ManagerXORM) UpdateInfo(id string, info []SubInfo) error {
 	}
 
 	logger.Info("Subscription info updated", zap.String("id", id), zap.Int("entries", len(info)))
+	return nil
+}
+
+// UpdateOfficialURL persists the provider's site link for one subscription,
+// keyed only by that column so a concurrent refresh writing info/last_update
+// cannot clobber it (and vice versa).
+//
+// The caller decides WHETHER to write — the refresh only fills an empty field,
+// so an operator's own edit survives a provider that reports a different page.
+func (m *ManagerXORM) UpdateOfficialURL(id string, officialURL string) error {
+	session := m.e.NewSession()
+	defer session.Close()
+
+	has, err := session.ID(id).Exist(&repo.Subscription{})
+	if err != nil {
+		return fmt.Errorf("failed to check subscription existence: %w", err)
+	}
+	if !has {
+		return fmt.Errorf("subscription not found")
+	}
+
+	if _, err := session.ID(id).Cols("official_url").
+		Update(&repo.Subscription{OfficialURL: officialURL}); err != nil {
+		return fmt.Errorf("failed to update subscription official url: %w", err)
+	}
+
+	logger.Info("Subscription official url updated",
+		zap.String("id", id), zap.String("url", officialURL))
 	return nil
 }
 

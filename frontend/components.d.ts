@@ -21,6 +21,7 @@ declare module 'vue' {
     ChipsField: typeof import('./src/components/ChipsField.vue')['default']
     ClashAPISettings: typeof import('./src/components/ClashAPISettings.vue')['default']
     ConfirmDialog: typeof import('./src/components/ConfirmDialog.vue')['default']
+    CopyIcon: typeof import('./src/components/CopyIcon.vue')['default']
     DashboardDownloader: typeof import('./src/components/DashboardDownloader.vue')['default']
     DashboardUrlSelect: typeof import('./src/components/DashboardUrlSelect.vue')['default']
     DialerOptions: typeof import('./src/components/DialerOptions.vue')['default']

@@ -13,6 +13,7 @@ type SubscriptionManager interface {
 	Delete(id string) error
 	UpdateLastUpdate(id string) error
 	UpdateInfo(id string, info []SubInfo) error
+	UpdateOfficialURL(id string, officialURL string) error
 }
 
 const (
@@ -56,7 +57,12 @@ type Subscription struct {
 	FetchMode string `json:"fetch_mode"`
 	// ProxyURL is the proxy to use when FetchMode is "proxy", e.g.
 	// "socks5://127.0.0.1:7893" or "http://127.0.0.1:7890". Empty otherwise.
-	ProxyURL  string    `json:"proxy_url"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ProxyURL string `json:"proxy_url"`
+	// OfficialURL is the provider's own site — where an operator tops up or
+	// renews. Auto-filled from the feed on refresh (see DetectOfficialURL) only
+	// while it is empty, so an operator's own edit is never overwritten by a
+	// provider that reports a different page.
+	OfficialURL string    `json:"official_url"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

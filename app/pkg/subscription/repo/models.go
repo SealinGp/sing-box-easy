@@ -15,10 +15,12 @@ type Subscription struct {
 	Info string `xorm:"'info' text" json:"info"`
 	// FetchMode / ProxyURL control how the URL is fetched (direct / clean_dns /
 	// proxy) on censored networks. See subscription.FetchMode* constants.
-	FetchMode string    `xorm:"'fetch_mode' notnull default('')" json:"fetch_mode"`
-	ProxyURL  string    `xorm:"'proxy_url' notnull default('')" json:"proxy_url"`
-	CreatedAt time.Time `xorm:"created" json:"created_at"`
-	UpdatedAt      time.Time `xorm:"updated" json:"updated_at"`
+	FetchMode string `xorm:"'fetch_mode' notnull default('')" json:"fetch_mode"`
+	ProxyURL  string `xorm:"'proxy_url' notnull default('')" json:"proxy_url"`
+	// OfficialURL is the provider's own site, auto-filled from the feed.
+	OfficialURL string    `xorm:"'official_url' notnull default('')" json:"official_url"`
+	CreatedAt   time.Time `xorm:"created" json:"created_at"`
+	UpdatedAt   time.Time `xorm:"updated" json:"updated_at"`
 }
 
 // TableName specifies the table name for Subscription

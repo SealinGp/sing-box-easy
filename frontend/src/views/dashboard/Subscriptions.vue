@@ -10,9 +10,13 @@ import Modal from "../../components/Modal.vue";
 import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
 import Table from "../../components/Table.vue";
+import CopyIcon from "../../components/CopyIcon.vue";
+import PopConfirm from "../../components/PopConfirm.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
+import { summarizeUpdate } from "../../utils/subscriptionUpdate";
+import { isLinkableSiteInput, safeExternalUrl } from "../../utils/safeExternalUrl";
 import {
   PlusIcon,
   PencilIcon,
@@ -23,8 +27,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ClipboardDocumentIcon,
   TagIcon,
+  ArrowTopRightOnSquareIcon,
 } from "@heroicons/vue/24/outline";
 import { Select } from "../../volt";
 
@@ -35,6 +39,7 @@ const notify = useNotify();
 interface FormData {
   name: string;
   url: string;
+  official_url: string;
   auto_update: boolean;
   update_interval: string;
   fetch_mode: "" | "clean_dns" | "proxy";
@@ -46,16 +51,15 @@ const isLoading = ref(false);
 const isUpdating = ref<string[]>([]);
 const showModal = ref(false);
 const editingSubscription = ref<Subscription | null>(null);
-const showDeleteConfirm = ref(false);
 // Editor for the labels that mark a feed entry as account metadata rather than
 // a proxy node — provider-specific, hence operator-editable.
 const showInfoKeywords = ref(false);
-const deletingSubscriptionId = ref<string>("");
 
 // Form data
 const formData = ref<FormData>({
   name: "",
   url: "",
+  official_url: "",
   auto_update: true,
   update_interval: "24h",
   fetch_mode: "",
@@ -97,6 +101,7 @@ const resetForm = () => {
   formData.value = {
     name: "",
     url: "",
+    official_url: "",
     auto_update: true,
     update_interval: "24h",
     fetch_mode: "",
@@ -115,6 +120,7 @@ const openEditModal = (subscription: Subscription) => {
   formData.value = {
     name: subscription.name,
     url: subscription.url,
+    official_url: subscription.official_url ?? "",
     auto_update: subscription.auto_update ?? false,
     update_interval: subscription.update_interval, // Already a string from backend (e.g., "24h")
     fetch_mode: subscription.fetch_mode ?? "",
@@ -146,6 +152,17 @@ const validateForm = () => {
     }
   }
 
+  // The official site ends up in an href, so the same http(s)-only rule the
+  // backend enforces on save is applied here — the operator gets the error at
+  // the field instead of a rejected request. A bare domain is accepted, since
+  // that is what the backend stores after promoting it to https.
+  if (
+    formData.value.official_url.trim() &&
+    !isLinkableSiteInput(formData.value.official_url)
+  ) {
+    errors.official_url = t("subscriptions.validation.officialUrlScheme");
+  }
+
   // Validate update_interval format if auto_update is enabled
   if (formData.value.auto_update) {
     if (!formData.value.update_interval) {
@@ -173,6 +190,7 @@ const saveSubscription = async () => {
     const subscriptionData = {
       name: formData.value.name,
       url: formData.value.url,
+      official_url: formData.value.official_url.trim(),
       auto_update: formData.value.auto_update,
       update_interval: formData.value.update_interval, // Send as string
       fetch_mode: formData.value.fetch_mode,
@@ -202,48 +220,24 @@ const saveSubscription = async () => {
   }
 };
 
-const copyUrl = async (url: string) => {
-  try {
-    if (navigator.clipboard?.writeText) {
-      // Secure context (HTTPS / localhost)
-      await navigator.clipboard.writeText(url);
-    } else {
-      // Fallback for plain-HTTP deployments where navigator.clipboard is undefined
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      ta.style.cssText =
-        "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      if (!document.execCommand("copy")) {
-        throw new Error("execCommand copy failed");
-      }
-      document.body.removeChild(ta);
-    }
-    notify.success(t("subscriptions.notify.copiedOk"));
-  } catch (error) {
-    notify.apiError(error, t("subscriptions.notify.copyFailed"));
-  }
-};
+/**
+ * The provider's site, or null when this subscription has none (or has one
+ * that is not safe to link). Drives whether the name renders as a link.
+ */
+const officialLink = (subscription: Subscription) =>
+  safeExternalUrl(subscription.official_url);
 
-const confirmDelete = (subscription: Subscription) => {
-  deletingSubscriptionId.value = subscription.id;
-  showDeleteConfirm.value = true;
-};
-
-const deleteSubscription = async () => {
-  if (!deletingSubscriptionId.value) return;
-
+// Confirmation already happened in the row's <PopConfirm>, which names the
+// subscription being removed — the centre-screen modal it replaced could not,
+// so "Delete subscription?" gave no way to check WHICH row was clicked.
+const deleteSubscription = async (subscription: Subscription) => {
   try {
     const response = await subscriptionService.deleteSubscription(
-      deletingSubscriptionId.value
+      subscription.id
     );
     notify.success(
       response.data.message || t("subscriptions.notify.deletedOk")
     );
-    showDeleteConfirm.value = false;
-    deletingSubscriptionId.value = "";
     await loadSubscriptions();
   } catch (error) {
     notify.apiError(error, t("subscriptions.notify.deleteError"));
@@ -259,18 +253,9 @@ const updateSubscription = async (subscription: Subscription) => {
       subscription.id
     );
 
-    const { added, updated, deleted } = response.data;
-    // Backend now returns a 3-way diff. Build a human-readable summary
-    // and fall back to "no changes" when the subscription was already
-    // in sync with the upstream feed.
-    const parts: string[] = [];
-    if (added > 0) parts.push(t("subscriptions.notify.added", { n: added }));
-    if (updated > 0)
-      parts.push(t("subscriptions.notify.updated", { n: updated }));
-    if (deleted > 0)
-      parts.push(t("subscriptions.notify.removed", { n: deleted }));
-    const summary =
-      parts.length > 0 ? parts.join(", ") : t("subscriptions.notify.noChanges");
+    // The same builder the Overview card uses, so one backend result cannot be
+    // described two different ways depending on which screen you are on.
+    const summary = summarizeUpdate(response.data, t);
     notify.success(
       t("subscriptions.notify.synced", { name: subscription.name, summary })
     );
@@ -447,12 +432,61 @@ onMounted(() => {
           v-for="subscription in subscriptions"
           :key="subscription.id"
         >
-          <!-- Subscription: name + URL (copy) + node count, stacked -->
+          <!-- Subscription: name (→ provider site) + id + feed URL, stacked -->
           <td class="align-top cell-wrap">
             <div class="flex flex-col gap-1 max-w-[18rem]">
-              <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :title="subscription.name">
+              <!--
+                The name links to the provider's own site when the feed gave us
+                one, because that is where every question this page raises gets
+                answered — out of traffic, expired, plan changed. Falls back to
+                plain text rather than a dead link when it did not.
+
+                rel="noopener noreferrer": the href is provider-controlled, so
+                the opened page must get neither window.opener nor a Referer
+                naming this panel's LAN address.
+              -->
+              <a
+                v-if="officialLink(subscription)"
+                :href="officialLink(subscription)!"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="group inline-flex items-center gap-1 min-w-0 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+                :title="$t('subscriptions.tooltip.openSite', { name: subscription.name })"
+              >
+                <span class="truncate">{{ subscription.name }}</span>
+                <ArrowTopRightOnSquareIcon class="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
+              </a>
+              <span
+                v-else
+                class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+                :title="subscription.name"
+              >
                 {{ subscription.name }}
               </span>
+
+              <!--
+                The id is the string that ties an outbound back to its
+                subscription: node tags carry it, so pasting it into the config
+                editor's search answers "which subscription is this node from".
+                Monospace because it is meant to be read character by character.
+              -->
+              <div class="flex items-center gap-1 min-w-0">
+                <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                  {{ $t("subscriptions.table.id") }}
+                </span>
+                <span
+                  class="font-mono text-xs text-gray-500 dark:text-gray-400 truncate"
+                  :title="subscription.id"
+                >
+                  {{ subscription.id }}
+                </span>
+                <CopyIcon
+                  :text="subscription.id"
+                  size="xs"
+                  :label="$t('subscriptions.tooltip.copyId')"
+                />
+              </div>
+
               <div class="flex items-center gap-1 min-w-0">
                 <span
                   class="text-xs text-gray-500 dark:text-gray-400 truncate"
@@ -460,15 +494,10 @@ onMounted(() => {
                 >
                   {{ subscription.url }}
                 </span>
-                <button
-                  type="button"
-                  class="shrink-0 p-0.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                  @click="copyUrl(subscription.url)"
-                  :title="$t('subscriptions.tooltip.copy')"
-                  :aria-label="$t('subscriptions.tooltip.copy')"
-                >
-                  <ClipboardDocumentIcon class="h-3.5 w-3.5" />
-                </button>
+                <CopyIcon
+                  :text="subscription.url"
+                  :label="$t('subscriptions.tooltip.copy')"
+                />
               </div>
             </div>
           </td>
@@ -566,16 +595,23 @@ onMounted(() => {
               >
                 <PencilIcon class="h-4 w-4" />
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                action
-                @click="confirmDelete(subscription)"
-                :title="$t('subscriptions.tooltip.del')"
-                :aria-label="$t('subscriptions.tooltip.del')"
+              <!-- Anchored confirm rather than a modal: the popover names the
+                   subscription, so the question stays attached to the row that
+                   raised it. triggerClass mirrors <Button variant="danger"
+                   size="sm" action> so the row's three controls stay a set. -->
+              <PopConfirm
+                :message="$t('subscriptions.del.confirmHeading')"
+                :target="subscription.name"
+                :details="$t('subscriptions.del.confirmDesc')"
+                :confirm-label="$t('common.delete')"
+                tone="danger"
+                align="right"
+                trigger-class="inline-flex items-center justify-center gap-1 rounded-control bg-danger px-2.5 py-0.5 font-semibold text-white transition-colors duration-200 hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+                @confirm="deleteSubscription(subscription)"
               >
                 <TrashIcon class="h-4 w-4" />
-              </Button>
+                <span class="sr-only">{{ $t("subscriptions.tooltip.del") }}</span>
+              </PopConfirm>
             </div>
           </td>
         </tr>
@@ -604,6 +640,20 @@ onMounted(() => {
             placeholder="https://example.com/subscription"
             required
             :error="formErrors.url"
+          />
+
+          <!--
+            Optional, and usually filled in for you: a refresh takes the site
+            from the feed when the provider reports one. Editing it here pins
+            it — later refreshes leave a non-empty value alone.
+          -->
+          <Input
+            v-model="formData.official_url"
+            :label="$t('subscriptions.form.officialUrl')"
+            type="url"
+            placeholder="https://example.com"
+            :error="formErrors.official_url"
+            :hint="$t('subscriptions.form.officialUrlHint')"
           />
 
           <div class="flex items-center gap-4">
@@ -672,40 +722,6 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <!-- Delete Confirmation Modal -->
-    <Modal
-      v-model="showDeleteConfirm"
-      :title="$t('subscriptions.del.title')"
-      size="sm"
-      show-close
-    >
-      <div class="text-center">
-        <div
-          class="mx-auto flex items-center justify-center h-12 w-12 rounded-pill bg-red-100 dark:bg-red-900 mb-4"
-        >
-          <TrashIcon class="h-6 w-6 text-red-600 dark:text-red-400" />
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-          {{ $t("subscriptions.del.confirmHeading") }}
-        </h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ $t("subscriptions.del.confirmDesc") }}
-        </p>
-      </div>
-
-      <template #footer>
-        <Button variant="secondary" @click="showDeleteConfirm = false">
-          {{ $t("common.cancel") }}
-        </Button>
-        <Button
-          variant="danger"
-          :loading="isLoading"
-          @click="deleteSubscription"
-        >
-          {{ $t("common.delete") }}
-        </Button>
-      </template>
-    </Modal>
   </div>
 </template>
 
