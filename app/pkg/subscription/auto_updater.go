@@ -386,6 +386,40 @@ func tagBelongsToSubscription(tag, subID string) bool {
 	return strings.HasSuffix(tag, subscriptionTagSuffix(subID))
 }
 
+// fingerprintLegacyTag rewrites a pre-fingerprint subscription tag
+// ("<name> <server:port> | <subID>") into the current form
+// ("<name> <fingerprint> | <subID>"), or returns "" when the tag is not in the
+// legacy shape and therefore needs no migration.
+//
+// The endpoint is recovered from the tag itself rather than from the outbound's
+// options on purpose: the tag records the endpoint the node had WHEN IT WAS
+// MINTED, and matching is against tags the feed produces from those same
+// strings. Reading today's options would silently mis-migrate a node whose
+// provider moved it to a new host.
+func fingerprintLegacyTag(tag, subID string) string {
+	suffix := subscriptionTagSuffix(subID)
+	if !strings.HasSuffix(tag, suffix) {
+		return ""
+	}
+	head := strings.TrimSuffix(tag, suffix)
+
+	space := strings.LastIndex(head, " ")
+	if space == -1 {
+		return ""
+	}
+	endpoint := head[space+1:]
+	// Only "host:port" (or a bare host) is a legacy endpoint. Anything else —
+	// including a tag already carrying a fingerprint — is left alone.
+	if !strings.Contains(endpoint, ":") && !strings.Contains(endpoint, ".") {
+		return ""
+	}
+	fp := config.FingerprintEndpointKey(endpoint)
+	if fp == "" || fp == endpoint {
+		return ""
+	}
+	return head[:space+1] + fp + suffix
+}
+
 // diffNodes compares current outbounds with the freshly fetched nodes and
 // returns the changes, keyed by the existing outbound's tag.
 //
@@ -429,8 +463,8 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 		if config.GetOutboundServerKey(outbound) == "" {
 			continue
 		}
-		// Final tag = "<name> <server:port> | <subID>".
-		taggedTag := config.GenerateUniqueTag(n.Tag, outbound) + suffix
+		// Final tag = "<name> <endpoint-fingerprint> | <subID>".
+		taggedTag := config.GenerateFingerprintedTag(n.Tag, outbound) + suffix
 		outbound.Tag = taggedTag
 		// Two feed nodes with the same name AND endpoint are genuinely
 		// indistinguishable; collapsing them here is correct (one survives).
@@ -455,6 +489,21 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 			}
 			continue
 		}
+
+		// Tags minted before the endpoint was hashed spell the endpoint out:
+		// "<name> <server:port> | <subID>". Convert and retry, so the format
+		// change lands as a RENAME rather than as delete-plus-add. The
+		// difference is not cosmetic: a rename carries selector/urltest
+		// membership across (see renameMap in applyChanges), while a delete
+		// would drop every group reference to the node and re-add it bare.
+		if migrated := fingerprintLegacyTag(outbound.Tag, sub.ID); migrated != "" {
+			if newOutbound, ok := newByTag[migrated]; ok && !consumed[migrated] {
+				consumed[migrated] = true
+				toUpdate[outbound.Tag] = newOutbound
+				continue
+			}
+		}
+
 		// Carries our suffix but no longer in the feed → delete.
 		toDelete[outbound.Tag] = struct{}{}
 	}
@@ -473,11 +522,17 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 			continue
 		}
 
-		// The legacy tag is either already "name server:port" or a bare display
-		// name. Try both forms against the suffixed feed index.
+		// The legacy tag is a bare display name, or already carries an endpoint
+		// ("name server:port"). The feed index is keyed by the current form
+		// ("name fingerprint | subID"), so every candidate is built in that
+		// form: the bare tag, the tag plus this outbound's own fingerprint, and
+		// the tag with an endpoint it already spells out converted.
 		candidates := []string{outbound.Tag + suffix}
-		if sk := config.GetOutboundServerKey(outbound); sk != "" {
-			candidates = append(candidates, outbound.Tag+" "+sk+suffix)
+		if fp := config.FingerprintEndpointKey(config.GetOutboundServerKey(outbound)); fp != "" {
+			candidates = append(candidates, outbound.Tag+" "+fp+suffix)
+		}
+		if migrated := fingerprintLegacyTag(outbound.Tag+suffix, sub.ID); migrated != "" {
+			candidates = append(candidates, migrated)
 		}
 		matched := false
 		for _, candidate := range candidates {

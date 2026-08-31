@@ -11,21 +11,46 @@ import (
 func matcherMatches(m Matcher, tag, lowerTag string) bool {
 	switch m.Type {
 	case MatcherKeyword:
-		v := strings.ToLower(strings.TrimSpace(m.Value))
-		return v != "" && strings.Contains(lowerTag, v)
+		raw := strings.TrimSpace(m.Value)
+		v := strings.ToLower(raw)
+		if v == "" {
+			return false
+		}
+		if strings.Contains(lowerTag, v) {
+			return true
+		}
+		// A value pasted from the UI before endpoints were hashed still names
+		// exactly one node; convert it rather than letting the exclude quietly
+		// stop matching.
+		if canon := legacyTagValue(raw); canon != "" {
+			return strings.Contains(lowerTag, strings.ToLower(canon))
+		}
+		return false
 	case MatcherEmoji:
 		v := strings.TrimSpace(m.Value)
 		return v != "" && strings.Contains(tag, v)
 	case MatcherCode:
+		// A code describes where the node IS, which only the provider's display
+		// name says. Matching the rest of the tag made the server's hostname
+		// vote: nodes on "s4.usghq.ps1ksydn.com" all matched US via "usghq",
+		// so Hong Kong and Taiwan joined a US-only filter and a urltest then
+		// sent that traffic out through Hong Kong.
+		name := strings.ToLower(displayName(tag))
 		for _, syn := range CodeSynonyms(m.Value) {
-			s := strings.TrimSpace(syn)
+			s := strings.ToLower(strings.TrimSpace(syn))
 			if s == "" {
 				continue
 			}
-			// Text synonyms compare case-insensitively; emoji synonyms are
-			// covered by the same lowercased contains (ToLower is identity on
-			// emoji), so a single check suffices.
-			if strings.Contains(lowerTag, strings.ToLower(s)) {
+			// ASCII synonyms must sit on word boundaries — "us" is a substring
+			// of Belarus and Cyprus, "in" of Singapore. CJK synonyms and emoji
+			// flags have no boundaries to find and are plain substrings.
+			if isASCII(s) {
+				if containsWord(name, s) {
+					return true
+				}
+				continue
+			}
+			if strings.Contains(name, s) {
 				return true
 			}
 		}

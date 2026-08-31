@@ -2,6 +2,8 @@ package config
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/sagernet/sing-box/option"
@@ -28,18 +30,18 @@ func (c *SingBoxConfig) MarshalJSON() ([]byte, error) {
 
 // Type aliases for backward compatibility
 type (
-	LogConfig            = option.LogOptions
-	ExperimentalConfig   = option.ExperimentalOptions
-	ClashAPIConfig       = option.ClashAPIOptions
-	CacheFileConfig      = option.CacheFileOptions
-	V2RayAPIOptions      = option.V2RayAPIOptions
-	V2RayStatsService    = option.V2RayStatsServiceOptions
-	Inbound              = option.Inbound
-	Outbound             = option.Outbound
-	RouteConfig          = option.RouteOptions
-	RouteRule            = option.Rule
-	DNSRule              = option.DNSRule
-	RuleSet              = option.RuleSet
+	LogConfig          = option.LogOptions
+	ExperimentalConfig = option.ExperimentalOptions
+	ClashAPIConfig     = option.ClashAPIOptions
+	CacheFileConfig    = option.CacheFileOptions
+	V2RayAPIOptions    = option.V2RayAPIOptions
+	V2RayStatsService  = option.V2RayStatsServiceOptions
+	Inbound            = option.Inbound
+	Outbound           = option.Outbound
+	RouteConfig        = option.RouteOptions
+	RouteRule          = option.Rule
+	DNSRule            = option.DNSRule
+	RuleSet            = option.RuleSet
 )
 
 // outboundOptionsAsMap normalizes outbound.Options into a generic map so the
@@ -133,8 +135,72 @@ func GetOutboundServer(outbound Outbound) string {
 	return server
 }
 
-// GenerateUniqueTag generates a unique tag for an outbound node
-// Format: "original_tag server:port"
+// endpointFingerprintLen is how much of the endpoint hash goes into a tag.
+//
+// 8 hex characters is 32 bits. The fingerprint only has to separate nodes that
+// share a display name inside ONE subscription — a few hundred at the very
+// most — so a collision is on the order of one in ten million there, while a
+// full 32-character md5 would make the tag LONGER than the "host:port" it
+// replaces (26 characters for a typical provider) and defeat the point.
+const endpointFingerprintLen = 8
+
+// FingerprintEndpointKey hashes a "server:port" endpoint key into a short,
+// stable token for use inside an outbound tag.
+//
+// md5 is used as a fast identity function, not as a security primitive: the
+// input is a public hostname and the output is a display discriminator. Nothing
+// here relies on collision resistance against an adversary.
+func FingerprintEndpointKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	sum := md5.Sum([]byte(key)) // #nosec G401 -- identity key, not a credential
+	return hex.EncodeToString(sum[:])[:endpointFingerprintLen]
+}
+
+// GenerateFingerprintedTag is GenerateUniqueTag with the endpoint hashed rather
+// than spelled out: "<name> <fingerprint>" instead of "<name> <server:port>".
+//
+// Subscription tags use this because they are numerous and long, and because
+// the hostname in the tag was actively harmful — a `code` matcher reading the
+// whole tag treated the server's name as evidence of the node's country.
+// Manually added outbounds keep the readable form: there are few of them and
+// the endpoint is the useful thing to see.
+func GenerateFingerprintedTag(originalTag string, outbound Outbound) string {
+	if fp := FingerprintEndpointKey(GetOutboundServerKey(outbound)); fp != "" {
+		return fmt.Sprintf("%s %s", originalTag, fp)
+	}
+	return originalTag
+}
+
+// OutboundTagCandidates returns the tag a newly added outbound should carry
+// (first) followed by the forms the same node may ALREADY be stored under.
+//
+// The second form exists because the endpoint used to be spelled out. Adding
+// nodes is idempotent — pasting the same links twice skips them — and that
+// check compares tags, so without the legacy form every previously added node
+// would come back as a second copy under a new tag the first time links were
+// re-pasted after the format change.
+//
+// Only these two forms are candidates, on purpose. A bare display name is NOT
+// one: two different servers legitimately share a name ("香港 01" from two
+// providers), so treating the name alone as identity would silently drop the
+// second as a duplicate.
+func OutboundTagCandidates(originalTag string, outbound Outbound) []string {
+	fingerprinted := GenerateFingerprintedTag(originalTag, outbound)
+	readable := GenerateUniqueTag(originalTag, outbound)
+	if readable == fingerprinted {
+		return []string{fingerprinted}
+	}
+	return []string{fingerprinted, readable}
+}
+
+// GenerateUniqueTag returns the readable "<name> <server:port>" form.
+//
+// This is the shape the panel minted before endpoints were hashed. New
+// outbounds get GenerateFingerprintedTag instead; this remains the way to
+// recognize a tag minted by an older build (see OutboundTagCandidates), and
+// the readable form for anything that wants to show an endpoint.
 func GenerateUniqueTag(originalTag string, outbound Outbound) string {
 	serverKey := GetOutboundServerKey(outbound)
 	if serverKey != "" {

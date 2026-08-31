@@ -267,6 +267,17 @@ func (m *Manager) UpdateConfig(updateFn func(*SingBoxConfig) error) error {
 // the function returns without touching disk — there is no point running the
 // write-then-validate cycle on a config that has not changed, and doing so
 // would surface unrelated pre-existing validation failures.
+// firstExistingTag returns the first candidate tag already present in the
+// config, if any.
+func firstExistingTag(existingTags map[string]bool, candidates []string) (string, bool) {
+	for _, candidate := range candidates {
+		if existingTags[candidate] {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
 func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, skippedTags []string, err error) {
 	if len(outbounds) == 0 {
 		return nil, nil, nil
@@ -285,11 +296,14 @@ func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, ski
 
 	toAdd := make([]Outbound, 0, len(outbounds))
 	for _, outbound := range outbounds {
-		originalTag := outbound.Tag
-		outbound.Tag = GenerateUniqueTag(originalTag, outbound)
+		// The first candidate is the tag to mint; the rest are older shapes the
+		// same node may already be stored under, so re-adding stays a skip rather
+		// than producing a second copy under a new tag.
+		candidates := OutboundTagCandidates(outbound.Tag, outbound)
+		outbound.Tag = candidates[0]
 
-		if existingTags[outbound.Tag] {
-			skippedTags = append(skippedTags, outbound.Tag)
+		if existing, found := firstExistingTag(existingTags, candidates); found {
+			skippedTags = append(skippedTags, existing)
 			continue
 		}
 		toAdd = append(toAdd, outbound)

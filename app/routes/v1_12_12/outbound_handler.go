@@ -99,15 +99,22 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Generate unique tag to avoid conflicts
-	originalTag := outbound.Tag
-	outbound.Tag = config.GenerateUniqueTag(originalTag, outbound)
+	// Mint the tag the way every node-minting path does: the name plus a short
+	// fingerprint of the endpoint. The remaining candidates are the shapes an
+	// older build produced, so "already exists" still recognizes a node added
+	// before the format changed.
+	candidates := config.OutboundTagCandidates(outbound.Tag, outbound)
+	outbound.Tag = candidates[0]
 
 	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		// Check if tag already exists
+		// Check if the tag already exists, under any shape this panel has minted.
+		taken := make(map[string]bool, len(cfg.Outbounds))
 		for _, existing := range cfg.Outbounds {
-			if existing.Tag == outbound.Tag {
-				return fmt.Errorf("outbound with tag '%s' already exists", outbound.Tag)
+			taken[existing.Tag] = true
+		}
+		for _, candidate := range candidates {
+			if taken[candidate] {
+				return fmt.Errorf("outbound with tag '%s' already exists", candidate)
 			}
 		}
 

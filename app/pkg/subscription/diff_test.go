@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
@@ -27,6 +28,17 @@ func p(uniqueTag string) string {
 	return uniqueTag + subscriptionTagSuffix(testSubID)
 }
 
+// fp is the endpoint fingerprint the minted tags carry, resolved through the
+// same helper the updater uses so the tests never hard-code a hash.
+func fp(server string, port int) string {
+	return config.FingerprintEndpointKey(config.GetOutboundServerKey(ob("x", server, port)))
+}
+
+// minted is the tag a feed node ends up with: "<name> <fingerprint> | <subID>".
+func minted(name, server string, port int) string {
+	return p(name + " " + fp(server, port))
+}
+
 // TestDiffNodesPrefixOwnership verifies the subscription-ID prefix is the sole
 // ownership signal: already-namespaced nodes are matched/deleted by prefix, and
 // many distinct nodes can share one server:port (a relay/CDN endpoint) without
@@ -37,7 +49,7 @@ func TestDiffNodesPrefixOwnership(t *testing.T) {
 
 	cfg := &config.SingBoxConfig{}
 	cfg.Outbounds = []config.Outbound{
-		ob(p("A relay:443"), "relay", 443),            // matches feed exactly → unchanged
+		ob(minted("A", "relay", 443), "relay", 443),   // matches feed exactly → unchanged
 		ob(p("Gone relay:443"), "relay", 443),         // prefixed but not in feed → deleted
 		ob("Other other.host:443", "other.host", 443), // unrelated host, no prefix → untouched
 	}
@@ -60,11 +72,11 @@ func TestDiffNodesPrefixOwnership(t *testing.T) {
 		t.Fatalf("toUpdate = %v, want empty (A is unchanged)", toUpdate)
 	}
 
-	if len(toAdd) != 1 || toAdd[0].Tag != p("New relay:443") {
-		t.Fatalf("toAdd = %v, want exactly [%s]", collectTags(toAdd), p("New relay:443"))
+	if len(toAdd) != 1 || toAdd[0].Tag != minted("New", "relay", 443) {
+		t.Fatalf("toAdd = %v, want exactly [%s]", collectTags(toAdd), minted("New", "relay", 443))
 	}
 
-	if _, ok := toDelete[p("A relay:443")]; ok {
+	if _, ok := toDelete[minted("A", "relay", 443)]; ok {
 		t.Error("prefixed 'A' should be unchanged, not deleted")
 	}
 	if _, ok := toDelete["Other other.host:443"]; ok {
@@ -96,11 +108,11 @@ func TestDiffNodesLegacyMigration(t *testing.T) {
 	if len(toUpdate) != 2 {
 		t.Fatalf("toUpdate = %v, want 2 migrations", toUpdate)
 	}
-	if got := toUpdate["Legacy relay:443"]; got.Tag != p("Legacy relay:443") {
-		t.Errorf("legacy 'Legacy relay:443' -> %q, want %q", got.Tag, p("Legacy relay:443"))
+	if got, want := toUpdate["Legacy relay:443"], minted("Legacy", "relay", 443); got.Tag != want {
+		t.Errorf("legacy 'Legacy relay:443' -> %q, want %q", got.Tag, want)
 	}
-	if got := toUpdate["Bare"]; got.Tag != p("Bare relay:443") {
-		t.Errorf("legacy 'Bare' -> %q, want %q", got.Tag, p("Bare relay:443"))
+	if got, want := toUpdate["Bare"], minted("Bare", "relay", 443); got.Tag != want {
+		t.Errorf("legacy 'Bare' -> %q, want %q", got.Tag, want)
 	}
 
 	if len(toDelete) != 1 {
@@ -124,7 +136,7 @@ func TestDiffNodesNameChange(t *testing.T) {
 
 	cfg := &config.SingBoxConfig{}
 	cfg.Outbounds = []config.Outbound{
-		ob(p("OldName relay:443"), "relay", 443),
+		ob(minted("OldName", "relay", 443), "relay", 443),
 	}
 
 	newNodes := []*node.SubNode{
@@ -136,10 +148,77 @@ func TestDiffNodesNameChange(t *testing.T) {
 	if len(toUpdate) != 0 {
 		t.Fatalf("toUpdate = %v, want empty (a rename is delete+add, not update)", toUpdate)
 	}
-	if _, ok := toDelete[p("OldName relay:443")]; !ok || len(toDelete) != 1 {
-		t.Fatalf("toDelete = %v, want exactly {%s}", toDelete, p("OldName relay:443"))
+	if _, ok := toDelete[minted("OldName", "relay", 443)]; !ok || len(toDelete) != 1 {
+		t.Fatalf("toDelete = %v, want exactly {%s}", toDelete, minted("OldName", "relay", 443))
 	}
-	if len(toAdd) != 1 || toAdd[0].Tag != p("NewName relay:443") {
-		t.Fatalf("toAdd = %v, want exactly [%s]", collectTags(toAdd), p("NewName relay:443"))
+	if len(toAdd) != 1 || toAdd[0].Tag != minted("NewName", "relay", 443) {
+		t.Fatalf("toAdd = %v, want exactly [%s]", collectTags(toAdd), minted("NewName", "relay", 443))
 	}
+}
+
+// The tag format change must land as a RENAME, not as delete-plus-add. A
+// delete would strip the node from every selector/urltest that references it
+// and re-add it bare, so a config that worked before the upgrade would come
+// back with half-empty groups.
+func TestDiffNodesMigratesLegacyEndpointTagsAsRenames(t *testing.T) {
+	au := &AutoUpdater{}
+	sub := &Subscription{ID: testSubID}
+
+	cfg := &config.SingBoxConfig{}
+	cfg.Outbounds = []config.Outbound{
+		ob(p("香港 09 s4.example.com:37219"), "s4.example.com", 37219),
+		ob(p("美国 01 api.example.com:37261"), "api.example.com", 37261),
+	}
+
+	newNodes := []*node.SubNode{
+		sn("香港 09", "s4.example.com", 37219),
+		sn("美国 01", "api.example.com", 37261),
+	}
+
+	toDelete, toAdd, toUpdate := au.diffNodes(cfg, sub, newNodes)
+
+	if len(toDelete) != 0 {
+		t.Fatalf("toDelete = %v, want empty — a format change is not a deletion", toDelete)
+	}
+	if len(toAdd) != 0 {
+		t.Fatalf("toAdd = %v, want empty — the nodes already exist", collectTags(toAdd))
+	}
+	if len(toUpdate) != 2 {
+		t.Fatalf("toUpdate = %v, want 2 renames", toUpdate)
+	}
+	for _, tc := range []struct {
+		name, server string
+		port         int
+	}{
+		{"香港 09", "s4.example.com", 37219},
+		{"美国 01", "api.example.com", 37261},
+	} {
+		old := p(tc.name + " " + tc.server + ":" + itoa(tc.port))
+		got, ok := toUpdate[old]
+		if !ok {
+			t.Errorf("no rename recorded for %q", old)
+			continue
+		}
+		if want := minted(tc.name, tc.server, tc.port); got.Tag != want {
+			t.Errorf("%q renamed to %q, want %q", old, got.Tag, want)
+		}
+	}
+}
+
+// A tag already in the current format must not be re-migrated (which would
+// churn every refresh).
+func TestFingerprintLegacyTagIgnoresCurrentFormat(t *testing.T) {
+	current := minted("香港 09", "s4.example.com", 37219)
+	if got := fingerprintLegacyTag(current, testSubID); got != "" {
+		t.Errorf("fingerprintLegacyTag(%q) = %q, want \"\"", current, got)
+	}
+	// Nor a tag belonging to a different subscription.
+	other := "香港 09 s4.example.com:37219 | sub_other"
+	if got := fingerprintLegacyTag(other, testSubID); got != "" {
+		t.Errorf("fingerprintLegacyTag(%q) = %q, want \"\"", other, got)
+	}
+}
+
+func itoa(n int) string {
+	return strconv.Itoa(n)
 }
