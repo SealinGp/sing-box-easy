@@ -37,7 +37,13 @@ export const parseDurationToHours = (durationStr: string | undefined): number | 
     const match = durationStr.match(pattern.regex)
     if (match && match[1]) {
       const value = parseInt(match[1])
-      return Math.round(value * pattern.factor)
+      // NOT rounded to whole hours. Callers do arithmetic with this — the
+      // freshness dot compares it against hours-since-last-update — and
+      // Math.round turned every sub-30-minute interval into 0, which made
+      // `hoursSinceUpdate >= 0` true forever: a subscription fetched one
+      // second ago was still painted "outdated". Rounding only ever helped
+      // display, and formatHoursToDuration already handles fractions.
+      return value * pattern.factor
     }
   }
 
