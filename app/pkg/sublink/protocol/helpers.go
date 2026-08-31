@@ -41,6 +41,83 @@ func splitHostPort(serverInfo string) (host, port string, err error) {
 	return serverInfo[:lastColon], serverInfo[lastColon+1:], nil
 }
 
+// userinfoURI is the decomposed form of a "password@host:port" style link
+// (hysteria2, anytls): the shape where the userinfo half is a single secret
+// rather than the method:password or uuid pairs the other schemes use.
+type userinfoURI struct {
+	Password string
+	Server   string
+	Port     uint16
+	Params   url.Values
+	Tag      string
+}
+
+// parseUserinfoURI splits "password@host:port[/path][?query][#tag]".
+//
+// Order matters and is the reason this is shared rather than copied: the path
+// must be stripped from the AUTHORITY, not from the whole string. Scanning the
+// raw link for the first "/" hits a "/" inside the password — legal, and common
+// since these passwords are frequently raw base64 — and truncates away the
+// "@host:port" that follows, so the link is then rejected as having no "@".
+func parseUserinfoURI(data string) (userinfoURI, error) {
+	var out userinfoURI
+
+	// 1. Fragment (#tag) — last component, so it comes off first.
+	if hash := strings.Index(data, "#"); hash != -1 {
+		tag, err := url.QueryUnescape(data[hash+1:])
+		if err != nil {
+			return out, fmt.Errorf("failed to decode tag: %w", err)
+		}
+		out.Tag = tag
+		data = data[:hash]
+	}
+
+	// 2. Query (?k=v). A literal "?" in a password is not valid URI syntax —
+	// it has to be percent-encoded — so the first one always starts the query.
+	if q := strings.Index(data, "?"); q != -1 {
+		params, err := url.ParseQuery(data[q+1:])
+		if err != nil {
+			return out, fmt.Errorf("failed to parse query parameters: %w", err)
+		}
+		out.Params = params
+		data = data[:q]
+	}
+
+	// 3. Userinfo. LastIndex, so an "@" inside the password loses to the real
+	// separator.
+	at := strings.LastIndex(data, "@")
+	if at == -1 {
+		return out, fmt.Errorf("missing @ separator")
+	}
+	password, err := url.QueryUnescape(data[:at])
+	if err != nil {
+		return out, fmt.Errorf("failed to decode password: %w", err)
+	}
+	out.Password = password
+	authority := data[at+1:]
+
+	// 4. Path — only now, once the password can no longer be mistaken for one.
+	if slash := strings.Index(authority, "/"); slash != -1 {
+		authority = authority[:slash]
+	}
+
+	server, portStr, err := splitHostPort(authority)
+	if err != nil {
+		return out, err
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return out, fmt.Errorf("invalid port number: %w", err)
+	}
+	if port < 1 || port > 65535 {
+		return out, fmt.Errorf("port number out of range: %d", port)
+	}
+	out.Server = server
+	out.Port = uint16(port)
+
+	return out, nil
+}
+
 // buildV2RayTransport builds a V2Ray transport block (ws/grpc/http) from URI
 // query params. Shared by the VLESS/VMess/Trojan-style parsers. A "tcp"/"raw"
 // type means no transport block and should be filtered by the caller.

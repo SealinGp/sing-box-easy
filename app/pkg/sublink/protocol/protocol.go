@@ -15,6 +15,7 @@ var ppMap = map[string]SubNodeParserFactory{
 	"trojan://":    func() node.SubNodeParser { return new(Trojan) },
 	"vless://":     func() node.SubNodeParser { return new(VLESS) },
 	"hysteria2://": func() node.SubNodeParser { return new(Hysteria2) },
+	"anytls://":    func() node.SubNodeParser { return new(AnyTLS) },
 }
 
 func NewPBParser(schema string) (node.SubNodeParser, error) {
