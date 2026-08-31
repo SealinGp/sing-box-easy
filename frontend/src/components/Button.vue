@@ -107,7 +107,7 @@ const ACTION_SIZES: Record<NonNullable<Props['size']>, string> = {
 
 const classes = computed(() =>
   [
-    'inline-flex items-center justify-center font-semibold transition-colors duration-200',
+    'cursor-pointer inline-flex items-center justify-center font-semibold transition-colors duration-200',
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'dark:focus-visible:ring-offset-gray-900 disabled:cursor-not-allowed',
     props.pill ? 'rounded-pill' : 'rounded-control',
