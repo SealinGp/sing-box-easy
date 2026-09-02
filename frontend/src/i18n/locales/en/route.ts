@@ -118,6 +118,8 @@ export default {
     ruleSetLabel: '{tag} ({type} - {format})',
     ruleSetMissing: '{tag} — not configured',
     ruleSetEmpty: 'No rule sets configured yet. Add one under Rule Sets first.',
+    outboundEmpty: 'No outbounds available.',
+    outboundNoMatch: 'No outbound matches that search.',
     ruleSetHelp:
       'Matches if ANY of the selected rule sets matches. (Different condition types are still combined with AND.)',
     // The "add a condition" rows and the AND warning — see
@@ -158,21 +160,27 @@ export default {
       },
     },
     mixing: {
-      ruleSetGroup: 'Match by rule set',
+      // The radio. Rule set and content conditions are alternatives because
+      // sing-box ANDs them; context is not, and stays outside this choice.
+      styleLabel: 'Match by',
+      ruleSetGroup: 'Rule set',
+      ruleSetStyleHint: 'A prebuilt list of domains and IPs, maintained outside this rule.',
+      matchersGroup: 'Content conditions',
+      matchersStyleHint: 'Domains, IP ranges and ports written into this rule.',
       contextGroup: 'Narrow by context',
       title: 'Conditions are combined with AND',
-      warning:
-        'A rule set and content conditions in the same rule must BOTH match: only traffic that is in the rule set AND matches the content condition hits this rule. To let everything in the rule set through, leave the content conditions empty — and vice versa. Use a second rule if you meant "either one". Narrowing by inbound, protocol, network or port is unaffected — a rule set cannot express those.',
-      ruleSetCollapsed: 'This rule matches by content conditions. Rule set hidden.',
-      matchersCollapsed: 'This rule matches by rule set. Content conditions hidden.',
-      show: 'Show anyway',
-      hide: 'Hide',
-      matchersGroup: 'Match by content',
+      strandedRuleSet:
+        'This rule still carries a rule set. Both apply — traffic must be in the rule set AND match the content conditions. Use a second rule if you meant "either one".',
+      strandedContent:
+        'This rule still carries content conditions. Both apply — traffic must match them AND be in the rule set. Use a second rule if you meant "either one".',
+      showStranded: 'Show them',
+      clearStranded: 'Clear them',
     },
     placeholders: {
       action: 'Select action',
       ruleSet: 'Select rule sets',
       outbound: 'Select outbound',
+      outboundSearch: 'Search outbounds…',
       method: 'Select method',
       overrideAddress: 'Override address',
       overridePort: 'Override port',
@@ -245,54 +253,6 @@ export default {
     },
     confirm: {
       delete: 'Are you sure you want to delete this rule?',
-    },
-    smart: {
-      title: 'Add Routing Rule',
-      steps: {
-        match: 'Match',
-        action: 'Action',
-        outbound: 'Outbound',
-        dns: 'DNS',
-      },
-      matchType: 'Match by',
-      matchTypes: {
-        domain: 'Domain',
-        domainSuffix: 'Domain Suffix',
-        ruleSet: 'Rule Set',
-      },
-      matchTypeHint: 'Pick one match type. Combining types narrows (AND), it does not widen (OR).',
-      values: {
-        domain: 'Domains',
-        domainSuffix: 'Domain Suffixes',
-        ruleSet: 'Rule Sets',
-      },
-      valuesPlaceholder: {
-        domain: 'e.g. accounts.google.com',
-        domainSuffix: 'e.g. shopify.com',
-        ruleSet: 'Select rule sets',
-      },
-      action: 'Action',
-      outbound: 'Outbound',
-      outboundHint: 'Where matching traffic is sent.',
-      advanced: 'Advanced options…',
-      next: 'Next',
-      back: 'Back',
-      finish: 'Add Rule',
-      dns: {
-        heading: 'Prevent DNS pollution',
-        intro: 'This match is routed through a proxied outbound ({outbound}). Resolve it with a clean DNS server so it is not poisoned.',
-        server: 'DNS server',
-        serverHint: 'Recommended: an encrypted or proxied server (e.g. dns_google).',
-        enable: 'Also add a DNS rule for this match',
-        appended: 'Appended to an existing DNS rule',
-        created: 'Created a new DNS rule',
-      },
-      toast: {
-        added: 'Routing rule added',
-        addFailed: 'Failed to add routing rule',
-        dnsFailed: 'Rule added, but the DNS rule update failed',
-        validation: 'Please complete the required field',
-      },
     },
   },
   ruleItem: {

@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
-import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import { Dialog, Select } from '../volt'
 import Button from './Button.vue'
 import PopConfirm from './PopConfirm.vue'
@@ -17,10 +16,13 @@ import { useRouteStore } from '../stores/route'
 import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
 import { useConfirm } from '../composables/useConfirm'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
+import { useRouter } from 'vue-router'
 
 const toast = useToast()
 const { t } = useI18n()
 const { confirm } = useConfirm()
+const router = useRouter()
 const routeStore = useRouteStore()
 const { ruleSets, loading } = storeToRefs(routeStore)
 // Needed to offer download_detour choices and to tell a proxy group apart from
@@ -32,10 +34,6 @@ const { outbounds } = storeToRefs(outboundsStore)
 const showAddRuleSetDialog = ref(false)
 const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
 
-// Smart Routing Rule wizard, opened (seeded with the new rule_set tag) when the
-// user opts in after adding a rule set — routing + clean DNS in one flow.
-const showWizard = ref(false)
-const wizardSeedTag = ref<string>('')
 
 // Form data
 const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
@@ -213,8 +211,10 @@ async function handleAddRuleSet() {
     })
     dialogVisible.value = false
 
-    // Offer to create a routing rule for the new rule set, which flows into the
-    // Smart Routing Rule wizard (and its DNS-pollution guard).
+    // A rule set that nothing routes to does nothing, so offer the next step.
+    // It hands off to the Routing Rules tab through the URL rather than opening
+    // a second form here: the rule editor lives there, and a query parameter
+    // keeps the two tabs from having to know about each other's internals.
     if (addedTag) {
       const wantRoute = await confirm({
         title: t('route.ruleSets.configurePrompt.title'),
@@ -223,8 +223,7 @@ async function handleAddRuleSet() {
         cancelLabel: t('route.ruleSets.configurePrompt.cancel'),
       })
       if (wantRoute) {
-        wizardSeedTag.value = addedTag
-        showWizard.value = true
+        router.push({ path: '/dashboard/route/rules', query: { rule_set: addedTag } })
       }
     }
   } catch (err: any) {
@@ -413,13 +412,6 @@ onMounted(() => {
       </List>
     </Card>
 
-    <!-- Smart Routing Rule wizard, seeded with the just-added rule set -->
-    <SmartRoutingRuleWizard
-      v-model:visible="showWizard"
-      seed-match-type="rule_set"
-      :seed-values="[wizardSeedTag]"
-    />
-
     <!-- Add/Edit Rule Set Dialog -->
     <Dialog
       v-model:visible="dialogVisible"
@@ -484,6 +476,9 @@ onMounted(() => {
             :options="detourOptions"
             optionLabel="label"
             optionValue="value"
+            :filter="detourOptions.length >= FILTER_THRESHOLD"
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('route.ruleSets.form.detourDefault')"
             class="w-full"
           />

@@ -154,3 +154,53 @@ export function useExclusiveMatcherGroups(options: {
     showMixWarning,
   }
 }
+
+export type MatchStyle = 'ruleSet' | 'content'
+
+/**
+ * The rule-set / content-matcher either-or, as an explicit choice.
+ *
+ * `useExclusiveMatcherGroups` above infers the same choice from what the rule
+ * already holds, and hides the other side behind a "show anyway" button. That
+ * reads as the form deciding, and it takes two clicks to find out that the
+ * other style exists at all. A radio states the choice up front: one control,
+ * both options always visible, and only the chosen editor rendered.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT COVER
+ * ────────────────────────────────────
+ * The CONTEXT matchers (inbound/network/port/clash_mode/…). sing-box ANDs every
+ * matcher in a rule, and a rule set genuinely cannot express where traffic came
+ * from — `rule_set: geosite-cn` narrowed by `network: udp` is an ordinary,
+ * correct rule. Folding context into the same radio would make the most common
+ * correct route rule in sing-box unwritable in the form, so context sits outside
+ * this choice and is always available.
+ *
+ * STRANDED VALUES
+ * ───────────────
+ * The unselected style can still hold values — a config loaded from disk may
+ * legitimately mix, and switching styles mid-edit strands whatever was typed.
+ * Hiding those would make the form lie about what a save writes, so the caller
+ * is handed `strandedRuleSet` / `strandedContent` and must surface them. The
+ * values are never cleared here: this composable does not own the rule.
+ */
+export function useMatchStyle(options: {
+  hasRuleSet: Ref<boolean> | ComputedRef<boolean>
+  hasMatchers: Ref<boolean> | ComputedRef<boolean>
+}) {
+  const { hasRuleSet, hasMatchers } = options
+
+  // Seeded from the rule as loaded — the component is remounted per dialog open
+  // (see `matchersKey` in RoutingRules.vue), so this runs against fresh state.
+  // A rule that uses neither style lands on `ruleSet`: it is the style this
+  // repo's templates and init wizard emit, and the one that cannot be typo'd.
+  const style = ref<MatchStyle>(hasMatchers.value && !hasRuleSet.value ? 'content' : 'ruleSet')
+
+  const select = (next: MatchStyle) => {
+    style.value = next
+  }
+
+  const strandedRuleSet = computed(() => style.value !== 'ruleSet' && hasRuleSet.value)
+  const strandedContent = computed(() => style.value !== 'content' && hasMatchers.value)
+
+  return { style, select, strandedRuleSet, strandedContent }
+}

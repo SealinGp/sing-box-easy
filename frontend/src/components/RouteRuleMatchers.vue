@@ -37,6 +37,19 @@
  * explaining it, instead of generalising it into machinery with one user. The
  * editor itself needed no change at all.
  *
+ * THE CHOICE IS A RADIO, AND IT COVERS TWO GROUPS, NOT THREE
+ * ──────────────────────────────────────────────────────────
+ * Rule set vs content is now picked explicitly (`useMatchStyle`) and only the
+ * chosen editor renders. It used to be inferred from the rule's contents, with
+ * the other style folded behind a "show anyway" button — which read as the form
+ * deciding, and hid the existence of the alternative behind two clicks.
+ *
+ * Context is deliberately NOT a third radio option. sing-box ANDs every matcher
+ * in a rule and a rule set cannot express where traffic came from, so
+ * `rule_set: geosite-cn` narrowed by `network: udp` is an ordinary correct rule;
+ * a three-way radio would make it unwritable in the form. The two things that
+ * are alternatives get the radio, the thing that composes stays outside it.
+ *
  * GEOSITE AND GEOIP ARE GONE
  * ──────────────────────────
  * They had curated dropdowns with 12 and 7 options and were the primary content
@@ -46,12 +59,11 @@
  * uses, so it can be seen and cleared. The replacement is a rule set, which
  * this repo's templates and init wizard already use.
  */
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import Alert from './Alert.vue'
-import { PlusCircleIcon } from '@heroicons/vue/24/outline'
-import { useExclusiveMatcherGroups } from '../composables/useMatcherFields'
+import { useMatchStyle, type MatchStyle } from '../composables/useMatcherFields'
 import { isFieldFilled } from '../schemas/optionSchema'
 import {
   CONTENT_MATCHER_KEYS,
@@ -99,98 +111,125 @@ const hasContext = computed(() => contextKeys.some(isFilled))
 // warning cannot drift from what the content section actually renders.
 const hasMatchers = computed(() => CONTENT_MATCHER_KEYS.some(isFilled))
 
-const {
-  showRuleSet,
-  showMatchers,
-  expandRuleSet,
-  expandMatchers,
-  collapseRuleSet,
-  collapseMatchers,
-  canHideRuleSet,
-  canHideMatchers,
-  showMixWarning,
-} = useExclusiveMatcherGroups({ hasRuleSet, hasMatchers })
+const { style, select, strandedRuleSet, strandedContent } = useMatchStyle({
+  hasRuleSet,
+  hasMatchers,
+})
+
+const styleOptions: { value: MatchStyle; label: string; hint: string }[] = [
+  {
+    value: 'ruleSet',
+    label: 'route.rules.mixing.ruleSetGroup',
+    hint: 'route.rules.mixing.ruleSetStyleHint',
+  },
+  {
+    value: 'content',
+    label: 'route.rules.mixing.matchersGroup',
+    hint: 'route.rules.mixing.matchersStyleHint',
+  },
+]
+
+/**
+ * Radio groups are keyed by `name`, so two of these on one page (an add dialog
+ * left in the DOM behind an edit dialog) would share a selection. Unique per
+ * instance.
+ */
+const groupName = `match-style-${useId()}`
+
+/**
+ * Clearing a stranded group.
+ *
+ * The only destructive control here, and it is explicit: the alert says which
+ * values are still in force, and this removes exactly those keys. Switching the
+ * radio never clears anything on its own — a mistyped click would otherwise
+ * silently drop a list of rule sets.
+ */
+function clearKeys(keys: readonly string[]) {
+  const next = { ...(model.value as Record<string, unknown>) }
+  for (const key of keys) delete next[key]
+  model.value = next as RouteRule
+}
+
+const clearRuleSet = () => clearKeys(ruleSetFields.map((f) => f.key))
+const clearContent = () => clearKeys(CONTENT_MATCHER_KEYS)
 </script>
 
 <template>
   <div class="space-y-4">
-    <Alert v-if="showMixWarning" type="warning" :title="t('route.rules.mixing.title')">
-      {{ t('route.rules.mixing.warning') }}
+    <!-- ── The either-or, stated as a choice ──────────────────────────────
+         A rule set already expresses what the content matchers express, and
+         sing-box ANDs them, so "rule set AND domain" means "this domain, but
+         only if it is also in the set" — almost never the intent. Presenting
+         them as two radio options makes the exclusivity the default reading
+         instead of something the form has to warn about afterwards. -->
+    <fieldset>
+      <legend class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {{ t('route.rules.mixing.styleLabel') }}
+      </legend>
+      <div class="grid gap-2 sm:grid-cols-2">
+        <label
+          v-for="option in styleOptions"
+          :key="option.value"
+          class="flex items-start gap-2.5 p-3 rounded-control border cursor-pointer transition-colors"
+          :class="
+            style === option.value
+              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-500'
+              : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600'
+          "
+        >
+          <input
+            type="radio"
+            :name="groupName"
+            :value="option.value"
+            :checked="style === option.value"
+            class="mt-0.5 w-4 h-4 shrink-0 text-primary-600 border-gray-300 focus:ring-primary-500"
+            @change="select(option.value)"
+          />
+          <span class="min-w-0">
+            <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              {{ t(option.label) }}
+            </span>
+            <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {{ t(option.hint) }}
+            </span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    <!-- ── Stranded values ──────────────────────────────────────────────────
+         The unselected style can still hold values: a config loaded from disk
+         may legitimately mix, and switching the radio mid-edit strands whatever
+         was already typed. Those values still save, so hiding them would make
+         the form lie about the rule. Surfaced with the AND consequence spelled
+         out and a way to act on it — never cleared behind the operator's back. -->
+    <Alert v-if="strandedRuleSet" type="warning" :title="t('route.rules.mixing.title')">
+      <p>{{ t('route.rules.mixing.strandedRuleSet') }}</p>
+      <div class="mt-2 flex gap-3">
+        <button type="button" class="text-xs font-medium underline" @click="select('ruleSet')">
+          {{ t('route.rules.mixing.showStranded') }}
+        </button>
+        <button type="button" class="text-xs font-medium underline" @click="clearRuleSet">
+          {{ t('route.rules.mixing.clearStranded') }}
+        </button>
+      </div>
     </Alert>
 
-    <!-- ── Rule set ─────────────────────────────────────────────────────── -->
-    <div v-if="showRuleSet">
-      <div class="flex items-center justify-between mb-1">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('route.rules.mixing.ruleSetGroup') }}
-        </label>
-        <button
-          v-if="canHideRuleSet"
-          type="button"
-          class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          @click="collapseRuleSet"
-        >
-          {{ t('route.rules.mixing.hide') }}
+    <Alert v-if="strandedContent" type="warning" :title="t('route.rules.mixing.title')">
+      <p>{{ t('route.rules.mixing.strandedContent') }}</p>
+      <div class="mt-2 flex gap-3">
+        <button type="button" class="text-xs font-medium underline" @click="select('content')">
+          {{ t('route.rules.mixing.showStranded') }}
+        </button>
+        <button type="button" class="text-xs font-medium underline" @click="clearContent">
+          {{ t('route.rules.mixing.clearStranded') }}
         </button>
       </div>
-      <SchemaFieldsEditor v-model="record" :fields="ruleSetFields" />
-    </div>
+    </Alert>
 
-    <button
-      v-else
-      type="button"
-      class="w-full flex items-center gap-2 px-3 py-2 rounded-control border border-dashed border-gray-300 dark:border-gray-600 text-left text-xs text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
-      @click="expandRuleSet"
-    >
-      <PlusCircleIcon class="h-4 w-4 shrink-0" />
-      <span class="flex-1">{{ t('route.rules.mixing.ruleSetCollapsed') }}</span>
-      <span class="font-medium">{{ t('route.rules.mixing.show') }}</span>
-    </button>
-
-    <!--
-      Connectors. sing-box ANDs every matcher in a rule
-      (rule_abstract.go:109-115) — the OR is one level down, inside a single
-      field, where `domain: [a, b]` matches either. Saying so between the
-      sections is cheaper than the prose warning alone, and it is the thing
-      operators get wrong.
-    -->
-    <div v-if="showRuleSet && hasRuleSet && hasMatchers" class="flex items-center gap-2">
-      <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-      <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-        {{ t('route.rules.flow.and') }}
-      </span>
-      <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-    </div>
-
-    <!-- ── Content conditions: the alternative to a rule set ─────────────── -->
-    <template v-if="showMatchers">
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('route.rules.mixing.matchersGroup') }}
-        </span>
-        <button
-          v-if="canHideMatchers"
-          type="button"
-          class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-          @click="collapseMatchers"
-        >
-          {{ t('route.rules.mixing.hide') }}
-        </button>
-      </div>
-
-      <SchemaFieldsEditor v-model="record" :fields="contentFields" />
-    </template>
-
-    <button
-      v-else
-      type="button"
-      class="w-full flex items-center gap-2 px-3 py-2 rounded-control border border-dashed border-gray-300 dark:border-gray-600 text-left text-xs text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
-      @click="expandMatchers"
-    >
-      <PlusCircleIcon class="h-4 w-4 shrink-0" />
-      <span class="flex-1">{{ t('route.rules.mixing.matchersCollapsed') }}</span>
-      <span class="font-medium">{{ t('route.rules.mixing.show') }}</span>
-    </button>
+    <!-- Only the chosen style renders. -->
+    <SchemaFieldsEditor v-if="style === 'ruleSet'" v-model="record" :fields="ruleSetFields" />
+    <SchemaFieldsEditor v-else v-model="record" :fields="contentFields" />
 
     <!-- ── Context conditions ───────────────────────────────────────────────
          Never folded by the rule-set choice: a rule set cannot express where

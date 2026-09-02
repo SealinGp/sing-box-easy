@@ -110,6 +110,8 @@ export default {
     ruleSetLabel: '{tag}（{type} - {format}）',
     ruleSetMissing: '{tag} —— 未配置',
     ruleSetEmpty: '尚未配置规则集，请先在「规则集」中添加。',
+    outboundEmpty: '暂无可用出站。',
+    outboundNoMatch: '没有匹配的出站。',
     ruleSetHelp: '选中的规则集命中任意一个即匹配。（不同类型的条件之间仍是「与」关系。）',
     // “添加条件”行与 AND 提示 —— 内容条件与范围条件为何区别对待，
     // 见 components/RouteRuleMatchers.vue。
@@ -146,21 +148,25 @@ export default {
       },
     },
     mixing: {
-      ruleSetGroup: '按规则集匹配',
+      styleLabel: '匹配方式',
+      ruleSetGroup: '规则集',
+      ruleSetStyleHint: '在本规则之外维护的域名 / IP 列表。',
+      matchersGroup: '内容条件',
+      matchersStyleHint: '直接写在本规则中的域名、IP 段和端口。',
       contextGroup: '按上下文缩小范围',
       title: '同一规则中的条件是「与」关系',
-      warning:
-        '同一条规则里的规则集和内容条件必须同时满足：只有既在规则集中、又匹配内容条件的流量才会命中这条规则。若想放行规则集中的全部内容，请将内容条件留空，反之亦然。如果想要「满足其一」，请另建一条规则。按入站、协议、网络或端口限定不受影响 —— 规则集无法表达这些条件。',
-      ruleSetCollapsed: '此规则按内容条件匹配，规则集已隐藏。',
-      matchersCollapsed: '此规则按规则集匹配，内容条件已隐藏。',
-      show: '仍要显示',
-      hide: '隐藏',
-      matchersGroup: '按内容匹配',
+      strandedRuleSet:
+        '这条规则仍带有规则集。两者同时生效 —— 流量必须既在规则集中，又匹配内容条件。若想要「满足其一」，请另建一条规则。',
+      strandedContent:
+        '这条规则仍带有内容条件。两者同时生效 —— 流量必须既匹配内容条件，又在规则集中。若想要「满足其一」，请另建一条规则。',
+      showStranded: '切回查看',
+      clearStranded: '清除',
     },
     placeholders: {
       action: '选择动作',
       ruleSet: '选择规则集',
       outbound: '选择出站',
+      outboundSearch: '搜索出站…',
       method: '选择方式',
       overrideAddress: '覆盖地址',
       overridePort: '覆盖端口',
@@ -233,54 +239,6 @@ export default {
     },
     confirm: {
       delete: '确定要删除这条规则吗？',
-    },
-    smart: {
-      title: '添加路由规则',
-      steps: {
-        match: '匹配',
-        action: '动作',
-        outbound: '出站',
-        dns: 'DNS',
-      },
-      matchType: '匹配方式',
-      matchTypes: {
-        domain: '域名',
-        domainSuffix: '域名后缀',
-        ruleSet: '规则集',
-      },
-      matchTypeHint: '只选择一种匹配方式。同时填写多种是「与」(取交集)，不是「或」(取并集)。',
-      values: {
-        domain: '域名',
-        domainSuffix: '域名后缀',
-        ruleSet: '规则集',
-      },
-      valuesPlaceholder: {
-        domain: '例如 accounts.google.com',
-        domainSuffix: '例如 shopify.com',
-        ruleSet: '选择规则集',
-      },
-      action: '动作',
-      outbound: '出站',
-      outboundHint: '匹配的流量将发往该出站。',
-      advanced: '高级选项…',
-      next: '下一步',
-      back: '上一步',
-      finish: '添加规则',
-      dns: {
-        heading: '防止 DNS 污染',
-        intro: '该匹配将通过代理出站（{outbound}）。请为它指定一个干净的 DNS 服务器，避免被污染。',
-        server: 'DNS 服务器',
-        serverHint: '推荐：加密或经代理的服务器（如 dns_google）。',
-        enable: '同时为此匹配添加一条 DNS 规则',
-        appended: '已追加到现有 DNS 规则',
-        created: '已创建新的 DNS 规则',
-      },
-      toast: {
-        added: '路由规则已添加',
-        addFailed: '添加路由规则失败',
-        dnsFailed: '规则已添加，但 DNS 规则更新失败',
-        validation: '请填写必填项',
-      },
     },
   },
   ruleItem: {

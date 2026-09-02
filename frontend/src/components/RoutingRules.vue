@@ -20,11 +20,11 @@ import {
   isTerminalAction,
   type RouteRuleActionTypeName,
 } from '../schemas/routeRuleActionFields'
-import SmartRoutingRuleWizard from './SmartRoutingRuleWizard.vue'
 import type { RouteRule, Outbound } from '../types/api'
 import { routeService, outboundService } from '../services'
 import { useToast } from 'primevue'
 import { useDragReorder } from '../composables/useDragReorder'
+import { useRoute, useRouter } from 'vue-router'
 
 // sing-box accepts scalar OR array on the wire for every list-like matcher
 // (e.g. "inbound": "dns-in" is equivalent to ["dns-in"]). The backend
@@ -74,12 +74,16 @@ const outbounds = ref<Outbound[]>([])
 const showAddRuleDialog = ref(false)
 const editingRule = ref<{ index: number; rule: RouteRule } | null>(null)
 
-// Guided "Smart Routing Rule" wizard — the default Add flow. The legacy
-// full-form dialog (showAddRuleDialog) is kept for Edit and for the wizard's
-// "Advanced options" escape hatch.
-const showWizard = ref(false)
-function openLegacyAdd() {
-  showWizard.value = false
+// Add opens the full form directly.
+//
+// There used to be a guided wizard in front of it (pick one match type, then an
+// action, then an outbound), with the full form demoted to an "Advanced
+// options" link. It could only ever express a fraction of a route rule — one
+// match type, two of the seven actions, no context matchers — so any real rule
+// meant starting in the wizard and leaving it, and the extra hop bought
+// nothing. The form itself already states the WHEN/THEN structure the wizard
+// was there to teach.
+function openAddDialog() {
   matchersKey.value++
   showAddRuleDialog.value = true
 }
@@ -453,10 +457,35 @@ async function persistOrder(order: number[]) {
   }
 }
 
+/**
+ * `?rule_set=<tag>` opens the Add form pre-filled with that rule set.
+ *
+ * The handoff from the Rule Sets tab ("route this set now?"). It goes through
+ * the URL because the two tabs are separate routes — a shared store or an event
+ * bus would couple them for one hop — and the query is stripped immediately so
+ * a reload does not reopen a dialog the operator already dealt with.
+ */
+const currentRoute = useRoute()
+const router = useRouter()
+
+function consumeSeedFromQuery() {
+  const seed = currentRoute.query.rule_set
+  const tag = Array.isArray(seed) ? seed[0] : seed
+  if (typeof tag !== 'string' || !tag) return
+
+  ruleForm.value = { action: 'route', outbound: '', rule_set: [tag] }
+  matchersKey.value++
+  showAddRuleDialog.value = true
+
+  const { rule_set: _dropped, ...rest } = currentRoute.query
+  router.replace({ path: currentRoute.path, query: rest })
+}
+
 // Load data on mount
 onMounted(() => {
   fetchRouteRules()
   fetchOutbounds()
+  consumeSeedFromQuery()
 })
 </script>
 
@@ -501,7 +530,7 @@ onMounted(() => {
           </button>
 
           <button
-            @click="showWizard = true"
+            @click="openAddDialog"
             class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
           >
             {{ $t('route.rules.add') }}
@@ -535,13 +564,6 @@ onMounted(() => {
         />
       </List>
     </Card>
-
-    <!-- Guided add wizard (default Add flow) -->
-    <SmartRoutingRuleWizard
-      v-model:visible="showWizard"
-      @completed="fetchRouteRules"
-      @advanced="openLegacyAdd"
-    />
 
     <!-- Add/Edit Rule Dialog -->
     <Dialog
@@ -611,6 +633,9 @@ onMounted(() => {
               :options="actionOptions"
               optionLabel="label"
               optionValue="value"
+              filter
+              :filterPlaceholder="$t('common.search')"
+              :emptyFilterMessage="$t('common.noMatch')"
               :placeholder="$t('route.rules.placeholders.action')"
               class="w-full"
             />
