@@ -1508,7 +1508,12 @@
             <h3 class="card-title">Select &amp; chips</h3>
             <p class="card-note">
               Every dropdown is <code>volt/Select</code>; there are zero native
-              <code>&lt;select&gt;</code> elements left in the app.
+              <code>&lt;select&gt;</code> elements left in the app. Any list that
+              can reach <strong>5 options</strong> carries a filter row —
+              <code>FILTER_THRESHOLD</code> in <code>utils/selectFilter.ts</code>,
+              bound (<code>:filter="opts.length &gt;= FILTER_THRESHOLD"</code>) on
+              the dynamic lists so a fresh install is not handed a search box over
+              two entries.
             </p>
 
             <div class="stack">
@@ -1556,7 +1561,33 @@
                 <span class="hint">
                   Panel is <code>rounded-surface</code>; the options inside are
                   <code>rounded-control</code>. Option tints reuse the brand colour
-                  rather than introducing a second accent hue.
+                  rather than introducing a second accent hue. The filter row above
+                  the list is the ≥5 rule: outbound type (20), inbound type (17),
+                  DNS server type (11), rule action (7) and every outbound picker
+                  all have one.
+                </span>
+              </div>
+
+              <div class="field">
+                <label>SearchPicker — a pick is an <em>action</em></label>
+                <input class="input" value="hk" style="max-width:18rem;" />
+                <div class="select-panel" style="max-width:20rem;">
+                  <ul>
+                    <li class="is-focus">🇭🇰 HK 01 · 2.1x <span class="badge gray" style="margin-left:auto;">a1b2c3d4</span></li>
+                    <li>🇭🇰 HK 02 · IEPL</li>
+                    <li>direct <span class="badge success" style="margin-left:auto;">DIRECT</span></li>
+                  </ul>
+                </div>
+                <span class="hint">
+                  Not a <code>Select</code>. <code>Select</code> holds a value and
+                  shows it in the field; here each pick <em>becomes</em> something —
+                  a matcher, an exclude, a group member — so the box clears itself
+                  and stays open for the next one. Options fire on
+                  <code>mousedown.prevent</code>, because the input's
+                  <code>blur</code> closes the list and beats a plain click. The
+                  <span class="badge success" style="font-size:0.5625rem;">DIRECT</span>
+                  pill marks an opt-in outbound: a filter's matchers never collect
+                  one, so an explicit pick is the only way in.
                 </span>
               </div>
 
@@ -1826,6 +1857,9 @@
         <!-- ═════════════════ OVERLAYS ═════════════════ -->
         <section class="grid-2">
           <div class="modal-stage">
+            <!-- volt/Dialog is the only modal: components/Modal.vue, which wrapped
+                 it with show-header=false and re-invented this chrome inside the
+                 content slot, has been deleted. -->
             <div class="liquid-glass-float modal">
               <div class="modal-head">
                 <h3>Add inbound</h3>
@@ -1930,7 +1964,16 @@
               Buttons are <code>&lt;Button&gt;</code>, fields are
               <code>&lt;Input&gt;</code>/<code>&lt;Textarea&gt;</code>, multi-value
               fields are <code>&lt;ChipsField&gt;</code>, dropdowns are
-              <code>volt/Select</code>.
+              <code>volt/Select</code>, dialogs are <code>volt/Dialog</code>.
+              No hand-rolled <code>fixed inset-0</code> mask, and no wrapper
+              component around a dialog — that is what <code>Modal.vue</code> was.
+            </li>
+            <li>
+              A dropdown that can reach five options gets <code>filter</code>
+              (<code>FILTER_THRESHOLD</code>), with
+              <code>common.search</code> / <code>common.noMatch</code>. A picker
+              whose pick is an <em>action</em> rather than a value is
+              <code>&lt;SearchPicker&gt;</code>.
             </li>
             <li>
               Before scoping any CSS under <code>.liquid-app</code>, check the element

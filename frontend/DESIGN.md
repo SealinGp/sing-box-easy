@@ -68,7 +68,7 @@ Layers are scoped as follows, deliberately:
 | Layer | Scoped? | Why |
 | --- | --- | --- |
 | `controls.css` | **No** | Must reach controls inside dialogs |
-| `density.css` | **No** | Defensive — no table teleports *today*, but a table moved into a `<Modal>` would silently lose all its styling |
+| `density.css` | **No** | Defensive — no table teleports *today*, but a table moved into a `<Dialog>` would silently lose all its styling |
 | `primevue.css` | **No** | Overlays are teleported to `<body>` |
 | `legacy.css` | **No** | Dark-mode text fixes must reach dialog content |
 | `glass.css` `.liquid-glass` | No | Explicit opt-in class |
@@ -198,11 +198,20 @@ is what stops a shadowless panel from reading as a flat patch. `--glass-blur`
 ## 5. App components (`src/components/`)
 
 `components/index.ts` is the barrel and exports exactly thirteen:
-`Button`, `Input`, `Textarea`, `Card`, `Modal`, `Alert`, `Badge`, `Table`,
-`List`, `ListRow`, `ListField`, `Loading`, `NodeList`. Everything else (`TabNav`, `PopConfirm`, `ConfirmDialog`,
-`ChipsField`, `Sidebar`, `Topbar`, …) is imported by path. The barrel's old
-`Select` export is gone: every call site now uses the PrimeVue-backed `Select`
-from `src/volt`.
+`Button`, `Input`, `Textarea`, `Card`, `Alert`, `Badge`, `CopyIcon`, `Table`,
+`List`, `ListRow`, `ListField`, `Loading`, `NodeList`. Everything else (`TabNav`,
+`PopConfirm`, `ConfirmDialog`, `ChipsField`, `SearchPicker`, `Sidebar`, `Topbar`,
+…) is imported by path.
+
+Two exports have been **removed**, both for the same reason — they were a second
+spelling of something `volt/` already owned:
+
+- `Select` → `volt/Select` (PrimeVue-backed).
+- `Modal` → `volt/Dialog`. `Modal.vue` was never a second implementation; it
+  *wrapped* `volt/Dialog` with `:show-header="false"` and hand-rolled its own
+  header, close button and footer inside the content slot. The effect was that
+  13 of the app's 16 dialogs never used the theme's `header` / `pcCloseButton` /
+  `footer` rules at all. Its call sites now render `Dialog` directly.
 
 ### Buttons
 
@@ -242,17 +251,60 @@ a form can let an operator take a field away again, and call sites only enable
 that while the field is empty (removing a filled field would discard data
 silently).
 
+### SearchPicker — pick-as-action
+
+`SearchPicker.vue` is a search box that drops a filtered list under itself and
+emits **one pick**, then clears. It is not a `Select`, and the distinction is the
+reason it exists: `volt/Select` is a *value picker* — it holds a selection and
+displays it in the field. A picker whose every pick becomes a new matcher, node
+or tag has no selected value to show and must reset itself for the next one.
+
+Props: `options` (`{ value, label?, title?, terms?, badge? }`), `placeholder`,
+`emptyMessage`, `tone` (`primary` | `danger`), `limit` (default 50, `0` = no
+cap), `panelClass` / `inputClass`.
+
+Three behaviours are fixed inside it because each was previously duplicated four
+times in `NodeRules.vue`, and a fix to one copy fixed only that copy:
+
+1. options are chosen on **`mousedown.prevent`** — the input's `blur` closes the
+   list and beats a plain `click`;
+2. the query **resets after every pick**, so the next one starts from the whole
+   list;
+3. long lists are **capped** (`limit`) — a large subscription has hundreds of
+   nodes and rendering all of them on focus is felt.
+
+`terms` carries extra text the query matches but the label does not show (a
+country's code and synonyms), and `badge` is the right-aligned pill that marks an
+opt-in `direct` outbound.
+
 ### Cards, modals & overlays
 
 - `.liquid-glass` — resting surface. `.liquid-glass-float` — floating surface.
 - `Card.vue`: `liquid-glass rounded-surface`, `padding` of `none|sm|md|lg`
   (`p-0` / `p-4` / `p-6` / `p-8`), optional `hoverable`.
-- `Modal.vue` is the only modal, backed by `volt/Dialog.vue` (PrimeVue).
-  Sizes: `sm` `md` `lg` `wide` `xl` → `max-w-md` `lg` `2xl` `3xl` `4xl`.
-  `wide` exists solely because the outbound form was authored between `lg` and
-  `xl`. The size is passed as **`class`, not `pt`** — `volt/Dialog.vue` already
-  binds `:pt` internally, and `ptViewMerge`'s tailwind-merge lets the caller's
-  `max-w-*` beat the theme's default.
+- **`volt/Dialog.vue` is the only modal.** Call it directly:
+
+  ```vue
+  <Dialog :visible="open" @update:visible="(v: boolean) => { if (!v) close() }"
+          modal :header="t('…')" class="w-full max-w-lg">
+    …body…
+    <template #footer> <Button …/> </template>
+  </Dialog>
+  ```
+
+  Width is passed as **`class`, not `pt`** — `volt/Dialog.vue` already binds
+  `:pt` internally, and `ptViewMerge`'s tailwind-merge lets the caller's
+  `max-w-*` beat the theme's default `max-w-lg`. The widths in use are
+  `max-w-md` (confirmations) · `max-w-lg` · `max-w-2xl` · `max-w-3xl` (the
+  outbound form, authored between `lg` and `xl`) · `max-w-4xl` · `max-w-5xl`
+  (only the config diff, which is two Monaco panes side by side). A width may
+  follow the dialog's own state — the versions dialog is `max-w-3xl` for its
+  table and `max-w-5xl` once the diff opens.
+  Use `:header` for a plain title; use the `#header` slot when the title needs
+  an icon (both NodeRules dialogs do).
+- **The mask does not dismiss.** `dismissableMask` is left off everywhere: these
+  dialogs are mostly forms holding unsaved input, and a stray click on the
+  backdrop should not discard it. Escape and the header ✕ close them.
 - `ConfirmDialog.vue` replaces `window.confirm()` app-wide. Mount it **exactly
   once**, in `App.vue`; it renders the shared state owned by `useConfirm()` and
   resolves that composable's in-flight promise.
@@ -291,7 +343,7 @@ Six wrappers, all the same shape: `<PrimeVueComponent unstyled :pt="theme"
 `ptViewMerge` (in `utils.ts`) is what makes all of this composable: it pulls
 `class` out of both the global and component-local PT props, reconciles them
 with `twMerge`, and hands the rest to Vue's `mergeProps`. That is why a caller
-can pass `class="max-w-md"` to `Modal` and win against the theme.
+can pass `class="max-w-md"` to `Dialog` and win against the theme.
 
 ### Three traps this layer has already sprung
 
@@ -311,6 +363,24 @@ can pass `class="max-w-md"` to `Modal` and win against the theme.
    a `<div>`, so a `bg-white` on it matched the `.liquid-app div.bg-white` card
    shim and inherited a full panel shadow on a 32px icon box. `label` is a
    `<span>`, so only one half looked detached. No volt theme uses the bare token.
+
+### A dropdown with 5+ options gets a filter
+
+`utils/selectFilter.ts` publishes one number — `FILTER_THRESHOLD = 5` — and every
+`Select` answers to it. Below five options the list is read at a glance and a
+search row is chrome; at or above it, picking turns into scrolling. Worst on the
+*dynamic* lists, which are two entries on a fresh install and 50+ on a real one:
+outbounds, DNS servers, rule sets, releases.
+
+- **Fixed lists** that are always over the line just set `filter` (outbound type:
+  20, inbound type: 17, DNS server type: 11, route-rule action: 7, log level: 7).
+- **Dynamic lists** bind it — `:filter="options.length >= FILTER_THRESHOLD"` — so
+  a fresh install is not handed a search box over two entries.
+
+Always pass `:filterPlaceholder="$t('common.search')"` and
+`:emptyFilterMessage="$t('common.noMatch')"` with it; both keys exist for this.
+A picker with a *specific* noun (the outbound pickers say "Search outbounds…")
+may use its own key, but there are only two generic ones — do not add a third.
 
 ### Chips
 
@@ -381,6 +451,7 @@ on ~5rem of content and read as a stutter), and **220ms** for the select panel.
 | Select panel in / out | 220ms / 150ms | same / `ease-in` |
 | MultiSelect panel | none | Appears instantly — see below |
 | Dialog in / out | 200ms / 150ms | `ease-out` / `ease-in` |
+| Page mode swap (NodeRules Edit ⇄ Preview) | 220ms / 150ms | `cubic-bezier(.32,.72,0,1)` / `ease-in`, `mode="out-in"` |
 | Toast in / out | 500ms | height-collapse on leave |
 | Topbar dropdown | 150ms / 100ms | `ease-out` / `ease-in` |
 | Colour & border transitions | 150–200ms | `ease-out` |
@@ -630,9 +701,9 @@ buttons in `Profile.vue` that never opted in and squashed their 30×30px target
 to 30×22px, under the WCAG 2.2 minimum.
 
 **One table opts out of `.scroll-region` on purpose:** `Config.vue`'s version
-history sits in a hand-rolled `fixed inset-0` overlay (not the shared `<Modal>`)
-whose body already carries `overflow-y-auto`. It takes `.data-table` alone, so
-there is no nested scrollbar.
+history sits inside a `<Dialog>`, whose `content` PT section already carries
+`overflow-y-auto`. It takes `.data-table` alone (`<Table :scroll="false">`), so
+the wheel is not trapped by a second scroll container inside the first.
 
 ---
 
@@ -644,11 +715,12 @@ Measured against `src/`. Fix a row here before adding a new rule anywhere above.
 | --- | --- | --- |
 | Files relying on the `bg-white` glass shim | 28 `.vue` | vs 3 using `.liquid-glass` explicitly. Blocks deleting the shim in `glass.css`. |
 | Files depending on `legacy.css` dark-mode shims | 68 `.vue` | Every file still using raw `text-gray-N00` without a `dark:` variant. |
-| Raw `<button>` elements | 111 in 30 files | vs 124 `<Button>`. Many are legitimate bespoke affordances (nav rows, chip "add" buttons, icon toggles); a Button variant for them does not exist yet. |
+| Raw `<button>` elements | 114 in 36 files | vs 132 `<Button>`. Many are legitimate bespoke affordances (nav rows, chip "add" buttons, icon toggles, `SearchPicker`'s option rows); a Button variant for them does not exist yet. |
 | Status colours with two spellings | — | Tokens (`--color-success`) vs Tailwind scales (`emerald-500/15`) in Alert/Badge. |
 | Volt transitions ignoring reduced-motion | 4 wrappers | PT `transition` classes are not media-guarded. (`MultiSelect` and `Timeline` have no transition at all.) |
 | Stray numeric shadow | 1 site | `DnsRuleFlow.vue:155` uses `shadow-sm`. |
 | `Loading.vue` has no dark mode | 1 file | `fullScreen` uses `bg-white opacity-90`; text is `text-gray-600`. |
+| Hand-rolled `fixed inset-0` overlays | 2 `.vue` | `Profile.vue` and `ConfigureExperimental.vue`. `NodeRules.vue`'s two and `Config.vue`'s version history are gone — they are `volt/Dialog` now. Each remaining one re-invents the mask, the scroll container and the escape handling. (`Config.vue` still uses `fixed inset-0` for its fullscreen *editor*, which is not an overlay.) |
 | Page roots not on `page-shell` | 4 `.vue` | `Config.vue` (viewport-pinned around Monaco) is a deliberate opt-out; `Login`, `InitWizard` and `DNSDiagnostics` are simply not converted yet. |
 | `Config.vue` does not use `<Table>`'s `loading`/`empty` props | 1 `.vue` | Its batch-delete toolbar is a sibling of the table inside the same `v-else`, so hoisting it above `<Table>` would render it while loading and when empty. Keeping the file's own `v-if` chain preserves behaviour. |
 
@@ -674,7 +746,10 @@ Before merging UI work:
 - [ ] No `violet-*` or hard-coded brand hexes — use `primary-*`
 - [ ] No new `daisyui` / `headlessui` / `vue-select` / native `<select>`
 - [ ] Buttons are `<Button>`, fields are `<Input>`/`<Textarea>`, multi-value fields are `<ChipsField>`
+- [ ] Dialogs are `volt/Dialog` — no hand-rolled `fixed inset-0` mask, no wrapper component around it
 - [ ] Dropdowns come from `volt/Select`, and any `value: ''` default entry also sets `:placeholder`
+- [ ] A dropdown that can reach 5 options has `filter` (`FILTER_THRESHOLD`), with `common.search` / `common.noMatch`
+- [ ] A picker whose pick is an *action* (adds a matcher, a tag) is `<SearchPicker>`, not `<Select>`
 - [ ] New CSS is checked against the teleport rule (§1) before it is scoped
 - [ ] Chrome sits on `shadow-surface`; only genuinely floating things use `shadow-float`
 - [ ] Anything added to `style/legacy.css` has a deletion plan
