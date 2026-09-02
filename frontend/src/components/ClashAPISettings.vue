@@ -11,6 +11,11 @@ import { experimentalService } from '../services'
 import { useToast } from 'primevue'
 import { useI18n } from 'vue-i18n'
 import { LinkIcon } from '@heroicons/vue/24/outline'
+import {
+  clashDashboardHref,
+  hasDashboard as clashHasDashboard,
+  isLinkBlockedBySecret,
+} from '../utils/clashDashboardUrl'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -33,93 +38,22 @@ const allowOriginText = ref('')
 /*
  * External controller link.
  *
- * The link CANNOT target the Clash API root when a secret is set. sing-box
- * guards every API route with `Authorization: Bearer <secret>`, and an <a href>
- * navigation cannot send headers — so `http://host:port` returns
- * `{"message":"Unauthorized"}`. The `?token=` query parameter does not help
- * either: sing-box only honours it for WebSocket upgrades
- * (experimental/clashapi/server.go, the `Upgrade == "websocket"` branch).
- *
- * What IS reachable is the dashboard. sing-box mounts `/ui/*` in a separate
- * router group with NO authentication middleware, so it loads without a
- * header — and the dashboard can then be handed the secret through the URL,
- * which it replays as a proper Authorization header on its own XHR calls.
- *
- * Hence: link to /ui/ when a dashboard is installed, and fall back to the bare
- * root only when there is no secret to get in the way.
+ * The rules (why the bare API root 401s under a secret, why /ui/ does not, and
+ * how each dashboard wants the backend details) live in utils/clashDashboardUrl
+ * — shared with the Overview card, which offers the same link.
  */
+const pageHost = () => window.location.hostname
 
-/** Hosts that sing-box can bind but a browser cannot usefully dial. */
-const UNROUTABLE_HOSTS = new Set(['', '0.0.0.0', '::', '[::]'])
+const externalControllerHref = computed(() => clashDashboardHref(settings.value, pageHost()))
 
-/** Splits `host:port`, `:port`, or `[::1]:port` into parts. */
-function parseListenAddress(value: string): { host: string; port: string } {
-  const bracketed = value.match(/^\[(.*)\]:(\d+)$/)
-  if (bracketed) return { host: `[${bracketed[1]}]`, port: bracketed[2] ?? '' }
-  const lastColon = value.lastIndexOf(':')
-  if (lastColon === -1) return { host: value, port: '' }
-  return { host: value.slice(0, lastColon), port: value.slice(lastColon + 1) }
-}
-
-/**
- * The address a browser should actually dial. A wildcard bind (`0.0.0.0`,
- * `::`) is reachable for sing-box but meaningless to the browser, so fall back
- * to whatever host this page was loaded from — the same substitution
- * Inbounds.vue makes when it builds a client config.
- */
-const controllerEndpoint = computed(() => {
-  const raw = settings.value.external_controller?.trim()
-  if (!raw) return null
-  const { host, port } = parseListenAddress(raw)
-  if (!port) return null
-  const reachableHost = UNROUTABLE_HOSTS.has(host)
-    ? window.location.hostname || '127.0.0.1'
-    : host
-  return { host: reachableHost, port }
-})
-
-const hasDashboard = computed(() => !!settings.value.external_ui?.trim())
-
-const externalControllerHref = computed(() => {
-  const endpoint = controllerEndpoint.value
-  if (!endpoint) return ''
-
-  const origin = `http://${endpoint.host}:${endpoint.port}`
-  const secret = settings.value.secret ?? ''
-
-  if (!hasDashboard.value) {
-    // No dashboard to route through. The bare root works only without a secret.
-    return secret ? '' : origin
-  }
-
-  // Both dashboards this project ships read the backend from the URL, but they
-  // disagree on where: zashboard documents `#/setup?hostname=…&port=…&secret=…`
-  // while yacd reads a plain query string. Emitting both costs nothing and
-  // means the link auto-connects on either, and on a custom dashboard that
-  // follows whichever convention.
-  const params = new URLSearchParams({
-    hostname: endpoint.host,
-    port: endpoint.port,
-  })
-  if (secret) params.set('secret', secret)
-  // URLSearchParams encodes a space as `+`, which is only correct in a query
-  // string. The same text is reused inside the hash fragment, and hash parsers
-  // typically run decodeURIComponent, which leaves `+` as a literal plus — so a
-  // secret containing a space would arrive corrupted. `%20` decodes correctly
-  // in both positions.
-  const query = params.toString().replace(/\+/g, '%20')
-
-  return `${origin}/ui/?${query}#/setup?${query}`
-})
+const hasDashboard = computed(() => clashHasDashboard(settings.value))
 
 /**
  * True when the controller is configured and secured, but no dashboard exists
  * to open — the one case where we deliberately render no link, because any
  * link we could produce would 401.
  */
-const linkBlockedBySecret = computed(
-  () => !!controllerEndpoint.value && !hasDashboard.value && !!settings.value.secret,
-)
+const linkBlockedBySecret = computed(() => isLinkBlockedBySecret(settings.value, pageHost()))
 
 // Mode options
 const modeOptions = computed(() => [

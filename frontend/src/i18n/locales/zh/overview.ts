@@ -9,6 +9,7 @@ export default {
   refreshStatus: '刷新状态',
   logSettings: '日志设置',
   realtimeLog: '实时日志',
+  rawConfig: '原始配置',
   status: {
     running: '运行中',
     stopped: '已停止',
@@ -38,6 +39,23 @@ export default {
     rowFailed: '更新失败',
     update: '全部更新',
     updateTooltip: '逐个从机场重新拉取订阅，刷新流量与到期信息',
+  },
+  // Clash / V2Ray API 卡片：排查连接问题时要一步就能打开 Clash 面板。
+  apis: {
+    title: 'API 端点',
+    settings: '设置',
+    clash: 'Clash API',
+    v2ray: 'V2Ray API',
+    mode: '默认模式：{mode}',
+    secretSet: '已设置密钥',
+    openDashboard: '打开面板',
+    openController: '打开控制器',
+    clashUnset: '尚未配置外部控制器。',
+    v2rayUnset: '尚未配置。',
+    v2rayHint: 'gRPC 端点，供统计客户端使用，浏览器打不开。',
+    statsOn: '统计已开启',
+    statsOff: '统计已关闭',
+    configure: '去配置',
   },
   toast: {
     startedOk: '服务启动成功',

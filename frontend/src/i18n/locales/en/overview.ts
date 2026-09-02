@@ -9,6 +9,9 @@ export default {
   refreshStatus: 'Refresh Status',
   logSettings: 'Log settings',
   realtimeLog: 'Real-time log',
+  // The Monaco editor over config.json — some edits have no form, and a service
+  // that will not start is usually answered by reading the file itself.
+  rawConfig: 'Raw config',
   status: {
     running: 'running',
     stopped: 'stopped',
@@ -38,6 +41,24 @@ export default {
     rowFailed: 'Update failed',
     update: 'Update all',
     updateTooltip: 'Fetch every subscription from its provider to refresh traffic and expiry',
+  },
+  // The Clash / V2Ray API card. The Clash dashboard is where a live connection
+  // is inspected, so the card's job is to be one click from it.
+  apis: {
+    title: 'API endpoints',
+    settings: 'Settings',
+    clash: 'Clash API',
+    v2ray: 'V2Ray API',
+    mode: 'Default mode: {mode}',
+    secretSet: 'Secret set',
+    openDashboard: 'Open dashboard',
+    openController: 'Open controller',
+    clashUnset: 'No external controller configured.',
+    v2rayUnset: 'Not configured.',
+    v2rayHint: 'gRPC endpoint — for stats clients, not a browser.',
+    statsOn: 'Stats on',
+    statsOff: 'Stats off',
+    configure: 'Configure',
   },
   toast: {
     startedOk: 'Service started successfully',
