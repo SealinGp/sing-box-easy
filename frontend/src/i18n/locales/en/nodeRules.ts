@@ -82,5 +82,17 @@ export default {
   confirmDeleteGroup: 'Delete group "{name}"?',
   previewResult: 'Preview',
   endpoints: '{n} endpoints',
-  unmatched: '{n} node(s) matched no Filter → fall through to the fallback.',
+  unmatchedTitle: 'Unmatched',
+  unmatchedHint: 'No filter claimed these — they fall through to the fallback.',
+  // The page is two modes, not one page with an appendix — see the mode switch
+  // in NodeRules.vue.
+  modes: {
+    edit: 'Edit',
+    preview: 'Preview',
+    switchHint: 'Preview replaces the editor; nothing is written until you apply.',
+  },
+  previewRefresh: 'Re-run',
+  previewEmpty: 'No preview yet.',
+  previewEmptyHint: 'A preview shows which nodes each filter would collect, without writing anything to the config.',
+  previewRun: 'Run preview',
 }

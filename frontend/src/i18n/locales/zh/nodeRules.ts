@@ -82,5 +82,15 @@ export default {
   confirmDeleteGroup: '确定删除分组「{name}」?',
   previewResult: '预览',
   endpoints: '{n} 个节点',
-  unmatched: '{n} 个节点未匹配到任何过滤器 → 归入兜底节点。',
+  unmatchedTitle: '未匹配',
+  unmatchedHint: '没有任何过滤器认领这些节点，最终归入兜底节点。',
+  modes: {
+    edit: '编辑',
+    preview: '预览',
+    switchHint: '预览会替换编辑区；在点击应用之前不会写入任何配置。',
+  },
+  previewRefresh: '重新预览',
+  previewEmpty: '尚无预览结果。',
+  previewEmptyHint: '预览会显示每个过滤器将收集到哪些节点，不会写入配置。',
+  previewRun: '运行预览',
 }
