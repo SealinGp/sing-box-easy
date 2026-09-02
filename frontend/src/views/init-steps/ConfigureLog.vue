@@ -153,6 +153,9 @@ const handleSkip = () => {
             :options="logLevelOptions"
             optionLabel="label"
             optionValue="value"
+            filter
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :disabled="logConfig.disabled"
             :placeholder="$t('init.log.levelPlaceholder')"
           />

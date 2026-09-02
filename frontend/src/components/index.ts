@@ -5,7 +5,6 @@ export { default as Textarea } from './Textarea.vue'
 // NOTE: the Select export was removed — every call site now uses the
 // PrimeVue-backed `Select` from `src/volt`. See src/components/Select.vue.
 export { default as Card } from './Card.vue'
-export { default as Modal } from './Modal.vue'
 export { default as Alert } from './Alert.vue'
 export { default as Badge } from './Badge.vue'
 // Copy-to-clipboard that confirms ON the icon rather than in a corner toast —

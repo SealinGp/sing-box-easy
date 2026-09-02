@@ -9,7 +9,6 @@ import Alert from "./Alert.vue";
 import Table from "./Table.vue";
 import Textarea from "./Textarea.vue";
 import SchemaFieldsEditor from "./SchemaFieldsEditor.vue";
-import Modal from "./Modal.vue";
 import { Select } from "../volt";
 import {
   PlusIcon,
@@ -33,6 +32,7 @@ import {
 import { isDeprecatedIn, isRetired } from "../schemas/optionSchema";
 import { useSingBoxVersion } from "../composables/useSingBoxVersion";
 import { storeToRefs } from "pinia";
+import { Dialog } from '../volt'
 
 const outboundsStore = useOutboundsStore();
 // Use storeToRefs to maintain reactivity when destructuring
@@ -625,12 +625,12 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit Modal -->
-    <Modal
-      :model-value="showModal"
-      @update:model-value="(v) => { if (!v) closeModal() }"
-      :title="isEditMode ? $t('outbounds.modal.edit') : $t('outbounds.modal.add')"
-      size="wide"
-      show-close
+    <Dialog
+      :visible="showModal"
+      @update:visible="(v: boolean) => { if (!v) closeModal() }"
+      :header="isEditMode ? $t('outbounds.modal.edit') : $t('outbounds.modal.add')"
+      modal
+      class="w-full max-w-3xl"
     >
       <div class="space-y-3">
         <Alert v-if="managedWarning" type="warning" :title="$t('outbounds.form.managedByRulesTitle')">
@@ -661,6 +661,9 @@ onMounted(() => {
               :options="outboundTypes"
               optionLabel="label"
               optionValue="value"
+              filter
+              :filterPlaceholder="$t('common.search')"
+              :emptyFilterMessage="$t('common.noMatch')"
               :placeholder="$t('outbounds.form.typePlaceholder')"
               :disabled="isEditMode"
               @update:modelValue="changeType"
@@ -698,15 +701,15 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
     <!-- Import Modal -->
-    <Modal
-      :model-value="showImportModal"
-      @update:model-value="(v) => { if (!v) closeImportModal() }"
-      :title="$t('outbounds.importModal.title')"
-      size="lg"
-      show-close
+    <Dialog
+      :visible="showImportModal"
+      @update:visible="(v: boolean) => { if (!v) closeImportModal() }"
+      :header="$t('outbounds.importModal.title')"
+      modal
+      class="w-full max-w-2xl"
     >
       <div class="space-y-4">
         <!-- Input Section -->
@@ -828,15 +831,15 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </Modal>
+    </Dialog>
 
     <!-- Delete Confirmation Modal -->
-    <Modal
-      :model-value="showDeleteConfirm"
-      @update:model-value="(v) => { if (!v) closeDeleteConfirm() }"
-      :title="$t('outbounds.del.title')"
-      size="sm"
-      show-close
+    <Dialog
+      :visible="showDeleteConfirm"
+      @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :header="$t('outbounds.del.title')"
+      modal
+      class="w-full max-w-md"
     >
       <p class="text-gray-700 dark:text-gray-300">
         {{ $t('outbounds.del.confirm', { tag: deletingOutbound?.tag }) }}
@@ -854,6 +857,6 @@ onMounted(() => {
           {{ $t('common.delete') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
   </div>
 </template>

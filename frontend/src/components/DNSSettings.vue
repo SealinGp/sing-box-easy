@@ -5,6 +5,7 @@ import type { DNS } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
 import { Select } from '../volt'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDNSStore } from '../stores/dns'
@@ -139,7 +140,16 @@ onMounted(() => {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.finalServer') }}
           </label>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.final" :options="serverOptions" />
+          <Select
+            class="w-full"
+            optionLabel="label"
+            optionValue="value"
+            v-model="settings.final"
+            :options="serverOptions"
+            :filter="serverOptions.length >= FILTER_THRESHOLD"
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
+          />
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {{ $t('dns.settings.finalServerHelp') }}
           </p>

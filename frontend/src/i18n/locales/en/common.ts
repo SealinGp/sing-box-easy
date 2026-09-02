@@ -20,6 +20,10 @@ export default {
   next: 'Next',
   previous: 'Previous',
   refresh: 'Refresh',
+  // Filter row inside a Select/MultiSelect overlay. Any picker whose list can
+  // reach ~5 entries gets one — see the `filter` props across the views.
+  search: 'Search…',
+  noMatch: 'No match.',
   reset: 'Reset',
   loading: 'Loading...',
   confirm: 'Confirm',

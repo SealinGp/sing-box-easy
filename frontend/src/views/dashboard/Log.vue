@@ -123,6 +123,9 @@ const resetToDefaults = () => {
             :options="logLevelOptions"
             optionLabel="label"
             optionValue="value"
+            filter
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
           />
         </div>
 

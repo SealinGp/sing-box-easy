@@ -8,6 +8,7 @@ import { useConfirm } from '../../composables/useConfirm'
 import MonacoEditor from '../../components/MonacoEditor.vue'
 import Table from '../../components/Table.vue'
 import MonacoDiffEditor from '../../components/MonacoDiffEditor.vue'
+import { Dialog } from '../../volt'
 
 const { t, locale } = useI18n()
 
@@ -535,202 +536,207 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Versions Modal -->
-      <div
-        v-if="showVersions"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-        @click.self="closeVersions"
+      <!--
+        Versions history.
+
+        Was a hand-rolled `fixed inset-0` overlay at `w-[90vw] h-[80vh]` — a
+        full-bleed sheet for a five-column table, which left most of the width
+        empty and re-implemented the mask, the escape handling and the header
+        chrome that `volt/Dialog` already owns. It is the shared dialog now, and
+        the width follows the view: the list is a table (`max-w-3xl`), the diff is
+        two Monaco panes side by side and genuinely needs the room (`max-w-5xl`).
+      -->
+      <Dialog
+        :visible="showVersions"
+        @update:visible="(v: boolean) => { if (!v) closeVersions() }"
+        modal
+        :class="showDiff ? 'w-full max-w-5xl' : 'w-full max-w-3xl'"
       >
-        <div class="bg-white dark:bg-gray-900 rounded-surface shadow-float w-[90vw] h-[80vh] flex flex-col overflow-hidden">
-          <!-- Modal header -->
-          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <div class="flex items-center gap-3">
-              <button
-                v-if="showDiff"
-                @click="showDiff = false"
-                class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-              >
-                &larr; {{ $t('common.back') }}
-              </button>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <span v-if="!showDiff">{{ $t('config.versionsModal.title') }}</span>
-                <span v-else>{{ $t('config.versionsModal.diffTitle', { id: diffVersionId }) }}</span>
-              </h3>
-            </div>
+        <!-- The header slot rather than `:header`: this one carries a back
+             button, and its title depends on which view is showing. -->
+        <template #header>
+          <div class="flex items-center gap-3">
             <button
-              @click="closeVersions"
-              class="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-control"
-              :title="$t('common.close')"
+              v-if="showDiff"
+              @click="showDiff = false"
+              class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              &larr; {{ $t('common.back') }}
             </button>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <span v-if="!showDiff">{{ $t('config.versionsModal.title') }}</span>
+              <span v-else>{{ $t('config.versionsModal.diffTitle', { id: diffVersionId }) }}</span>
+            </h3>
           </div>
+        </template>
 
-          <!-- List view -->
-          <div v-if="!showDiff" class="flex-1 min-h-0 overflow-y-auto p-4">
-            <!-- Retention tip -->
-            <div class="mb-4 flex items-start gap-2 rounded-control border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-              <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>
-                {{ $t('config.versionsModal.retentionTip', { days: versionRetentionDays }) }}
-                <RouterLink
-                  to="/dashboard/settings"
-                  class="font-medium underline hover:no-underline whitespace-nowrap"
-                  @click="closeVersions"
-                >
-                  {{ $t('config.versionsModal.retentionSettingsLink') }}
-                </RouterLink>
-              </span>
-            </div>
-
-            <div v-if="versionsLoading" class="flex items-center justify-center h-32">
-              <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-600"></div>
-            </div>
-            <div v-else-if="versions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
-              {{ $t('config.versionsModal.empty') }}
-            </div>
-            <div v-else>
-              <!-- Batch toolbar -->
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-xs text-gray-500 dark:text-gray-400">
-                  <template v-if="selectedVersionIds.size">{{ $t('config.versionsModal.selected', { n: selectedVersionIds.size }) }}</template>
-                </span>
-                <button
-                  @click="batchDeleteVersions"
-                  :disabled="selectedVersionIds.size === 0 || batchDeleting || versionsLoading"
-                  class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {{ $t('config.versionsModal.deleteSelected') }}
-                  <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
-                </button>
-              </div>
-              <!--
-                The modal body already scrolls, so `scroll` is off: a second
-                scroll container inside it would trap the wheel.
-              -->
-              <Table :scroll="false">
-                <template #head>
-                  <th class="w-8">
-                    <input
-                      type="checkbox"
-                      class="cursor-pointer"
-                      :checked="allVersionsSelected"
-                      @change="toggleSelectAllVersions"
-                      :aria-label="$t('config.versionsModal.selectAll')"
-                      :title="$t('config.versionsModal.selectAll')"
-                    />
-                  </th>
-                  <th>{{ $t('config.versionsModal.colVersion') }}</th>
-                  <th>{{ $t('config.versionsModal.colSavedAt') }}</th>
-                  <th>{{ $t('config.versionsModal.colSize') }}</th>
-                  <th class="col-actions">{{ $t('config.versionsModal.colActions') }}</th>
-                </template>
-
-                <tr
-                  v-for="(v, i) in versions"
-                  :key="v.id"
-                  class="text-gray-800 dark:text-gray-200"
-                  :class="selectedVersionIds.has(v.id) ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''"
-                >
-                  <td>
-                    <input
-                      type="checkbox"
-                      class="cursor-pointer"
-                      :checked="selectedVersionIds.has(v.id)"
-                      @change="toggleSelectVersion(v.id)"
-                      :aria-label="$t('config.versionsModal.selectOne', { id: v.id })"
-                    />
-                  </td>
-                  <td>
-                    #{{ v.id }}
-                    <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-pill bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">{{ $t('config.versionsModal.latest') }}</span>
-                  </td>
-                  <td class="text-gray-600 dark:text-gray-400">
-                    {{ formatTime(v.created_at) }}
-                    <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({{ formatRelative(v.created_at) }})</span>
-                  </td>
-                  <td class="text-gray-600 dark:text-gray-400">{{ formatBytes(v.size) }}</td>
-                  <td>
-                    <div class="flex items-center justify-end gap-1">
-                      <button
-                        @click="openDiff(v)"
-                        class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        {{ $t('config.versionsModal.diff') }}
-                      </button>
-                      <button
-                        @click="rollbackTo(v)"
-                        :disabled="loading"
-                        class="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
-                      >
-                        {{ $t('config.versionsModal.rollback') }}
-                      </button>
-                      <button
-                        @click="deleteVersion(v)"
-                        :disabled="loading || versionsLoading"
-                        class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-                        :title="$t('config.versionsModal.delete')"
-                      >
-                        {{ $t('config.versionsModal.delete') }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </Table>
-            </div>
-          </div>
-
-          <!-- Diff view -->
-          <div v-else class="flex-1 min-h-0 flex flex-col">
-            <!-- Left/right legend so it's clear which side is which (and that
-                 rollback restores the left). -->
-            <div class="flex items-center justify-between px-5 py-2 text-xs border-b border-gray-200 dark:border-gray-700 shrink-0">
-              <span class="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
-                <span class="w-2 h-2 rounded-pill bg-amber-500"></span>
-                {{ $t('config.versionsModal.diffLeft', { id: diffVersionId }) }}
-              </span>
-              <span class="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-400">
-                {{ $t('config.versionsModal.diffRight') }}
-                <span class="w-2 h-2 rounded-pill bg-gray-400"></span>
-              </span>
-            </div>
-            <div class="flex-1 min-h-0">
-              <MonacoDiffEditor
-                :original="diffOriginal"
-                :modified="diffModified"
-                language="json"
-                :theme="editorTheme"
-                class="h-full"
-              />
-            </div>
-            <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
-              <!-- Rollback sits on the LEFT, aligned with the left pane it restores. -->
-              <div class="flex items-center gap-3">
-                <button
-                  v-if="diffVersionId !== null"
-                  @click="rollbackTo({ id: diffVersionId, size: 0, created_at: '' })"
-                  :disabled="loading"
-                  class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
-                >
-                  {{ $t('config.versionsModal.rollbackToLeft', { id: diffVersionId }) }}
-                </button>
-                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
-                  {{ $t('config.versionsModal.diffRollbackHint', { id: diffVersionId }) }}
-                </span>
-              </div>
-              <button
-                @click="showDiff = false"
-                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        <!-- List view -->
+        <div v-if="!showDiff">
+          <!-- Retention tip -->
+          <div class="mb-4 flex items-start gap-2 rounded-control border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              {{ $t('config.versionsModal.retentionTip', { days: versionRetentionDays }) }}
+              <RouterLink
+                to="/dashboard/settings"
+                class="font-medium underline hover:no-underline whitespace-nowrap"
+                @click="closeVersions"
               >
-                {{ $t('config.versionsModal.backToList') }}
+                {{ $t('config.versionsModal.retentionSettingsLink') }}
+              </RouterLink>
+            </span>
+          </div>
+
+          <div v-if="versionsLoading" class="flex items-center justify-center h-32">
+            <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-600"></div>
+          </div>
+          <div v-else-if="versions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
+            {{ $t('config.versionsModal.empty') }}
+          </div>
+          <div v-else>
+            <!-- Batch toolbar -->
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                <template v-if="selectedVersionIds.size">{{ $t('config.versionsModal.selected', { n: selectedVersionIds.size }) }}</template>
+              </span>
+              <button
+                @click="batchDeleteVersions"
+                :disabled="selectedVersionIds.size === 0 || batchDeleting || versionsLoading"
+                class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {{ $t('config.versionsModal.deleteSelected') }}
+                <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
               </button>
             </div>
+            <!--
+              The dialog's own content area scrolls, so `scroll` is off: a second
+              scroll container inside it would trap the wheel.
+            -->
+            <Table :scroll="false">
+              <template #head>
+                <th class="w-8">
+                  <input
+                    type="checkbox"
+                    class="cursor-pointer"
+                    :checked="allVersionsSelected"
+                    @change="toggleSelectAllVersions"
+                    :aria-label="$t('config.versionsModal.selectAll')"
+                    :title="$t('config.versionsModal.selectAll')"
+                  />
+                </th>
+                <th>{{ $t('config.versionsModal.colVersion') }}</th>
+                <th>{{ $t('config.versionsModal.colSavedAt') }}</th>
+                <th>{{ $t('config.versionsModal.colSize') }}</th>
+                <th class="col-actions">{{ $t('config.versionsModal.colActions') }}</th>
+              </template>
+
+              <tr
+                v-for="(v, i) in versions"
+                :key="v.id"
+                class="text-gray-800 dark:text-gray-200"
+                :class="selectedVersionIds.has(v.id) ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''"
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    class="cursor-pointer"
+                    :checked="selectedVersionIds.has(v.id)"
+                    @change="toggleSelectVersion(v.id)"
+                    :aria-label="$t('config.versionsModal.selectOne', { id: v.id })"
+                  />
+                </td>
+                <td>
+                  #{{ v.id }}
+                  <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-pill bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">{{ $t('config.versionsModal.latest') }}</span>
+                </td>
+                <td class="text-gray-600 dark:text-gray-400">
+                  {{ formatTime(v.created_at) }}
+                  <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({{ formatRelative(v.created_at) }})</span>
+                </td>
+                <td class="text-gray-600 dark:text-gray-400">{{ formatBytes(v.size) }}</td>
+                <td>
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      @click="openDiff(v)"
+                      class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      {{ $t('config.versionsModal.diff') }}
+                    </button>
+                    <button
+                      @click="rollbackTo(v)"
+                      :disabled="loading"
+                      class="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+                    >
+                      {{ $t('config.versionsModal.rollback') }}
+                    </button>
+                    <button
+                      @click="deleteVersion(v)"
+                      :disabled="loading || versionsLoading"
+                      class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                      :title="$t('config.versionsModal.delete')"
+                    >
+                      {{ $t('config.versionsModal.delete') }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </Table>
           </div>
         </div>
-      </div>
+
+        <!-- Diff view -->
+        <div v-else class="flex flex-col">
+          <!-- Left/right legend so it's clear which side is which (and that
+               rollback restores the left). -->
+          <div class="flex items-center justify-between pb-2 text-xs border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <span class="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
+              <span class="w-2 h-2 rounded-pill bg-amber-500"></span>
+              {{ $t('config.versionsModal.diffLeft', { id: diffVersionId }) }}
+            </span>
+            <span class="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-400">
+              {{ $t('config.versionsModal.diffRight') }}
+              <span class="w-2 h-2 rounded-pill bg-gray-400"></span>
+            </span>
+          </div>
+          <!-- Monaco needs a resolved height; the dialog caps itself at 90vh, so
+               this sits just inside that with room for the header and footer. -->
+          <div class="h-[62vh] mt-2">
+            <MonacoDiffEditor
+              :original="diffOriginal"
+              :modified="diffModified"
+              language="json"
+              :theme="editorTheme"
+              class="h-full"
+            />
+          </div>
+        </div>
+
+        <template v-if="showDiff" #footer>
+          <div class="flex w-full items-center justify-between gap-2">
+            <!-- Rollback sits on the LEFT, aligned with the left pane it restores. -->
+            <div class="flex items-center gap-3">
+              <button
+                v-if="diffVersionId !== null"
+                @click="rollbackTo({ id: diffVersionId, size: 0, created_at: '' })"
+                :disabled="loading"
+                class="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-control hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+              >
+                {{ $t('config.versionsModal.rollbackToLeft', { id: diffVersionId }) }}
+              </button>
+              <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+                {{ $t('config.versionsModal.diffRollbackHint', { id: diffVersionId }) }}
+              </span>
+            </div>
+            <button
+              @click="showDiff = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              {{ $t('config.versionsModal.backToList') }}
+            </button>
+          </div>
+        </template>
+      </Dialog>
   </div>
 </template>

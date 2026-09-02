@@ -212,6 +212,9 @@ const fallbackDelay = computed({
         :options="domainStrategyOptions"
         optionLabel="label"
         optionValue="value"
+        filter
+        :filterPlaceholder="$t('common.search')"
+        :emptyFilterMessage="$t('common.noMatch')"
         :placeholder="$t('dialer.domainStrategy.options.default')"
       />
       <p class="mt-1 text-xs text-gray-500">{{ $t('dialer.domainStrategy.help') }}</p>

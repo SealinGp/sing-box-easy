@@ -6,8 +6,7 @@ import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
-import Modal from './Modal.vue'
-import { Select } from '../volt'
+import { Dialog, Select } from '../volt'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
@@ -332,12 +331,12 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit DNS Server Modal -->
-    <Modal
-      :model-value="showServerModal"
-      @update:model-value="(v: boolean) => { if (!v) closeServerModal() }"
-      :title="isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add')"
-      size="md"
-      show-close
+    <Dialog
+      :visible="showServerModal"
+      @update:visible="(v: boolean) => { if (!v) closeServerModal() }"
+      :header="isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add')"
+      modal
+      class="w-full max-w-lg"
     >
       <div class="space-y-3">
         <!--
@@ -364,6 +363,9 @@ onMounted(() => {
               :options="serverTypes"
               optionLabel="label"
               optionValue="value"
+              filter
+              :filterPlaceholder="$t('common.search')"
+              :emptyFilterMessage="$t('common.noMatch')"
               :placeholder="$t('dns.servers.form.typePlaceholder')"
               :disabled="isEditMode"
               @update:modelValue="changeType"
@@ -392,15 +394,15 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
     <!-- Delete Confirmation Modal -->
-    <Modal
-      :model-value="showDeleteConfirm"
-      @update:model-value="(v: boolean) => { if (!v) closeDeleteConfirm() }"
-      :title="$t('dns.servers.del.title')"
-      size="sm"
-      show-close
+    <Dialog
+      :visible="showDeleteConfirm"
+      @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :header="$t('dns.servers.del.title')"
+      modal
+      class="w-full max-w-md"
     >
       <p class="text-gray-700 dark:text-gray-300">
         <i18n-t keypath="dns.servers.del.confirm" scope="global">
@@ -414,6 +416,6 @@ onMounted(() => {
           {{ $t('common.delete') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
   </div>
 </template>

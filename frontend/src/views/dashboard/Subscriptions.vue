@@ -6,7 +6,6 @@ import { SubscriptionService } from "../../services/subscription";
 import { type Subscription } from "../../types/api";
 import { useNotify } from "../../composables/useNotify";
 import Button from "../../components/Button.vue";
-import Modal from "../../components/Modal.vue";
 import Input from "../../components/Input.vue";
 import Badge from "../../components/Badge.vue";
 import Table from "../../components/Table.vue";
@@ -31,6 +30,7 @@ import {
   ArrowTopRightOnSquareIcon,
 } from "@heroicons/vue/24/outline";
 import { Select } from "../../volt";
+import { Dialog } from '../../volt'
 
 const subscriptionService = new SubscriptionService(apiService);
 const { t } = useI18n();
@@ -622,7 +622,7 @@ onMounted(() => {
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />
 
     <!-- Add/Edit Modal -->
-    <Modal v-model="showModal" :title="modalTitle" size="md" show-close>
+    <Dialog v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">
       <form @submit.prevent="saveSubscription">
         <div class="space-y-4">
           <Input
@@ -720,7 +720,7 @@ onMounted(() => {
           {{ isEditing ? $t("common.update") : $t("common.add") }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
   </div>
 </template>

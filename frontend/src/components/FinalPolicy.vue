@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import { Select } from '../volt'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { routeService, outboundService, dnsService } from '../services'
 import { useToast } from 'primevue'
 
@@ -145,6 +146,8 @@ onMounted(() => {
             optionGroupLabel="label"
             optionGroupChildren="items"
             :filter="true"
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('route.finalPolicy.placeholder')"
             class="w-72"
             :disabled="loading"
@@ -180,6 +183,9 @@ onMounted(() => {
               :options="resolverOptions"
               optionLabel="label"
               optionValue="value"
+              :filter="resolverOptions.length >= FILTER_THRESHOLD"
+              :filterPlaceholder="$t('common.search')"
+              :emptyFilterMessage="$t('common.noMatch')"
               :placeholder="$t('route.finalPolicy.none')"
               class="w-72"
               :disabled="loading"

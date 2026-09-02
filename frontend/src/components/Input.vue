@@ -15,6 +15,13 @@ interface Props {
   label?: string
   required?: boolean
   fullWidth?: boolean
+  /**
+   * Numeric bounds, declared rather than left to fall through: this component's
+   * root is the wrapper <div>, so an undeclared `min` would land on the wrapper
+   * and silently do nothing.
+   */
+  min?: number | string
+  max?: number | string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -63,6 +70,8 @@ const inputClasses = computed(() =>
     <input
       :id="inputId"
       :type="type"
+      :min="min"
+      :max="max"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"

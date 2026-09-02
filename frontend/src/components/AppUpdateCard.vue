@@ -18,6 +18,7 @@ import { useAppUpdate } from '../composables/useAppUpdate'
 import { useConfirm } from '../composables/useConfirm'
 import { useNotify } from '../composables/useNotify'
 import { Select } from '../volt'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
@@ -302,6 +303,9 @@ const runPrepare = async () => {
           :options="releaseOptions"
           optionLabel="label"
           optionValue="value"
+          :filter="releaseOptions.length >= FILTER_THRESHOLD"
+          :filterPlaceholder="$t('common.search')"
+          :emptyFilterMessage="$t('common.noMatch')"
           :placeholder="latestOptionLabel"
           :disabled="loadingReleases"
         />

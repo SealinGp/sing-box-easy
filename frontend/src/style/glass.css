@@ -90,7 +90,7 @@
  * a full panel border, drop shadow, and 24px blur *inside* a dropdown — the
  * exact bug documented at the top of src/volt/Select.vue.
  *
- * Modals are safe: neither Modal.vue nor volt/Dialog.vue uses bare `bg-white`.
+ * Modals are safe: volt/Dialog.vue does not use a bare `bg-white`.
  */
 .liquid-glass,
 .liquid-app div.bg-white,

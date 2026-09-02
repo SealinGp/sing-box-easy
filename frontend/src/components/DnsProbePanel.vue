@@ -204,6 +204,9 @@ const logStatusMessage = computed(() => {
           id="dns-probe-type"
           v-model="queryType"
           :options="queryTypeOptions"
+          filter
+          :filterPlaceholder="$t('common.search')"
+          :emptyFilterMessage="$t('common.noMatch')"
         />
       </div>
 

@@ -20,6 +20,9 @@ export default {
   next: '下一步',
   previous: '上一步',
   refresh: '刷新',
+  // Select / MultiSelect 下拉里的筛选框：选项数达到 5 个左右的选择器都应启用。
+  search: '搜索…',
+  noMatch: '没有匹配项。',
   reset: '重置',
   loading: '加载中...',
   confirm: '确认',

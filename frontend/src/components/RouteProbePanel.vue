@@ -23,6 +23,7 @@ import {
 import Button from './Button.vue'
 import RuleLadder from './RuleLadder.vue'
 import { Select } from '../volt'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { routeService, inboundService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { markUnreached, type LadderRung } from '../types/ruleLadder'
@@ -214,6 +215,9 @@ const outboundSourceLabel = computed(() => {
             :options="inboundOptions"
             optionLabel="label"
             optionValue="value"
+            :filter="inboundOptions.length >= FILTER_THRESHOLD"
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('routeProbe.anyInbound')"
             showClear
             class="w-full"
@@ -226,6 +230,9 @@ const outboundSourceLabel = computed(() => {
             :options="protocolOptions"
             optionLabel="label"
             optionValue="value"
+            filter
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('routeProbe.unknownProtocol')"
             showClear
             class="w-full"

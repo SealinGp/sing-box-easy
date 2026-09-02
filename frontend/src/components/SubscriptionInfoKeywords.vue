@@ -15,13 +15,13 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
-import Modal from './Modal.vue'
 import Button from './Button.vue'
 import ChipsField from './ChipsField.vue'
 import Badge from './Badge.vue'
 import { apiService } from '../services/api'
 import { SubscriptionService } from '../services/subscription'
 import { useNotify } from '../composables/useNotify'
+import { Dialog } from '../volt'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
@@ -142,7 +142,7 @@ const save = async () => {
 </script>
 
 <template>
-  <Modal v-model="visible" :title="$t('subscriptions.keywords.title')" size="lg" show-close>
+  <Dialog v-model:visible="visible" :header="$t('subscriptions.keywords.title')" modal class="w-full max-w-2xl">
     <div class="space-y-4">
       <p class="text-sm text-gray-500 dark:text-gray-400">
         {{ $t('subscriptions.keywords.desc') }}
@@ -189,5 +189,5 @@ const save = async () => {
         {{ $t('common.save') }}
       </Button>
     </template>
-  </Modal>
+  </Dialog>
 </template>

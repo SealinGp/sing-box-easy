@@ -5,7 +5,6 @@ import type { Inbound } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import Modal from '../../components/Modal.vue'
 import Table from '../../components/Table.vue'
 import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
@@ -22,7 +21,7 @@ import {
   resolveInboundFields,
   type InboundTypeName,
 } from '../../schemas/inboundFields'
-import { Select } from '../../volt'
+import { Dialog, Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
@@ -360,12 +359,12 @@ onMounted(fetchInbounds)
     </div>
 
     <!-- Add/Edit Modal -->
-    <Modal
-      :model-value="showModal"
-      @update:model-value="(v) => { if (!v) closeModal() }"
-      :title="isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add')"
-      size="md"
-      show-close
+    <Dialog
+      :visible="showModal"
+      @update:visible="(v: boolean) => { if (!v) closeModal() }"
+      :header="isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add')"
+      modal
+      class="w-full max-w-lg"
     >
       <div class="space-y-3">
         <!--
@@ -387,12 +386,17 @@ onMounted(fetchInbounds)
 
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('inbounds.form.type') }}</label>
+          <!-- 17 inbound types in the generated inventory — a list that long is
+               scrolled, not read. -->
           <Select
             class="w-full"
             :modelValue="currentInbound.type"
             :options="inboundTypes"
             optionLabel="label"
             optionValue="value"
+            filter
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('inbounds.form.typePlaceholder')"
             :disabled="isEditMode"
             @update:modelValue="changeType"
@@ -420,15 +424,15 @@ onMounted(fetchInbounds)
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
     <!-- Delete Confirmation Modal -->
-    <Modal
-      :model-value="showDeleteConfirm"
-      @update:model-value="(v) => { if (!v) closeDeleteConfirm() }"
-      :title="$t('inbounds.del.title')"
-      size="sm"
-      show-close
+    <Dialog
+      :visible="showDeleteConfirm"
+      @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :header="$t('inbounds.del.title')"
+      modal
+      class="w-full max-w-md"
     >
       <p class="text-gray-700 dark:text-gray-300">
         {{ $t('inbounds.del.confirm', { tag: deletingInbound?.tag }) }}
@@ -440,6 +444,6 @@ onMounted(fetchInbounds)
           {{ $t('common.delete') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
   </div>
 </template>

@@ -32,8 +32,10 @@ const theme: DialogPassThroughOptions = {
     root: `liquid-glass-float flex flex-col w-full max-w-lg max-h-[90vh] rounded-surface
         transform transition-all duration-200`,
     // Compact density pass: header / content / footer were all `px-6 py-4`.
-    // Modal.vue renders with `:show-header="false"` and inherits `content`, so
-    // these three values are the padding for every dialog in the app.
+    // This is the only dialog implementation in the app — components/Modal.vue
+    // used to wrap it with `:show-header="false"` and hand-roll its own header
+    // and footer inside `content`, which meant half the app's dialogs never saw
+    // the header/footer rules below. Its call sites now render this directly.
     header: `flex items-center justify-between px-4 py-3
         border-b border-border`,
     title: `text-lg font-semibold text-gray-900 dark:text-gray-100`,

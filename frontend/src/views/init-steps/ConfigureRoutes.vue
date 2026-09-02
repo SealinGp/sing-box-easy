@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { RouteRule, Outbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { Select } from '../../volt'
+import { FILTER_THRESHOLD } from '../../utils/selectFilter'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { outboundService, routeService } from '../../services';
 
@@ -268,6 +269,9 @@ const handleSkip = () => {
           :options="proxyOutboundOptions"
           optionLabel="label"
           optionValue="value"
+          :filter="proxyOutboundOptions.length >= FILTER_THRESHOLD"
+          :filterPlaceholder="$t('common.search')"
+          :emptyFilterMessage="$t('common.noMatch')"
           :disabled="loading || saving || success"
         />
       </div>

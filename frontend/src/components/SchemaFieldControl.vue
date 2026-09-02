@@ -19,6 +19,7 @@ import { useOutboundsStore } from '../stores/outbounds'
 import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
 import { dnsServerOptionLabel } from '../utils/dnsServerLabel'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import Input from './Input.vue'
 import ChipsField from './ChipsField.vue'
 import JsonField from './JsonField.vue'
@@ -285,6 +286,9 @@ function onNumber(raw: string | number) {
     :options="memberOptions"
     optionLabel="label"
     optionValue="value"
+    filter
+    :filterPlaceholder="t('route.rules.placeholders.outboundSearch')"
+    :emptyFilterMessage="t('route.rules.outboundNoMatch')"
     :disabled="disabled"
     @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
@@ -312,11 +316,16 @@ function onNumber(raw: string | number) {
     optionLabel="label"
     optionValue="value"
     filter
+    :filterPlaceholder="t('common.search')"
+    :emptyFilterMessage="t('common.noMatch')"
     :disabled="disabled"
     :placeholder="t('dns.rules.serverSelect')"
     @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
 
+  <!-- `filter` for the same reason the rule-set picker has it: a production
+       config carries 50+ subscription nodes, and an unfiltered list of that
+       length is scrolled, not read. -->
   <Select
     v-else-if="field.control === 'outbound'"
     class="w-full"
@@ -324,10 +333,17 @@ function onNumber(raw: string | number) {
     :options="outboundOptions"
     optionLabel="label"
     optionValue="value"
+    filter
+    :filterPlaceholder="t('route.rules.placeholders.outboundSearch')"
+    :emptyFilterMessage="t('route.rules.outboundNoMatch')"
     :disabled="disabled"
     @update:modelValue="(v: unknown) => emit('change', v === '' ? undefined : v)"
   />
 
+  <!-- One control renders every curated enum, from 2 entries (`ip_version`) to
+       9 (shadowsocks `method`), so the filter is bound to the actual length
+       rather than switched on for all of them: a search box over two options is
+       noise. -->
   <Select
     v-else-if="field.control === 'select'"
     class="w-full"
@@ -335,6 +351,9 @@ function onNumber(raw: string | number) {
     :options="selectOptions"
     optionLabel="label"
     optionValue="value"
+    :filter="selectOptions.length >= FILTER_THRESHOLD"
+    :filterPlaceholder="t('common.search')"
+    :emptyFilterMessage="t('common.noMatch')"
     :disabled="disabled"
     @update:modelValue="(v: unknown) => emit('change', v)"
   />

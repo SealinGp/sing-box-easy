@@ -5,12 +5,11 @@ import type { User } from '../../types/api'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
-import Modal from '../../components/Modal.vue'
 import Table from '../../components/Table.vue'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { userService } from '../../services'
 import { useToast } from 'primevue/usetoast'
-import { Select } from '../../volt'
+import { Dialog, Select } from '../../volt'
 
 const users = ref<User[]>([])
 const loading = ref(false)
@@ -254,12 +253,12 @@ onMounted(fetchUsers)
     </div>
 
     <!-- Add/Edit Modal -->
-    <Modal
-      :model-value="showModal"
-      @update:model-value="(v: boolean) => { if (!v) closeModal() }"
-      :title="isEditMode ? $t('users.modal.edit') : $t('users.modal.add')"
-      size="md"
-      show-close
+    <Dialog
+      :visible="showModal"
+      @update:visible="(v: boolean) => { if (!v) closeModal() }"
+      :header="isEditMode ? $t('users.modal.edit') : $t('users.modal.add')"
+      modal
+      class="w-full max-w-lg"
     >
       <div class="space-y-4">
         <div>
@@ -297,15 +296,15 @@ onMounted(fetchUsers)
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
     <!-- Delete Confirmation Modal -->
-    <Modal
-      :model-value="showDeleteConfirm"
-      @update:model-value="(v: boolean) => { if (!v) closeDeleteConfirm() }"
-      :title="$t('users.del.title')"
-      size="sm"
-      show-close
+    <Dialog
+      :visible="showDeleteConfirm"
+      @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :header="$t('users.del.title')"
+      modal
+      class="w-full max-w-md"
     >
       <p class="text-gray-700 dark:text-gray-300">
         {{ $t('users.del.confirm', { username: deletingUser?.username }) }}
@@ -317,6 +316,6 @@ onMounted(fetchUsers)
           {{ $t('common.delete') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
   </div>
 </template>

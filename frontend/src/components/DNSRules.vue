@@ -3,8 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
-import Modal from './Modal.vue'
-import { Select } from '../volt'
+import { Dialog, Select } from '../volt'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
@@ -623,12 +622,12 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit DNS Rule Modal -->
-    <Modal
-      :model-value="showRuleModal"
-      @update:model-value="(v) => { if (!v) closeRuleModal() }"
-      :title="isEditMode ? $t('dns.rules.modal.edit') : $t('dns.rules.modal.add')"
-      size="lg"
-      show-close
+    <Dialog
+      :visible="showRuleModal"
+      @update:visible="(v: boolean) => { if (!v) closeRuleModal() }"
+      :header="isEditMode ? $t('dns.rules.modal.edit') : $t('dns.rules.modal.add')"
+      modal
+      class="w-full max-w-2xl"
     >
       <div class="space-y-4">
         <!--
@@ -729,15 +728,15 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
 
     <!-- Delete Confirmation Modal -->
-    <Modal
-      :model-value="showDeleteConfirm"
-      @update:model-value="(v) => { if (!v) closeDeleteConfirm() }"
-      :title="$t('dns.rules.del.title')"
-      size="sm"
-      show-close
+    <Dialog
+      :visible="showDeleteConfirm"
+      @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
+      :header="$t('dns.rules.del.title')"
+      modal
+      class="w-full max-w-md"
     >
       <p class="text-gray-700 dark:text-gray-300">
         {{ $t('dns.rules.del.confirm', { index: deletingIndex + 1 }) }}
@@ -749,6 +748,6 @@ onMounted(() => {
           {{ $t('common.delete') }}
         </Button>
       </template>
-    </Modal>
+    </Dialog>
   </div>
 </template>
