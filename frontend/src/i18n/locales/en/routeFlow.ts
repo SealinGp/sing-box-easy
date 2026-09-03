@@ -75,7 +75,7 @@ export default {
     clearFilter: 'Clear',
     unmatched: '{n} connection lit by outbound only — its rule is not in the running list (sing-box was reloaded) | {n} connections lit by outbound only — their rules are not in the running list (sing-box was reloaded)',
     via: 'via {tag}',
-    legendMoving: 'Moving: top {n} by download',
+    legendMoving: 'Pulsing: top {n} by download',
     legendLit: 'Lit: carrying traffic',
     idle: 'No traffic in the last second',
     rate: '{rate}/s',

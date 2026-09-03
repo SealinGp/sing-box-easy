@@ -102,6 +102,14 @@ const focusedRules = computed<Set<number>>(() => {
 
 const dimmed = computed(() => focus.value !== null)
 
+/**
+ * How fast opacity and width settle. Hover is a direct manipulation and must
+ * feel instant; a live change is a fact arriving once a second, and easing it
+ * in over half a second is what makes "this ribbon just lit up" readable
+ * instead of a flicker between two frames.
+ */
+const fadeSpeed = computed(() => (dimmed.value ? 'fade-hover' : 'fade-live'))
+
 /* ── Live overlay ─────────────────────────────────────────────────────────── */
 
 const isLive = computed(() => props.live !== null && props.live !== undefined)
@@ -321,11 +329,18 @@ const fallthroughLabel = computed(() =>
     <!-- Ribbons first, so every node paints over them. -->
     <g fill="none" stroke-linecap="round">
       <template v-for="ribbon in layout.ribbons" :key="ribbon.id">
+        <!--
+          Width and opacity are set as CSS properties, not attributes, so they
+          transition: a ribbon that starts carrying traffic brightens and
+          widens over half a second rather than snapping, and one that goes
+          quiet fades back the same way. Hover keeps its own, faster pace.
+        -->
         <path
           :d="ribbon.d"
-          :stroke-width="isRibbonLit(ribbon) ? 2.5 : liveRibbon(ribbon)?.width ?? 1.5"
           :stroke-dasharray="ribbon.kind === 'final' ? '5 4' : undefined"
+          :style="{ strokeWidth: isRibbonLit(ribbon) ? 2.5 : liveRibbon(ribbon)?.width ?? 1.5 }"
           :class="[
+            fadeSpeed,
             ribbon.kind === 'final'
               ? 'stroke-gray-400 dark:stroke-slate-500'
               : 'stroke-primary-400 dark:stroke-primary-600',
@@ -339,22 +354,30 @@ const fallthroughLabel = computed(() =>
                     : 'opacity-15'
                   : 'opacity-60',
           ]"
-          class="transition-opacity duration-150"
+          class="ribbon"
         />
         <!--
-          The moving dashes: a second stroke over the ribbon whose dash offset
-          cycles once per `durationSec`. Speed is the whole message — the cycle
-          shortens on a log scale with bytes/s (flowOverlay.ts) — so nothing
-          here is decorative. Only the top N ribbons get one.
+          The pulse: one short bright segment that travels the ribbon from
+          inbound to exit, then goes again. `pathLength="100"` normalises every
+          ribbon to the same unit so a single dash pattern works for all of
+          them without measuring the DOM. Speed is the whole message — one
+          traversal per `durationSec`, log-scaled with bytes/s (flowOverlay.ts)
+          — so nothing here is decorative. Only the top N ribbons get one, and
+          it fades in and out (the <Transition> on the group) rather than
+          popping when a ribbon enters or leaves the top N.
         -->
-        <path
-          v-if="liveRibbon(ribbon)?.animated"
-          :d="ribbon.d"
-          :stroke-width="Math.max((liveRibbon(ribbon)?.width ?? 1.5) - 0.5, 1)"
-          stroke-dasharray="7 11"
-          class="flow-dash stroke-primary-600 dark:stroke-primary-300"
-          :style="{ animationDuration: `${liveRibbon(ribbon)?.durationSec ?? 2}s` }"
-        />
+        <Transition name="pulse">
+          <g v-if="liveRibbon(ribbon)?.animated">
+            <path
+              :d="ribbon.d"
+              pathLength="100"
+              :stroke-width="(liveRibbon(ribbon)?.width ?? 1.5) + 0.5"
+              stroke-dasharray="14 100"
+              class="flow-pulse stroke-primary-600 dark:stroke-primary-300"
+              :style="{ animationDuration: `${liveRibbon(ribbon)?.durationSec ?? 2}s` }"
+            />
+          </g>
+        </Transition>
       </template>
     </g>
 
@@ -374,7 +397,7 @@ const fallthroughLabel = computed(() =>
         rx="7"
         stroke-width="1"
         class="fill-white stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-600"
-        :class="fade(focus?.kind === 'inbound' && focus.id === box.tag, !!liveInbound(box))"
+        :class="[fadeSpeed, fade(focus?.kind === 'inbound' && focus.id === box.tag, !!liveInbound(box))]"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -420,7 +443,7 @@ const fallthroughLabel = computed(() =>
         rx="5"
         stroke-width="1"
         :stroke-dasharray="box.rule.terminal ? undefined : '4 3'"
-        :class="[ruleClass(box.rule), fade(focusedRules.has(box.index), !!liveRule(box.index))]"
+        :class="[fadeSpeed, ruleClass(box.rule), fade(focusedRules.has(box.index), !!liveRule(box.index))]"
       />
       <text
         :x="box.x + 8"
@@ -480,7 +503,7 @@ const fallthroughLabel = computed(() =>
         stroke-width="1"
         stroke-dasharray="5 4"
         class="fill-transparent stroke-gray-400 dark:stroke-slate-500"
-        :class="fade(false, !!live?.finalFlow)"
+        :class="[fadeSpeed, fade(false, !!live?.finalFlow)]"
       />
       <text
         :x="layout.fallthrough.x + 8"
@@ -517,7 +540,7 @@ const fallthroughLabel = computed(() =>
         :height="box.height"
         rx="7"
         stroke-width="1.5"
-        :class="[exitClass(box), fade(focusedExit === box.id, !!liveExit(box.id))]"
+        :class="[fadeSpeed, exitClass(box), fade(focusedExit === box.id, !!liveExit(box.id))]"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -572,25 +595,68 @@ const fallthroughLabel = computed(() =>
 
 <style scoped>
 /*
- * Dashes travel from the ribbon's start (left) to its end (right): the offset
- * decreases by exactly one dash period per cycle, so the pattern loops without
- * a visible seam. Duration is set inline per ribbon from its bytes/s.
+ * Two paces for the same properties. Opacity and stroke-width are what
+ * "lit" means here, so both ease — a width that snaps while the colour
+ * fades reads as a glitch.
  */
-.flow-dash {
-  animation-name: flow;
-  animation-timing-function: linear;
+.fade-live {
+  transition:
+    opacity 500ms ease,
+    stroke-width 500ms ease;
+}
+.fade-hover {
+  transition:
+    opacity 150ms ease,
+    stroke-width 150ms ease;
+}
+
+/*
+ * The travelling pulse. With `pathLength="100"` and a dash pattern of
+ * 14 on / 100 off, exactly one dash exists per period; sliding the offset
+ * from 14 to -100 carries it from just before the start to just past the
+ * end, and the loop restarts with the dash off-screen, so there is no seam.
+ * Opacity rides along so the pulse is born and dies softly at the ends
+ * rather than being cut by the path's edge. Duration is set inline per
+ * ribbon from its bytes/s.
+ */
+.flow-pulse {
+  animation-name: pulse-travel;
+  animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   stroke-linecap: round;
 }
-@keyframes flow {
-  to {
-    stroke-dashoffset: -18;
+@keyframes pulse-travel {
+  0% {
+    stroke-dashoffset: 14;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -100;
+    opacity: 0;
   }
 }
+
+/* A ribbon entering or leaving the top N fades its pulse in or out. */
+.pulse-enter-active,
+.pulse-leave-active {
+  transition: opacity 500ms ease;
+}
+.pulse-enter-from,
+.pulse-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .flow-dash {
+  .flow-pulse {
     animation: none;
-    opacity: 0.7;
+    stroke-dasharray: none;
+    opacity: 0.5;
   }
 }
 </style>

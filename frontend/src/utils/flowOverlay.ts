@@ -8,7 +8,7 @@
  *
  * WHICH: the top N by download rate, ranked across rule and fall-through flows
  * together. On a busy router hundreds of connections cross dozens of rules,
- * and animating all of them is a screen of moving dashes that says nothing.
+ * and animating all of them is a screen of moving pulses that says nothing.
  * Everything else with traffic is lit but still, so the shape stays visible
  * and the motion is the signal.
  *
@@ -32,7 +32,7 @@ export function formatRate(bytesPerSec: number): string {
 /** How many rule ribbons animate at once. */
 export const TOP_N = 8
 
-/** Dash cycle bounds, seconds. */
+/** Pulse traversal bounds, seconds — one trip from inbound to exit. */
 const SLOWEST_CYCLE = 4
 const FASTEST_CYCLE = 0.3
 /** The rate at which the cycle is SLOWEST_CYCLE; each decade above halves it. */
@@ -45,9 +45,9 @@ export interface LiveEdge {
   down: number
   up: number
   connections: number
-  /** In the top N — draw the moving dashes. */
+  /** In the top N — draw the travelling pulse. */
   animated: boolean
-  /** Seconds per dash cycle; only meaningful when animated. */
+  /** Seconds per pulse traversal; only meaningful when animated. */
   durationSec: number
   /** Stroke width for the lit ribbon. */
   width: number
@@ -73,7 +73,7 @@ export interface FlowOverlay {
   at: number
 }
 
-/** Seconds per dash cycle for a rate, log-scaled and clamped. */
+/** Seconds per pulse traversal for a rate, log-scaled and clamped. */
 export function dashDurationFor(bytesPerSec: number): number {
   if (bytesPerSec <= 0) return SLOWEST_CYCLE
   const decades = Math.log10(bytesPerSec / BASE_RATE)

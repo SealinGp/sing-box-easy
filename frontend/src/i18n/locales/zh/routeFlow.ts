@@ -69,7 +69,7 @@ export default {
     clearFilter: '清除',
     unmatched: '有 {n} 个连接仅按出站点亮 —— 其规则不在当前运行的规则列表中（sing-box 已重载）',
     via: '经 {tag}',
-    legendMoving: '流动：按下行速率取前 {n} 条',
+    legendMoving: '脉冲：按下行速率取前 {n} 条',
     legendLit: '点亮：有流量经过',
     idle: '最近一秒没有流量',
     rate: '{rate}/s',

@@ -48,7 +48,7 @@ describe('buildFlowOverlay — ribbons', () => {
 
   /**
    * The noise budget. A busy router has hundreds of connections through
-   * dozens of rules; animating them all is a screen of moving dashes that says
+   * dozens of rules; animating them all is a screen of moving pulses that says
    * nothing. Only the top N by download rate move — the rest are lit but
    * still, so the shape of the traffic is visible and the motion is meaning.
    */
@@ -118,7 +118,7 @@ describe('speed → motion', () => {
    * Log scale, because 10 KB/s and 10 MB/s must BOTH read as motion. Linear
    * makes everything below the fastest edge look stopped.
    */
-  test('faster traffic means a shorter dash cycle, on a log scale', () => {
+  test('faster traffic means a faster pulse, on a log scale', () => {
     const kb = dashDurationFor(1_000)
     const tenKb = dashDurationFor(10_000)
     const mb = dashDurationFor(1_000_000)

@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
         >
           <span
             class="h-1.5 w-1.5 rounded-full"
-            :class="liveEnabled ? 'bg-white animate-pulse' : running ? 'bg-emerald-500' : 'bg-gray-400'"
+            :class="liveEnabled ? 'bg-emerald-500' : 'bg-gray-400'"
           ></span>
           <SignalIcon class="h-3.5 w-3.5" />
           {{ $t('routeFlow.live.toggle') }}
@@ -433,8 +433,10 @@ onBeforeUnmount(() => {
         </span>
         <template v-if="liveEnabled">
           <span class="inline-flex items-center gap-1.5">
+            <!-- A lit ribbon with one pulse on it — what the top N look like. -->
             <svg width="22" height="8" aria-hidden="true">
-              <line x1="0" y1="4" x2="22" y2="4" stroke-width="2" stroke-dasharray="5 4" class="stroke-primary-600 dark:stroke-primary-300" />
+              <line x1="1" y1="4" x2="21" y2="4" stroke-width="2" stroke-linecap="round" class="stroke-primary-400 dark:stroke-primary-600 opacity-80" />
+              <line x1="8" y1="4" x2="14" y2="4" stroke-width="2.5" stroke-linecap="round" class="stroke-primary-600 dark:stroke-primary-300" />
             </svg>
             {{ $t('routeFlow.live.legendMoving', { n: TOP_N }) }}
           </span>
