@@ -15,6 +15,7 @@ import dnsFlow from './dnsFlow'
 import dnsTimeline from './dnsTimeline'
 import route from './route'
 import routeProbe from './routeProbe'
+import routeFlow from './routeFlow'
 import rule from './rule'
 import schema from './schema'
 import experimental from './experimental'
@@ -43,6 +44,7 @@ export default {
   dnsTimeline,
   route,
   routeProbe,
+  routeFlow,
   rule,
   schema,
   experimental,

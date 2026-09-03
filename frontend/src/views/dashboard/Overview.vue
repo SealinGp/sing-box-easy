@@ -10,11 +10,22 @@ import SubscriptionsOverviewCard from '../../components/SubscriptionsOverviewCar
 import DnsProbeCard from '../../components/DnsProbeCard.vue'
 import RouteProbeCard from '../../components/RouteProbeCard.vue'
 import ApiEndpointsCard from '../../components/ApiEndpointsCard.vue'
+import RouteTopologyCard from '../../components/RouteTopologyCard.vue'
 </script>
 
 <template>
   <div class="page-shell">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+      <!--
+        What the config DOES, before anything below reports how it is doing.
+        Spans the grid because the diagram is three columns wide in its own
+        right, and because it is the one tile that answers a question about the
+        configuration rather than about the running service.
+      -->
+      <div class="md:col-span-2 lg:col-span-3">
+        <RouteTopologyCard />
+      </div>
+
       <!-- Is sing-box running, and the controls plus the three places to look
            next when it is not -->
       <ServiceStatusCard />

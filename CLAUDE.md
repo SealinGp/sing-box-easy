@@ -253,6 +253,11 @@ refresh, which would otherwise churn the outbound list.
   - `views/InitWizard.vue` - Multi-step initialization (steps in `views/init-steps/`)
   - `views/Dashboard.vue` - Main dashboard with nested routes
   - `views/dashboard/` - Feature-specific views (Config, DNS, Inbounds, Outbounds, Route, Experimental, Subscriptions, Log, Overview)
+- **Overview traffic-flow card** (`RouteTopologyCard` + `RouteFlowDiagram`, model in `utils/routeTopology.ts`, geometry in `utils/flowLayout.ts`): draws `inbounds → route.rules → outbounds` from one `GET /config` read. The Route page lists rules as rows, which is right for editing one and wrong for seeing what the config does — two facts are invisible in a list. First, **several rules routinely share one outbound**: the production config reaches `🤖 AI` from three unrelated rules, so exits are keyed by tag and the ribbons converge on a single node, fanned across its edge. The convergence IS the OR; a node drawn per rule would claim three outbounds where sing-box has one. Second, the middle column is an **ordered ladder** that stops at the first match, so it is drawn as one.
+
+  Termination is copied from `app/pkg/routeprobe/rule_meta.go`, not reasoned about: only `route`, `reject` and `hijack-dns` stop the walk, and the `direct` ACTION does **not** — sing-box's `route.go` has no case for it. Mirroring that upstream quirk is deliberate; a picture that silently corrects the engine is a picture of a config that is not running. The three fall-through cases (`route.final` / first outbound / synthesised direct) stay separate for the same reason they do in `routeprobe` — reporting "final" for all three sends someone hunting for a key that is not in their config.
+
+  It also surfaces two problems `sing-box check` passes on: a rule naming an **outbound that does not exist** (sing-box only fails on this at START) and rules **stranded below a condition-less terminal rule**, which matches everything (`rule_abstract.go:55`) and is never reported at all. An inverted condition-less rule is excluded from that check — it matches nothing, not everything.
 
 ## Key Development Patterns
 
@@ -419,7 +424,7 @@ API surface groups (registered in `routes.go`):
 - Protocol parsers have test files (e.g., `trojan_test.go`); only Shadowsocks/VMess/Trojan parsing is covered today.
 - Use `go test -v` for verbose output.
 - Test node link formats inside the parser tests serve as documentation for accepted URI shapes.
-- Frontend logic is tested with `bun test` (`frontend/src/**/*.test.ts`) — the schema curation files, and `types/ruleLadder.test.ts`. Components themselves are untested; add Vue Test Utils if that changes.
+- Frontend logic is tested with `bun test` (`frontend/src/**/*.test.ts`) — the schema curation files, `types/ruleLadder.test.ts`, and the Overview flow diagram's two pure halves (`utils/routeTopology.test.ts` for the model, `utils/flowLayout.test.ts` for the geometry). Components themselves are untested; add Vue Test Utils if that changes. The diagram pattern is to keep everything testable OUT of the `.vue` file — the model and the layout are plain functions, so the component is markup only.
 
 ## Response Envelope Reference
 

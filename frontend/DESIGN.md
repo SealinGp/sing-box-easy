@@ -323,6 +323,32 @@ opt-in `direct` outbound.
 > the shim once nothing depends on it. 28 `.vue` files still do; 3 opt in
 > explicitly.
 
+### Diagrams
+
+Three components draw the config rather than list it: `RuleLadder` (a probe's
+walk), `DnsRuleFlow` (the DNS decision ladder) and `RouteFlowDiagram` (the
+Overview traffic-flow card). They share a house style.
+
+- **No graph library, ever.** The whole frontend is embedded in the Go binary,
+  which has to fit an OpenWrt router's overlay. Every diagram so far is either a
+  ladder or a fixed set of columns, and both are arithmetic.
+- **Geometry is computed outside the component.** `utils/flowLayout.ts` returns
+  boxes and path strings from counts alone — no DOM measurement, no
+  `ResizeObserver`, no wrong first frame — so the component is only markup and
+  the layout is unit-testable. Pure-TS layout + dumb SVG is the pattern to copy.
+- **Colour comes from Tailwind `fill-*` / `stroke-*` utilities**, never a hex
+  and never a CSS variable, so an SVG picks up both themes exactly the way a
+  `div` does. Class strings returned from `<script setup>` helpers are still
+  scanned by Tailwind, because they are literals in the file.
+- **Text is fitted, not clipped by CSS.** SVG has no `text-overflow`, so
+  `fitToBox(text, px, fontSize)` estimates the advance width — counting CJK and
+  emoji as double, which this panel's tags are full of — and every fitted label
+  carries a `<title>` with the untruncated value.
+- **Hover is one `focus` ref, read from both ends.** Hovering a rule lights its
+  outbound; hovering an outbound lights every rule that reaches it. Unfocused
+  elements drop to `opacity-40` rather than hiding, so the shape of the whole
+  never changes under the cursor.
+
 ---
 
 ## 6. The volt layer (`src/volt/`)
