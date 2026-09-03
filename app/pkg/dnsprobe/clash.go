@@ -1,25 +1,22 @@
 package dnsprobe
 
 import (
-	"encoding/json"
-	"errors"
+	"context"
 	"fmt"
-	"net"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/clashapi"
 	"github.com/sagernet/sing-box/option"
 )
 
-// clashTimeout bounds a single /dns/query call. sing-box's own DNS timeout is
-// shorter, so this only catches an unreachable controller.
-const clashTimeout = 10 * time.Second
-
 // ErrClashAPIDisabled is returned when the running config has no clash_api
 // block, so there is no way to ask sing-box what it resolved.
-var ErrClashAPIDisabled = errors.New("clash_api is not enabled in the sing-box config")
+//
+// An alias of the shared client's error, kept so existing callers and messages
+// are unchanged.
+var ErrClashAPIDisabled = clashapi.ErrDisabled
 
 // Answer is one resource record from a DNS response.
 type Answer struct {
@@ -51,96 +48,39 @@ type clashResponse struct {
 	} `json:"Answer"`
 }
 
-// ClashClient queries sing-box's Clash API.
+// ClashClient queries sing-box's Clash API for the DNS probe. The transport —
+// controller URL, bearer, status classification — lives in package clashapi;
+// this adds the two calls the probe needs.
 type ClashClient struct {
-	baseURL string
-	secret  string
-	http    *http.Client
+	*clashapi.Client
 }
 
 // NewClashClient builds a client from the running sing-box config. It returns
 // ErrClashAPIDisabled when the config has no external controller.
 func NewClashClient(experimental *option.ExperimentalOptions) (*ClashClient, error) {
-	if experimental == nil || experimental.ClashAPI == nil {
-		return nil, ErrClashAPIDisabled
-	}
-	controller := strings.TrimSpace(experimental.ClashAPI.ExternalController)
-	if controller == "" {
-		return nil, ErrClashAPIDisabled
-	}
-
-	host, err := controllerURL(controller)
+	client, err := clashapi.New(experimental)
 	if err != nil {
 		return nil, err
 	}
-
-	return &ClashClient{
-		baseURL: host,
-		secret:  strings.TrimSpace(experimental.ClashAPI.Secret),
-		http:    &http.Client{Timeout: clashTimeout},
-	}, nil
+	return &ClashClient{Client: client}, nil
 }
 
-// controllerURL turns an external_controller value into a base URL.
-//
-// The value is a listen address, not a URL: it may be "127.0.0.1:9090",
-// ":9090" or "0.0.0.0:9090". A wildcard or empty host is a bind address, not a
-// reachable one, so it is rewritten to loopback — the panel and sing-box run on
-// the same host.
+// controllerURL is kept as a package-level name for the tests that pin the
+// bind-address rewrite; the logic now lives in clashapi.
 func controllerURL(controller string) (string, error) {
-	if strings.Contains(controller, "://") {
-		parsed, err := url.Parse(controller)
-		if err != nil {
-			return "", fmt.Errorf("invalid external_controller %q: %w", controller, err)
-		}
-		return strings.TrimSuffix(parsed.String(), "/"), nil
-	}
-
-	host, port, err := net.SplitHostPort(controller)
-	if err != nil {
-		return "", fmt.Errorf("invalid external_controller %q: %w", controller, err)
-	}
-	switch host {
-	case "", "0.0.0.0", "::", "[::]":
-		host = "127.0.0.1"
-	}
-
-	return "http://" + net.JoinHostPort(host, port), nil
+	return clashapi.ControllerURL(controller)
 }
 
 // Query asks sing-box to resolve name/qType through its own DNS router.
 func (c *ClashClient) Query(name, qType string) (*LiveResult, error) {
-	endpoint := fmt.Sprintf("%s/dns/query?name=%s&type=%s",
-		c.baseURL, url.QueryEscape(name), url.QueryEscape(qType))
-
-	request, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build clash api request: %w", err)
-	}
-	if c.secret != "" {
-		request.Header.Set("Authorization", "Bearer "+c.secret)
-	}
-
-	started := time.Now()
-	response, err := c.http.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("clash api unreachable at %s: %w", c.baseURL, err)
-	}
-	defer response.Body.Close()
-	elapsed := time.Since(started)
-
-	switch response.StatusCode {
-	case http.StatusOK:
-	case http.StatusUnauthorized:
-		return nil, errors.New("clash api rejected the request: check experimental.clash_api.secret")
-	default:
-		return nil, fmt.Errorf("clash api returned status %d", response.StatusCode)
-	}
+	path := fmt.Sprintf("/dns/query?name=%s&type=%s", url.QueryEscape(name), url.QueryEscape(qType))
 
 	var decoded clashResponse
-	if err := json.NewDecoder(response.Body).Decode(&decoded); err != nil {
-		return nil, fmt.Errorf("failed to decode clash api response: %w", err)
+	started := time.Now()
+	if err := c.Get(context.Background(), path, &decoded); err != nil {
+		return nil, err
 	}
+	elapsed := time.Since(started)
 
 	result := &LiveResult{
 		Status:    decoded.Status,
@@ -167,29 +107,11 @@ func (c *ClashClient) Query(name, qType string) (*LiveResult, error) {
 // undecidable, which makes every prediction below them a guess. It is one HTTP
 // call to turn the most common source of uncertainty into a fact.
 func (c *ClashClient) Mode() (string, error) {
-	request, err := http.NewRequest(http.MethodGet, c.baseURL+"/configs", nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to build clash api request: %w", err)
-	}
-	if c.secret != "" {
-		request.Header.Set("Authorization", "Bearer "+c.secret)
-	}
-
-	response, err := c.http.Do(request)
-	if err != nil {
-		return "", fmt.Errorf("clash api unreachable at %s: %w", c.baseURL, err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("clash api returned status %d", response.StatusCode)
-	}
-
 	var decoded struct {
 		Mode string `json:"mode"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&decoded); err != nil {
-		return "", fmt.Errorf("failed to decode clash api response: %w", err)
+	if err := c.Get(context.Background(), "/configs", &decoded); err != nil {
+		return "", err
 	}
 	return decoded.Mode, nil
 }

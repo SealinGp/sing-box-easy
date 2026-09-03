@@ -29,9 +29,27 @@ import { useI18n } from 'vue-i18n'
 import { FONT, NODE_PAD, fitToBox, layoutRouteFlow } from '../utils/flowLayout'
 import { formatCondition } from '../utils/routeTopology'
 import type { RouteTopology, TopologyRule } from '../types/routeTopology'
-import type { ExitBox, Ribbon, RuleBox } from '../utils/flowLayout'
+import type { ExitBox, InboundBox, Ribbon, RuleBox } from '../utils/flowLayout'
+import { formatRate } from '../utils/flowOverlay'
+import type { FlowOverlay, LiveEdge } from '../utils/flowOverlay'
 
-const props = defineProps<{ topology: RouteTopology }>()
+const props = defineProps<{
+  topology: RouteTopology
+  /**
+   * The live overlay, when the card is watching real traffic. Null keeps the
+   * drawing static. The picture never changes shape between the two — the
+   * overlay only lights, widens and animates what is already there, so an
+   * operator toggling Live compares actual against expected on ONE diagram.
+   */
+  live?: FlowOverlay | null
+  /**
+   * Fill the container's HEIGHT, keeping the aspect ratio, instead of
+   * rendering at the canvas's natural size. Used full-window, where the goal is
+   * the whole ladder on screen at once; letterboxing on a wide screen is fine,
+   * a scrollbar is not.
+   */
+  fit?: boolean
+}>()
 
 const { t } = useI18n()
 
@@ -83,6 +101,32 @@ const focusedRules = computed<Set<number>>(() => {
 })
 
 const dimmed = computed(() => focus.value !== null)
+
+/* ── Live overlay ─────────────────────────────────────────────────────────── */
+
+const isLive = computed(() => props.live !== null && props.live !== undefined)
+
+const liveRibbon = (ribbon: Ribbon): LiveEdge | undefined => props.live?.ribbons.get(ribbon.id)
+
+const liveRule = (index: number) => props.live?.rules.get(index)
+const liveExit = (tag: string) => props.live?.exits.get(tag)
+const liveInbound = (box: InboundBox) => props.live?.ribbons.get(`in:${box.tag || box.type}`)
+
+const rate = (bytesPerSec: number): string => t('routeFlow.live.rate', { rate: formatRate(bytesPerSec) })
+
+/**
+ * Opacity for an element under the two dimming regimes.
+ *
+ * Hover wins: while something is focused, only the focused set is bright.
+ * Otherwise, in live mode, elements carrying no traffic step back so the
+ * moving ones read against a quiet background — but never vanish, since the
+ * expected shape is what the live traffic is being compared to.
+ */
+const fade = (focused: boolean, carrying: boolean): string => {
+  if (dimmed.value) return focused ? '' : 'opacity-40'
+  if (isLive.value) return carrying ? '' : 'opacity-35'
+  return ''
+}
 
 const isRibbonLit = (ribbon: Ribbon): boolean => {
   if (!dimmed.value) return false
@@ -210,6 +254,48 @@ const sourceKey = computed(() => {
   return source === 'first_outbound' ? 'firstOutbound' : source === 'implicit_direct' ? 'implicitDirect' : 'final'
 })
 
+const connectionsLabel = (n: number) => t('routeFlow.live.connections', { n }, n)
+
+/** Extra tooltip lines when a rule is carrying traffic. */
+const liveRuleTitle = (index: number): string => {
+  const flow = liveRule(index)
+  if (!flow) return ''
+  const lines = [`↓ ${rate(flow.down)} · ↑ ${rate(flow.up)} · ${connectionsLabel(flow.connections)}`]
+  if (flow.hosts.length > 0) {
+    lines.push(`${t('routeFlow.live.hosts')}: ${flow.hosts.map((h) => `${h.host} (${rate(h.down)})`).join(', ')}`)
+  }
+  return `\n${lines.join('\n')}`
+}
+
+const liveExitTitle = (tag: string): string => {
+  const flow = liveExit(tag)
+  if (!flow) return ''
+  const lines = [`↓ ${rate(flow.down)} · ↑ ${rate(flow.up)} · ${connectionsLabel(flow.connections)}`]
+  for (const via of flow.via) {
+    lines.push(`${t('routeFlow.live.via', { tag: via.tag })}: ${rate(via.down)} · ${via.connections}`)
+  }
+  return `\n${lines.join('\n')}`
+}
+
+const liveInboundTitle = (box: InboundBox): string => {
+  const flow = liveInbound(box)
+  if (!flow) return ''
+  return `\n↓ ${rate(flow.down)} · ↑ ${rate(flow.up)} · ${connectionsLabel(flow.connections)}`
+}
+
+/**
+ * Live second line for an exit: the leaf a group actually dialled through.
+ * The expected diagram deliberately does not draw group members; the one that
+ * is carrying bytes right now is the exception worth naming.
+ */
+const exitLiveMeta = (box: ExitBox): string => {
+  const flow = liveExit(box.id)
+  if (!flow) return exitMeta(box)
+  const top = flow.via[0]
+  const text = top ? t('routeFlow.live.via', { tag: top.tag }) : exitMeta(box)
+  return fitToBox(text, box.width - NODE_PAD * 2, FONT.meta)
+}
+
 const inboundMeta = (box: { type: string; listenPort?: number }): string =>
   box.listenPort ? `${box.type} · :${box.listenPort}` : box.type
 
@@ -227,31 +313,49 @@ const fallthroughLabel = computed(() =>
     :viewBox="`0 0 ${layout.width} ${layout.height}`"
     :width="layout.width"
     :height="layout.height"
-    class="max-w-full h-auto mx-auto block select-none"
+    :class="fit ? 'h-full w-auto max-w-full mx-auto block select-none' : 'max-w-full h-auto mx-auto block select-none'"
     role="img"
     :aria-label="$t('routeFlow.ariaLabel')"
     @mouseleave="focus = null"
   >
     <!-- Ribbons first, so every node paints over them. -->
     <g fill="none" stroke-linecap="round">
-      <path
-        v-for="ribbon in layout.ribbons"
-        :key="ribbon.id"
-        :d="ribbon.d"
-        :stroke-width="isRibbonLit(ribbon) ? 2.5 : 1.5"
-        :stroke-dasharray="ribbon.kind === 'final' ? '5 4' : undefined"
-        :class="[
-          ribbon.kind === 'final'
-            ? 'stroke-gray-400 dark:stroke-slate-500'
-            : 'stroke-primary-400 dark:stroke-primary-600',
-          isRibbonLit(ribbon)
-            ? 'opacity-100'
-            : dimmed
-              ? 'opacity-15'
-              : 'opacity-60',
-        ]"
-        class="transition-opacity duration-150"
-      />
+      <template v-for="ribbon in layout.ribbons" :key="ribbon.id">
+        <path
+          :d="ribbon.d"
+          :stroke-width="isRibbonLit(ribbon) ? 2.5 : liveRibbon(ribbon)?.width ?? 1.5"
+          :stroke-dasharray="ribbon.kind === 'final' ? '5 4' : undefined"
+          :class="[
+            ribbon.kind === 'final'
+              ? 'stroke-gray-400 dark:stroke-slate-500'
+              : 'stroke-primary-400 dark:stroke-primary-600',
+            isRibbonLit(ribbon)
+              ? 'opacity-100'
+              : dimmed
+                ? 'opacity-15'
+                : isLive
+                  ? liveRibbon(ribbon)
+                    ? 'opacity-80'
+                    : 'opacity-15'
+                  : 'opacity-60',
+          ]"
+          class="transition-opacity duration-150"
+        />
+        <!--
+          The moving dashes: a second stroke over the ribbon whose dash offset
+          cycles once per `durationSec`. Speed is the whole message — the cycle
+          shortens on a log scale with bytes/s (flowOverlay.ts) — so nothing
+          here is decorative. Only the top N ribbons get one.
+        -->
+        <path
+          v-if="liveRibbon(ribbon)?.animated"
+          :d="ribbon.d"
+          :stroke-width="Math.max((liveRibbon(ribbon)?.width ?? 1.5) - 0.5, 1)"
+          stroke-dasharray="7 11"
+          class="flow-dash stroke-primary-600 dark:stroke-primary-300"
+          :style="{ animationDuration: `${liveRibbon(ribbon)?.durationSec ?? 2}s` }"
+        />
+      </template>
     </g>
 
     <!-- Left column: inbounds. -->
@@ -261,7 +365,7 @@ const fallthroughLabel = computed(() =>
       class="cursor-default"
       @mouseenter="focus = { kind: 'inbound', id: box.tag }"
     >
-      <title>{{ box.tag || box.type }}</title>
+      <title>{{ box.tag || box.type }}{{ liveInboundTitle(box) }}</title>
       <rect
         :x="box.x"
         :y="box.y"
@@ -270,7 +374,7 @@ const fallthroughLabel = computed(() =>
         rx="7"
         stroke-width="1"
         class="fill-white stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-600"
-        :class="dimmed && !(focus?.kind === 'inbound' && focus.id === box.tag) ? 'opacity-40' : ''"
+        :class="fade(focus?.kind === 'inbound' && focus.id === box.tag, !!liveInbound(box))"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -288,6 +392,16 @@ const fallthroughLabel = computed(() =>
       >
         {{ inboundMeta(box) }}
       </text>
+      <text
+        v-if="liveInbound(box)"
+        :x="box.x + box.width - NODE_PAD"
+        :y="box.y + 27"
+        :font-size="FONT.meta"
+        text-anchor="end"
+        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+      >
+        ↓{{ rate(liveInbound(box)!.down) }}
+      </text>
     </g>
 
     <!-- Middle column: the rule ladder, in config order. -->
@@ -297,7 +411,7 @@ const fallthroughLabel = computed(() =>
       class="cursor-default"
       @mouseenter="focus = { kind: 'rule', id: box.index }"
     >
-      <title>{{ ruleTitle(box.rule) }}</title>
+      <title>{{ ruleTitle(box.rule) }}{{ liveRuleTitle(box.index) }}</title>
       <rect
         :x="box.x"
         :y="box.y"
@@ -306,10 +420,7 @@ const fallthroughLabel = computed(() =>
         rx="5"
         stroke-width="1"
         :stroke-dasharray="box.rule.terminal ? undefined : '4 3'"
-        :class="[
-          ruleClass(box.rule),
-          dimmed && !focusedRules.has(box.index) ? 'opacity-40' : '',
-        ]"
+        :class="[ruleClass(box.rule), fade(focusedRules.has(box.index), !!liveRule(box.index))]"
       />
       <text
         :x="box.x + 8"
@@ -328,7 +439,17 @@ const fallthroughLabel = computed(() =>
         {{ ruleLabel(box) }}
       </text>
       <text
-        v-if="ruleBadge(box.rule)"
+        v-if="liveRule(box.index)"
+        :x="box.x + box.width - 8"
+        :y="box.y + 17"
+        :font-size="FONT.meta"
+        text-anchor="end"
+        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+      >
+        ↓{{ rate(liveRule(box.index)!.down) }} · {{ liveRule(box.index)!.connections }}
+      </text>
+      <text
+        v-else-if="ruleBadge(box.rule)"
         :x="box.x + box.width - 8"
         :y="box.y + 17"
         :font-size="FONT.meta"
@@ -359,7 +480,7 @@ const fallthroughLabel = computed(() =>
         stroke-width="1"
         stroke-dasharray="5 4"
         class="fill-transparent stroke-gray-400 dark:stroke-slate-500"
-        :class="dimmed ? 'opacity-40' : ''"
+        :class="fade(false, !!live?.finalFlow)"
       />
       <text
         :x="layout.fallthrough.x + 8"
@@ -368,6 +489,16 @@ const fallthroughLabel = computed(() =>
         class="fill-gray-500 dark:fill-gray-400"
       >
         {{ fallthroughLabel }}
+      </text>
+      <text
+        v-if="live?.finalFlow"
+        :x="layout.fallthrough.x + layout.fallthrough.width - 8"
+        :y="layout.fallthrough.y + 17"
+        :font-size="FONT.meta"
+        text-anchor="end"
+        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+      >
+        ↓{{ rate(live!.finalFlow!.down) }} · {{ live!.finalFlow!.connections }}
       </text>
     </g>
 
@@ -378,7 +509,7 @@ const fallthroughLabel = computed(() =>
       class="cursor-default"
       @mouseenter="focus = { kind: 'exit', id: box.id }"
     >
-      <title>{{ exitTitle(box) }}</title>
+      <title>{{ exitTitle(box) }}{{ liveExitTitle(box.id) }}</title>
       <rect
         :x="box.x"
         :y="box.y"
@@ -386,7 +517,7 @@ const fallthroughLabel = computed(() =>
         :height="box.height"
         rx="7"
         stroke-width="1.5"
-        :class="[exitClass(box), dimmed && focusedExit !== box.id ? 'opacity-40' : '']"
+        :class="[exitClass(box), fade(focusedExit === box.id, !!liveExit(box.id))]"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -402,10 +533,10 @@ const fallthroughLabel = computed(() =>
         :font-size="FONT.meta"
         class="fill-gray-500 dark:fill-gray-400"
       >
-        {{ exitMeta(box) }}
+        {{ liveExit(box.id) ? exitLiveMeta(box) : exitMeta(box) }}
       </text>
       <!-- How many rules converge here. The count IS the OR. -->
-      <g v-if="box.exit.ruleIndices.length > 1">
+      <g v-if="box.exit.ruleIndices.length > 1 && !liveExit(box.id)">
         <rect
           :x="box.x + box.width - 26"
           :y="box.y + 7"
@@ -424,6 +555,42 @@ const fallthroughLabel = computed(() =>
           {{ box.exit.ruleIndices.length }}
         </text>
       </g>
+      <!-- Live: the rate leaving here, in the badge's place. -->
+      <text
+        v-if="liveExit(box.id)"
+        :x="box.x + box.width - NODE_PAD"
+        :y="box.y + 17"
+        :font-size="FONT.meta"
+        text-anchor="end"
+        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+      >
+        ↓{{ rate(liveExit(box.id)!.down) }}
+      </text>
     </g>
   </svg>
 </template>
+
+<style scoped>
+/*
+ * Dashes travel from the ribbon's start (left) to its end (right): the offset
+ * decreases by exactly one dash period per cycle, so the pattern loops without
+ * a visible seam. Duration is set inline per ribbon from its bytes/s.
+ */
+.flow-dash {
+  animation-name: flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  stroke-linecap: round;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-dash {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+</style>

@@ -289,7 +289,8 @@ export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
     const fromX = box.x + box.width
     const fromY = box.y + box.height / 2
     ribbons.push({
-      id: `in:${box.tag || box.type}:${box.y}`,
+      // Keyed by tag so a live overlay can address the ribbon by inbound.
+      id: `in:${box.tag || box.type}`,
       kind: 'inbound',
       inboundTag: box.tag,
       d: curve(fromX, fromY, entry.x, entry.y),

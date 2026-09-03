@@ -55,4 +55,38 @@ export default {
   // Warnings surfaced above the diagram, where they are actionable.
   warnUnreachable: '{n} rule is never reached | {n} rules are never reached',
   warnMissing: '{n} rule points at an outbound that does not exist | {n} rules point at outbounds that do not exist',
+
+  // The live overlay: real connections lighting the expected drawing.
+  live: {
+    toggle: 'Live',
+    on: 'Watching live traffic — click to stop',
+    off: 'Light the diagram with real traffic',
+    needsRunning: 'Start sing-box to watch live traffic',
+    connecting: 'Connecting…',
+    failed: 'Live traffic unavailable',
+    retrying: 'Retrying…',
+    down: 'Down',
+    up: 'Up',
+    connections: '{n} connection | {n} connections',
+    shownOf: '{shown} of {all}',
+    closed: '{n} closed',
+    filterSource: 'Source IP',
+    filterHost: 'Host contains…',
+    clearFilter: 'Clear',
+    unmatched: '{n} connection lit by outbound only — its rule is not in the running list (sing-box was reloaded) | {n} connections lit by outbound only — their rules are not in the running list (sing-box was reloaded)',
+    via: 'via {tag}',
+    legendMoving: 'Moving: top {n} by download',
+    legendLit: 'Lit: carrying traffic',
+    idle: 'No traffic in the last second',
+    rate: '{rate}/s',
+    hosts: 'Top destinations',
+  },
+
+  // In-window full-size mode for the diagram.
+  fullWindow: {
+    enter: 'Show full window',
+    exit: 'Back to the card',
+    restore: 'Restore',
+    escHint: 'Esc to close',
+  },
 }

@@ -108,6 +108,10 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// wildcard collision — nothing owns `/route/:x`.
 	auth.POST("/route/probe", handler.ProbeRoute)
 
+	// Live traffic for the Overview diagram (SSE). Proxied through the panel so
+	// the Clash API secret stays server-side — see traffic_handler.go.
+	auth.GET("/traffic/flow/stream", handler.StreamTrafficFlow)
+
 	// Route Rule-sets
 	auth.GET("/route/rule-sets", handler.GetRuleSets)
 	auth.POST("/route/rule-sets", handler.AddRuleSet)

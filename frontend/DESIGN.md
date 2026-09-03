@@ -348,6 +348,14 @@ Overview traffic-flow card). They share a house style.
   outbound; hovering an outbound lights every rule that reaches it. Unfocused
   elements drop to `opacity-40` rather than hiding, so the shape of the whole
   never changes under the cursor.
+- **A live overlay never changes the shape.** `RouteFlowDiagram` takes an
+  optional `live` prop and, when set, only widens ribbons, lights nodes, and
+  draws a second dashed stroke over the top-N ribbons with a CSS
+  `stroke-dashoffset` animation whose `animation-duration` is set inline per
+  ribbon from its bytes/s. One keyframe, no JS timers, GPU-composited; honours
+  `prefers-reduced-motion` by freezing the dashes at 70% opacity. Idle elements
+  fade to `opacity-35` — the expected shape is what the live traffic is being
+  compared against, so it must stay legible.
 
 ---
 

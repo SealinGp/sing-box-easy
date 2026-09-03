@@ -50,4 +50,36 @@ export default {
 
   warnUnreachable: '有 {n} 条规则永远不会命中',
   warnMissing: '有 {n} 条规则指向了不存在的出站',
+
+  live: {
+    toggle: '实时',
+    on: '正在显示实时流量 —— 点击停止',
+    off: '用真实流量点亮这张图',
+    needsRunning: '启动 sing-box 后可查看实时流量',
+    connecting: '连接中…',
+    failed: '实时流量不可用',
+    retrying: '重试中…',
+    down: '下行',
+    up: '上行',
+    connections: '{n} 个连接',
+    shownOf: '{shown} / {all}',
+    closed: '{n} 个已关闭',
+    filterSource: '来源 IP',
+    filterHost: '目标包含…',
+    clearFilter: '清除',
+    unmatched: '有 {n} 个连接仅按出站点亮 —— 其规则不在当前运行的规则列表中（sing-box 已重载）',
+    via: '经 {tag}',
+    legendMoving: '流动：按下行速率取前 {n} 条',
+    legendLit: '点亮：有流量经过',
+    idle: '最近一秒没有流量',
+    rate: '{rate}/s',
+    hosts: '主要目标',
+  },
+
+  fullWindow: {
+    enter: '全窗口显示',
+    exit: '回到卡片',
+    restore: '恢复',
+    escHint: '按 Esc 关闭',
+  },
 }
