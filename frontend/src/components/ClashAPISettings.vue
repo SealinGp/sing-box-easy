@@ -200,10 +200,14 @@ onMounted(() => {
           </label>
           <DashboardUrlSelect v-model="settings.external_ui_download_url" />
           <!-- Fetch the chosen dashboard into `external_ui` without leaving the page. -->
+          <!-- The download writes `external_ui` server-side; mirror that back
+               into the field rather than refetching, which would discard any
+               other edit the operator has not saved yet. -->
           <DashboardDownloader
             class="mt-3"
             :target-dir="settings.external_ui"
             :download-url="settings.external_ui_download_url"
+            @installed="settings.external_ui = $event"
           />
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {{ $t('experimental.clash.externalUiDownloadUrlHelp') }}

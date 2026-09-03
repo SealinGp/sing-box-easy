@@ -28,7 +28,7 @@ export default {
       downloadOk: 'Dashboard downloaded successfully.',
       downloadFailed: 'Dashboard download failed',
       statusFailed: 'Failed to check the download status',
-      downloadHint: 'Downloads the selected dashboard to the External UI path above. Save afterwards to persist the URL.',
+      downloadHint: 'Downloads the selected dashboard into the External UI path above and writes that path into the config. Save afterwards to persist the download URL too.',
       proxyToggle: 'Use a proxy',
       proxyPlaceholder: 'e.g. http://127.0.0.1:7890 or socks5://127.0.0.1:1080',
     },

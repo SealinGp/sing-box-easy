@@ -28,7 +28,7 @@ export default {
       downloadOk: '面板下载成功。',
       downloadFailed: '面板下载失败',
       statusFailed: '获取下载状态失败',
-      downloadHint: '将所选面板下载到上方的外部界面路径。下载后请点击保存以保留该地址。',
+      downloadHint: '将所选面板下载到上方的外部界面路径，并自动把该路径写入配置。下载后请点击保存以保留下载地址。',
       proxyToggle: '使用代理',
       proxyPlaceholder: '例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080',
     },

@@ -31,6 +31,13 @@ interface Props {
   disabled?: boolean
 }
 
+/**
+ * Emitted once the files are on disk. The backend writes `external_ui` into
+ * config.json itself, so the form would otherwise keep showing the stale (often
+ * empty) path until a manual reload.
+ */
+const emit = defineEmits<{ installed: [path: string] }>()
+
 const props = withDefaults(defineProps<Props>(), {
   targetDir: '',
   downloadUrl: '',
@@ -106,7 +113,7 @@ const pollTask = (taskId: string) => {
       if (data.status === 'completed') {
         stopPolling()
         downloading.value = false
-        await refreshStatus()
+        await refreshStatus(true)
         return
       }
 
@@ -126,11 +133,17 @@ const pollTask = (taskId: string) => {
   }, POLL_INTERVAL_MS)
 }
 
-/** Refresh the "installed at ..." hint. Failure here is not worth surfacing. */
-const refreshStatus = async () => {
+/**
+ * Refresh the "installed at ..." hint. Failure here is not worth surfacing.
+ *
+ * `announce` is only set after a download the user just triggered — on mount it
+ * would rewrite the form field from the server on every page visit.
+ */
+const refreshStatus = async (announce = false) => {
   try {
     const { data } = await dashboardService.getDashboardStatus()
     installedPath.value = data.installed ? data.path : ''
+    if (announce && installedPath.value) emit('installed', installedPath.value)
   } catch {
     installedPath.value = ''
   }
@@ -138,7 +151,7 @@ const refreshStatus = async () => {
 
 // This component only mounts once the parent's config has loaded, so mounting
 // is the right moment to prime the "installed at ..." hint.
-onMounted(refreshStatus)
+onMounted(() => refreshStatus())
 </script>
 
 <template>

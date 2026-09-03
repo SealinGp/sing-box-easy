@@ -78,7 +78,7 @@ func NewHandler(
 
 	// Pass initStateManager and configManager to installer
 	installerManager := installer.NewManager(initStateManager, configManager)
-	dashboardManager := installer.NewDashboardManager(initStateManager)
+	dashboardManager := installer.NewDashboardManager(initStateManager, configManager)
 
 	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
 	// subscription nodes.
