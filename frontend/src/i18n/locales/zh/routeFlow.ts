@@ -1,7 +1,6 @@
 // 流量走向卡片（RouteTopologyCard.vue / RouteFlowDiagram.vue）。
 export default {
   title: '流量走向',
-  desc: '所有入站都进入同一条规则链。sing-box 在第一条命中的规则处停止，因此顺序本身就是逻辑。',
   ariaLabel: '入站、路由规则与出站的关系图',
   openRoute: '编辑规则',
   refresh: '重新读取配置',
@@ -40,6 +39,7 @@ export default {
   },
 
   legend: {
+    title: '图例',
     converge: '{n} 条规则，同一个出站',
     passthrough: '不终止匹配 —— 后面的规则继续生效',
     unreachable: '永远不会命中：前面有规则匹配所有流量',
@@ -73,10 +73,27 @@ export default {
     unmatched: '有 {n} 个连接仅按出站点亮 —— 其规则不在当前运行的规则列表中（sing-box 已重载）',
     via: '经 {tag}',
     legendMoving: '脉冲：按下行速率取前 {n} 条',
-    legendLit: '点亮：有流量经过',
+    legendLit: '点亮：高于 {rate}',
+    belowFloor: '{n} 条规则低于噪声阈值',
+    busyOnly: '仅显示活跃',
+    busyOnlyHint: '把没有流量的规则折叠成一条；点击折叠条可以展开。',
     idle: '最近一秒没有流量',
     rate: '{rate}/s',
     hosts: '主要目标',
+  },
+
+  zoom: {
+    in: '放大',
+    out: '缩小',
+    fit: '自适应',
+    reset: '恢复自适应',
+    hint: 'Ctrl/⌘ + 滚轮缩放、拖拽平移 · + − 0',
+  },
+
+  collapsed: {
+    label: '{n} 条无流量规则',
+    title: '已折叠 {n} 条规则',
+    expandHint: '点击展开',
   },
 
   fullWindow: {

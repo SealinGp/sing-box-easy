@@ -1,7 +1,6 @@
 // The route topology card (RouteTopologyCard.vue / RouteFlowDiagram.vue).
 export default {
   title: 'Traffic flow',
-  desc: 'Every inbound enters the same rule ladder. sing-box stops at the first rule that matches, so the order is the logic.',
   ariaLabel: 'Diagram of inbounds, routing rules and outbounds',
   openRoute: 'Edit rules',
   refresh: 'Reload from config',
@@ -44,6 +43,7 @@ export default {
   },
 
   legend: {
+    title: 'Legend',
     converge: '{n} rules, one outbound',
     passthrough: 'Does not stop matching — the rules below still run',
     unreachable: 'Never reached: an earlier rule matches everything',
@@ -81,10 +81,32 @@ export default {
     unmatched: '{n} connection lit by outbound only — its rule is not in the running list (sing-box was reloaded) | {n} connections lit by outbound only — their rules are not in the running list (sing-box was reloaded)',
     via: 'via {tag}',
     legendMoving: 'Pulsing: top {n} by download',
-    legendLit: 'Lit: carrying traffic',
+    // The threshold is spelled out: "carrying traffic" is a judgement, and the
+    // operator has to know where the line was drawn to trust a dim row.
+    legendLit: 'Lit: above {rate}',
+    belowFloor: '{n} rule below the noise floor | {n} rules below the noise floor',
+    busyOnly: 'Busy only',
+    busyOnlyHint: 'Fold the rules carrying nothing into a band. Click a band to put them back.',
     idle: 'No traffic in the last second',
     rate: '{rate}/s',
     hosts: 'Top destinations',
+  },
+
+  // Zoom controls. "Fit" is the automatic sizing, not a percentage — the
+  // diagram scales itself to the card (or the window) until told otherwise.
+  zoom: {
+    in: 'Zoom in',
+    out: 'Zoom out',
+    fit: 'Fit',
+    reset: 'Back to fit',
+    hint: 'Ctrl/⌘ + scroll to zoom, drag to pan · + − 0',
+  },
+
+  // Runs of rules folded away by "busy only".
+  collapsed: {
+    label: '{n} rule with no traffic | {n} rules with no traffic',
+    title: '{n} rule folded away | {n} rules folded away',
+    expandHint: 'Click to show them',
   },
 
   // In-window full-size mode for the diagram.

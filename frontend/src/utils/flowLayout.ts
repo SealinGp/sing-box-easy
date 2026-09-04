@@ -37,6 +37,12 @@ const INBOUND_H = 34
 const INBOUND_GAP = 10
 const RULE_H = 26
 const RULE_GAP = 4
+/**
+ * A collapsed band's height. Deliberately shorter than a rule row — the band
+ * stands for rules, it is not one, and at the same height a reader counts it
+ * as a rung of the ladder.
+ */
+const BAND_H = 16
 const EXIT_H = 38
 const EXIT_GAP = 10
 /** Vertical room between the last rule and the fall-through row. */
@@ -138,6 +144,31 @@ export interface FallthroughBox extends Box {
   source: RouteTopology['fallthrough']['source']
 }
 
+/**
+ * A run of hidden rules, standing in for them at their own place in the ladder.
+ *
+ * Position is the whole contract. The ladder is evaluated top-down and stops at
+ * the first match, so a band floated to the bottom — or a ladder silently
+ * closed up around the gap — would assert an evaluation order the config does
+ * not have. A band sits exactly where the rules it replaces sit.
+ */
+export interface CollapsedBand extends Box {
+  /** The hidden rules' indices, in ladder order. */
+  indices: number[]
+}
+
+export interface LayoutOptions {
+  /**
+   * Rules to fold into collapsed bands rather than draw.
+   *
+   * Used by the card's "busy only" mode to shorten a 28-rung ladder to the few
+   * rungs carrying traffic. Everything else about the layout is unchanged —
+   * the three columns, the fall-through row and the exit fan all still follow
+   * from what remains.
+   */
+  hiddenRuleIndices?: ReadonlySet<number>
+}
+
 export type RibbonKind = 'inbound' | 'rule' | 'final'
 
 export interface Ribbon {
@@ -164,6 +195,8 @@ export interface FlowLayout {
   rules: RuleBox[]
   exits: ExitBox[]
   fallthrough: FallthroughBox
+  /** Runs of hidden rules, in ladder order. Empty unless `hiddenRuleIndices` was given. */
+  bands: CollapsedBand[]
   ribbons: Ribbon[]
   /** Where every inbound ribbon lands: the top of the rule ladder. */
   entry: { x: number; y: number }
@@ -211,13 +244,44 @@ function stack(count: number, itemHeight: number, gap: number, contentHeight: nu
   return Array.from({ length: count }, (_, i) => top + i * (itemHeight + gap))
 }
 
-export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
+/** One rung of the ladder: a drawn rule, or a band standing for hidden ones. */
+type LadderRow =
+  | { kind: 'rule'; rule: TopologyRule; height: number }
+  | { kind: 'band'; indices: number[]; height: number }
+
+/**
+ * Turns the rule list into rungs, folding CONTIGUOUS runs of hidden rules into
+ * one band each.
+ *
+ * Contiguous, not "all the hidden ones": rules #3 and #19 being quiet is not
+ * one fact, and a single band pooling them would put #19's rules above #4's.
+ * A run is the largest group whose collapse cannot reorder anything.
+ */
+function buildLadder(rules: readonly TopologyRule[], hidden: ReadonlySet<number>): LadderRow[] {
+  const rows: LadderRow[] = []
+  for (const rule of rules) {
+    if (!hidden.has(rule.index)) {
+      rows.push({ kind: 'rule', rule, height: RULE_H })
+      continue
+    }
+    const last = rows[rows.length - 1]
+    if (last?.kind === 'band') last.indices.push(rule.index)
+    else rows.push({ kind: 'band', indices: [rule.index], height: BAND_H })
+  }
+  return rows
+}
+
+export function layoutRouteFlow(topology: RouteTopology, options: LayoutOptions = {}): FlowLayout {
   const { inbounds, rules, fallthrough } = topology
   const exits = orderExits(topology.exits)
+  const hidden = options.hiddenRuleIndices ?? new Set<number>()
+
+  const rows = buildLadder(rules, hidden)
 
   // The rule ladder sets the canvas height; the other two columns centre
   // against it. The fall-through row hangs below the last rule.
-  const ladderH = rules.length * RULE_H + Math.max(rules.length - 1, 0) * RULE_GAP
+  const ladderH =
+    rows.reduce((sum, row) => sum + row.height, 0) + Math.max(rows.length - 1, 0) * RULE_GAP
   const withFallthrough = ladderH + FALLTHROUGH_GAP + RULE_H
   const inboundsH = inbounds.length * INBOUND_H + Math.max(inbounds.length - 1, 0) * INBOUND_GAP
   const exitsH = exits.length * EXIT_H + Math.max(exits.length - 1, 0) * EXIT_GAP
@@ -235,7 +299,7 @@ export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
    * sends every ribbon on a long diagonal that reads as "these inbounds enter
    * halfway down", which is the one thing the ladder must not say.
    */
-  const entryY = ladderTop + RULE_H / 2
+  const entryY = ladderTop + (rows[0]?.height ?? RULE_H) / 2
   const inboundsTop = clamp(entryY - inboundsH / 2, PAD, PAD + Math.max(contentH - inboundsH, 0))
   const inboundTops = Array.from(
     { length: inbounds.length },
@@ -253,14 +317,27 @@ export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
     label: fitToBox(inbound.tag || inbound.type, COL_INBOUND_W - NODE_PAD * 2, FONT.node),
   }))
 
-  const ruleBoxes: RuleBox[] = rules.map((rule, i) => ({
-    x: COL_RULE_X,
-    y: ladderTop + i * (RULE_H + RULE_GAP),
-    width: COL_RULE_W,
-    height: RULE_H,
-    index: rule.index,
-    rule,
-  }))
+  // Rungs are stacked by their own heights, so a band takes less room than the
+  // rules it replaces — which is the point — without shifting anything below it
+  // out of ladder order.
+  const ruleBoxes: RuleBox[] = []
+  const bands: CollapsedBand[] = []
+  let cursorY = ladderTop
+  for (const row of rows) {
+    if (row.kind === 'rule') {
+      ruleBoxes.push({
+        x: COL_RULE_X,
+        y: cursorY,
+        width: COL_RULE_W,
+        height: RULE_H,
+        index: row.rule.index,
+        rule: row.rule,
+      })
+    } else {
+      bands.push({ x: COL_RULE_X, y: cursorY, width: COL_RULE_W, height: BAND_H, indices: row.indices })
+    }
+    cursorY += row.height + RULE_GAP
+  }
 
   const exitBoxes: ExitBox[] = exits.map((exit, i) => ({
     x: COL_EXIT_X,
@@ -309,7 +386,11 @@ export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
   const landed = new Map<string, number>()
   const incoming = new Map<string, number>()
   for (const box of exitBoxes) {
-    incoming.set(box.id, box.exit.ruleIndices.length + (box.exit.isFinal ? 1 : 0))
+    // Only the rules that are actually DRAWN land here. Counting hidden ones
+    // would reserve attach points for ribbons that do not exist, leaving the
+    // fan lopsided and the visible ribbons off the node's mid-line.
+    const visible = box.exit.ruleIndices.filter((index) => !hidden.has(index)).length
+    incoming.set(box.id, visible + (box.exit.isFinal ? 1 : 0))
   }
 
   const attach = (box: ExitBox): number => {
@@ -366,6 +447,7 @@ export function layoutRouteFlow(topology: RouteTopology): FlowLayout {
     rules: ruleBoxes,
     exits: exitBoxes,
     fallthrough: fallthroughBox,
+    bands,
     ribbons,
     entry,
   }

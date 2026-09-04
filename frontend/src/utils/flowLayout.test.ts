@@ -208,3 +208,99 @@ describe('fitToBox', () => {
     expect(displayWidth(small)).toBeGreaterThan(displayWidth(large))
   })
 })
+
+/**
+ * "Busy only": the live card folds rules carrying nothing into bands, so a
+ * 28-rung ladder shortens to the few rungs that matter. Everything here is
+ * about the fold NOT lying about evaluation order — the ladder stops at the
+ * first match, so a band that moved would misstate the config.
+ */
+describe('layoutRouteFlow — collapsed bands', () => {
+  const collapsed = (hidden: number[]) =>
+    layoutRouteFlow(buildRouteTopology(config()), { hiddenRuleIndices: new Set(hidden) })
+
+  test('no options means no bands — the default layout is untouched', () => {
+    const plain = layout()
+    expect(plain.bands).toEqual([])
+    expect(collapsed([]).height).toBe(plain.height)
+  })
+
+  test('hidden rules leave the ladder and are named by a band', () => {
+    const result = collapsed([1, 2])
+
+    expect(result.rules.map((row) => row.index)).toEqual([0, 3])
+    expect(result.bands).toHaveLength(1)
+    expect(result.bands[0]!.indices).toEqual([1, 2])
+  })
+
+  // Adjacent hidden rules are one fact; separated ones are not. Pooling #0 and
+  // #3 into a single band would put #3's stand-in above #1, which is exactly
+  // the reordering the ladder must never show.
+  test('only CONTIGUOUS runs merge', () => {
+    const result = collapsed([0, 3])
+
+    expect(result.bands).toHaveLength(2)
+    expect(result.bands.map((band) => band.indices)).toEqual([[0], [3]])
+    expect(result.bands[0]!.y).toBeLessThan(result.bands[1]!.y)
+  })
+
+  test('a band sits where its rules sat, between the rules that remain', () => {
+    const result = collapsed([1, 2])
+    const [first, last] = result.rules
+    const band = result.bands[0]!
+
+    expect(band.y).toBeGreaterThanOrEqual(first!.y + first!.height)
+    expect(last!.y).toBeGreaterThanOrEqual(band.y + band.height)
+  })
+
+  test('collapsing shortens the canvas', () => {
+    expect(collapsed([1, 2]).height).toBeLessThan(layout().height)
+  })
+
+  test('a hidden rule draws no ribbon', () => {
+    const result = collapsed([1])
+
+    expect(result.ribbons.some((r) => r.kind === 'rule' && r.ruleIndex === 1)).toBe(false)
+    expect(result.ribbons.some((r) => r.kind === 'rule' && r.ruleIndex === 3)).toBe(true)
+  })
+
+  // With #1 hidden, `AI` has one visible incoming rule instead of two, so the
+  // remaining ribbon belongs on the node's mid-line — not parked at the lower
+  // of two attach points with a gap where nothing lands.
+  test('the exit fan re-centres on the ribbons that remain', () => {
+    const result = collapsed([1])
+    const exit = result.exits.find((box) => box.id === 'AI')!
+    const ribbon = result.ribbons.find((r) => r.kind === 'rule' && r.ruleIndex === 3)!
+
+    expect(ribbon.toY).toBeCloseTo(exit.y + exit.height / 2, 5)
+  })
+
+  test('every rule hidden leaves one band and a ladder that still fits', () => {
+    const result = collapsed([0, 1, 2, 3])
+
+    expect(result.rules).toEqual([])
+    expect(result.bands).toHaveLength(1)
+    expect(result.bands[0]!.indices).toEqual([0, 1, 2, 3])
+    for (const box of [...result.bands, result.fallthrough]) {
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.y + box.height).toBeLessThanOrEqual(result.height)
+    }
+  })
+
+  // The fall-through row is not a rule and is never folded away: it is where
+  // everything no rule claimed actually goes.
+  test('the fall-through row survives a full collapse and stays below the ladder', () => {
+    const result = collapsed([0, 1, 2, 3])
+    expect(result.fallthrough.y).toBeGreaterThan(result.bands[0]!.y)
+  })
+
+  test('inbound ribbons still land at the top of the ladder', () => {
+    const result = collapsed([0])
+    const band = result.bands[0]!
+
+    expect(result.entry.y).toBeCloseTo(band.y + band.height / 2, 5)
+    for (const ribbon of result.ribbons.filter((r) => r.kind === 'inbound')) {
+      expect(ribbon.toY).toBeCloseTo(result.entry.y, 5)
+    }
+  })
+})

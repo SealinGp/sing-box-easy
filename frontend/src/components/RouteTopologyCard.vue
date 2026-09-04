@@ -21,8 +21,12 @@ import {
   ArrowTopRightOnSquareIcon,
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
+  ChevronRightIcon,
   ExclamationTriangleIcon,
   SignalIcon,
+  FunnelIcon,
+  MinusIcon,
+  PlusIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import RouteFlowDiagram from './RouteFlowDiagram.vue'
@@ -31,9 +35,10 @@ import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { configService } from '../services'
 import { useServiceStore } from '../stores/service'
 import { useTrafficFlow } from '../composables/useTrafficFlow'
+import { useDiagramZoom } from '../composables/useDiagramZoom'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
 import { buildRouteTopology } from '../utils/routeTopology'
-import { TOP_N, formatRate } from '../utils/flowOverlay'
+import { RATE_FLOOR, TOP_N, formatRate } from '../utils/flowOverlay'
 import type { SingBoxConfig } from '../types/api'
 import type { TrafficFilter } from '../types/trafficFlow'
 
@@ -204,10 +209,103 @@ const sourceLabel = (value: string) => (value === '' ? t('routeFlow.live.allSour
 
 const rate = (bytesPerSec: number) => t('routeFlow.live.rate', { rate: formatRate(bytesPerSec) })
 
+/** The floor, spelled out in the legend — "quiet" is not a number. */
+const floorLabel = computed(() => rate(RATE_FLOOR))
+
 /** Connections whose rule string has no row — lit by exit only. */
 const unmatchedConnections = computed(() =>
   (overlay.value?.unmatched ?? []).reduce((sum, flow) => sum + flow.connections, 0),
 )
+
+/* ── Zoom ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * The diagram's own sizing shrinks a fixed 1290px canvas to whatever room the
+ * card has, which is the right first look and the wrong one for reading a
+ * single rule. See `useDiagramZoom` for why this scales-and-scrolls rather
+ * than transforming a viewBox.
+ */
+const zoom = useDiagramZoom()
+
+/* ── Busy only ────────────────────────────────────────────────────────────── */
+
+/**
+ * Fold rules carrying nothing into collapsed bands while Live is on.
+ *
+ * The floor in `flowOverlay` quiets the ladder; it does not SHORTEN it, and 28
+ * rungs of which 6 matter still has to be scrolled. This is the part that
+ * answers "show me what is actually moving".
+ *
+ * Off by default, and live-only, because it is the one thing in this card that
+ * breaks the promise the diagram otherwise keeps — that the picture is the same
+ * shape with the overlay on and off. That comparison is what the card is for,
+ * so changing the shape has to be something the operator asks for.
+ */
+const busyOnly = ref(false)
+
+/** Bands the operator has clicked open. Cleared whenever the fold is re-armed. */
+const revealed = ref<Set<number>>(new Set())
+
+const hiddenRuleIndices = computed<ReadonlySet<number> | undefined>(() => {
+  if (!busyOnly.value || !liveEnabled.value || !overlay.value) return undefined
+  const hidden = new Set<number>()
+  for (const rule of topology.value.rules) {
+    if (overlay.value.ribbons.get(`rule:${rule.index}`)?.lit) continue
+    if (revealed.value.has(rule.index)) continue
+    hidden.add(rule.index)
+  }
+  return hidden
+})
+
+const hiddenCount = computed(() => hiddenRuleIndices.value?.size ?? 0)
+
+const expandBand = (indices: number[]) => {
+  revealed.value = new Set([...revealed.value, ...indices])
+}
+
+// Re-arming the fold, or losing the data it is computed from, throws the
+// manual reveals away — otherwise yesterday's clicks quietly keep rules on
+// screen that today's traffic says are idle.
+watch([busyOnly, liveEnabled], () => {
+  revealed.value = new Set()
+})
+
+/* ── Legend ───────────────────────────────────────────────────────────────── */
+
+const LEGEND_KEY = 'sbe-routeflow-legend'
+
+/**
+ * Whether the symbol key is showing.
+ *
+ * Open on a fresh install and closed forever after one click, rather than the
+ * other way round: the symbols are genuinely needed for the first few visits,
+ * and a key nobody can find is the same as no key. Once shelved it stays
+ * shelved across sessions — the whole complaint about a permanent footer is
+ * that it outlives its usefulness, and re-opening on every visit reproduces it.
+ *
+ * Read at setup, before the first paint, so the footer does not appear and then
+ * disappear. Storage can throw outright (Safari private browsing) and can hold
+ * anything, so both are handled — either way the default is to teach.
+ */
+const readLegendOpen = (): boolean => {
+  try {
+    return localStorage.getItem(LEGEND_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+const legendOpen = ref(readLegendOpen())
+
+const toggleLegend = () => {
+  legendOpen.value = !legendOpen.value
+  try {
+    localStorage.setItem(LEGEND_KEY, legendOpen.value ? '1' : '0')
+  } catch (err) {
+    // Non-fatal: the choice still holds for this session.
+    console.warn('Could not persist the traffic-flow legend state:', err)
+  }
+}
 
 /* ── Full-window mode ─────────────────────────────────────────────────────── */
 
@@ -315,27 +413,36 @@ onBeforeUnmount(() => {
           <SignalIcon class="h-3.5 w-3.5" />
           {{ $t('routeFlow.live.toggle') }}
         </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors disabled:opacity-50"
-          :disabled="refreshing"
-          :title="$t('routeFlow.refresh')"
-          :aria-label="$t('routeFlow.refresh')"
-          @click="load(true)"
-        >
-          <ArrowPathIcon class="h-4 w-4" :class="refreshing ? 'animate-spin' : ''" />
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-          :title="expanded ? $t('routeFlow.fullWindow.exit') : $t('routeFlow.fullWindow.enter')"
-          :aria-label="expanded ? $t('routeFlow.fullWindow.exit') : $t('routeFlow.fullWindow.enter')"
-          :aria-pressed="expanded"
-          @click="toggleExpanded"
-        >
-          <ArrowsPointingInIcon v-if="expanded" class="h-4 w-4" />
-          <ArrowsPointingOutIcon v-else class="h-4 w-4" />
-        </button>
+        <!--
+          View chrome, grouped tight. Three clusters at gap-3 — the Live mode
+          toggle, these two icon buttons, then the link away — is what stops the
+          header reading as one undifferentiated row of six controls. Zoom used
+          to sit here and now floats on the diagram, which is both where it acts
+          and one fewer thing competing at this level.
+        -->
+        <div class="inline-flex items-center gap-1">
+          <button
+            type="button"
+            class="inline-flex items-center p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            :disabled="refreshing"
+            :title="$t('routeFlow.refresh')"
+            :aria-label="$t('routeFlow.refresh')"
+            @click="load(true)"
+          >
+            <ArrowPathIcon class="h-4 w-4" :class="refreshing ? 'animate-spin' : ''" />
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-700 transition-colors"
+            :title="expanded ? $t('routeFlow.fullWindow.exit') : $t('routeFlow.fullWindow.enter')"
+            :aria-label="expanded ? $t('routeFlow.fullWindow.exit') : $t('routeFlow.fullWindow.enter')"
+            :aria-pressed="expanded"
+            @click="toggleExpanded"
+          >
+            <ArrowsPointingInIcon v-if="expanded" class="h-4 w-4" />
+            <ArrowsPointingOutIcon v-else class="h-4 w-4" />
+          </button>
+        </div>
         <RouterLink
           :to="ROUTE_PAGE"
           class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
@@ -346,34 +453,73 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-      {{ $t('routeFlow.desc') }}
-    </p>
-
     <p v-if="error" class="text-xs text-red-600 dark:text-red-400 mb-3">{{ error }}</p>
 
-    <!-- Live strip: what is flowing right now, and the two ways to narrow it. -->
-    <div
-      v-if="liveEnabled"
-      class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 px-3 py-2 rounded-md bg-primary-50/60 dark:bg-primary-950/30 border border-primary-100 dark:border-primary-900/60 text-xs"
-    >
+    <!--
+      Live strip: what is flowing right now, and the three ways to narrow it.
+
+      NO TINT. A full-width tinted bar sitting above content reads as a HEADER —
+      a label for the diagram — when this row is the opposite of a label: values
+      that change every second, plus the controls that shape them. Liveness is
+      already said twice above (the Live toggle's own state, and the diagram
+      lighting up), and spending a whole surface saying it a third time is what
+      made the row look like chrome.
+
+      Two kinds of thing, separated by WEIGHT rather than by a box. The readouts
+      are data — a micro-label in the app's usual uppercase idiom, then a number
+      with enough presence to be read at a glance while it ticks. The filters
+      are controls and carry their own borders, which only read as borders
+      against the card: behind a tint, a bordered input and its background
+      flatten into each other.
+    -->
+    <div v-if="liveEnabled" class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-3 text-xs">
       <template v-if="overlay">
-        <span class="tabular-nums text-gray-800 dark:text-gray-100">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('routeFlow.live.down') }}</span>
-          <strong class="ml-1">{{ rate(overlay.totals.down) }}</strong>
+        <!--
+          Down carries the accent because it is the number the whole overlay is
+          built on: ribbon width, pulse speed and the top-N ranking are all
+          functions of it. Up is the same size but neutral — equal billing would
+          claim the two drive the picture equally, and they do not.
+        -->
+        <span class="inline-flex items-baseline gap-1.5">
+          <span class="font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            {{ $t('routeFlow.live.down') }}
+          </span>
+          <span class="text-sm font-semibold tabular-nums text-primary-700 dark:text-primary-300">
+            {{ rate(overlay.totals.down) }}
+          </span>
         </span>
-        <span class="tabular-nums text-gray-800 dark:text-gray-100">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('routeFlow.live.up') }}</span>
-          <strong class="ml-1">{{ rate(overlay.totals.up) }}</strong>
+        <span class="inline-flex items-baseline gap-1.5">
+          <span class="font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            {{ $t('routeFlow.live.up') }}
+          </span>
+          <span class="text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-200">
+            {{ rate(overlay.totals.up) }}
+          </span>
         </span>
-        <span class="tabular-nums text-gray-600 dark:text-gray-300">
+
+        <!--
+          Counts and caveats stay secondary: they qualify the two rates rather
+          than competing with them, and at equal weight the eye is given five
+          numbers to rank instead of two.
+        -->
+        <span class="tabular-nums text-gray-500 dark:text-gray-400">
           {{ $t('routeFlow.live.connections', { n: overlay.totals.connections }, overlay.totals.connections) }}
-          <span v-if="overlay.totals.connections !== overlay.totals.all" class="text-gray-400">
+          <span v-if="overlay.totals.connections !== overlay.totals.all" class="text-gray-400 dark:text-gray-500">
             ({{ $t('routeFlow.live.shownOf', { shown: overlay.totals.connections, all: overlay.totals.all }) }})
           </span>
         </span>
-        <span v-if="overlay.totals.connections > 0 && overlay.totals.down === 0" class="text-gray-400 italic">
+        <span
+          v-if="overlay.totals.connections > 0 && overlay.totals.down === 0"
+          class="text-gray-400 dark:text-gray-500 italic"
+        >
           {{ $t('routeFlow.live.idle') }}
+        </span>
+        <!--
+          How many rows the floor is holding back. A diagram that went quiet has
+          to say why, or a working stream reads as a broken one.
+        -->
+        <span v-if="overlay.belowFloor > 0" class="text-gray-400 dark:text-gray-500">
+          {{ $t('routeFlow.live.belowFloor', { n: overlay.belowFloor }, overlay.belowFloor) }}
         </span>
       </template>
       <span v-else-if="connecting" class="text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
@@ -386,6 +532,31 @@ onBeforeUnmount(() => {
       </span>
 
       <span class="flex-1"></span>
+
+      <!--
+        Busy only: fold the rules carrying nothing into bands, so a 28-rung
+        ladder shortens to what is moving. Off by default — it is the one
+        control here that changes the diagram's SHAPE, and the shape being
+        identical with the overlay on and off is what makes expected and actual
+        comparable.
+      -->
+      <button
+        type="button"
+        role="switch"
+        :aria-checked="busyOnly"
+        class="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
+        :class="
+          busyOnly
+            ? 'bg-primary-600 border-primary-600 text-white hover:bg-primary-700'
+            : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400'
+        "
+        :title="$t('routeFlow.live.busyOnlyHint')"
+        @click="busyOnly = !busyOnly"
+      >
+        <FunnelIcon class="h-3.5 w-3.5" />
+        {{ $t('routeFlow.live.busyOnly') }}
+        <span v-if="busyOnly && hiddenCount > 0" class="tabular-nums opacity-80">−{{ hiddenCount }}</span>
+      </button>
 
       <!--
         Narrowing to one device or one site is how a slow-site complaint gets
@@ -497,10 +668,72 @@ onBeforeUnmount(() => {
         unreadable. Full-window, the wrapper takes the remaining height and the
         diagram fits it — the whole ladder at once is the point of the mode.
       -->
-      <div
-        :class="expanded ? 'flex-1 min-h-0 overflow-auto -mx-1 px-1' : 'overflow-auto max-h-[34rem] -mx-1 px-1'"
-      >
-        <RouteFlowDiagram :topology="topology" :live="liveEnabled ? overlay : null" :fit="expanded" />
+      <div :class="expanded ? 'relative flex-1 min-h-0' : 'relative'">
+        <div
+          :ref="zoom.bindViewport"
+          tabindex="0"
+          :class="[
+            expanded ? 'h-full overflow-auto -mx-1 px-1' : 'overflow-auto max-h-[34rem] -mx-1 px-1',
+            'focus:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 rounded',
+            // The gesture is otherwise invisible: the cursor is the only thing
+            // that says the held modifier turned the diagram into a canvas.
+            zoom.panning.value ? 'cursor-grabbing' : zoom.panReady.value ? 'cursor-grab' : '',
+          ]"
+        >
+          <RouteFlowDiagram
+            :topology="topology"
+            :live="liveEnabled ? overlay : null"
+            :fit="expanded"
+            :scale="zoom.scale.value"
+            :hidden-rule-indices="hiddenRuleIndices"
+            @expand-band="expandBand"
+          />
+        </div>
+
+        <!--
+          Zoom floats ON the diagram, the way every map and design tool puts it,
+          rather than in the card header. Two reasons beyond decluttering: it is
+          adjacent to the thing it scales, and it stays put while the content
+          under it scrolls, so it is reachable at any pan position.
+
+          Absolutely positioned against this wrapper, NOT inside the scrolling
+          child — inside, it would scroll away with the diagram and be gone the
+          moment it was needed. Nudged clear of the corner so it does not sit on
+          top of both scrollbars at once.
+        -->
+        <div
+          class="absolute bottom-3 right-3 inline-flex items-center rounded-md border border-gray-200 dark:border-slate-600 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-surface overflow-hidden"
+          :title="$t('routeFlow.zoom.hint')"
+        >
+          <button
+            type="button"
+            class="px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!zoom.canZoomOut.value"
+            :title="$t('routeFlow.zoom.out')"
+            :aria-label="$t('routeFlow.zoom.out')"
+            @click="zoom.zoomOut()"
+          >
+            <MinusIcon class="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            class="px-1.5 py-1 text-xs tabular-nums text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors min-w-[3rem]"
+            :title="$t('routeFlow.zoom.reset')"
+            @click="zoom.reset()"
+          >
+            {{ zoom.percent.value === null ? $t('routeFlow.zoom.fit') : `${zoom.percent.value}%` }}
+          </button>
+          <button
+            type="button"
+            class="px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!zoom.canZoomIn.value"
+            :title="$t('routeFlow.zoom.in')"
+            :aria-label="$t('routeFlow.zoom.in')"
+            @click="zoom.zoomIn()"
+          >
+            <PlusIcon class="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       <!-- Names the three columns, and says what the middle one's order means. -->
@@ -512,8 +745,35 @@ onBeforeUnmount(() => {
         <span>{{ $t('routeFlow.columns.outbounds') }}</span>
       </div>
 
+      <!--
+        The key, on demand.
+
+        This is reference material: a new install needs it two or three times,
+        and after that it is a permanent five-item footer explaining symbols the
+        operator has long since learned. So it behaves like a manual — shelved
+        by default once shelved, one muted line away when a symbol IS unfamiliar
+        — and the choice persists, because re-collapsing it on every visit is
+        the same nuisance in slower motion.
+
+        The column strip above is deliberately NOT in here: it carries the claim
+        that the ladder is ordered and stops at the first match, which is the
+        diagram's whole thesis rather than a symbol key.
+      -->
+      <div class="flex items-center justify-between gap-2 mt-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+          :aria-expanded="legendOpen"
+          @click="toggleLegend"
+        >
+          <ChevronRightIcon class="h-3 w-3 transition-transform" :class="legendOpen ? 'rotate-90' : ''" />
+          {{ $t('routeFlow.legend.title') }}
+        </button>
+        <span v-if="expanded" class="text-[11px] text-gray-400">{{ $t('routeFlow.fullWindow.escHint') }}</span>
+      </div>
+
       <!-- What the non-obvious strokes mean. -->
-      <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+      <div v-if="legendOpen" class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span class="inline-flex items-center gap-1.5">
           <svg width="18" height="8" aria-hidden="true">
             <line x1="0" y1="4" x2="18" y2="4" stroke-width="1.5" stroke-dasharray="4 3" class="stroke-gray-400 dark:stroke-slate-500" />
@@ -544,10 +804,10 @@ onBeforeUnmount(() => {
             <svg width="22" height="8" aria-hidden="true">
               <line x1="0" y1="4" x2="22" y2="4" stroke-width="2.5" class="stroke-primary-400 dark:stroke-primary-600" />
             </svg>
-            {{ $t('routeFlow.live.legendLit') }}
+            {{ $t('routeFlow.live.legendLit', { rate: floorLabel }) }}
           </span>
         </template>
-        <span v-if="expanded" class="ml-auto text-gray-400">{{ $t('routeFlow.fullWindow.escHint') }}</span>
+        <span class="ml-auto text-gray-400">{{ $t('routeFlow.zoom.hint') }}</span>
       </div>
     </template>
       </div>

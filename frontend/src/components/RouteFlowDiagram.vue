@@ -29,8 +29,8 @@ import { useI18n } from 'vue-i18n'
 import { FONT, NODE_PAD, fitToBox, layoutRouteFlow } from '../utils/flowLayout'
 import { formatCondition } from '../utils/routeTopology'
 import type { RouteTopology, TopologyRule } from '../types/routeTopology'
-import type { ExitBox, InboundBox, Ribbon, RuleBox } from '../utils/flowLayout'
-import { formatRate } from '../utils/flowOverlay'
+import type { CollapsedBand, ExitBox, InboundBox, Ribbon, RuleBox } from '../utils/flowLayout'
+import { formatRate, isLit } from '../utils/flowOverlay'
 import type { FlowOverlay, LiveEdge } from '../utils/flowOverlay'
 
 const props = defineProps<{
@@ -49,11 +49,55 @@ const props = defineProps<{
    * a scrollbar is not.
    */
   fit?: boolean
+  /**
+   * An explicit zoom factor, overriding both default sizings.
+   *
+   * `null`/undefined keeps them: fit-to-width docked, fit-to-height with `fit`.
+   * Both of those SHRINK a 1290px canvas to whatever room there is, which is
+   * the right first look and unreadable once the question is what one rule
+   * says. A number here renders the same `viewBox` at `scale` and lets the
+   * wrapper scroll — see `composables/useDiagramZoom.ts`.
+   */
+  scale?: number | null
+  /**
+   * Rules to fold into collapsed bands instead of drawing — the card's "busy
+   * only" mode. A band is clickable and emits `expand-band`, so the fold is
+   * never a dead end.
+   */
+  hiddenRuleIndices?: ReadonlySet<number>
 }>()
+
+const emit = defineEmits<{ (event: 'expand-band', indices: number[]): void }>()
 
 const { t } = useI18n()
 
-const layout = computed(() => layoutRouteFlow(props.topology))
+const layout = computed(() =>
+  layoutRouteFlow(props.topology, { hiddenRuleIndices: props.hiddenRuleIndices }),
+)
+
+/**
+ * Rendered pixel size when zoomed.
+ *
+ * `max-w-full` and `h-auto`/`w-auto` are exactly what makes the diagram shrink
+ * to its container, so an explicit scale must drop them rather than fight them
+ * — left on, `max-w-full` silently caps the zoom at the card's width and the
+ * control appears to do nothing past 100%.
+ */
+const scaled = computed(() => {
+  const factor = props.scale
+  if (factor === null || factor === undefined) return null
+  return {
+    width: Math.round(layout.value.width * factor),
+    height: Math.round(layout.value.height * factor),
+  }
+})
+
+const svgClass = computed(() => {
+  if (scaled.value) return 'mx-auto block select-none'
+  return props.fit
+    ? 'h-full w-auto max-w-full mx-auto block select-none'
+    : 'max-w-full h-auto mx-auto block select-none'
+})
 
 /* ── Hover: one highlight model for all three columns ─────────────────────── */
 
@@ -119,6 +163,30 @@ const liveRibbon = (ribbon: Ribbon): LiveEdge | undefined => props.live?.ribbons
 const liveRule = (index: number) => props.live?.rules.get(index)
 const liveExit = (tag: string) => props.live?.exits.get(tag)
 const liveInbound = (box: InboundBox) => props.live?.ribbons.get(`in:${box.tag || box.type}`)
+
+/**
+ * Whether an element counts as carrying traffic, for the dimming.
+ *
+ * `lit`, not "the frame has an entry": below `RATE_FLOOR` a flow is a DNS
+ * lookup or a keepalive, and treating that as busy lights the whole ladder.
+ * The numbers stay in the row and the tooltip either way — this only decides
+ * whether the element steps forward.
+ */
+const isCarrying = (edge: LiveEdge | undefined): boolean => edge?.lit === true
+
+const ruleCarrying = (index: number): boolean => isCarrying(props.live?.ribbons.get(`rule:${index}`))
+
+/**
+ * An exit is busy on its OWN total, not on any one rule's.
+ *
+ * Several rules converge here — that is the fact the right-hand column exists
+ * to show — so three trickling rules summing past the floor is a busy exit,
+ * and reading the floor off one incoming ribbon would call it idle.
+ */
+const exitCarrying = (tag: string): boolean => {
+  const flow = liveExit(tag)
+  return flow !== undefined && isLit(flow.down, flow.up)
+}
 
 const rate = (bytesPerSec: number): string => t('routeFlow.live.rate', { rate: formatRate(bytesPerSec) })
 
@@ -304,6 +372,27 @@ const exitLiveMeta = (box: ExitBox): string => {
   return fitToBox(text, box.width - NODE_PAD * 2, FONT.meta)
 }
 
+/**
+ * A band names how many rules it stands for and where they are, because the
+ * two questions it raises are "how much am I not seeing" and "is the rule I
+ * came for in here". The full index list is in the `<title>`.
+ */
+const bandLabel = (band: CollapsedBand): string =>
+  t('routeFlow.collapsed.label', { n: band.indices.length }, band.indices.length)
+
+const bandRange = (band: CollapsedBand): string => {
+  const first = band.indices[0]
+  const last = band.indices[band.indices.length - 1]
+  return first === last ? `#${first}` : `#${first}–#${last}`
+}
+
+const bandTitle = (band: CollapsedBand): string =>
+  [
+    t('routeFlow.collapsed.title', { n: band.indices.length }, band.indices.length),
+    band.indices.map((index) => `#${index}`).join(' '),
+    t('routeFlow.collapsed.expandHint'),
+  ].join('\n')
+
 const inboundMeta = (box: { type: string; listenPort?: number }): string =>
   box.listenPort ? `${box.type} · :${box.listenPort}` : box.type
 
@@ -319,9 +408,9 @@ const fallthroughLabel = computed(() =>
 <template>
   <svg
     :viewBox="`0 0 ${layout.width} ${layout.height}`"
-    :width="layout.width"
-    :height="layout.height"
-    :class="fit ? 'h-full w-auto max-w-full mx-auto block select-none' : 'max-w-full h-auto mx-auto block select-none'"
+    :width="scaled?.width ?? layout.width"
+    :height="scaled?.height ?? layout.height"
+    :class="svgClass"
     role="img"
     :aria-label="$t('routeFlow.ariaLabel')"
     @mouseleave="focus = null"
@@ -349,7 +438,7 @@ const fallthroughLabel = computed(() =>
               : dimmed
                 ? 'opacity-15'
                 : isLive
-                  ? liveRibbon(ribbon)
+                  ? isCarrying(liveRibbon(ribbon))
                     ? 'opacity-80'
                     : 'opacity-15'
                   : 'opacity-60',
@@ -397,7 +486,7 @@ const fallthroughLabel = computed(() =>
         rx="7"
         stroke-width="1"
         class="fill-white stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-600"
-        :class="[fadeSpeed, fade(focus?.kind === 'inbound' && focus.id === box.tag, !!liveInbound(box))]"
+        :class="[fadeSpeed, fade(focus?.kind === 'inbound' && focus.id === box.tag, isCarrying(liveInbound(box)))]"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -443,7 +532,7 @@ const fallthroughLabel = computed(() =>
         rx="5"
         stroke-width="1"
         :stroke-dasharray="box.rule.terminal ? undefined : '4 3'"
-        :class="[fadeSpeed, ruleClass(box.rule), fade(focusedRules.has(box.index), !!liveRule(box.index))]"
+        :class="[fadeSpeed, ruleClass(box.rule), fade(focusedRules.has(box.index), ruleCarrying(box.index))]"
       />
       <text
         :x="box.x + 8"
@@ -491,6 +580,54 @@ const fallthroughLabel = computed(() =>
       />
     </g>
 
+    <!--
+      Collapsed runs of rules carrying nothing. Drawn at their own place in the
+      ladder and shorter than a rule row, so the band reads as a gap that is
+      accounted for rather than as another rung. Clicking one puts its rules
+      back — a fold the operator cannot undo is a fold that hides the rule they
+      were looking for.
+    -->
+    <g
+      v-for="band in layout.bands"
+      :key="`band-${band.indices[0]}`"
+      class="cursor-pointer"
+      role="button"
+      tabindex="0"
+      :aria-label="bandTitle(band)"
+      @click="emit('expand-band', band.indices)"
+      @keydown.enter.prevent="emit('expand-band', band.indices)"
+      @keydown.space.prevent="emit('expand-band', band.indices)"
+    >
+      <title>{{ bandTitle(band) }}</title>
+      <rect
+        :x="band.x"
+        :y="band.y"
+        :width="band.width"
+        :height="band.height"
+        rx="4"
+        stroke-width="1"
+        stroke-dasharray="3 3"
+        class="fill-gray-50 stroke-gray-300 dark:fill-slate-800/40 dark:stroke-slate-700 hover:fill-gray-100 dark:hover:fill-slate-800"
+      />
+      <text
+        :x="band.x + RULE_INDEX_GUTTER"
+        :y="band.y + band.height - 5"
+        :font-size="FONT.meta"
+        class="fill-gray-500 dark:fill-gray-400"
+      >
+        {{ bandLabel(band) }}
+      </text>
+      <text
+        :x="band.x + band.width - 8"
+        :y="band.y + band.height - 5"
+        :font-size="FONT.meta"
+        text-anchor="end"
+        class="fill-gray-400 dark:fill-gray-500 tabular-nums"
+      >
+        {{ bandRange(band) }}
+      </text>
+    </g>
+
     <!-- The fall-through: everything no rule claimed. -->
     <g>
       <title>{{ $t(`routeFlow.fallthroughSource.${sourceKey}`) }}</title>
@@ -503,7 +640,7 @@ const fallthroughLabel = computed(() =>
         stroke-width="1"
         stroke-dasharray="5 4"
         class="fill-transparent stroke-gray-400 dark:stroke-slate-500"
-        :class="[fadeSpeed, fade(false, !!live?.finalFlow)]"
+        :class="[fadeSpeed, fade(false, isCarrying(live?.ribbons.get('final')))]"
       />
       <text
         :x="layout.fallthrough.x + 8"
@@ -540,7 +677,7 @@ const fallthroughLabel = computed(() =>
         :height="box.height"
         rx="7"
         stroke-width="1.5"
-        :class="[fadeSpeed, exitClass(box), fade(focusedExit === box.id, !!liveExit(box.id))]"
+        :class="[fadeSpeed, exitClass(box), fade(focusedExit === box.id, exitCarrying(box.id))]"
       />
       <text
         :x="box.x + NODE_PAD"
