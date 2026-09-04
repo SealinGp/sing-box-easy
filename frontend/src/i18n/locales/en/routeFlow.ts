@@ -80,7 +80,12 @@ export default {
     clearFilter: 'Clear',
     unmatched: '{n} connection lit by outbound only — its rule is not in the running list (sing-box was reloaded) | {n} connections lit by outbound only — their rules are not in the running list (sing-box was reloaded)',
     via: 'via {tag}',
-    legendMoving: 'Pulsing: top {n} by download',
+    legendMoving: 'Comet: top {n} by download',
+    // The colour scale. Absolute — 1 MB/s is the same colour on a quiet router
+    // and a busy one — so an extreme is spotted before a number is read.
+    legendHeat: 'colour by download',
+    legendRank: 'Busiest {n} rules',
+    rank: 'Busiest #{n} by download',
     // The threshold is spelled out: "carrying traffic" is a judgement, and the
     // operator has to know where the line was drawn to trust a dim row.
     legendLit: 'Lit: above {rate}',

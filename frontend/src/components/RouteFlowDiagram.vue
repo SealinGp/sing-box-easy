@@ -23,6 +23,17 @@
  *
  * Colour is carried by Tailwind `fill-*`/`stroke-*` utilities so both themes
  * come from the same classes; nothing here hard-codes a hex.
+ *
+ * MOTION, AND WHAT EACH PIECE OF IT IS FOR
+ * ────────────────────────────────────────
+ * Nothing here moves to look alive. The pulse encodes RATE (its speed is a
+ * function of bytes/s, and it travels linearly because a flow does not
+ * accelerate); the rank marks are ANCHORS, and do not animate at all,
+ * because they trade places between close flows every second and a frequent
+ * change is one that must not draw attention. Every state transition — lighting, quieting,
+ * hover — is at or under 300ms on the shell's own curve, and lighting up
+ * (200ms) is faster than going quiet (300ms): a system's response is quick,
+ * and a decay reads as a decay.
  */
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -31,7 +42,8 @@ import { formatCondition } from '../utils/routeTopology'
 import type { RouteTopology, TopologyRule } from '../types/routeTopology'
 import type { CollapsedBand, ExitBox, InboundBox, Ribbon, RuleBox } from '../utils/flowLayout'
 import { formatRate, isLit } from '../utils/flowOverlay'
-import type { FlowOverlay, LiveEdge } from '../utils/flowOverlay'
+import type { FlowOverlay, Heat, LiveEdge } from '../utils/flowOverlay'
+import { HEAT_FILL, HEAT_PULSE, HEAT_STROKE, heatClass } from '../utils/flowHeat'
 
 const props = defineProps<{
   topology: RouteTopology
@@ -200,7 +212,10 @@ const rate = (bytesPerSec: number): string => t('routeFlow.live.rate', { rate: f
  */
 const fade = (focused: boolean, carrying: boolean): string => {
   if (dimmed.value) return focused ? '' : 'opacity-40'
-  if (isLive.value) return carrying ? '' : 'opacity-35'
+  // `is-lit` shortens the transition INTO the lit state (see the styles):
+  // the class is on the element by the time the new transition duration is
+  // read, so lighting takes 200ms and going quiet keeps the base 300ms.
+  if (isLive.value) return carrying ? 'is-lit' : 'opacity-35'
   return ''
 }
 
@@ -210,6 +225,55 @@ const isRibbonLit = (ribbon: Ribbon): boolean => {
   if (ribbon.kind === 'final') return focusedExit.value === ribbon.exitId && focus.value?.kind === 'exit'
   return ribbon.ruleIndex !== undefined && focusedRules.value.has(ribbon.ruleIndex)
 }
+
+/* ── Heat and rank ──────────────────────────────────────────────────── */
+
+/** Tier of an edge; 0 when there is no live data for it. */
+const heatOf = (edge: LiveEdge | undefined): Heat => edge?.heat ?? 0
+
+/**
+ * Ribbon colour. Quiet, or not live: the brand stroke — dashed grey for the
+ * fall-through, which is a default rather than a decision. Carrying: its heat
+ * tier, so the hot ribbon is a different COLOUR from its neighbours and the
+ * eye lands on it before any number is read.
+ */
+const ribbonStroke = (ribbon: Ribbon): string => {
+  const edge = liveRibbon(ribbon)
+  if (isLive.value && isCarrying(edge)) return heatClass(HEAT_STROKE, heatOf(edge))
+  return ribbon.kind === 'final'
+    ? 'stroke-gray-400 dark:stroke-slate-500'
+    : 'stroke-primary-400 dark:stroke-primary-600'
+}
+
+/** The pulse, one step brighter than the ribbon it rides. */
+const pulseStroke = (ribbon: Ribbon): string => heatClass(HEAT_PULSE, heatOf(liveRibbon(ribbon)))
+
+/** A live number painted in its tier — a rate that is high looks high. */
+const rateFill = (heat: Heat | undefined): string => heatClass(HEAT_FILL, heat ?? 0)
+
+/** Radius of a rank mark. */
+const RANK_R = 7
+
+/**
+ * The anchors: where the busiest few flows LEAVE their rule, marked on the
+ * wire itself. A reader scanning eight moving ribbons no longer has to read
+ * eight numbers to find the biggest.
+ *
+ * Placed from the ROW, not the ribbon: a pass-through rule (`sniff`,
+ * `resolve`) has no ribbon, and a rank that is assigned but never drawn
+ * leaves a "1, 2, 4" that reads as a bug rather than as a rule with no exit.
+ */
+const rankMarks = computed(() => {
+  const rows = [
+    ...layout.value.rules.map((box) => ({ key: `rule:${box.index}`, box })),
+    { key: 'final', box: layout.value.fallthrough },
+  ]
+  return rows.flatMap(({ key, box }) => {
+    const edge = props.live?.ribbons.get(key)
+    if (edge?.rank == null) return []
+    return [{ id: key, x: box.x + box.width + RANK_R + 2, y: box.y + box.height / 2, rank: edge.rank, heat: edge.heat }]
+  })
+})
 
 /* ── Row rendering ────────────────────────────────────────────────────────── */
 
@@ -276,18 +340,40 @@ const ruleClass = (rule: TopologyRule): string => {
 
 /* ── Exit rendering ───────────────────────────────────────────────────────── */
 
-const exitClass = (box: ExitBox): string => {
+const exitFill = (box: ExitBox): string => {
   switch (box.exit.kind) {
     case 'missing':
-      return 'fill-red-50 stroke-red-400 dark:fill-red-950/40 dark:stroke-red-600'
+      return 'fill-red-50 dark:fill-red-950/40'
     case 'reject':
-      return 'fill-rose-50 stroke-rose-300 dark:fill-rose-950/30 dark:stroke-rose-700'
+      return 'fill-rose-50 dark:fill-rose-950/30'
     case 'hijack-dns':
-      return 'fill-violet-50 stroke-violet-300 dark:fill-violet-950/30 dark:stroke-violet-700'
+      return 'fill-violet-50 dark:fill-violet-950/30'
     case 'implicit':
-      return 'fill-slate-50 stroke-slate-300 dark:fill-slate-800/60 dark:stroke-slate-600'
+      return 'fill-slate-50 dark:fill-slate-800/60'
     default:
-      return 'fill-white stroke-primary-300 dark:fill-slate-800 dark:stroke-primary-700'
+      return 'fill-white dark:fill-slate-800'
+  }
+}
+
+/**
+ * An exit's outline is its KIND until it carries traffic, and its heat then:
+ * the outbound is where every ribbon lands, so it is the one node whose
+ * colour should say how much is landing.
+ */
+const exitStroke = (box: ExitBox): string => {
+  const flow = liveExit(box.id)
+  if (isLive.value && flow && isLit(flow.down, flow.up)) return heatClass(HEAT_STROKE, flow.heat)
+  switch (box.exit.kind) {
+    case 'missing':
+      return 'stroke-red-400 dark:stroke-red-600'
+    case 'reject':
+      return 'stroke-rose-300 dark:stroke-rose-700'
+    case 'hijack-dns':
+      return 'stroke-violet-300 dark:stroke-violet-700'
+    case 'implicit':
+      return 'stroke-slate-300 dark:stroke-slate-600'
+    default:
+      return 'stroke-primary-300 dark:stroke-primary-700'
   }
 }
 
@@ -430,39 +516,52 @@ const fallthroughLabel = computed(() =>
           :style="{ strokeWidth: isRibbonLit(ribbon) ? 2.5 : liveRibbon(ribbon)?.width ?? 1.5 }"
           :class="[
             fadeSpeed,
-            ribbon.kind === 'final'
-              ? 'stroke-gray-400 dark:stroke-slate-500'
-              : 'stroke-primary-400 dark:stroke-primary-600',
+            ribbonStroke(ribbon),
             isRibbonLit(ribbon)
               ? 'opacity-100'
               : dimmed
                 ? 'opacity-15'
                 : isLive
                   ? isCarrying(liveRibbon(ribbon))
-                    ? 'opacity-80'
+                    ? 'opacity-80 is-lit'
                     : 'opacity-15'
                   : 'opacity-60',
           ]"
           class="ribbon"
         />
         <!--
-          The pulse: one short bright segment that travels the ribbon from
-          inbound to exit, then goes again. `pathLength="100"` normalises every
-          ribbon to the same unit so a single dash pattern works for all of
-          them without measuring the DOM. Speed is the whole message — one
-          traversal per `durationSec`, log-scaled with bytes/s (flowOverlay.ts)
-          — so nothing here is decorative. Only the top N ribbons get one, and
-          it fades in and out (the <Transition> on the group) rather than
-          popping when a ribbon enters or leaves the top N.
+          The pulse: a comet — a faint tail and a bright head — that travels
+          the ribbon from inbound to exit, then goes again. `pathLength="100"`
+          normalises every ribbon to the same unit so one dash pattern works
+          for all of them without measuring the DOM. Speed is the whole
+          message: one traversal per `durationSec`, log-scaled with bytes/s
+          (flowOverlay.ts), and LINEAR, because a flow does not slow down as
+          it nears its outbound. Only the top N ribbons get one, and it fades
+          in and out (the <Transition> on the group) rather than popping when
+          a ribbon enters or leaves the top N.
         -->
         <Transition name="pulse">
-          <g v-if="liveRibbon(ribbon)?.animated">
+          <!-- Under hover the comet dims with its ribbon: a bright pulse on a dimmed ribbon is a second focus. -->
+          <g
+            v-if="liveRibbon(ribbon)?.animated"
+            :class="[fadeSpeed, dimmed && !isRibbonLit(ribbon) ? 'opacity-15' : '']"
+          >
             <path
               :d="ribbon.d"
               pathLength="100"
-              :stroke-width="(liveRibbon(ribbon)?.width ?? 1.5) + 0.5"
-              stroke-dasharray="14 100"
-              class="flow-pulse stroke-primary-600 dark:stroke-primary-300"
+              :stroke-width="liveRibbon(ribbon)?.width ?? 1.5"
+              stroke-dasharray="18 100"
+              class="flow-tail"
+              :class="pulseStroke(ribbon)"
+              :style="{ animationDuration: `${liveRibbon(ribbon)?.durationSec ?? 2}s` }"
+            />
+            <path
+              :d="ribbon.d"
+              pathLength="100"
+              :stroke-width="(liveRibbon(ribbon)?.width ?? 1.5) + 1"
+              stroke-dasharray="5 100"
+              class="flow-head"
+              :class="pulseStroke(ribbon)"
               :style="{ animationDuration: `${liveRibbon(ribbon)?.durationSec ?? 2}s` }"
             />
           </g>
@@ -510,7 +609,8 @@ const fallthroughLabel = computed(() =>
         :y="box.y + 27"
         :font-size="FONT.meta"
         text-anchor="end"
-        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+        class="tabular-nums font-semibold"
+        :class="[fadeSpeed, rateFill(liveInbound(box)!.heat)]"
       >
         ↓{{ rate(liveInbound(box)!.down) }}
       </text>
@@ -556,7 +656,8 @@ const fallthroughLabel = computed(() =>
         :y="box.y + 17"
         :font-size="FONT.meta"
         text-anchor="end"
-        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+        class="tabular-nums font-semibold"
+        :class="[fadeSpeed, rateFill(live?.ribbons.get(`rule:${box.index}`)?.heat)]"
       >
         ↓{{ rate(liveRule(box.index)!.down) }} · {{ liveRule(box.index)!.connections }}
       </text>
@@ -656,7 +757,8 @@ const fallthroughLabel = computed(() =>
         :y="layout.fallthrough.y + 17"
         :font-size="FONT.meta"
         text-anchor="end"
-        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+        class="tabular-nums font-semibold"
+        :class="[fadeSpeed, rateFill(live?.ribbons.get('final')?.heat)]"
       >
         ↓{{ rate(live!.finalFlow!.down) }} · {{ live!.finalFlow!.connections }}
       </text>
@@ -676,8 +778,8 @@ const fallthroughLabel = computed(() =>
         :width="box.width"
         :height="box.height"
         rx="7"
-        stroke-width="1.5"
-        :class="[fadeSpeed, exitClass(box), fade(focusedExit === box.id, exitCarrying(box.id))]"
+        :stroke-width="exitCarrying(box.id) ? 2 : 1.5"
+        :class="[fadeSpeed, exitFill(box), exitStroke(box), fade(focusedExit === box.id, exitCarrying(box.id))]"
       />
       <text
         :x="box.x + NODE_PAD"
@@ -722,9 +824,37 @@ const fallthroughLabel = computed(() =>
         :y="box.y + 17"
         :font-size="FONT.meta"
         text-anchor="end"
-        class="fill-primary-700 dark:fill-primary-300 tabular-nums font-semibold"
+        class="tabular-nums font-semibold"
+        :class="[fadeSpeed, rateFill(liveExit(box.id)!.heat)]"
       >
         ↓{{ rate(liveExit(box.id)!.down) }}
+      </text>
+    </g>
+
+    <!--
+      Rank marks: the anchors. On the wire where the flow leaves its rule, so
+      the mark and the ribbon it ranks are one thing. No transition on purpose:
+      two close flows swap places every second, and a change that frequent
+      must not be one the eye is pulled to.
+    -->
+    <g v-for="mark in rankMarks" :key="`rank-${mark.id}`" class="pointer-events-none">
+      <title>{{ $t('routeFlow.live.rank', { n: mark.rank }) }}</title>
+      <circle
+        :cx="mark.x"
+        :cy="mark.y"
+        :r="RANK_R"
+        stroke-width="1.5"
+        class="stroke-white dark:stroke-slate-900"
+        :class="rateFill(mark.heat)"
+      />
+      <text
+        :x="mark.x"
+        :y="mark.y + 3"
+        font-size="9"
+        text-anchor="middle"
+        class="fill-white dark:fill-slate-900 font-bold tabular-nums"
+      >
+        {{ mark.rank }}
       </text>
     </g>
   </svg>
@@ -732,57 +862,104 @@ const fallthroughLabel = computed(() =>
 
 <style scoped>
 /*
- * Two paces for the same properties. Opacity and stroke-width are what
- * "lit" means here, so both ease — a width that snaps while the colour
- * fades reads as a glitch.
+ * One curve for everything that eases. The shell's own (DESIGN.md §8), so a
+ * ribbon settling and a menu opening feel like one system. CSS's keyword
+ * `ease` is too shallow to read as a settle at these durations.
  */
-.fade-live {
-  transition:
-    opacity 500ms ease,
-    stroke-width 500ms ease;
-}
-.fade-hover {
-  transition:
-    opacity 150ms ease,
-    stroke-width 150ms ease;
+svg {
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /*
- * The travelling pulse. With `pathLength="100"` and a dash pattern of
- * 14 on / 100 off, exactly one dash exists per period; sliding the offset
- * from 14 to -100 carries it from just before the start to just past the
- * end, and the loop restarts with the dash off-screen, so there is no seam.
- * Opacity rides along so the pulse is born and dies softly at the ends
- * rather than being cut by the path's edge. Duration is set inline per
- * ribbon from its bytes/s.
+ * Two paces for the same properties. Opacity, width and colour are what
+ * "lit" means here, so all three ease together — a width that snaps while
+ * the colour fades reads as a glitch.
+ *
+ * Asymmetric on purpose. A live change is a fact arriving once a second:
+ * lighting up is the system RESPONDING and takes 200ms; going quiet is a
+ * decay and takes the base 300ms. `is-lit` is on the element by the time the
+ * new duration is read, which is what makes the direction distinguishable
+ * with one transition declaration.
  */
-.flow-pulse {
-  animation-name: pulse-travel;
-  animation-timing-function: ease-in-out;
+.fade-live {
+  transition:
+    opacity 300ms var(--ease-out),
+    stroke-width 300ms var(--ease-out),
+    stroke 300ms var(--ease-out),
+    fill 300ms var(--ease-out);
+}
+.fade-live.is-lit {
+  transition-duration: 200ms;
+}
+/* Hover is direct manipulation; 150ms is the floor below which motion reads as flicker. */
+.fade-hover {
+  transition:
+    opacity 150ms var(--ease-out),
+    stroke-width 150ms var(--ease-out),
+    stroke 150ms var(--ease-out),
+    fill 150ms var(--ease-out);
+}
+
+/*
+ * The comet. With `pathLength="100"` the tail is an 18-unit dash and the
+ * head a 5-unit one; both slide the same distance in the same time, the
+ * head's offsets shifted by 13 so it rides the tail's leading edge. The tail
+ * starts fully off the path (offset = its own length) and ends fully past
+ * it, so the loop restarts with nothing on screen and there is no seam.
+ *
+ * LINEAR. The pulse is a rate made visible, and a rate is constant along the
+ * path; an ease would show the flow slowing as it nears the outbound.
+ * Opacity is ramped over the first and last stretch so the comet is born and
+ * dies softly rather than being cut by the path's ends. Duration is set
+ * inline per ribbon from its bytes/s.
+ */
+.flow-tail,
+.flow-head {
+  animation-timing-function: linear;
   animation-iteration-count: infinite;
   stroke-linecap: round;
 }
-@keyframes pulse-travel {
+.flow-tail {
+  animation-name: comet-tail;
+  opacity: 0.4;
+}
+.flow-head {
+  animation-name: comet-head;
+}
+@keyframes comet-tail {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+@keyframes comet-head {
   0% {
-    stroke-dashoffset: 14;
+    stroke-dashoffset: 5;
     opacity: 0;
   }
-  15% {
+  12% {
     opacity: 1;
   }
-  85% {
+  84% {
     opacity: 1;
   }
   100% {
-    stroke-dashoffset: -100;
+    stroke-dashoffset: -113;
     opacity: 0;
   }
 }
 
-/* A ribbon entering or leaving the top N fades its pulse in or out. */
-.pulse-enter-active,
+/*
+ * A ribbon entering or leaving the top N fades its comet in or out. In at
+ * 200ms — the system answering — out at 300ms, a decay.
+ */
+.pulse-enter-active {
+  transition: opacity 200ms var(--ease-out);
+}
 .pulse-leave-active {
-  transition: opacity 500ms ease;
+  transition: opacity 300ms var(--ease-out);
 }
 .pulse-enter-from,
 .pulse-leave-to {
@@ -790,7 +967,9 @@ const fallthroughLabel = computed(() =>
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flow-pulse {
+  /* The comet becomes a steady brighter core. */
+  .flow-tail,
+  .flow-head {
     animation: none;
     stroke-dasharray: none;
     opacity: 0.5;

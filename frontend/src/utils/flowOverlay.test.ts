@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test'
-import { RATE_FLOOR, TOP_N, buildFlowOverlay, dashDurationFor, formatRate, isLit, ribbonWidthFor } from './flowOverlay'
+import {
+  HEAT_STEPS,
+  RANK_N,
+  RATE_FLOOR,
+  TOP_N,
+  buildFlowOverlay,
+  dashDurationFor,
+  formatRate,
+  heatFor,
+  isLit,
+  ribbonWidthFor,
+} from './flowOverlay'
 import type { TrafficFrame, TrafficRuleFlow } from '../types/trafficFlow'
 
 const rule = (index: number, exit: string, down: number, extra: Partial<TrafficRuleFlow> = {}): TrafficRuleFlow => ({
@@ -222,5 +233,83 @@ describe('buildFlowOverlay — the rate floor', () => {
 
     expect(overlay.belowFloor).toBe(1)
     expect(overlay.ribbons.get('rule:5')!.lit).toBe(false)
+  })
+})
+
+/**
+ * Heat: colour as a function of ABSOLUTE download rate. Relative to the frame's
+ * maximum, a 50 KB/s flow on an idle router would read as blazing, and the
+ * whole point is to spot an extreme without first reading every number.
+ */
+describe('heat', () => {
+  test('is zero under the floor, then one tier per decade of download', () => {
+    expect(heatFor(0, 0)).toBe(0)
+    expect(heatFor(RATE_FLOOR - 1, 0)).toBe(0)
+    expect(heatFor(RATE_FLOOR, 0)).toBe(1)
+    expect(heatFor(HEAT_STEPS[0]! - 1, 0)).toBe(1)
+    expect(heatFor(HEAT_STEPS[0]!, 0)).toBe(2)
+    expect(heatFor(HEAT_STEPS[1]!, 0)).toBe(3)
+    expect(heatFor(HEAT_STEPS[2]!, 0)).toBe(4)
+    expect(heatFor(1e12, 0)).toBe(4)
+  })
+
+  // Upload lights a flow (see the floor) but it is DOWNLOAD heat: a backup
+  // pushing 5 MB/s up with nothing coming down is warm, not blazing.
+  test('a flow lit by upload alone is at the base tier', () => {
+    expect(heatFor(0, 5_000_000)).toBe(1)
+  })
+
+  test('every ribbon and exit carries its heat', () => {
+    const overlay = buildFlowOverlay(
+      frame([rule(3, '🤖 AI', 2_000_000)], {
+        exits: [{ tag: '🤖 AI', down: 2_000_000, up: 0, connections: 1, via: [] }],
+        inbounds: [{ tag: 'tun-in', down: 500, up: 0, connections: 1 }],
+      }),
+    )
+
+    expect(overlay.ribbons.get('rule:3')!.heat).toBe(3)
+    expect(overlay.exits.get('🤖 AI')!.heat).toBe(3)
+    expect(overlay.ribbons.get('in:tun-in')!.heat).toBe(0)
+  })
+})
+
+/**
+ * Rank: the anchor points. With eight ribbons moving, "which is the busiest"
+ * still meant reading eight numbers; the top few now say so themselves.
+ */
+describe('rank', () => {
+  test('the busiest lit rule flows are ranked 1..RANK_N, the rest are not', () => {
+    const rules = Array.from({ length: RANK_N + 3 }, (_, i) => rule(i, 'x', 1_000_000 - i * 1000))
+    const overlay = buildFlowOverlay(frame(rules))
+
+    for (let i = 0; i < RANK_N; i += 1) expect(overlay.ribbons.get(`rule:${i}`)!.rank).toBe(i + 1)
+    expect(overlay.ribbons.get(`rule:${RANK_N}`)!.rank).toBeNull()
+  })
+
+  test('ranks are by download, whatever order the wire sent', () => {
+    const overlay = buildFlowOverlay(frame([rule(1, 'x', 5_000), rule(2, 'x', 900_000), rule(3, 'x', 50_000)]))
+
+    expect(overlay.ribbons.get('rule:2')!.rank).toBe(1)
+    expect(overlay.ribbons.get('rule:3')!.rank).toBe(2)
+    expect(overlay.ribbons.get('rule:1')!.rank).toBe(3)
+  })
+
+  test('a flow under the floor is never ranked, even when it is all there is', () => {
+    const overlay = buildFlowOverlay(frame([rule(1, 'x', 50)]))
+
+    expect(overlay.ribbons.get('rule:1')!.rank).toBeNull()
+  })
+
+  test('the fall-through competes for a rank like any rule', () => {
+    const overlay = buildFlowOverlay(frame([rule(1, 'x', 5_000), rule(-1, 'direct', 900_000, { kind: 'final' })]))
+
+    expect(overlay.ribbons.get('final')!.rank).toBe(1)
+    expect(overlay.ribbons.get('rule:1')!.rank).toBe(2)
+  })
+
+  test('inbound ribbons are not ranked — the ladder is what is being compared', () => {
+    const overlay = buildFlowOverlay(frame([]))
+
+    expect(overlay.ribbons.get('in:tun-in')!.rank).toBeNull()
   })
 })

@@ -39,6 +39,12 @@ export function formatRate(bytesPerSec: number): string {
 export const TOP_N = 8
 
 /**
+ * How many of those carry a rank mark. Three, not eight: the mark is an
+ * ANCHOR — where the eye should land first — and eight anchors is a list again.
+ */
+export const RANK_N = 3
+
+/**
  * Below this combined rate, a flow is trickle rather than traffic.
  *
  * On a real router almost every rule carries SOMETHING — a DNS lookup, a
@@ -57,11 +63,32 @@ export const TOP_N = 8
  */
 export const RATE_FLOOR = 1_024
 
+/**
+ * Heat: colour as a function of ABSOLUTE download rate, one tier per decade
+ * above the floor. Absolute, not relative to the frame's maximum — on an idle
+ * router the busiest flow is 50 KB/s, and painting that as blazing is the
+ * opposite of what a colour scale is for, which is spotting an extreme
+ * without first reading every number.
+ *
+ * Tiers, by download: 0 under the floor, 1 to 100 KB/s, 2 to 1 MB/s,
+ * 3 to 10 MB/s, 4 beyond. Upload lights a flow but does not heat it — the
+ * ribbon width, the pulse speed and the ranking are all download-driven, and
+ * a colour that disagreed with them would be a fourth opinion.
+ */
+export type Heat = 0 | 1 | 2 | 3 | 4
+export const HEAT_STEPS = [100 * 1024, 1024 * 1024, 10 * 1024 * 1024] as const
+
 /** Pulse traversal bounds, seconds — one trip from inbound to exit. */
 const SLOWEST_CYCLE = 4
 const FASTEST_CYCLE = 0.3
-/** The rate at which the cycle is SLOWEST_CYCLE; each decade above halves it. */
+/** The rate at which the cycle is SLOWEST_CYCLE. */
 const BASE_RATE = 1_000
+/**
+ * Decades above BASE_RATE at which it is FASTEST_CYCLE — 10 MB/s. Each decade
+ * between shortens the cycle by the same factor, so the scale stays log and
+ * the clamp only bites past a rate a home link cannot exceed.
+ */
+const TOP_DECADES = 4
 
 const MIN_WIDTH = 1.5
 const MAX_WIDTH = 6
@@ -79,6 +106,14 @@ export interface LiveEdge {
   lit: boolean
   /** In the top N of the LIT flows — draw the travelling pulse. */
   animated: boolean
+  /** Download tier, for colour. See `heatFor`. */
+  heat: Heat
+  /**
+   * 1-based place among the lit rule/final flows by download, for the first
+   * `RANK_N` of them; null otherwise, and always null for inbound ribbons —
+   * the ladder is what is being compared, and an inbound is not a rung of it.
+   */
+  rank: number | null
   /** Seconds per pulse traversal; only meaningful when animated. */
   durationSec: number
   /** Stroke width for the lit ribbon. */
@@ -87,6 +122,8 @@ export interface LiveEdge {
 
 export interface LiveExit extends TrafficExitFlow {
   animated: boolean
+  /** Download tier of the exit's OWN total, for colour. */
+  heat: Heat
 }
 
 export interface FlowOverlay {
@@ -111,7 +148,7 @@ export interface FlowOverlay {
 export function dashDurationFor(bytesPerSec: number): number {
   if (bytesPerSec <= 0) return SLOWEST_CYCLE
   const decades = Math.log10(bytesPerSec / BASE_RATE)
-  const cycle = SLOWEST_CYCLE / Math.pow(2, decades)
+  const cycle = SLOWEST_CYCLE * Math.pow(FASTEST_CYCLE / SLOWEST_CYCLE, decades / TOP_DECADES)
   return Math.min(SLOWEST_CYCLE, Math.max(FASTEST_CYCLE, cycle))
 }
 
@@ -127,7 +164,20 @@ export function isLit(down: number, up: number): boolean {
   return down + up >= RATE_FLOOR
 }
 
-const edge = (down: number, up: number, connections: number, animated: boolean): LiveEdge => {
+/** Download tier for colour. 0 under the floor; otherwise at least 1. */
+export function heatFor(down: number, up: number): Heat {
+  if (!isLit(down, up)) return 0
+  const above = HEAT_STEPS.filter((step) => down >= step).length
+  return (1 + above) as Heat
+}
+
+const edge = (
+  down: number,
+  up: number,
+  connections: number,
+  animated: boolean,
+  rank: number | null = null,
+): LiveEdge => {
   const lit = isLit(down, up)
   return {
     down,
@@ -138,6 +188,8 @@ const edge = (down: number, up: number, connections: number, animated: boolean):
     // router where EVERYTHING is trickle, nothing moves — which is the truth,
     // and quieter than eight pulses ranking a set of nothings.
     animated: animated && lit && down > 0,
+    heat: heatFor(down, up),
+    rank,
     durationSec: dashDurationFor(down),
     width: lit ? ribbonWidthFor(down) : MIN_WIDTH,
   }
@@ -162,6 +214,14 @@ export function buildFlowOverlay(frame: TrafficFrame, topN: number = TOP_N): Flo
   const placeable = frame.rules.filter((flow) => ribbonKey(flow) !== null)
   const ranked = placeable.filter((flow) => isLit(flow.down, flow.up)).sort((a, b) => b.down - a.down)
   const top = new Set(ranked.slice(0, topN).map(ribbonKey))
+  // The anchors: a place for the first RANK_N, by the same ordering. A flow
+  // with no download has nothing to be first AT, so it is never ranked.
+  const rankOf = new Map(
+    ranked
+      .slice(0, RANK_N)
+      .filter((flow) => flow.down > 0)
+      .map((flow, i) => [ribbonKey(flow), i + 1] as const),
+  )
 
   const belowFloor = placeable.filter(
     (flow) => !isLit(flow.down, flow.up) && (flow.down > 0 || flow.up > 0 || flow.connections > 0),
@@ -174,7 +234,7 @@ export function buildFlowOverlay(frame: TrafficFrame, topN: number = TOP_N): Flo
       unmatched.push(flow)
       continue
     }
-    const live = edge(flow.down, flow.up, flow.connections, top.has(key))
+    const live = edge(flow.down, flow.up, flow.connections, top.has(key), rankOf.get(key) ?? null)
     ribbons.set(key, live)
     if (live.animated) animatedRules += 1
     if (flow.kind === 'rule') rules.set(flow.index, flow)
@@ -190,7 +250,11 @@ export function buildFlowOverlay(frame: TrafficFrame, topN: number = TOP_N): Flo
     frame.rules.filter((flow) => top.has(ribbonKey(flow)) && flow.down > 0).map((flow) => flow.exit),
   )
   for (const exit of frame.exits) {
-    exits.set(exit.tag, { ...exit, animated: animatedExits.has(exit.tag) })
+    exits.set(exit.tag, {
+      ...exit,
+      animated: animatedExits.has(exit.tag),
+      heat: heatFor(exit.down, exit.up),
+    })
   }
 
   return {

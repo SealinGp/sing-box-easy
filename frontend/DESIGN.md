@@ -350,12 +350,31 @@ Overview traffic-flow card). They share a house style.
   never changes under the cursor.
 - **A live overlay never changes the shape.** `RouteFlowDiagram` takes an
   optional `live` prop and, when set, only widens ribbons, lights nodes, and
-  draws a second dashed stroke over the top-N ribbons with a CSS
-  `stroke-dashoffset` animation whose `animation-duration` is set inline per
-  ribbon from its bytes/s. One keyframe, no JS timers, GPU-composited; honours
-  `prefers-reduced-motion` by freezing the dashes at 70% opacity. Idle elements
-  fade to `opacity-35` — the expected shape is what the live traffic is being
-  compared against, so it must stay legible.
+  draws a comet — a faint tail and a bright head, two dashed strokes — over the
+  top-N ribbons with a CSS `stroke-dashoffset` animation whose
+  `animation-duration` is set inline per ribbon from its bytes/s. LINEAR, not
+  eased: the comet is a rate made visible, and a rate is constant along the
+  path. No JS timers; honours `prefers-reduced-motion` by freezing the comet as
+  a steady brighter core. Idle elements fade to `opacity-35` — the expected
+  shape is what the live traffic is being compared against, so it must stay
+  legible.
+- **Colour is a function of ABSOLUTE download rate** (`utils/flowHeat.ts`, tiers
+  from `heatFor` in `flowOverlay.ts`): blue for traffic, amber then orange for a
+  lot of it, one tier per decade above the 1 KB/s floor. Absolute rather than
+  relative to the frame's maximum, so 1 MB/s is the same colour on a quiet
+  router and a busy one and an extreme is spotted before a number is read. The
+  class maps are literal strings in a plain TS file because Tailwind only emits
+  classes it can see. Red is not in the scale — red is what a missing outbound
+  is.
+- **Motion has a stated job or it is not there.** The comet encodes rate; rank
+  marks on the busiest three rows are anchors and do not animate at all,
+  because they trade places every second. State transitions are ≤300ms on the
+  shell's curve, asymmetric — lighting 200ms, quieting 300ms
+  (`.fade-live.is-lit` shortens the duration INTO the lit state) — and hover
+  is 150ms, the floor under which motion reads as flicker. An "arrival ring"
+  that lit the outbound as each comet landed was tried and removed: on a busy
+  exit it is a blink every few hundred milliseconds, and the outline's heat
+  colour already says what is landing there.
 
 ---
 
