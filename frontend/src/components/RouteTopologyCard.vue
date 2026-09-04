@@ -26,6 +26,8 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import RouteFlowDiagram from './RouteFlowDiagram.vue'
+import { Select } from '../volt'
+import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { configService } from '../services'
 import { useServiceStore } from '../stores/service'
 import { useTrafficFlow } from '../composables/useTrafficFlow'
@@ -98,13 +100,31 @@ onMounted(() => load())
 const serviceStore = useServiceStore()
 const running = computed(() => serviceStore.status?.status === 'running')
 
+/**
+ * Live follows the service: on while sing-box is running, off when it is not.
+ *
+ * The card exists to answer "is my config doing what I meant", and the live
+ * overlay is the half that answers it — asking for a click first made the
+ * default view the one with less information in it. The gate is the same one
+ * the button has: the stream is served by sing-box itself, so it is only ever
+ * enabled while sing-box is up.
+ *
+ * `immediate` matters because the store may already know the status by the
+ * time this card mounts (the Overview polls it elsewhere), in which case the
+ * watcher would never fire and Live would stay off on a running host.
+ */
 const liveEnabled = ref(false)
 
-// A stop while Live is on turns it off rather than leaving the composable
-// retrying against a controller that is not there.
-watch(running, (isRunning) => {
-  if (!isRunning) liveEnabled.value = false
-})
+watch(
+  running,
+  (isRunning) => {
+    // A stop turns it off rather than leaving the composable retrying against
+    // a controller that is not there; a start turns it back on, so the view
+    // recovers by itself after the restart the panel triggers on every save.
+    liveEnabled.value = isRunning
+  },
+  { immediate: true },
+)
 
 onMounted(() => serviceStore.startPolling())
 onBeforeUnmount(() => serviceStore.stopPolling())
@@ -115,9 +135,13 @@ const toggleLive = () => {
 }
 
 /**
- * Filter inputs are debounced into the stream's filter: each change is a new
- * server-side stream, and re-opening one per keystroke while someone types an
- * IP is a burst of `/rules` reads for nothing.
+ * The host box is debounced into the stream's filter: each change is a new
+ * server-side stream, and re-opening one per keystroke while someone types is
+ * a burst of `/rules` reads for nothing.
+ *
+ * The source is NOT debounced. It is a pick from a list, not a keystroke
+ * sequence, so there is no burst to absorb — and 400ms of nothing happening
+ * after a deliberate click reads as a dropped click.
  */
 const FILTER_DEBOUNCE_MS = 400
 const sourceIpInput = ref('')
@@ -125,11 +149,15 @@ const hostInput = ref('')
 const filter = ref<TrafficFilter>({ sourceIp: '', host: '' })
 let filterTimer: ReturnType<typeof setTimeout> | null = null
 
-watch([sourceIpInput, hostInput], ([sourceIp, host]) => {
+watch(hostInput, (host) => {
   if (filterTimer !== null) clearTimeout(filterTimer)
   filterTimer = setTimeout(() => {
-    filter.value = { sourceIp, host }
+    filter.value = { ...filter.value, host }
   }, FILTER_DEBOUNCE_MS)
+})
+
+watch(sourceIpInput, (sourceIp) => {
+  filter.value = { ...filter.value, sourceIp }
 })
 
 const hasFilter = computed(() => sourceIpInput.value.trim() !== '' || hostInput.value.trim() !== '')
@@ -141,9 +169,38 @@ const clearFilter = () => {
 
 const {
   overlay,
+  frame,
   error: liveError,
   connecting,
 } = useTrafficFlow(liveEnabled, filter, () => t('routeFlow.live.failed'))
+
+/**
+ * The devices currently holding connections — the source filter's list.
+ *
+ * Built from the frame rather than typed, which is the whole point: the panel
+ * already knows every client address in the snapshot, and typing one from
+ * memory is how a filter ends up silently matching nothing. The server
+ * collects them BEFORE applying the filter, so picking one does not empty the
+ * list it was picked from.
+ *
+ * The selection is re-appended when it drops out of the frame. A device whose
+ * last connection just closed would otherwise vanish from the picker while its
+ * filter was still in force, leaving an empty diagram and no visible cause.
+ */
+const sourceOptions = computed(() => {
+  const sources = frame.value?.sources ?? []
+  const options = sources.map((source) => ({
+    value: source.ip,
+    connections: source.connections,
+    down: source.down,
+  }))
+  if (sourceIpInput.value && !sources.some((source) => source.ip === sourceIpInput.value)) {
+    options.unshift({ value: sourceIpInput.value, connections: 0, down: 0 })
+  }
+  return [{ value: '', connections: 0, down: 0 }, ...options]
+})
+
+const sourceLabel = (value: string) => (value === '' ? t('routeFlow.live.allSources') : value)
 
 const rate = (bytesPerSec: number) => t('routeFlow.live.rate', { rate: formatRate(bytesPerSec) })
 
@@ -210,12 +267,17 @@ onBeforeUnmount(() => {
       card; a fixed, viewport-filling column while expanded. Same children in
       both cases — see `expanded` in the script for why it moves rather than
       re-renders.
+
+      z-40, one step BELOW the app's overlay layer: this container teleports to
+      <body>, and so do the select panels inside it. At an equal z-index the
+      later sibling wins, which put the diagram over an open dropdown. Above
+      the page (the top bar is z-30), under anything that overlays it.
     -->
     <Teleport to="body" :disabled="!expanded">
       <div
         :class="
           expanded
-            ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900 p-4 sm:p-6 overflow-hidden'
+            ? 'fixed inset-0 z-40 flex flex-col bg-white dark:bg-slate-900 p-4 sm:p-6 overflow-hidden'
             : 'contents'
         "
         :role="expanded ? 'dialog' : undefined"
@@ -325,22 +387,60 @@ onBeforeUnmount(() => {
 
       <span class="flex-1"></span>
 
-      <!-- Narrowing to one device or one site is how a slow-site complaint gets pinned. -->
+      <!--
+        Narrowing to one device or one site is how a slow-site complaint gets
+        pinned. The device is PICKED, not typed: the frame already carries every
+        client address in the snapshot, so a list beats recalling an IP — and a
+        typo in a typed one is indistinguishable from a device with no traffic.
+        A value picker, so `volt/Select`; the `value: ''` entry needs its label
+        repeated as the placeholder (see DESIGN.md §6).
+
+        The panel teleports to <body> like every other overlay in the app — see
+        the full-window container's z-index for why that keeps working there,
+        and why keeping the panel inside the card does not: `backdrop-filter`
+        samples only what is painted BEHIND an element, so a panel inside the
+        card had the diagram show straight through its glass.
+      -->
       <label class="inline-flex items-center gap-1">
-        <input
+        <span class="sr-only">{{ $t('routeFlow.live.filterSource') }}</span>
+        <Select
           v-model="sourceIpInput"
-          type="text"
-          inputmode="decimal"
-          :placeholder="$t('routeFlow.live.filterSource')"
-          class="w-32 px-2 py-1 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        />
+          :options="sourceOptions"
+          optionValue="value"
+          :filter="sourceOptions.length >= FILTER_THRESHOLD"
+          :filterPlaceholder="$t('common.search')"
+          :emptyFilterMessage="$t('common.noMatch')"
+          :emptyMessage="$t('routeFlow.live.noSources')"
+          :placeholder="$t('routeFlow.live.allSources')"
+          :title="$t('routeFlow.live.filterSource')"
+          class="w-56 text-xs"
+          scrollHeight="14rem"
+        >
+          <template #value="{ value }">
+            <span class="truncate">{{ sourceLabel(value ?? '') }}</span>
+          </template>
+          <!--
+            The address never truncates; the busy-ness does. An address clipped
+            to "192.168.31.1…" is unusable — it is the whole identity of the
+            row — while a clipped rate still reads as "this one is busy".
+          -->
+          <template #option="{ option }">
+            <span class="shrink-0">{{ sourceLabel(option.value) }}</span>
+            <span v-if="option.connections" class="ml-auto min-w-0 truncate pl-2 tabular-nums text-[10px] text-gray-500 dark:text-gray-400">
+              {{ $t('routeFlow.live.sourceConnections', { n: option.connections }) }}
+              <template v-if="option.down">· {{ rate(option.down) }}</template>
+            </span>
+          </template>
+        </Select>
       </label>
+      <!-- Sized to match the source picker beside it, which is a control-height field. -->
       <label class="inline-flex items-center gap-1">
+        <span class="sr-only">{{ $t('routeFlow.live.filterHost') }}</span>
         <input
           v-model="hostInput"
           type="text"
           :placeholder="$t('routeFlow.live.filterHost')"
-          class="w-40 px-2 py-1 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          class="w-40 px-3 py-2 rounded-control border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:border-primary-500"
         />
       </label>
       <button

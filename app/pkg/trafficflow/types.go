@@ -65,6 +65,9 @@ type Frame struct {
 	Inbounds []InboundFlow `json:"inbounds"`
 	Rules    []RuleFlow    `json:"rules"`
 	Exits    []ExitFlow    `json:"exits"`
+	// Sources are the client addresses currently holding connections, for the
+	// filter picker. Collected BEFORE the filter — see SourceFlow.
+	Sources []SourceFlow `json:"sources"`
 	// Filtered is true when a Filter narrowed this frame.
 	Filtered bool `json:"filtered"`
 	// Unmatched counts connections whose rule string has no index — the
@@ -83,6 +86,23 @@ type Totals struct {
 	All         int `json:"all"`
 	// Closed is how many connections vanished since the previous sample.
 	Closed int `json:"closed"`
+}
+
+// SourceFlow is one client address currently holding connections.
+//
+// It exists so the operator picks a device from a list instead of typing an
+// address the panel already knows: the sources of the moment are exactly the
+// candidates worth filtering on.
+//
+// Collected BEFORE the filter is applied, and that is load-bearing. A list
+// built from the filtered connections collapses to the one selected address
+// the instant it is chosen, leaving the picker with a single entry and no way
+// back to another device.
+type SourceFlow struct {
+	IP          string  `json:"ip"`
+	Down        float64 `json:"down"`
+	Up          float64 `json:"up"`
+	Connections int     `json:"connections"`
 }
 
 // InboundFlow is traffic entering through one inbound.
@@ -141,6 +161,12 @@ const (
 
 // FinalRule is what sing-box writes in `rule` when no rule matched.
 const FinalRule = "final"
+
+// maxSources bounds the source picker's list. A busy tun inbound on a router
+// can see every device on the LAN plus the router itself; past a few dozen the
+// list is scrolled, not read, and the ones worth filtering on are the busy
+// ones. The cap keeps the busiest and the picker still sorts by address.
+const maxSources = 64
 
 // maxHostsPerRule bounds the per-rule host list. Three is what fits a tooltip
 // and is enough to answer "what is flowing here".

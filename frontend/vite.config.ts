@@ -102,7 +102,10 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5100',
+        // Defaults to the local backend (`./dev.sh`). Point it at a real
+        // device to develop the frontend against live sing-box data:
+        //   VITE_API_PROXY=http://192.168.31.1:8080 bun run dev
+        target: process.env.VITE_API_PROXY || 'http://localhost:5100',
         changeOrigin: true,
         // The log tail and the DNS probe are SSE. Nothing extra is needed here
         // — http-proxy streams a chunked response through untouched, and this

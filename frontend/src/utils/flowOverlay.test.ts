@@ -19,6 +19,7 @@ const frame = (rules: TrafficRuleFlow[], extra: Partial<TrafficFrame> = {}): Tra
   inbounds: [{ tag: 'tun-in', down: 5000, up: 100, connections: 3 }],
   rules,
   exits: [{ tag: '🤖 AI', down: 4000, up: 400, connections: 2, via: [{ tag: '新加坡03', down: 3000, connections: 1 }] }],
+  sources: [{ ip: '192.168.9.20', down: 5000, up: 100, connections: 3 }],
   filtered: false,
   unmatched: 0,
   ...extra,

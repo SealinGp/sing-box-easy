@@ -1,6 +1,7 @@
 package trafficflow
 
 import (
+	"net/netip"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,15 +22,31 @@ func Aggregate(at time.Time, live []Live, index *RuleIndex, filter Filter) *Fram
 		Inbounds: []InboundFlow{},
 		Rules:    []RuleFlow{},
 		Exits:    []ExitFlow{},
+		Sources:  []SourceFlow{},
 	}
 	frame.Totals.All = len(live)
 
 	inbounds := map[string]*InboundFlow{}
+	sources := map[string]*SourceFlow{}
 	rules := map[string]*ruleAccumulator{}
 	exits := map[string]*exitAccumulator{}
 
 	for i := range live {
 		conn := &live[i]
+
+		// Before the filter, deliberately: the picker this feeds must keep
+		// offering every client while narrowed to one of them.
+		if ip := conn.Metadata.SourceIP; ip != "" {
+			src := sources[ip]
+			if src == nil {
+				src = &SourceFlow{IP: ip}
+				sources[ip] = src
+			}
+			src.Down += conn.DownRate
+			src.Up += conn.UpRate
+			src.Connections++
+		}
+
 		if !filter.admits(conn) {
 			continue
 		}
@@ -86,6 +103,8 @@ func Aggregate(at time.Time, live []Live, index *RuleIndex, filter Filter) *Fram
 		}
 	}
 
+	frame.Sources = finishSources(sources)
+
 	for _, in := range inbounds {
 		frame.Inbounds = append(frame.Inbounds, *in)
 	}
@@ -106,6 +125,40 @@ func Aggregate(at time.Time, live []Live, index *RuleIndex, filter Filter) *Fram
 	})
 
 	return frame
+}
+
+// finishSources caps the list to the busiest addresses and then orders it by
+// address, not by rate: a picker whose entries reshuffle every second is one
+// an operator cannot click reliably.
+func finishSources(sources map[string]*SourceFlow) []SourceFlow {
+	list := make([]SourceFlow, 0, len(sources))
+	for _, src := range sources {
+		list = append(list, *src)
+	}
+	if len(list) > maxSources {
+		sort.SliceStable(list, func(i, j int) bool { return list[i].Connections > list[j].Connections })
+		list = list[:maxSources]
+	}
+	sort.SliceStable(list, func(i, j int) bool { return lessSourceIP(list[i].IP, list[j].IP) })
+	return list
+}
+
+// lessSourceIP orders addresses numerically — "192.168.1.9" before
+// "192.168.1.10", which a string comparison reverses — and puts anything that
+// is not an address last, in string order.
+func lessSourceIP(a, b string) bool {
+	addrA, errA := netip.ParseAddr(a)
+	addrB, errB := netip.ParseAddr(b)
+	switch {
+	case errA == nil && errB == nil:
+		return addrA.Compare(addrB) < 0
+	case errA == nil:
+		return true
+	case errB == nil:
+		return false
+	default:
+		return a < b
+	}
 }
 
 type ruleAccumulator struct {

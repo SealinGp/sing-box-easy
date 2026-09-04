@@ -69,6 +69,21 @@ export interface TrafficExitFlow {
   via: TrafficViaFlow[]
 }
 
+/**
+ * One client address currently holding connections — an entry in the source
+ * filter's picker.
+ *
+ * Collected server-side BEFORE the filter, so the list keeps every device on
+ * offer while narrowed to one of them, and ordered by address rather than by
+ * rate so the entries do not reshuffle under the cursor once a second.
+ */
+export interface TrafficSourceFlow {
+  ip: string
+  down: number
+  up: number
+  connections: number
+}
+
 export interface TrafficFrame {
   /** Sample time, unix milliseconds. */
   at: number
@@ -78,6 +93,8 @@ export interface TrafficFrame {
   rules: TrafficRuleFlow[]
   /** Sorted by `down`, highest first. */
   exits: TrafficExitFlow[]
+  /** Every client address in the snapshot, pre-filter, ordered by address. */
+  sources: TrafficSourceFlow[]
   filtered: boolean
   /** Connections whose rule string has no index in the running rule list. */
   unmatched: number

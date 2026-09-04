@@ -224,6 +224,45 @@ func TestAggregateFilterBySourceIPAndHost(t *testing.T) {
 	}
 }
 
+// The source picker's list is built before the filter, so choosing one device
+// still leaves the others selectable. It is ordered by address numerically —
+// .20 before .100 — because a list that reshuffled by rate every second could
+// not be clicked reliably.
+func TestAggregateSourcesArePreFilterAndOrderedByAddress(t *testing.T) {
+	live, index := liveSet()
+	live = append(live, Live{
+		Connection: conn("6", "tun/tun-in", "192.168.9.100", "a.example", "final", []string{"direct"}, 0, 0),
+	})
+
+	full := Aggregate(time.Now(), live, index, Filter{})
+	got := make([]string, 0, len(full.Sources))
+	for _, src := range full.Sources {
+		got = append(got, src.IP)
+	}
+	want := []string{"192.168.9.20", "192.168.9.21", "192.168.9.22", "192.168.9.100"}
+	if len(got) != len(want) {
+		t.Fatalf("sources = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("sources = %v, want %v", got, want)
+		}
+	}
+
+	if full.Sources[0].Connections != 2 || full.Sources[0].Down != 3500 {
+		t.Fatalf("busiest source = %+v", full.Sources[0])
+	}
+
+	// Narrowed to one device, every device is still on offer.
+	narrowed := Aggregate(time.Now(), live, index, Filter{SourceIP: "192.168.9.20"})
+	if len(narrowed.Sources) != len(want) {
+		t.Fatalf("filtered sources = %+v; the picker must not collapse", narrowed.Sources)
+	}
+	if narrowed.Totals.Connections != 2 {
+		t.Fatalf("filter stopped working: %+v", narrowed.Totals)
+	}
+}
+
 func TestAggregateInboundTagFallsBackToType(t *testing.T) {
 	live := []Live{{Connection: conn("1", "tun", "s", "h", "final", []string{"direct"}, 0, 0)}}
 	frame := Aggregate(time.Now(), live, BuildRuleIndex(nil), Filter{})

@@ -71,6 +71,11 @@ export default {
     shownOf: '{shown} of {all}',
     closed: '{n} closed',
     filterSource: 'Source IP',
+    allSources: 'All devices',
+    // The picker lists the clients holding connections right now, so the count
+    // is what tells one busy device from an idle one.
+    sourceConnections: '{n} conn',
+    noSources: 'No devices yet',
     filterHost: 'Host contains…',
     clearFilter: 'Clear',
     unmatched: '{n} connection lit by outbound only — its rule is not in the running list (sing-box was reloaded) | {n} connections lit by outbound only — their rules are not in the running list (sing-box was reloaded)',
