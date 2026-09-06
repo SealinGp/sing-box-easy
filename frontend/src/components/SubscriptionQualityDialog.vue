@@ -17,6 +17,8 @@ import { useNotify } from '../composables/useNotify'
 import type { Subscription } from '../types/api'
 import type { ProbeNodeResult, ProbePoint, ProbeRange } from '../types/subprobe'
 import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
+import { qualityStepColors } from '../utils/qualitySteps'
+import SegmentedProgress from './SegmentedProgress.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -187,6 +189,15 @@ const probeTarget = computed(
             <span class="text-2xl font-bold" :class="latestClass">
               {{ formatAvailability(latest) }}
             </span>
+            <SegmentedProgress
+              :percent="100"
+              :steps="5"
+              :stroke-color="qualityStepColors(latest.reachable, latest.total)"
+              size="md"
+              :aria-label="
+                $t('subProbe.nodesTested', { reachable: latest.reachable, total: latest.total })
+              "
+            />
             <span class="text-sm text-gray-500 dark:text-gray-400">
               {{ latest.reachable }}/{{ latest.total }} · {{ latest.reachable > 0 ? formatLatency(latest.avg_ms) : '—' }}
             </span>

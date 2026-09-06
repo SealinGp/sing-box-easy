@@ -12,6 +12,8 @@ import { computed } from 'vue'
 import { ChartBarIcon } from '@heroicons/vue/24/outline'
 import type { ProbePoint } from '../types/subprobe'
 import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
+import { qualityStepColors } from '../utils/qualitySteps'
+import SegmentedProgress from './SegmentedProgress.vue'
 
 const props = defineProps<{
   point?: ProbePoint
@@ -33,6 +35,16 @@ const toneClass = computed(() => {
 const latency = computed(() =>
   props.point && props.point.reachable > 0 ? formatLatency(props.point.avg_ms) : '—',
 )
+
+/**
+ * Blocks coloured by how the nodes split, not by a percentage.
+ *
+ * percent=100 so every block renders; the colours carry the breakdown. See
+ * qualityStepColors for why the green count floors rather than rounds.
+ */
+const stepColors = computed(() =>
+  props.point ? qualityStepColors(props.point.reachable, props.point.total) : [],
+)
 </script>
 
 <template>
@@ -51,6 +63,13 @@ const latency = computed(() =>
         class="h-3.5 w-3.5 text-gray-300 transition-colors group-hover/q:text-primary-500 dark:text-gray-600"
       />
     </span>
+    <SegmentedProgress
+      :percent="100"
+      :steps="5"
+      :stroke-color="stepColors"
+      size="sm"
+      :aria-label="$t('subProbe.nodesTested', { reachable: point.reachable, total: point.total })"
+    />
     <span class="text-xs text-gray-500 dark:text-gray-400">{{ latency }}</span>
     <span class="text-xs text-gray-400 dark:text-gray-500">
       {{ $t('subProbe.nodesTested', { reachable: point.reachable, total: point.total }) }}

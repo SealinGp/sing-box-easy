@@ -17,5 +17,8 @@ export type { TableColumn } from './Table.vue'
 export { default as List } from './List.vue'
 export { default as ListRow } from './ListRow.vue'
 export { default as ListField } from './ListField.vue'
+// Ant-style stepped progress. Discrete blocks rather than a continuous bar,
+// for quantities that are actually counted (nodes up / nodes total).
+export { default as SegmentedProgress } from './SegmentedProgress.vue'
 export { default as Loading } from './Loading.vue'
 export { default as NodeList } from './NodeList.vue'

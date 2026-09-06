@@ -20,6 +20,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
 import SubscriptionQualityDialog from './SubscriptionQualityDialog.vue'
+import SegmentedProgress from './SegmentedProgress.vue'
 import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
@@ -31,6 +32,7 @@ import { formatRelativeTime } from '../utils/relativeTime'
 import type { Subscription } from '../types/api'
 import type { ProbePoint } from '../types/subprobe'
 import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
+import { qualityStepColors } from '../utils/qualitySteps'
 
 const { t, locale } = useI18n()
 const notify = useNotify()
@@ -676,8 +678,22 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
             be noise about a feature that deployment does not have.
           -->
           <p v-if="row.probe" class="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <!-- Labelled, because this row can sit directly under a quota
+                 percentage and two bare percentages would be ambiguous. -->
+            <span>{{ $t('subProbe.column') }}:</span>
+            <SegmentedProgress
+              :percent="100"
+              :steps="5"
+              :stroke-color="qualityStepColors(row.probe.reachable, row.probe.total)"
+              size="xs"
+              :aria-label="
+                $t('subProbe.nodesTested', {
+                  reachable: row.probe.reachable,
+                  total: row.probe.total,
+                })
+              "
+            />
             <span>
-              {{ $t('subProbe.column') }}:
               <span class="font-medium" :class="probeToneClass(row.probe)">
                 {{ formatAvailability(row.probe) }}
               </span>

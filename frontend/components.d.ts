@@ -67,6 +67,7 @@ declare module 'vue' {
     SchemaFieldControl: typeof import('./src/components/SchemaFieldControl.vue')['default']
     SchemaFieldsEditor: typeof import('./src/components/SchemaFieldsEditor.vue')['default']
     SearchPicker: typeof import('./src/components/SearchPicker.vue')['default']
+    SegmentedProgress: typeof import('./src/components/SegmentedProgress.vue')['default']
     ServiceStatusCard: typeof import('./src/components/ServiceStatusCard.vue')['default']
     Sidebar: typeof import('./src/components/Sidebar.vue')['default']
     StorageUsage: typeof import('./src/components/StorageUsage.vue')['default']
