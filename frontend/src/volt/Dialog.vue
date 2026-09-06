@@ -13,24 +13,35 @@
 </template>
 
 <script setup lang="ts">
+import { computed, useAttrs } from 'vue';
+import { twMerge } from 'tailwind-merge';
 import Dialog, { type DialogPassThroughOptions, type DialogProps } from 'primevue/dialog';
 import { ptViewMerge } from './utils';
 
 interface Props extends /* @vue-ignore */ DialogProps {}
 defineProps<Props>();
 
+// A caller's `class` is a FALLTHROUGH ATTRIBUTE, not a pt entry, so it never
+// reaches `ptViewMerge`/`twMerge` — PrimeVue concatenates it onto the root
+// after the theme string. Two `max-w-*` utilities then sit on one element and
+// the STYLESHEET's order decides, not the attribute's: `max-w-lg` (512px) won
+// every override, so `max-w-3xl`/`max-w-5xl`/`max-w-4xl` callers all rendered
+// at 512px. In the config version history that clipped the row actions off the
+// list and collapsed the side-by-side diff's right-hand pane to nothing.
+// Merging the fallthrough class into the root pt HERE puts both widths through
+// `twMerge`, which resolves the conflict by intent (last one wins) instead of
+// by stylesheet order. The attribute is still appended afterwards by Vue, but
+// it is then a duplicate of the value already chosen rather than a rival.
+const attrs = useAttrs();
+
+const ROOT_BASE = `liquid-glass-float flex flex-col w-full max-w-lg max-h-[90vh] rounded-surface
+    transform transition-all duration-200`;
+
 // Static PT theme — plain const so we don't pay for unnecessary reactivity.
-// `w-full max-w-lg` is the default panel width; callers can override via
-// `class` and the ptViewMerge merger will reconcile.
-const theme: DialogPassThroughOptions = {
+const baseTheme: DialogPassThroughOptions = {
     mask: `fixed top-0 left-0 w-full h-full flex items-center justify-center
         bg-black/45 dark:bg-black/65 backdrop-blur-sm
         transition-all duration-200`,
-    // `liquid-glass-float` supplies the fill, hairline border, and elevation, so
-    // the dialog matches every other floating surface instead of the flat
-    // bg-white/bg-gray-800 pair it used to hard-code.
-    root: `liquid-glass-float flex flex-col w-full max-w-lg max-h-[90vh] rounded-surface
-        transform transition-all duration-200`,
     // Compact density pass: header / content / footer were all `px-6 py-4`.
     // This is the only dialog implementation in the app — components/Modal.vue
     // used to wrap it with `:show-header="false"` and hand-roll its own header
@@ -65,4 +76,12 @@ const theme: DialogPassThroughOptions = {
         leaveToClass: 'opacity-0 scale-95'
     }
 };
+
+// `liquid-glass-float` supplies the fill, hairline border, and elevation, so the
+// dialog matches every other floating surface instead of the flat
+// bg-white/bg-gray-800 pair it used to hard-code.
+const theme = computed<DialogPassThroughOptions>(() => ({
+    ...baseTheme,
+    root: twMerge(ROOT_BASE, attrs.class as string | undefined),
+}));
 </script>
