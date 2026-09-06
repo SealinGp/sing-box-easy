@@ -159,6 +159,18 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.DELETE("/subscriptions/:id", handler.DeleteSubscription)
 	auth.POST("/subscriptions/:id/update", handler.UpdateSubscriptionContent)
 
+	// Subscription quality metrics: availability + latency sampled over time.
+	//
+	// A prefix of its own rather than /subscriptions/... because that path
+	// already owns a ":id" wildcard at the next segment, and a static sibling
+	// there collides in the Hertz router — the same reason
+	// /settings/subscription-info-keywords lives where it does.
+	auth.GET("/subscription-probes/status", handler.GetProbeStatus)
+	auth.PUT("/subscription-probes/settings", handler.UpdateProbeSettings)
+	auth.GET("/subscription-probes/:id/history", handler.GetProbeHistory)
+	auth.GET("/subscription-probes/:id/nodes", handler.GetProbeNodes)
+	auth.POST("/subscription-probes/:id/run", handler.RunProbe)
+
 	// Outbound Node Rules APIs (Filters + Groups, auto-grouping)
 	auth.GET("/node-rules", handler.GetNodeRules)
 	auth.POST("/node-rules/apply", handler.ApplyNodeRules)

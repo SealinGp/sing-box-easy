@@ -62,7 +62,21 @@ type Subscription struct {
 	// renews. Auto-filled from the feed on refresh (see DetectOfficialURL) only
 	// while it is empty, so an operator's own edit is never overwritten by a
 	// provider that reports a different page.
-	OfficialURL string    `json:"official_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	OfficialURL string `json:"official_url"`
+	// ProbeEnabled turns the quality prober on for this subscription. Default
+	// true for a new subscription: the metric is the reason the feature exists
+	// and an opt-in chart is an empty chart on every fresh install. Turning it
+	// off is how an operator excludes a feed they do not want probed (a metered
+	// one, or a provider that rate-limits).
+	ProbeEnabled bool `json:"probe_enabled"`
+	// ProbeURL is the https latency target for THIS subscription. Empty means
+	// DefaultProbeURL. Per-subscription because a provider whose nodes are
+	// blocked from Google reads as 0% available against gstatic while working
+	// perfectly — the operator has to be able to point the test somewhere the
+	// feed can actually reach.
+	//
+	// Must be https: NormalizeProbeURL explains why at length.
+	ProbeURL  string    `json:"probe_url"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

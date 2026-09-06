@@ -12,6 +12,7 @@ import { RouteService } from './route'
 import { ServiceControlService } from './service'
 import { SettingsService } from './settings'
 import { GitHubAuthService } from './githubauth'
+import { SubProbeService } from './subprobe'
 import { SubscriptionService } from './subscription'
 import { SystemService } from './system'
 import { TemplateService } from './template'
@@ -33,6 +34,7 @@ export { RouteService } from './route'
 export { ServiceControlService } from './service'
 export { SettingsService } from './settings'
 export { GitHubAuthService } from './githubauth'
+export { SubProbeService } from './subprobe'
 export { SubscriptionService } from './subscription'
 export { SystemService } from './system'
 export { TemplateService } from './template'
@@ -53,6 +55,7 @@ export const routeService = new RouteService(apiService)
 export const serviceControlService = new ServiceControlService(apiService)
 export const settingsService = new SettingsService(apiService)
 export const githubAuthService = new GitHubAuthService(apiService)
+export const subProbeService = new SubProbeService(apiService)
 export const subscriptionService = new SubscriptionService(apiService)
 export const systemService = new SystemService(apiService)
 export const templateService = new TemplateService(apiService)

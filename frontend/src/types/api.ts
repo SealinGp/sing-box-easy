@@ -195,6 +195,21 @@ export interface Subscription {
   // pass it through `safeExternalUrl` before putting it in an href — it is
   // third-party text.
   official_url?: string
+  /**
+   * Whether the quality prober samples this subscription's nodes. Defaults to
+   * true server-side for a new subscription — an opt-in metric would leave the
+   * quality chart empty on every fresh install.
+   */
+  probe_enabled?: boolean
+  /**
+   * The https latency target for this subscription. Empty means the default
+   * (https://www.gstatic.com/generate_204).
+   *
+   * MUST be https, and the backend rejects anything else: sing-box silently
+   * discards an http:// delay-test URL and substitutes its own default, so an
+   * accepted http value would report latency for an endpoint nobody chose.
+   */
+  probe_url?: string
 }
 
 // Payload of GET/PUT /settings/subscription-info-keywords.

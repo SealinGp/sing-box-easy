@@ -378,11 +378,17 @@ func subscriptionTagSuffix(subID string) string {
 	return subscriptionTagSeparator + subID
 }
 
-// tagBelongsToSubscription reports whether an outbound tag was minted for the
+// TagBelongsToSubscription reports whether an outbound tag was minted for the
 // given subscription (i.e. it carries that subscription's ID suffix). This is
 // the authoritative ownership test: it holds no matter how the provider has
 // since renamed the node in front of the suffix.
-func tagBelongsToSubscription(tag, subID string) bool {
+//
+// Exported because it is the ONE rule that decides which outbounds a
+// subscription is answerable for, and a second consumer now needs it: the
+// quality prober (app/pkg/subprobe) groups nodes by subscription to compute
+// availability. A prober carrying its own copy of the suffix rule would keep
+// measuring the wrong nodes for a while after this one changed.
+func TagBelongsToSubscription(tag, subID string) bool {
 	return strings.HasSuffix(tag, subscriptionTagSuffix(subID))
 }
 
@@ -479,7 +485,7 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 	// the sole ownership signal here, so a node that was renamed by the provider
 	// (new tag) is correctly seen as a delete of the old tag plus an add.
 	for _, outbound := range cfg.Outbounds {
-		if !tagBelongsToSubscription(outbound.Tag, sub.ID) {
+		if !TagBelongsToSubscription(outbound.Tag, sub.ID) {
 			continue
 		}
 		if newOutbound, ok := newByTag[outbound.Tag]; ok && !consumed[outbound.Tag] {
@@ -513,7 +519,7 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 	// namespace so future passes can rely solely on the suffix. Running after
 	// pass 1 guarantees already-suffixed nodes win the match for a feed entry.
 	for _, outbound := range cfg.Outbounds {
-		if tagBelongsToSubscription(outbound.Tag, sub.ID) {
+		if TagBelongsToSubscription(outbound.Tag, sub.ID) {
 			continue
 		}
 		// Only outbounds whose server is present in this feed are candidates,

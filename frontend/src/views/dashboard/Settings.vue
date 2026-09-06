@@ -5,6 +5,7 @@ import { settingsService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import AboutCard from '../../components/AboutCard.vue'
 import GitHubAuthCard from '../../components/GitHubAuthCard.vue'
+import ProbeSettingsCard from '../../components/ProbeSettingsCard.vue'
 
 const notify = useNotify()
 const { t } = useI18n()
@@ -75,6 +76,9 @@ const saveSettings = async () => {
 
         <!-- GitHub sign-in (lifts the 60 req/h anonymous API rate limit) -->
         <GitHubAuthCard />
+
+        <!-- Subscription node quality probing -->
+        <ProbeSettingsCard />
 
         <!-- Config version retention -->
         <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">

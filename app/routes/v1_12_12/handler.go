@@ -16,6 +16,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/service"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subprobe"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/SealinGp/sing-box-easy/app/pkg/user"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -40,9 +41,14 @@ type Handler struct {
 	versionCleaner      *configversion.Cleaner
 	settingsManager     *settings.ManagerXORM
 	nodeRulesManager    *noderules.ManagerXORM
-	userManager         user.UserManager
-	updater             *appupdate.Updater
-	githubAuth          *githubauth.Manager
+	// Subscription quality probing: availability + latency per subscription,
+	// sampled on a schedule. The store holds the history; the runner owns the
+	// schedule and the latest per-node detail.
+	probeStore  *subprobe.StoreXORM
+	probeRunner *subprobe.Runner
+	userManager user.UserManager
+	updater     *appupdate.Updater
+	githubAuth  *githubauth.Manager
 	// authEnabled is the resolved login requirement (server.auth × platform).
 	// false means every request runs as an administrator.
 	authEnabled bool
@@ -83,6 +89,16 @@ func NewHandler(
 	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
 	// subscription nodes.
 	nodeRulesManager := noderules.NewManagerXORM()
+
+	// Subscription quality prober. Its environment resolves subscriptions,
+	// outbound tags, the Clash client and the settings on every sweep, so a
+	// change to any of them lands on the next tick without a restart.
+	probeStore := subprobe.NewStoreXORM()
+	probeRunner := subprobe.NewRunner(probeStore, &probeEnvironment{
+		subscriptions: subscriptionManager,
+		configManager: configManager,
+		settings:      settingsManager,
+	})
 
 	// Initialize auto-updater (rules-aware)
 	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager, settingsManager)
@@ -138,6 +154,8 @@ func NewHandler(
 		versionCleaner:      versionCleaner,
 		settingsManager:     settingsManager,
 		nodeRulesManager:    nodeRulesManager,
+		probeStore:          probeStore,
+		probeRunner:         probeRunner,
 		userManager:         userManager,
 		updater:             updater,
 		githubAuth:          githubAuth,
@@ -173,6 +191,11 @@ func (h *Handler) Init() error {
 		return err
 	}
 
+	// Subscription probe history table.
+	if err := h.probeStore.Init(); err != nil {
+		return err
+	}
+
 	// Initialize user manager (sync tables, seed admin)
 	if err := h.userManager.Init(); err != nil {
 		return err
@@ -181,12 +204,27 @@ func (h *Handler) Init() error {
 	return nil
 }
 
-// StartAutoUpdater starts the auto-updater with the given cron expression
+// StartAutoUpdater starts the auto-updater with the given cron expression.
+//
+// The quality prober is started alongside it: both are background samplers of
+// the same subscriptions, and a deployment that wants neither turns them off
+// per subscription rather than by having two lifecycles to reason about.
 func (h *Handler) StartAutoUpdater(cronExpression string) error {
+	if h.probeRunner != nil {
+		h.probeRunner.Start()
+	}
 	if h.autoUpdater == nil {
 		return nil // Auto-updater not initialized, skip silently
 	}
 	return h.autoUpdater.Start(cronExpression)
+}
+
+// StopProbeRunner halts the quality prober. Exposed for a graceful shutdown so
+// a sweep is not left writing to a database that is being closed.
+func (h *Handler) StopProbeRunner() {
+	if h.probeRunner != nil {
+		h.probeRunner.Stop()
+	}
 }
 
 // StopAutoUpdater stops the auto-updater

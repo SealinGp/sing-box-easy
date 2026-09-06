@@ -18,7 +18,7 @@ import {
   RectangleStackIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
-import { subscriptionService } from '../services'
+import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
 import { safeExternalUrl } from '../utils/safeExternalUrl'
@@ -27,6 +27,8 @@ import { apiErrorMessage } from '../utils/apiErrorMessage'
 import { subscriptionHealth, type SubscriptionHealth } from '../utils/subscriptionHealth'
 import { formatRelativeTime } from '../utils/relativeTime'
 import type { Subscription } from '../types/api'
+import type { ProbePoint } from '../types/subprobe'
+import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
 
 const { t, locale } = useI18n()
 const notify = useNotify()
@@ -85,7 +87,31 @@ async function load(manual = false) {
   }
 }
 
-onMounted(() => load())
+/**
+ * Newest quality sample per subscription.
+ *
+ * Read alongside the list, not instead of it: quality is one line on a card
+ * whose subject is quota and expiry, so a prober that is off or unreachable
+ * must cost this card nothing — the line simply does not render.
+ */
+const probeLatest = ref<Record<string, ProbePoint>>({})
+
+async function loadProbe() {
+  try {
+    const { data } = await subProbeService.getStatus()
+    probeLatest.value = data.latest ?? {}
+  } catch {
+    // Deliberately silent. The Subscriptions page reports probe failures; a
+    // toast here would fire on every dashboard visit of a deployment that has
+    // no clash_api configured, which is a supported way to run the panel.
+    probeLatest.value = {}
+  }
+}
+
+onMounted(() => {
+  void load()
+  void loadProbe()
+})
 
 /**
  * Per-row outcome of the last "update all", keyed by subscription ID.
@@ -224,6 +250,8 @@ async function updateAll() {
     // Re-read regardless: the ones that did succeed have new figures. Row
     // statuses survive it — they are keyed by ID, not by list position.
     await load(true)
+    // A refresh can add or remove nodes, which moves the quality denominator.
+    await loadProbe()
   } finally {
     updating.value = false
   }
@@ -240,6 +268,8 @@ interface SubscriptionRow {
   plan: PlanSummary
   /** Transient outcome of the last update, or null when there is none. */
   status: RowStatus | null
+  /** Newest quality sample, or null when this subscription has none. */
+  probe: ProbePoint | null
 }
 
 const rows = computed<SubscriptionRow[]>(() =>
@@ -251,8 +281,17 @@ const rows = computed<SubscriptionRow[]>(() =>
     healthDetail: healthDetail(subscription),
     plan: summarizePlan(subscription),
     status: rowStatus.value[subscription.id] ?? null,
+    probe: probeLatest.value[subscription.id] ?? null,
   })),
 )
+
+/** Availability colour, matching the Subscriptions page's quality column. */
+const probeToneClass = (point: ProbePoint) => {
+  const ratio = availabilityRatio(point)
+  if (ratio >= 0.9) return 'text-green-600 dark:text-green-400'
+  if (ratio >= 0.5) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
+}
 
 const healthDotClass = (health: SubscriptionHealth) => {
   switch (health) {
@@ -595,6 +634,29 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
             <span v-if="row.plan.remainingLabel">
               {{ $t('overview.subscriptions.remaining') }}:
               <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.remainingLabel }}</span>
+            </span>
+          </p>
+
+          <!--
+            Node quality: how much of this feed actually works right now. It
+            sits with quota and expiry because it answers the other half of
+            "should I renew this" — a subscription with plenty of traffic left
+            and 0% reachable nodes is worth nothing.
+
+            Rendered only when a measurement exists: a deployment without
+            clash_api never probes, and an empty placeholder on every row would
+            be noise about a feature that deployment does not have.
+          -->
+          <p v-if="row.probe" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('subProbe.column') }}:
+            <span class="font-medium" :class="probeToneClass(row.probe)">
+              {{ formatAvailability(row.probe) }}
+            </span>
+            <span class="text-gray-400 dark:text-gray-500">
+              ({{ row.probe.reachable }}/{{ row.probe.total }})
+            </span>
+            <span v-if="row.probe.reachable > 0">
+              · {{ formatLatency(row.probe.avg_ms) }}
             </span>
           </p>
 

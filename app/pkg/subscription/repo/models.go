@@ -18,9 +18,15 @@ type Subscription struct {
 	FetchMode string `xorm:"'fetch_mode' notnull default('')" json:"fetch_mode"`
 	ProxyURL  string `xorm:"'proxy_url' notnull default('')" json:"proxy_url"`
 	// OfficialURL is the provider's own site, auto-filled from the feed.
-	OfficialURL string    `xorm:"'official_url' notnull default('')" json:"official_url"`
-	CreatedAt   time.Time `xorm:"created" json:"created_at"`
-	UpdatedAt   time.Time `xorm:"updated" json:"updated_at"`
+	OfficialURL string `xorm:"'official_url' notnull default('')" json:"official_url"`
+	// ProbeEnabled / ProbeURL drive the availability + latency prober
+	// (app/pkg/subprobe). The default of 1 matters for the migration path:
+	// subscriptions that existed before this feature start being measured
+	// rather than staying silently absent from the quality chart.
+	ProbeEnabled bool      `xorm:"'probe_enabled' notnull default(1)" json:"probe_enabled"`
+	ProbeURL     string    `xorm:"'probe_url' notnull default('')" json:"probe_url"`
+	CreatedAt    time.Time `xorm:"created" json:"created_at"`
+	UpdatedAt    time.Time `xorm:"updated" json:"updated_at"`
 }
 
 // TableName specifies the table name for Subscription

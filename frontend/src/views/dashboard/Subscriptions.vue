@@ -12,10 +12,14 @@ import Table from "../../components/Table.vue";
 import CopyIcon from "../../components/CopyIcon.vue";
 import PopConfirm from "../../components/PopConfirm.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
+import SubscriptionQualityDialog from "../../components/SubscriptionQualityDialog.vue";
+import SubscriptionQualityCell from "../../components/SubscriptionQualityCell.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
 import { summarizeUpdate } from "../../utils/subscriptionUpdate";
 import { isLinkableSiteInput, safeExternalUrl } from "../../utils/safeExternalUrl";
+import { subProbeService } from "../../services";
+import type { ProbePoint } from "../../types/subprobe";
 import {
   PlusIcon,
   PencilIcon,
@@ -44,6 +48,8 @@ interface FormData {
   update_interval: string;
   fetch_mode: "" | "clean_dns" | "proxy";
   proxy_url: string;
+  probe_enabled: boolean;
+  probe_url: string;
 }
 
 const subscriptions = ref<Subscription[]>([]);
@@ -64,6 +70,10 @@ const formData = ref<FormData>({
   update_interval: "24h",
   fetch_mode: "",
   proxy_url: "",
+  // On by default for a new subscription: the quality chart is the point of
+  // the feature, and an opt-in metric leaves it empty on a fresh install.
+  probe_enabled: true,
+  probe_url: "",
 });
 
 const fetchModeOptions = computed(() => [
@@ -106,6 +116,8 @@ const resetForm = () => {
     update_interval: "24h",
     fetch_mode: "",
     proxy_url: "",
+    probe_enabled: true,
+    probe_url: "",
   } as FormData;
   formErrors.value = {};
   editingSubscription.value = null;
@@ -125,6 +137,8 @@ const openEditModal = (subscription: Subscription) => {
     update_interval: subscription.update_interval, // Already a string from backend (e.g., "24h")
     fetch_mode: subscription.fetch_mode ?? "",
     proxy_url: subscription.proxy_url ?? "",
+    probe_enabled: subscription.probe_enabled ?? true,
+    probe_url: subscription.probe_url ?? "",
   };
   editingSubscription.value = subscription;
   showModal.value = true;
@@ -163,6 +177,21 @@ const validateForm = () => {
     errors.official_url = t("subscriptions.validation.officialUrlScheme");
   }
 
+  // The latency target must be https. sing-box silently discards an http://
+  // delay-test URL and substitutes its own default, so an accepted http value
+  // would report latency for an endpoint the operator never chose. The backend
+  // enforces this too; checking here puts the error on the field.
+  if (formData.value.probe_url.trim()) {
+    try {
+      const parsed = new URL(formData.value.probe_url.trim());
+      if (parsed.protocol !== "https:") {
+        errors.probe_url = t("subProbe.validation.urlScheme");
+      }
+    } catch {
+      errors.probe_url = t("subProbe.validation.urlInvalid");
+    }
+  }
+
   // Validate update_interval format if auto_update is enabled
   if (formData.value.auto_update) {
     if (!formData.value.update_interval) {
@@ -199,6 +228,8 @@ const saveSubscription = async () => {
         formData.value.fetch_mode === "proxy"
           ? formData.value.proxy_url.trim()
           : "",
+      probe_enabled: formData.value.probe_enabled,
+      probe_url: formData.value.probe_url.trim(),
     };
 
     let response;
@@ -260,6 +291,9 @@ const updateSubscription = async (subscription: Subscription) => {
       t("subscriptions.notify.synced", { name: subscription.name, summary })
     );
     await loadSubscriptions();
+    // The refresh may have added or removed nodes, which changes the
+    // denominator the column shows.
+    await loadProbeStatus();
   } catch (error) {
     notify.apiError(error, t("subscriptions.notify.updateError"));
   } finally {
@@ -309,9 +343,37 @@ const getStatusBadge = (subscription: Subscription) => {
   }
 };
 
+/**
+ * Newest quality sample per subscription, keyed by id.
+ *
+ * One call for every row rather than one per row: the summary is a column, and
+ * N round trips to draw a column is N-1 too many.
+ */
+const probeLatest = ref<Record<string, ProbePoint>>({});
+const showQuality = ref(false);
+const qualitySubscription = ref<Subscription | null>(null);
+
+const loadProbeStatus = async () => {
+  try {
+    const { data } = await subProbeService.getStatus();
+    probeLatest.value = data.latest ?? {};
+  } catch {
+    // Quality is supplementary to this page: a subscription list that fails to
+    // render because the prober is unreachable would be a worse page than one
+    // with an empty column. The dialog reports the error when it is opened.
+    probeLatest.value = {};
+  }
+};
+
+const openQuality = (subscription: Subscription) => {
+  qualitySubscription.value = subscription;
+  showQuality.value = true;
+};
+
 // Lifecycle
 onMounted(() => {
   loadSubscriptions();
+  loadProbeStatus();
 });
 </script>
 
@@ -419,6 +481,9 @@ onMounted(() => {
           </th>
           <th>
             {{ $t("subscriptions.table.status") }}
+          </th>
+          <th>
+            {{ $t("subProbe.column") }}
           </th>
           <th>
             {{ $t("subscriptions.table.info") }}
@@ -546,6 +611,16 @@ onMounted(() => {
               </span>
             </div>
           </td>
+          <!-- Quality: newest sample + a way into the trend. -->
+          <td class="align-top">
+            <SubscriptionQualityCell
+              :point="probeLatest[subscription.id]"
+              :enabled="subscription.probe_enabled !== false"
+              :name="subscription.name"
+              @open="openQuality(subscription)"
+            />
+          </td>
+
           <!-- Plan info: generic key/value entries -->
           <td class="align-top">
             <div
@@ -620,6 +695,12 @@ onMounted(() => {
 
     <!-- Info-label keywords editor -->
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />
+
+    <!-- Quality history + latest per-node detail -->
+    <SubscriptionQualityDialog
+      v-model="showQuality"
+      :subscription="qualitySubscription"
+    />
 
     <!-- Add/Edit Modal -->
     <Dialog v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">
@@ -705,6 +786,38 @@ onMounted(() => {
             placeholder="socks5://127.0.0.1:7893"
             :hint="$t('subscriptions.form.proxyUrlHint')"
           />
+
+          <!--
+            Quality probing. The URL is per-subscription because a provider
+            whose nodes cannot reach Google reads as 0% available against
+            gstatic while working perfectly — the operator has to be able to
+            point the test somewhere the feed can actually get to.
+          -->
+          <div class="border-t border-gray-100 pt-4 dark:border-gray-700">
+            <label class="flex items-center">
+              <input
+                v-model="formData.probe_enabled"
+                type="checkbox"
+                class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
+              />
+              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                {{ $t("subProbe.form.enabled") }}
+              </span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ $t("subProbe.form.enabledHint") }}
+            </p>
+
+            <Input
+              v-if="formData.probe_enabled"
+              v-model="formData.probe_url"
+              class="mt-3"
+              :label="$t('subProbe.form.url')"
+              placeholder="https://www.gstatic.com/generate_204"
+              :error="formErrors.probe_url"
+              :hint="$t('subProbe.form.urlHint')"
+            />
+          </div>
         </div>
       </form>
 

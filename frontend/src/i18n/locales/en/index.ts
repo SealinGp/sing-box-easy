@@ -6,6 +6,7 @@ import overview from './overview'
 import config from './config'
 import settings from './settings'
 import subscriptions from './subscriptions'
+import subProbe from './subProbe'
 import nodeRules from './nodeRules'
 import inbounds from './inbounds'
 import outbounds from './outbounds'
@@ -35,6 +36,7 @@ export default {
   config,
   settings,
   subscriptions,
+  subProbe,
   nodeRules,
   inbounds,
   outbounds,

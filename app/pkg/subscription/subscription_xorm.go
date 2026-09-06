@@ -68,6 +68,8 @@ func (m *ManagerXORM) List() ([]*Subscription, error) {
 			FetchMode:      dbSub.FetchMode,
 			ProxyURL:       dbSub.ProxyURL,
 			OfficialURL:    dbSub.OfficialURL,
+			ProbeEnabled:   dbSub.ProbeEnabled,
+			ProbeURL:       dbSub.ProbeURL,
 			CreatedAt:      dbSub.CreatedAt,
 			UpdatedAt:      dbSub.UpdatedAt,
 		}
@@ -102,6 +104,8 @@ func (m *ManagerXORM) Get(id string) (*Subscription, error) {
 		FetchMode:      dbSub.FetchMode,
 		ProxyURL:       dbSub.ProxyURL,
 		OfficialURL:    dbSub.OfficialURL,
+		ProbeEnabled:   dbSub.ProbeEnabled,
+		ProbeURL:       dbSub.ProbeURL,
 		CreatedAt:      dbSub.CreatedAt,
 		UpdatedAt:      dbSub.UpdatedAt,
 	}
@@ -130,6 +134,8 @@ func (m *ManagerXORM) Add(sub Subscription) error {
 		FetchMode:      sub.FetchMode,
 		ProxyURL:       sub.ProxyURL,
 		OfficialURL:    sub.OfficialURL,
+		ProbeEnabled:   sub.ProbeEnabled,
+		ProbeURL:       sub.ProbeURL,
 	}
 
 	_, err := session.Insert(dbSub)
@@ -167,8 +173,10 @@ func (m *ManagerXORM) Update(id string, sub Subscription) error {
 		FetchMode:      sub.FetchMode,
 		ProxyURL:       sub.ProxyURL,
 		OfficialURL:    sub.OfficialURL,
+		ProbeEnabled:   sub.ProbeEnabled,
+		ProbeURL:       sub.ProbeURL,
 	}
-	cols := []string{"name", "url", "auto_update", "update_interval", "fetch_mode", "proxy_url", "official_url"}
+	cols := []string{"name", "url", "auto_update", "update_interval", "fetch_mode", "proxy_url", "official_url", "probe_enabled", "probe_url"}
 
 	// Only include last_update when an explicit value is provided.
 	if !sub.LastUpdate.IsZero() {

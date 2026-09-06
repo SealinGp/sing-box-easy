@@ -12,11 +12,11 @@ import (
 
 // Migration represents a database migration
 type Migration struct {
-	ID          string    `xorm:"pk varchar(255)" json:"id"`
-	Name        string    `xorm:"notnull" json:"name"`
-	Executed    bool      `xorm:"notnull default(0)" json:"executed"`
-	ExecutedAt  time.Time `xorm:"'executed_at' null" json:"executed_at,omitempty"`
-	CreatedAt   time.Time `xorm:"created" json:"created_at"`
+	ID         string    `xorm:"pk varchar(255)" json:"id"`
+	Name       string    `xorm:"notnull" json:"name"`
+	Executed   bool      `xorm:"notnull default(0)" json:"executed"`
+	ExecutedAt time.Time `xorm:"'executed_at' null" json:"executed_at,omitempty"`
+	CreatedAt  time.Time `xorm:"created" json:"created_at"`
 }
 
 // TableName specifies the table name for Migration
@@ -41,6 +41,7 @@ var migrations = []migrationEntry{
 	{"001_add_enabled_to_subscriptions", migrate001AddEnabledToSubscriptions},
 	{"002_add_info_to_subscriptions", migrate002AddInfoToSubscriptions},
 	{"003_add_fetch_options_to_subscriptions", migrate003AddFetchOptionsToSubscriptions},
+	{"004_add_probe_options_to_subscriptions", migrate004AddProbeOptionsToSubscriptions},
 }
 
 // runMigrations executes pending migrations
@@ -132,6 +133,8 @@ func getMigrationName(id string) string {
 		return "Add info field to subscriptions table"
 	case "003_add_fetch_options_to_subscriptions":
 		return "Add fetch_mode and proxy_url fields to subscriptions table"
+	case "004_add_probe_options_to_subscriptions":
+		return "Add probe options to subscriptions"
 	default:
 		return id
 	}
@@ -213,6 +216,29 @@ func migrate003AddFetchOptionsToSubscriptions(session *xorm.Session) error {
 		}
 	}
 	logger.Info("Added fetch_mode/proxy_url columns to subscriptions table")
+	return nil
+}
+
+// migrate004AddProbeOptionsToSubscriptions adds the quality-prober columns.
+//
+// probe_enabled defaults to 1 so subscriptions that predate the feature start
+// being measured on the next sweep. The alternative — defaulting to off and
+// asking the operator to opt in per subscription — makes the quality chart
+// empty on every existing install, which reads as the feature being broken
+// rather than as it being off.
+func migrate004AddProbeOptionsToSubscriptions(session *xorm.Session) error {
+	for _, col := range []string{
+		`ALTER TABLE subscriptions ADD COLUMN probe_enabled INTEGER NOT NULL DEFAULT 1`,
+		`ALTER TABLE subscriptions ADD COLUMN probe_url TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := session.Exec(col); err != nil {
+			if isDuplicateColumnError(err) || isNoSuchTableError(err) {
+				continue
+			}
+			return fmt.Errorf("failed to add subscription probe option column: %w", err)
+		}
+	}
+	logger.Info("Added probe_enabled/probe_url columns to subscriptions table")
 	return nil
 }
 
