@@ -6,11 +6,12 @@
  * at-a-glance answer to "how much traffic do I have left and when does it
  * run out", which is what an operator actually opens the dashboard to check.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import {
   ArrowTopRightOnSquareIcon,
+  ChartBarIcon,
   CheckCircleIcon,
   CloudArrowDownIcon,
   ClockIcon,
@@ -18,6 +19,7 @@ import {
   RectangleStackIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
+import SubscriptionQualityDialog from './SubscriptionQualityDialog.vue'
 import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
@@ -107,6 +109,32 @@ async function loadProbe() {
     probeLatest.value = {}
   }
 }
+
+/**
+ * The quality trend, opened from a row.
+ *
+ * The same dialog the Subscriptions page uses — not a second, smaller chart.
+ * One number ("98%") cannot tell a provider having a bad hour from one that has
+ * been degrading for a week, and that distinction is the entire reason the
+ * history is recorded; sending both entry points to the same view means the
+ * answer cannot differ depending on which page you asked from.
+ */
+const showQuality = ref(false)
+const qualitySubscription = ref<Subscription | null>(null)
+
+function openQuality(id: string) {
+  // The dialog needs the whole Subscription (it reads probe_url to say what is
+  // being tested), not the derived row.
+  qualitySubscription.value = subscriptions.value.find((item) => item.id === id) ?? null
+  if (qualitySubscription.value) showQuality.value = true
+}
+
+// The dialog has its own "probe now" button, so a run can happen entirely
+// inside it. Re-read on close or the card would keep showing the figure from
+// before that run, contradicting the dialog the operator just closed.
+watch(showQuality, (open, wasOpen) => {
+  if (wasOpen && !open) void loadProbe()
+})
 
 onMounted(() => {
   void load()
@@ -647,17 +675,39 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
             clash_api never probes, and an empty placeholder on every row would
             be noise about a feature that deployment does not have.
           -->
-          <p v-if="row.probe" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('subProbe.column') }}:
-            <span class="font-medium" :class="probeToneClass(row.probe)">
-              {{ formatAvailability(row.probe) }}
+          <p v-if="row.probe" class="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              {{ $t('subProbe.column') }}:
+              <span class="font-medium" :class="probeToneClass(row.probe)">
+                {{ formatAvailability(row.probe) }}
+              </span>
+              <span class="text-gray-400 dark:text-gray-500">
+                ({{ row.probe.reachable }}/{{ row.probe.total }})
+              </span>
+              <span v-if="row.probe.reachable > 0">
+                · {{ formatLatency(row.probe.avg_ms) }}
+              </span>
             </span>
-            <span class="text-gray-400 dark:text-gray-500">
-              ({{ row.probe.reachable }}/{{ row.probe.total }})
-            </span>
-            <span v-if="row.probe.reachable > 0">
-              · {{ formatLatency(row.probe.avg_ms) }}
-            </span>
+
+            <!--
+              Opens the trend. Hidden until the row is hovered, exactly like the
+              row's update button above: this card is a summary first, and four
+              subscriptions must not read as eight buttons.
+
+              It reuses that button's three-state reveal rather than inventing
+              one — `group-focus-within` so it is reachable by keyboard, and
+              always visible below `sm` where no hover exists at all. Anything
+              narrower would be a control only a mouse user could find.
+            -->
+            <button
+              type="button"
+              class="cursor-pointer shrink-0 rounded p-0.5 text-gray-400 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+              :title="$t('subProbe.openDetail', { name: row.name })"
+              :aria-label="$t('subProbe.openDetail', { name: row.name })"
+              @click="openQuality(row.id)"
+            >
+              <ChartBarIcon class="h-3.5 w-3.5" />
+            </button>
           </p>
 
           <!--
@@ -724,5 +774,9 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
         </li>
       </ul>
     </div>
+
+    <!-- Quality history + latest per-node detail, shared with the
+         Subscriptions page. -->
+    <SubscriptionQualityDialog v-model="showQuality" :subscription="qualitySubscription" />
   </div>
 </template>

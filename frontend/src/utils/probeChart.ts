@@ -305,14 +305,22 @@ function buildXTicks(from: number, to: number, scaleX: (t: number) => number): A
 }
 
 /**
- * A tick label shows the time for short spans and the date for long ones —
- * "14:20" is meaningless on a 30-day chart, and "Jan 3" is on a 1-hour one.
+ * A tick label's resolution follows the span it is labelling.
+ *
+ * Three bands, because a label that cannot distinguish its neighbours conveys
+ * nothing: "Jan 3" is useless on a 1-hour chart, "14:20" is useless on a 30-day
+ * one, and on a span of a couple of minutes — which is exactly what clicking
+ * "probe now" a few times produces — minute resolution renders five ticks
+ * reading "14:38, 14:38, 14:38, 14:38", which looks broken rather than dense.
  */
 function formatTick(time: number, span: number): string {
   const date = new Date(time)
   const pad = (n: number) => String(n).padStart(2, '0')
   if (span > 3 * 24 * 60 * 60 * 1000) {
     return `${date.getMonth() + 1}/${date.getDate()}`
+  }
+  if (span < 10 * 60 * 1000) {
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
   }
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

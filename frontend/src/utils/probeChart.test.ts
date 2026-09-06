@@ -120,6 +120,36 @@ describe('layoutProbeChart', () => {
     expect(segment.area).toEndWith('Z')
   })
 
+  it('labels short spans to the second so ticks are distinguishable', () => {
+    // Three runs seconds apart — what clicking "probe now" repeatedly gives.
+    // At minute resolution every tick would read the same time.
+    const base = Date.UTC(2026, 0, 1, 12, 0, 0)
+    const points: ProbePoint[] = [0, 20, 40].map((s) => ({
+      at: new Date(base + s * 1000).toISOString(),
+      total: 4,
+      reachable: 4,
+      avg_ms: 100,
+      min_ms: 100,
+      max_ms: 100,
+    }))
+
+    const labels = layoutProbeChart(points, SIZE).xTicks.map((t) => t.label)
+    expect(new Set(labels).size).toBe(labels.length)
+    for (const label of labels) {
+      expect(label).toMatch(/^\d{2}:\d{2}:\d{2}$/)
+    }
+  })
+
+  it('keeps minute resolution for an hours-long span', () => {
+    const layout = layoutProbeChart(
+      Array.from({ length: 6 }, (_, i) => point(i * 60, 4, 4, 100)).reverse(),
+      SIZE,
+    )
+    for (const tick of layout.xTicks) {
+      expect(tick.label).toMatch(/^\d{2}:\d{2}$/)
+    }
+  })
+
   it('emits x ticks inside the plot area', () => {
     const layout = layoutProbeChart(
       Array.from({ length: 24 }, (_, i) => point(i * 60, 4, 4, 100)).reverse(),
