@@ -2,82 +2,23 @@ package v1_13_0
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/sagernet/sing-box/option"
 )
 
-// GetRouteRules returns all route rules
-func (h *Handler) GetRouteRules(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	if cfg.Route == nil {
-		respOK(ctx, c, map[string]any{"rules": []config.RouteRule{}})
-		return
-	}
-
-	respOK(ctx, c, map[string]any{"rules": cfg.Route.Rules})
-}
-
-// AddRouteRule adds a new route rule
-func (h *Handler) AddRouteRule(ctx context.Context, c *app.RequestContext) {
-	var rule config.RouteRule
-	if err := c.Bind(&rule); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
-		return
-	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			cfg.Route = &config.RouteConfig{}
-		}
-
-		cfg.Route.Rules = append(cfg.Route.Rules, rule)
-		return nil
-	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{"message": "route rule added successfully"})
-}
-
-// ReorderRulesRequest is a permutation of the CURRENT rule indices, in the
-// order the rules should end up in. Shared by the route and DNS rule lists.
-//
-// Deliberately not "here are all the rules again": both lists are evaluated
-// top-down, so ordering is the only thing a drag changes, and echoing 40 rules
-// back through a form-normalised client is how fields get silently dropped.
-// Sending indices means the rule objects never leave the server — which
-// matters twice as much for DNS rules, whose polymorphic decode the client's
-// round-trip would have to reproduce exactly.
 type ReorderRulesRequest struct {
 	Order []int `json:"order"`
 }
 
-// applyOrder rearranges `items` into the sequence named by `order`.
-//
-// `order` must be a STRICT permutation of the item indices — every index
-// exactly once. Anything looser would duplicate or drop a rule, and for a
-// top-down matcher list that is silent traffic misrouting rather than a
-// visible error, so it is rejected instead of best-effort repaired.
-//
-// Returns a new slice; the input is left untouched.
 func applyOrder[T any](items []T, order []int) ([]T, error) {
 	if len(order) != len(items) {
 		return nil, fmt.Errorf("order must list all %d rules, got %d", len(items), len(order))
 	}
-
 	seen := make([]bool, len(items))
 	reordered := make([]T, 0, len(items))
 	for _, idx := range order {
@@ -90,250 +31,170 @@ func applyOrder[T any](items []T, order []int) ([]T, error) {
 		seen[idx] = true
 		reordered = append(reordered, items[idx])
 	}
-
 	return reordered, nil
 }
 
-// ReorderRouteRules reorders route rules according to a permutation of indices.
-//
-// Registered on the COLLECTION path (PUT /route/rules) rather than something
-// like /route/rules/order because `/route/rules/:index` already owns that
-// position in the Hertz router, and a static sibling there collides.
-func (h *Handler) ReorderRouteRules(ctx context.Context, c *app.RequestContext) {
-	var body ReorderRulesRequest
-	if err := c.Bind(&body); err != nil {
+func (h *Handler) GetRouteRules(ctx context.Context, c *app.RequestContext) {
+	route, err := h.readRouteDocument()
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+	respOK(ctx, c, map[string]any{"rules": rawList(route, "rules")})
+}
+
+func (h *Handler) AddRouteRule(ctx context.Context, c *app.RequestContext) {
+	body, err := objectBody(c)
+	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
+	err = h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		return setRawList(route, "rules", append(rawList(route, "rules"), cloneRaw(body)))
+	})
+	h.respondRouteMutation(ctx, c, err, "route rule added successfully", nil)
+}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			return fmt.Errorf("no route configuration")
-		}
-
-		reordered, err := applyOrder(cfg.Route.Rules, body.Order)
+func (h *Handler) ReorderRouteRules(ctx context.Context, c *app.RequestContext) {
+	var request ReorderRulesRequest
+	if err := c.Bind(&request); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+	err := h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		rules, err := applyOrder(rawList(route, "rules"), request.Order)
 		if err != nil {
 			return err
 		}
-
-		cfg.Route.Rules = reordered
-		return nil
+		return setRawList(route, "rules", rules)
 	})
-
 	if err != nil {
 		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
-
 	respOK(ctx, c, map[string]any{"message": "route rules reordered successfully"})
 }
 
-// UpdateRouteRule updates a route rule at specific index
 func (h *Handler) UpdateRouteRule(ctx context.Context, c *app.RequestContext) {
-	indexStr := c.Param("index")
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid index")
+	index, ok := routeIndex(ctx, c)
+	if !ok {
 		return
 	}
-
-	var rule config.RouteRule
-	if err := c.Bind(&rule); err != nil {
+	body, err := objectBody(c)
+	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil || index < 0 || index >= len(cfg.Route.Rules) {
+	err = h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		rules := rawList(route, "rules")
+		if index < 0 || index >= len(rules) {
 			return fmt.Errorf("route rule not found at index %d", index)
 		}
-
-		cfg.Route.Rules[index] = rule
-		return nil
+		rules[index] = cloneRaw(body)
+		return setRawList(route, "rules", rules)
 	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "route rule updated successfully",
-		"index":   index,
-	})
+	h.respondRouteMutation(ctx, c, err, "route rule updated successfully", map[string]any{"index": index})
 }
 
-// DeleteRouteRule deletes a route rule at specific index
 func (h *Handler) DeleteRouteRule(ctx context.Context, c *app.RequestContext) {
-	indexStr := c.Param("index")
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid index")
+	index, ok := routeIndex(ctx, c)
+	if !ok {
 		return
 	}
-
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil || index < 0 || index >= len(cfg.Route.Rules) {
+	err := h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		rules := rawList(route, "rules")
+		if index < 0 || index >= len(rules) {
 			return fmt.Errorf("route rule not found at index %d", index)
 		}
-
-		cfg.Route.Rules = append(cfg.Route.Rules[:index], cfg.Route.Rules[index+1:]...)
-		return nil
+		return setRawList(route, "rules", append(rules[:index], rules[index+1:]...))
 	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "route rule deleted successfully",
-		"index":   index,
-	})
+	h.respondRouteMutation(ctx, c, err, "route rule deleted successfully", map[string]any{"index": index})
 }
 
-// GetRuleSets returns all rule sets
 func (h *Handler) GetRuleSets(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	route, err := h.readRouteDocument()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if cfg.Route == nil {
-		respOK(ctx, c, map[string]any{"rule_sets": []config.RuleSet{}})
-		return
-	}
-
-	respOK(ctx, c, map[string]any{"rule_sets": cfg.Route.RuleSet})
+	respOK(ctx, c, map[string]any{"rule_sets": rawList(route, "rule_set")})
 }
 
-// GetRuleSetByTag returns a specific rule set by tag
 func (h *Handler) GetRuleSetByTag(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
-
-	cfg, err := h.configManager.GetConfig()
+	route, err := h.readRouteDocument()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if cfg.Route != nil {
-		for _, ruleSet := range cfg.Route.RuleSet {
-			if ruleSet.Tag == tag {
-				respOK(ctx, c, ruleSet)
-				return
-			}
+	for _, ruleSet := range rawList(route, "rule_set") {
+		if rawStringField(ruleSet, "tag") == tag {
+			respOK(ctx, c, ruleSet)
+			return
 		}
 	}
-
 	respErr(ctx, c, CodeNotFound, "rule set not found")
 }
 
-// AddRuleSet adds a new rule set
 func (h *Handler) AddRuleSet(ctx context.Context, c *app.RequestContext) {
-	var ruleSet config.RuleSet
-	if err := c.Bind(&ruleSet); err != nil {
+	body, err := objectBody(c)
+	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-
-	if ruleSet.Tag == "" {
+	tag := rawStringField(body, "tag")
+	if tag == "" {
 		respErr(ctx, c, CodeBadRequest, "tag is required")
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			cfg.Route = &config.RouteConfig{}
-		}
-
-		// Reject duplicate tag. The previous form used `continue` inside the
-		// loop, which only skipped the check itself and still appended the
-		// duplicate after the loop completed.
-		for _, existing := range cfg.Route.RuleSet {
-			if existing.Tag == ruleSet.Tag {
-				return fmt.Errorf("rule set with tag %q already exists", ruleSet.Tag)
+	err = h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		ruleSets := rawList(route, "rule_set")
+		for _, existing := range ruleSets {
+			if rawStringField(existing, "tag") == tag {
+				return fmt.Errorf("rule set with tag %q already exists", tag)
 			}
 		}
-
-		cfg.Route.RuleSet = append(cfg.Route.RuleSet, ruleSet)
-		return nil
+		return setRawList(route, "rule_set", append(ruleSets, cloneRaw(body)))
 	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "rule set added successfully",
-		"tag":     ruleSet.Tag,
-	})
+	h.respondRouteMutation(ctx, c, err, "rule set added successfully", map[string]any{"tag": tag})
 }
 
-// UpdateRuleSet updates an existing rule set
 func (h *Handler) UpdateRuleSet(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
-
-	var ruleSet config.RuleSet
-	if err := c.Bind(&ruleSet); err != nil {
+	body, err := objectBody(c)
+	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-
-	ruleSet.Tag = tag
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			return fmt.Errorf("route configuration not found")
-		}
-
-		found := false
-		for i, existing := range cfg.Route.RuleSet {
-			if existing.Tag == tag {
-				cfg.Route.RuleSet[i] = ruleSet
-				found = true
-				break
+	body, err = withRawStringField(body, "tag", tag)
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+	err = h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		ruleSets := rawList(route, "rule_set")
+		for i, existing := range ruleSets {
+			if rawStringField(existing, "tag") == tag {
+				ruleSets[i] = body
+				return setRawList(route, "rule_set", ruleSets)
 			}
 		}
-
-		if !found {
-			return fmt.Errorf("rule set not found")
-		}
-
-		return nil
+		return fmt.Errorf("rule set not found")
 	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "rule set updated successfully",
-		"tag":     tag,
-	})
+	h.respondRouteMutation(ctx, c, err, "rule set updated successfully", map[string]any{"tag": tag})
 }
 
-// GetRuleSetReferences returns a dry-run of how deleting :tag would affect
-// route.rules and dns.rules, so the frontend can show the user exactly what
-// will be stripped or removed before they confirm a cascade delete.
 func (h *Handler) GetRuleSetReferences(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
-
-	cfg, err := h.configManager.GetConfig()
+	refs, exists, err := h.rawRuleSetReferences(tag)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if !config.RuleSetExists(cfg, tag) {
+	if !exists {
 		respErr(ctx, c, CodeNotFound, "rule set not found")
 		return
 	}
-
-	refs := config.FindRuleSetReferences(cfg, tag)
 	routeCount, dnsCount := 0, 0
 	for _, ref := range refs {
 		if ref.Scope == config.RefScopeRoute {
@@ -342,152 +203,177 @@ func (h *Handler) GetRuleSetReferences(ctx context.Context, c *app.RequestContex
 			dnsCount++
 		}
 	}
-
-	respOK(ctx, c, map[string]any{
-		"tag":         tag,
-		"references":  refs,
-		"route_count": routeCount,
-		"dns_count":   dnsCount,
-	})
+	respOK(ctx, c, map[string]any{"tag": tag, "references": refs, "route_count": routeCount, "dns_count": dnsCount})
 }
 
-// DeleteRuleSet deletes a rule set. With ?cascade=true it also scrubs the tag
-// from every route.rules / dns.rules matcher (deleting rules whose only matcher
-// was this tag) in the same validated transaction — otherwise sing-box would
-// reject the config for referencing an undefined rule-set.
 func (h *Handler) DeleteRuleSet(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 	cascade, _ := strconv.ParseBool(string(c.Query("cascade")))
-
-	// Pre-flight: surface "not found" and "referenced" as actionable codes
-	// instead of an opaque validation error from the write-validate-rollback.
-	if cfg, err := h.configManager.GetConfig(); err == nil {
-		if !config.RuleSetExists(cfg, tag) {
-			respErr(ctx, c, CodeNotFound, "rule set not found")
-			return
-		}
-		if refs := config.FindRuleSetReferences(cfg, tag); len(refs) > 0 && !cascade {
-			respErr(ctx, c, CodeConflict, fmt.Sprintf(
-				"rule set %q is referenced by %d rule(s); retry with ?cascade=true to remove them", tag, len(refs)))
-			return
-		}
+	refs, exists, err := h.rawRuleSetReferences(tag)
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			return fmt.Errorf("route configuration not found")
+	if !exists {
+		respErr(ctx, c, CodeNotFound, "rule set not found")
+		return
+	}
+	if len(refs) > 0 && !cascade {
+		respErr(ctx, c, CodeConflict, fmt.Sprintf("rule set %q is referenced by %d rule(s); retry with ?cascade=true to remove them", tag, len(refs)))
+		return
+	}
+	err = h.configManager.UpdateConfigSections(ctx, func(sections map[string]stdjson.RawMessage) error {
+		route, err := readRawObjectSection(sections["route"], "route")
+		if err != nil {
+			return err
 		}
-
-		found := false
-		for _, ruleSet := range cfg.Route.RuleSet {
-			if ruleSet.Tag == tag {
-				found = true
-				break
+		ruleSets := rawList(route, "rule_set")
+		kept := make([]stdjson.RawMessage, 0, len(ruleSets))
+		for _, ruleSet := range ruleSets {
+			if rawStringField(ruleSet, "tag") != tag {
+				kept = append(kept, ruleSet)
 			}
 		}
-		if !found {
-			return fmt.Errorf("rule set not found")
+		if err := setRawList(route, "rule_set", kept); err != nil {
+			return err
 		}
-
-		// Scrub references first so removing the definition leaves a valid config.
 		if cascade {
-			config.ApplyRuleSetCascade(cfg, tag)
-		}
-
-		newRuleSets := make([]config.RuleSet, 0, len(cfg.Route.RuleSet))
-		for _, ruleSet := range cfg.Route.RuleSet {
-			if ruleSet.Tag != tag {
-				newRuleSets = append(newRuleSets, ruleSet)
+			rules, err := scrubRawRules(rawList(route, "rules"), tag, false)
+			if err != nil {
+				return err
+			}
+			if err := setRawList(route, "rules", rules); err != nil {
+				return err
+			}
+			dns, err := readRawObjectSection(sections["dns"], "dns")
+			if err != nil {
+				return err
+			}
+			dnsRules, err := scrubRawRules(rawList(dns, "rules"), tag, true)
+			if err != nil {
+				return err
+			}
+			if err := setRawList(dns, "rules", dnsRules); err != nil {
+				return err
+			}
+			sections["dns"], err = stdjson.Marshal(dns)
+			if err != nil {
+				return err
 			}
 		}
-		cfg.Route.RuleSet = newRuleSets
-		return nil
+		sections["route"], err = stdjson.Marshal(route)
+		return err
 	})
-
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondConfigError(ctx, c, err)
 		return
 	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "rule set deleted successfully",
-		"tag":     tag,
-		"cascade": cascade,
-	})
+	respOK(ctx, c, map[string]any{"message": "rule set deleted successfully", "tag": tag, "cascade": cascade})
 }
 
-// GetRouteFinal returns the final route policy
 func (h *Handler) GetRouteFinal(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	route, err := h.readRouteDocument()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	final := ""
-	autoDetectInterface := false
-	defaultDomainResolver := ""
-	if cfg.Route != nil {
-		final = cfg.Route.Final
-		autoDetectInterface = cfg.Route.AutoDetectInterface
-		if cfg.Route.DefaultDomainResolver != nil {
-			defaultDomainResolver = cfg.Route.DefaultDomainResolver.Server
+	var final, resolver string
+	var auto bool
+	_ = stdjson.Unmarshal(route["final"], &final)
+	_ = stdjson.Unmarshal(route["auto_detect_interface"], &auto)
+	if stdjson.Unmarshal(route["default_domain_resolver"], &resolver) != nil {
+		var object map[string]stdjson.RawMessage
+		if stdjson.Unmarshal(route["default_domain_resolver"], &object) == nil {
+			_ = stdjson.Unmarshal(object["server"], &resolver)
 		}
 	}
-
-	respOK(ctx, c, map[string]any{
-		"final":                   final,
-		"auto_detect_interface":   autoDetectInterface,
-		"default_domain_resolver": defaultDomainResolver,
-	})
+	respOK(ctx, c, map[string]any{"final": final, "auto_detect_interface": auto, "default_domain_resolver": resolver})
 }
 
-// UpdateRouteFinal updates route-level policy: the final outbound, interface
-// auto-detection, and the default domain resolver. All fields are optional
-// pointers so callers can patch a single field (the init wizard sends only
-// `final`, the route page may send any subset).
 func (h *Handler) UpdateRouteFinal(ctx context.Context, c *app.RequestContext) {
-	type Request struct {
-		Final                 *string `json:"final"`
-		AutoDetectInterface   *bool   `json:"auto_detect_interface"`
-		DefaultDomainResolver *string `json:"default_domain_resolver"`
-	}
-
-	var req Request
-	if err := c.Bind(&req); err != nil {
+	var request map[string]stdjson.RawMessage
+	body, err := objectBody(c)
+	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Route == nil {
-			cfg.Route = &config.RouteConfig{}
+	if err := stdjson.Unmarshal(body, &request); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+	err = h.updateRouteDocument(ctx, func(route map[string]stdjson.RawMessage) error {
+		for _, key := range []string{"final", "auto_detect_interface"} {
+			if value, ok := request[key]; ok {
+				route[key] = value
+			}
 		}
-
-		if req.Final != nil {
-			cfg.Route.Final = *req.Final
-		}
-		if req.AutoDetectInterface != nil {
-			cfg.Route.AutoDetectInterface = *req.AutoDetectInterface
-		}
-		if req.DefaultDomainResolver != nil {
-			// Empty string clears the resolver; otherwise it is the DNS server tag.
-			server := strings.TrimSpace(*req.DefaultDomainResolver)
+		if value, ok := request["default_domain_resolver"]; ok {
+			var server string
+			if err := stdjson.Unmarshal(value, &server); err != nil {
+				return fmt.Errorf("default_domain_resolver must be a string")
+			}
+			server = strings.TrimSpace(server)
 			if server == "" {
-				cfg.Route.DefaultDomainResolver = nil
+				delete(route, "default_domain_resolver")
 			} else {
-				cfg.Route.DefaultDomainResolver = &option.DomainResolveOptions{Server: server}
+				raw, _ := stdjson.Marshal(server)
+				route["default_domain_resolver"] = raw
 			}
 		}
 		return nil
 	})
+	h.respondRouteMutation(ctx, c, err, "route policy updated successfully", nil)
+}
 
+func (h *Handler) readRouteDocument() (map[string]stdjson.RawMessage, error) {
+	raw, _, err := h.configManager.GetConfigSection("route")
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		return nil, err
+	}
+	return readRawObjectSection(raw, "route")
+}
+
+func (h *Handler) updateRouteDocument(ctx context.Context, update func(map[string]stdjson.RawMessage) error) error {
+	return h.configManager.UpdateConfigSection(ctx, "route", func(raw stdjson.RawMessage) (stdjson.RawMessage, error) {
+		route, err := readRawObjectSection(raw, "route")
+		if err != nil {
+			return nil, err
+		}
+		if err := update(route); err != nil {
+			return nil, err
+		}
+		return stdjson.Marshal(route)
+	})
+}
+
+func objectBody(c *app.RequestContext) ([]byte, error) {
+	body, err := c.Body()
+	if err != nil {
+		return nil, err
+	}
+	if err := requireJSONObject(body); err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+func routeIndex(ctx context.Context, c *app.RequestContext) (int, bool) {
+	index, err := strconv.Atoi(c.Param("index"))
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid index")
+		return 0, false
+	}
+	return index, true
+}
+
+func (h *Handler) respondRouteMutation(ctx context.Context, c *app.RequestContext, err error, message string, extra map[string]any) {
+	if err != nil {
+		respondConfigError(ctx, c, err)
 		return
 	}
-
-	respOK(ctx, c, map[string]any{
-		"message": "route policy updated successfully",
-	})
+	data := map[string]any{"message": message}
+	for key, value := range extra {
+		data[key] = value
+	}
+	respOK(ctx, c, data)
 }
