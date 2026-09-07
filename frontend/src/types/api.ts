@@ -239,6 +239,7 @@ export interface SubscriptionUpdateResult {
   added: number
   updated: number
   deleted: number
+  restarted: boolean
 }
 
 // Re-export DNS types from dns.ts
@@ -491,4 +492,3 @@ export interface SystemInfo {
   /** One entry per distinct filesystem; empty when statfs is unavailable. */
   disks: DiskUsage[]
 }
-

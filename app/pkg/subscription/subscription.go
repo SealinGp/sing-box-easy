@@ -16,6 +16,14 @@ type SubscriptionManager interface {
 	UpdateOfficialURL(id string, officialURL string) error
 }
 
+// ServiceRestarter applies a freshly-written sing-box configuration to the
+// running service. Keeping this as a one-method interface lets subscription
+// refreshes trigger the required lifecycle action without importing the
+// concrete service package (which already depends on config).
+type ServiceRestarter interface {
+	Restart() error
+}
+
 const (
 	DefaultSubscriptionPath = "/etc/sing-box/subscriptions.json"
 )

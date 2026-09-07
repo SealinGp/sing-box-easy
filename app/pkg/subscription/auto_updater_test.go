@@ -1,9 +1,49 @@
 package subscription
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
+
+type fakeServiceRestarter struct {
+	calls int
+	err   error
+}
+
+func (f *fakeServiceRestarter) Restart() error {
+	f.calls++
+	return f.err
+}
+
+func TestRestartService(t *testing.T) {
+	t.Run("calls configured restarter", func(t *testing.T) {
+		restarter := &fakeServiceRestarter{}
+		au := &AutoUpdater{serviceRestarter: restarter}
+
+		if err := au.restartService(); err != nil {
+			t.Fatalf("restartService() = %v", err)
+		}
+		if restarter.calls != 1 {
+			t.Fatalf("Restart calls = %d, want 1", restarter.calls)
+		}
+	})
+
+	t.Run("propagates restart failure", func(t *testing.T) {
+		want := errors.New("restart failed")
+		au := &AutoUpdater{serviceRestarter: &fakeServiceRestarter{err: want}}
+
+		if err := au.restartService(); !errors.Is(err, want) {
+			t.Fatalf("restartService() = %v, want %v", err, want)
+		}
+	})
+
+	t.Run("rejects missing restarter", func(t *testing.T) {
+		if err := (&AutoUpdater{}).restartService(); err == nil {
+			t.Fatal("restartService() = nil, want configuration error")
+		}
+	})
+}
 
 func TestParseDuration(t *testing.T) {
 	tests := []struct {

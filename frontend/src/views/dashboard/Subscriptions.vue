@@ -284,6 +284,9 @@ const updateSubscription = async (subscription: Subscription) => {
       subscription.id
     );
 
+    // The backend does not report success until sing-box has restarted with
+    // the refreshed config, so the nodes shown here and the running service
+    // cannot silently drift apart.
     // The same builder the Overview card uses, so one backend result cannot be
     // described two different ways depending on which screen you are on.
     const summary = summarizeUpdate(response.data, t);

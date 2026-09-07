@@ -81,8 +81,8 @@ export default {
     // These two used to share an icon and near-synonymous labels. One is a
     // local read; the other goes to the network and rewrites nodes.
     refreshList: 'Re-read subscriptions saved in this panel. Does not contact providers.',
-    updateAll: 'Fetch every subscription from its provider and re-import nodes',
-    update: 'Fetch this subscription from its provider',
+    updateAll: 'Fetch every subscription, re-import nodes, and restart sing-box after each update',
+    update: 'Fetch this subscription, re-import nodes, and restart sing-box to apply them',
     edit: 'Edit subscription',
     del: 'Delete subscription',
     copy: 'Copy URL',
@@ -96,7 +96,7 @@ export default {
     deletedOk: 'Subscription deleted successfully',
     deleteError: 'Error deleting subscription',
     updateError: 'Error updating subscription',
-    synced: 'Subscription "{name}" synced: {summary}',
+    synced: 'Subscription "{name}" synced and sing-box restarted: {summary}',
     noChanges: 'no changes',
     added: '+{n} added',
     updated: '~{n} updated',

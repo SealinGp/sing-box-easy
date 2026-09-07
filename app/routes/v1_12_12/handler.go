@@ -101,7 +101,7 @@ func NewHandler(
 	})
 
 	// Initialize auto-updater (rules-aware)
-	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager, settingsManager)
+	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager, settingsManager, serviceController)
 	schedulerHandler := newSchedulerHandler(autoUpdater)
 
 	// Initialize user manager

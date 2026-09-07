@@ -190,7 +190,7 @@ func (h *Handler) DeleteSubscription(ctx context.Context, c *app.RequestContext)
 }
 
 // UpdateSubscriptionContent fetches and updates nodes from a subscription.
-// All business logic (fetch → diff → apply → stats) lives in the subscription
+// All business logic (fetch → diff → save → apply) lives in the subscription
 // package; this handler only translates the HTTP request/response envelope.
 func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestContext) {
 	id := c.Param("id")
@@ -203,7 +203,7 @@ func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestC
 
 	added, updated, deleted := result.Counts()
 	respOK(ctx, c, map[string]any{
-		"message":      "subscription updated successfully",
+		"message":      "subscription updated and sing-box restarted successfully",
 		"id":           id,
 		"added_tags":   result.AddedTags,
 		"updated_tags": result.UpdatedTags,
@@ -211,5 +211,6 @@ func (h *Handler) UpdateSubscriptionContent(ctx context.Context, c *app.RequestC
 		"added":        added,
 		"updated":      updated,
 		"deleted":      deleted,
+		"restarted":    result.Restarted,
 	})
 }

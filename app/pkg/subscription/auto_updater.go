@@ -31,6 +31,7 @@ type AutoUpdater struct {
 	subscriptionManager SubscriptionManager
 	sublinkManager      *sublink.SubLink
 	configManager       *config.Manager
+	serviceRestarter    ServiceRestarter
 	nodeRules           NodeRulesProvider
 	infoKeywords        InfoKeywordsProvider
 	cron                *cron.Cron
@@ -55,6 +56,7 @@ type UpdateResult struct {
 	AddedTags   []string `json:"added_tags"`   // outbound tags that were newly inserted
 	UpdatedTags []string `json:"updated_tags"` // outbound tags that were replaced in-place
 	DeletedKeys []string `json:"deleted_keys"` // server keys removed (no longer present in subscription)
+	Restarted   bool     `json:"restarted"`    // running sing-box has loaded the refreshed config
 }
 
 // Counts returns convenient totals for logging/response payloads.
@@ -65,7 +67,9 @@ func (r *UpdateResult) Counts() (added, updated, deleted int) {
 	return len(r.AddedTags), len(r.UpdatedTags), len(r.DeletedKeys)
 }
 
-// NewAutoUpdater creates a new auto-updater instance. nodeRules may be nil, in
+// NewAutoUpdater creates a new auto-updater instance. serviceRestarter must be
+// configured so a successful refresh can be applied to the running sing-box.
+// nodeRules may be nil, in
 // which case the legacy "append new nodes into non-group collections" behavior
 // is used; when present, the Outbound Node Rules engine owns node placement.
 // infoKeywords may also be nil, in which case the built-in
@@ -76,11 +80,13 @@ func NewAutoUpdater(
 	sublinkManager *sublink.SubLink,
 	nodeRules NodeRulesProvider,
 	infoKeywords InfoKeywordsProvider,
+	serviceRestarter ServiceRestarter,
 ) *AutoUpdater {
 	return &AutoUpdater{
 		subscriptionManager: subscriptionManager,
 		sublinkManager:      sublinkManager,
 		configManager:       configManager,
+		serviceRestarter:    serviceRestarter,
 		nodeRules:           nodeRules,
 		infoKeywords:        infoKeywords,
 		updateStats:         make(map[string]*UpdateStats),
@@ -207,6 +213,17 @@ func (au *AutoUpdater) CheckSubscriptions() {
 			zap.Int("deleted", deleted))
 	}
 
+	// Apply all successful refreshes with one restart. A scheduled sweep may
+	// update several subscriptions; restarting once per row would repeatedly
+	// interrupt traffic while producing the same final running config.
+	if updatedCount > 0 {
+		if err := au.restartService(); err != nil {
+			logger.Error("Subscriptions updated but failed to restart sing-box",
+				zap.Int("updated", updatedCount), zap.Error(err))
+			failedCount++
+		}
+	}
+
 	logger.Info("Subscription check completed",
 		zap.Int("updated", updatedCount),
 		zap.Int("failed", failedCount))
@@ -227,14 +244,32 @@ func (au *AutoUpdater) shouldUpdate(sub *Subscription) bool {
 // RefreshByID is the canonical entry point for refreshing a single subscription
 // regardless of trigger source (HTTP route, cron, or other callers).
 // It fetches the subscription record, runs the same diff/apply path as the cron
-// loop, and records success/failure stats. The manual route handler should call
-// this instead of touching configManager.UpdateOutbounds directly.
+// loop, and restarts sing-box before reporting success. The manual route
+// handler should call this instead of touching configManager or the service
+// controller directly.
 func (au *AutoUpdater) RefreshByID(id string) (*UpdateResult, error) {
 	sub, err := au.subscriptionManager.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("subscription not found: %w", err)
 	}
-	return au.UpdateSubscription(sub)
+	result, err := au.UpdateSubscription(sub)
+	if err != nil {
+		return nil, err
+	}
+	if err := au.restartService(); err != nil {
+		return nil, fmt.Errorf("subscription updated but failed to restart sing-box: %w", err)
+	}
+	result.Restarted = true
+	return result, nil
+}
+
+// restartService applies the config written by a successful refresh. It is a
+// separate seam so updater tests do not need a real init system or process.
+func (au *AutoUpdater) restartService() error {
+	if au.serviceRestarter == nil {
+		return fmt.Errorf("sing-box service restarter is not configured")
+	}
+	return au.serviceRestarter.Restart()
 }
 
 // UpdateSubscription updates a single subscription: fetch → diff → apply.

@@ -79,8 +79,8 @@ export default {
   tooltip: {
     // 这两个按钮以前同图标同文案，看不出区别：一个只读本地，一个联网改数据。
     refreshList: '重新读取本面板已保存的订阅，不会联网',
-    updateAll: '逐个从机场重新拉取订阅并导入节点',
-    update: '从机场重新拉取该订阅',
+    updateAll: '逐个从机场重新拉取订阅、导入节点并在每次更新后重启 sing-box',
+    update: '从机场重新拉取该订阅、导入节点并重启 sing-box 使其生效',
     edit: '编辑订阅',
     del: '删除订阅',
     copy: '复制链接',
@@ -94,7 +94,7 @@ export default {
     deletedOk: '订阅删除成功',
     deleteError: '删除订阅出错',
     updateError: '更新订阅出错',
-    synced: '订阅 "{name}" 已同步：{summary}',
+    synced: '订阅 "{name}" 已同步且 sing-box 已重启：{summary}',
     noChanges: '无变化',
     added: '+{n} 新增',
     updated: '~{n} 更新',
