@@ -2,169 +2,141 @@ package v1_13_0
 
 import (
 	"context"
+	stdjson "encoding/json"
+	"fmt"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
-// GetLog returns the log configuration
+// GetLog returns the log configuration without decoding unrelated sections.
 func (h *Handler) GetLog(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	raw, ok, err := h.configManager.GetConfigSection("log")
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if cfg.Log == nil {
-		respOK(ctx, c, &config.LogConfig{})
+	if !ok {
+		respOK(ctx, c, map[string]any{})
 		return
 	}
-
-	respOK(ctx, c, cfg.Log)
+	respOK(ctx, c, raw)
 }
 
-// UpdateLog updates the log configuration
 func (h *Handler) UpdateLog(ctx context.Context, c *app.RequestContext) {
-	var logConfig config.LogConfig
-	if err := c.Bind(&logConfig); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := h.replaceSectionFromBody(ctx, c, "log"); err != nil {
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		cfg.Log = &logConfig
-		return nil
-	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
 	respOK(ctx, c, map[string]any{"message": "log configuration updated successfully"})
 }
 
-// GetClashAPI returns the Clash API configuration
 func (h *Handler) GetClashAPI(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	if cfg.Experimental == nil || cfg.Experimental.ClashAPI == nil {
-		respOK(ctx, c, &config.ClashAPIConfig{})
-		return
-	}
-
-	respOK(ctx, c, cfg.Experimental.ClashAPI)
+	h.getExperimentalChild(ctx, c, "clash_api")
 }
 
-// UpdateClashAPI updates the Clash API configuration
 func (h *Handler) UpdateClashAPI(ctx context.Context, c *app.RequestContext) {
-	var clashAPIConfig config.ClashAPIConfig
-	if err := c.Bind(&clashAPIConfig); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := h.replaceExperimentalChildFromBody(ctx, c, "clash_api"); err != nil {
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Experimental == nil {
-			cfg.Experimental = &config.ExperimentalConfig{}
-		}
-		cfg.Experimental.ClashAPI = &clashAPIConfig
-		return nil
-	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
 	respOK(ctx, c, map[string]any{"message": "Clash API configuration updated successfully"})
 }
 
-// GetCacheFile returns the cache file configuration
 func (h *Handler) GetCacheFile(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	if cfg.Experimental == nil || cfg.Experimental.CacheFile == nil {
-		respOK(ctx, c, &config.CacheFileConfig{})
-		return
-	}
-
-	respOK(ctx, c, cfg.Experimental.CacheFile)
+	h.getExperimentalChild(ctx, c, "cache_file")
 }
 
-// UpdateCacheFile updates the cache file configuration
 func (h *Handler) UpdateCacheFile(ctx context.Context, c *app.RequestContext) {
-	// rdrc_timeout is a badoption.Duration, which rejects "". The UI submits an
-	// empty string for an untouched optional field, so treat that as absent
-	// rather than failing the request with `time: invalid duration ""`.
+	// rdrc_timeout is a duration and rejects "". An untouched optional UI field
+	// means absent, not an explicit empty duration.
 	c.Request.SetBody(dropEmptyJSONFields(c.Request.Body(), "rdrc_timeout"))
-
-	var cacheFileConfig config.CacheFileConfig
-	if err := c.Bind(&cacheFileConfig); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := h.replaceExperimentalChildFromBody(ctx, c, "cache_file"); err != nil {
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Experimental == nil {
-			cfg.Experimental = &config.ExperimentalConfig{}
-		}
-		cfg.Experimental.CacheFile = &cacheFileConfig
-		return nil
-	})
-
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
 	respOK(ctx, c, map[string]any{"message": "cache file configuration updated successfully"})
 }
 
-// GetV2RayAPI returns the V2Ray API configuration
 func (h *Handler) GetV2RayAPI(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
-	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
-		return
-	}
-
-	if cfg.Experimental == nil || cfg.Experimental.V2RayAPI == nil {
-		respOK(ctx, c, &config.V2RayAPIOptions{})
-		return
-	}
-
-	respOK(ctx, c, cfg.Experimental.V2RayAPI)
+	h.getExperimentalChild(ctx, c, "v2ray_api")
 }
 
-// UpdateV2RayAPI updates the V2Ray API configuration
 func (h *Handler) UpdateV2RayAPI(ctx context.Context, c *app.RequestContext) {
-	var v2rayAPIConfig config.V2RayAPIOptions
-	if err := c.Bind(&v2rayAPIConfig); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+	if err := h.replaceExperimentalChildFromBody(ctx, c, "v2ray_api"); err != nil {
 		return
 	}
+	respOK(ctx, c, map[string]any{"message": "V2Ray API configuration updated successfully"})
+}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Experimental == nil {
-			cfg.Experimental = &config.ExperimentalConfig{}
-		}
-		cfg.Experimental.V2RayAPI = &v2rayAPIConfig
-		return nil
-	})
-
+func (h *Handler) getExperimentalChild(ctx context.Context, c *app.RequestContext, name string) {
+	experimental, ok, err := h.configManager.GetConfigSection("experimental")
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
+	if !ok {
+		respOK(ctx, c, map[string]any{})
+		return
+	}
+	var object map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(experimental, &object); err != nil {
+		respErr(ctx, c, CodeInternalError, "failed to parse experimental configuration: "+err.Error())
+		return
+	}
+	child, ok := object[name]
+	if !ok || string(child) == "null" {
+		respOK(ctx, c, map[string]any{})
+		return
+	}
+	respOK(ctx, c, child)
+}
 
-	respOK(ctx, c, map[string]any{"message": "V2Ray API configuration updated successfully"})
+func (h *Handler) replaceSectionFromBody(
+	ctx context.Context,
+	c *app.RequestContext,
+	section string,
+) error {
+	body, err := c.Body()
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
+		return err
+	}
+	if err := requireJSONObject(body); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return err
+	}
+	err = h.configManager.UpdateConfigSection(ctx, section, func(stdjson.RawMessage) (stdjson.RawMessage, error) {
+		return cloneRaw(body), nil
+	})
+	if err != nil {
+		respondConfigError(ctx, c, err)
+	}
+	return err
+}
+
+func (h *Handler) replaceExperimentalChildFromBody(
+	ctx context.Context,
+	c *app.RequestContext,
+	name string,
+) error {
+	body, err := c.Body()
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
+		return err
+	}
+	if err := requireJSONObject(body); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return err
+	}
+	err = h.configManager.UpdateConfigSection(ctx, "experimental", func(raw stdjson.RawMessage) (stdjson.RawMessage, error) {
+		object := map[string]stdjson.RawMessage{}
+		if len(raw) > 0 && string(raw) != "null" {
+			if err := stdjson.Unmarshal(raw, &object); err != nil {
+				return nil, fmt.Errorf("failed to parse experimental configuration: %w", err)
+			}
+		}
+		object[name] = cloneRaw(body)
+		return stdjson.Marshal(object)
+	})
+	if err != nil {
+		respondConfigError(ctx, c, err)
+	}
+	return err
 }

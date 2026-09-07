@@ -19,7 +19,8 @@
   raw-preserving adapters.
   - [x] DNS document, server, hosts, and rule editors, including 1.14
     `evaluate`/`respond` actions.
-  - [ ] Route, inbound, outbound, log, experimental, and node-rule editors.
+  - [x] Log and experimental (`clash_api`, `cache_file`, `v2ray_api`) editors.
+  - [ ] Route, inbound, outbound, and node-rule editors.
 - [ ] Phase 5: upgrade the optional typed helper dependency after the raw seams
   are established; this does not change the installed sing-box binary.
 - [ ] Phase 6: migrate the full frontend to `/api/v1` and document removal of
