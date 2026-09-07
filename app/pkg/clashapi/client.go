@@ -52,7 +52,14 @@ func New(experimental *option.ExperimentalOptions) (*Client, error) {
 	if experimental == nil || experimental.ClashAPI == nil {
 		return nil, ErrDisabled
 	}
-	controller := strings.TrimSpace(experimental.ClashAPI.ExternalController)
+	return NewFromValues(experimental.ClashAPI.ExternalController, experimental.ClashAPI.Secret)
+}
+
+// NewFromValues builds a client from the two clash_api fields the transport
+// actually needs. Callers reading a raw, newer-version config can use this
+// without decoding the entire experimental section through an older schema.
+func NewFromValues(externalController, secret string) (*Client, error) {
+	controller := strings.TrimSpace(externalController)
 	if controller == "" {
 		return nil, ErrDisabled
 	}
@@ -64,7 +71,7 @@ func New(experimental *option.ExperimentalOptions) (*Client, error) {
 
 	return &Client{
 		baseURL: base,
-		secret:  strings.TrimSpace(experimental.ClashAPI.Secret),
+		secret:  strings.TrimSpace(secret),
 		http:    &http.Client{Timeout: defaultTimeout},
 	}, nil
 }

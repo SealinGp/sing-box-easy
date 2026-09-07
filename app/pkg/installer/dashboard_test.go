@@ -2,10 +2,45 @@ package installer
 
 import (
 	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
+
+func TestPersistExternalUIPreservesNewerConfig(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test helper is a POSIX shell script")
+	}
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "sing-box")
+	script := []byte("#!/bin/sh\nif [ \"$1\" = version ]; then echo 'sing-box version 1.14.0'; exit 0; fi\nif [ \"$1\" = check ]; then exit 0; fi\nexit 1\n")
+	if err := os.WriteFile(binaryPath, script, 0700); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(dir, "config.json")
+	raw := []byte(`{"dns":{"rules":[{"action":"evaluate","future":true}]},"experimental":{"clash_api":{"external_ui":"/old"},"future_feature":{"value":7}}}`)
+	if err := os.WriteFile(configPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := config.NewManager(configPath, binaryPath, "")
+	dashboard := NewDashboardManager(nil, manager)
+	dashboard.persistExternalUI("/new")
+
+	saved, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range [][]byte{[]byte(`"action": "evaluate"`), []byte(`"future_feature"`), []byte(`"external_ui": "/new"`)} {
+		if !bytes.Contains(saved, want) {
+			t.Fatalf("updated config lost %s: %s", want, saved)
+		}
+	}
+}
 
 // writeZip builds a zip containing the given "name -> content" entries.
 func writeZip(t *testing.T, entries map[string]string) string {

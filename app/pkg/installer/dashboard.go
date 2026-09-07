@@ -2,6 +2,8 @@ package installer
 
 import (
 	"archive/zip"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,24 +71,42 @@ func (m *DashboardManager) persistExternalUI(dir string) {
 	if m.configManager == nil || dir == "" {
 		return
 	}
-
-	// UpdateConfig validates and snapshots a version on every call, so a no-op
-	// write would add a history entry saying nothing changed.
-	if cfg, err := m.configManager.GetConfig(); err == nil &&
-		cfg.Experimental != nil && cfg.Experimental.ClashAPI != nil &&
-		cfg.Experimental.ClashAPI.ExternalUI == dir {
-		return
+	// Avoid creating a config-history entry when the requested path is already
+	// active, while decoding only the section this operation owns.
+	if raw, ok, err := m.configManager.GetConfigSection("experimental"); err == nil && ok {
+		var current struct {
+			ClashAPI struct {
+				ExternalUI string `json:"external_ui"`
+			} `json:"clash_api"`
+		}
+		if json.Unmarshal(raw, &current) == nil && current.ClashAPI.ExternalUI == dir {
+			return
+		}
 	}
 
-	err := m.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.Experimental == nil {
-			cfg.Experimental = &config.ExperimentalConfig{}
+	err := m.configManager.UpdateConfigSection(context.Background(), "experimental", func(raw json.RawMessage) (json.RawMessage, error) {
+		experimental := map[string]json.RawMessage{}
+		if len(raw) > 0 && string(raw) != "null" {
+			if err := json.Unmarshal(raw, &experimental); err != nil {
+				return nil, fmt.Errorf("failed to parse experimental section: %w", err)
+			}
 		}
-		if cfg.Experimental.ClashAPI == nil {
-			cfg.Experimental.ClashAPI = &config.ClashAPIConfig{}
+		clashAPI := map[string]json.RawMessage{}
+		if current := experimental["clash_api"]; len(current) > 0 && string(current) != "null" {
+			if err := json.Unmarshal(current, &clashAPI); err != nil {
+				return nil, fmt.Errorf("failed to parse experimental.clash_api: %w", err)
+			}
 		}
-		cfg.Experimental.ClashAPI.ExternalUI = dir
-		return nil
+		encodedDir, err := json.Marshal(dir)
+		if err != nil {
+			return nil, err
+		}
+		clashAPI["external_ui"] = encodedDir
+		experimental["clash_api"], err = json.Marshal(clashAPI)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(experimental)
 	})
 	if err != nil {
 		// The files are installed either way; failing the task here would say

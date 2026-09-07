@@ -58,7 +58,7 @@ func (e *probeEnvironment) Targets() ([]subprobe.Target, error) {
 // question, and the prober answers it per node — a tag the controller does not
 // know is reported as untestable rather than as down.
 func (e *probeEnvironment) OutboundTags() ([]string, error) {
-	cfg, err := e.configManager.GetConfig()
+	cfg, err := e.configManager.GetOutboundsConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
@@ -74,11 +74,11 @@ func (e *probeEnvironment) OutboundTags() ([]string, error) {
 
 // Prober builds a client against the running sing-box.
 func (e *probeEnvironment) Prober() (subprobe.Prober, error) {
-	cfg, err := e.configManager.GetConfig()
+	clash, err := e.configManager.GetClashAPISettings()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
-	client, err := clashapi.New(cfg.Options.Experimental)
+	client, err := clashapi.NewFromValues(clash.ExternalController, clash.Secret)
 	if err != nil {
 		return nil, err
 	}

@@ -291,7 +291,7 @@ func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, ski
 
 	// Pre-flight: compute the diff against the current on-disk config so we
 	// can decide whether a save is necessary before we touch anything.
-	current, err := m.GetConfig()
+	current, err := m.GetOutboundsConfig()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -323,7 +323,7 @@ func (m *Manager) UpdateOutbounds(outbounds []Outbound) (addedTags []string, ski
 		return addedTags, skippedTags, nil
 	}
 
-	err = m.UpdateConfig(func(cfg *SingBoxConfig) error {
+	err = m.UpdateOutboundsConfig(context.Background(), func(cfg *SingBoxConfig) error {
 		cfg.Outbounds = append(cfg.Outbounds, toAdd...)
 		return nil
 	})

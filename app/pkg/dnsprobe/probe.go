@@ -38,6 +38,10 @@ type Result struct {
 
 	// Attribution is the offline reconstruction of the routing decision.
 	Attribution Attribution `json:"attribution"`
+	// AttributionError explains why the compiled offline evaluator could not
+	// represent rules accepted by the installed core. Live and log-backed
+	// evidence remain available in that case.
+	AttributionError string `json:"attribution_error,omitempty"`
 
 	// LoggedMatches is sing-box's own record of the decision, present only
 	// when debug logging was enabled at probe time.
@@ -91,6 +95,10 @@ type Options struct {
 	CompareServers bool
 	// Tailer enables exact attribution from sing-box's debug log. Optional.
 	Tailer LogTailer
+	// AttributionError disables the legacy offline walk. It is set when a
+	// newer DNS action (for example evaluate/respond) cannot be represented
+	// by the compiled schema without producing a misleading prediction.
+	AttributionError string
 }
 
 // Stage names the phases a probe passes through, in order. A caller that wants
@@ -171,7 +179,12 @@ func RunStaged(cfg *option.Options, opts Options, onStage StageFunc) (*Result, e
 	if cfg != nil {
 		dns = cfg.DNS
 	}
-	result.Attribution = Attribute(dns, domain)
+	if opts.AttributionError == "" {
+		result.Attribution = Attribute(dns, domain)
+	} else {
+		result.Attribution = Attribution{Rules: []RuleEvaluation{}, MatchedIndex: -1, Exact: false}
+		result.AttributionError = opts.AttributionError
+	}
 
 	// Emitted first and on its own because it is the only stage that is
 	// instant: the ladder can be on screen before the live query has returned.

@@ -65,6 +65,16 @@ func NewClashClient(experimental *option.ExperimentalOptions) (*ClashClient, err
 	return &ClashClient{Client: client}, nil
 }
 
+// NewClashClientFromValues avoids decoding an entire experimental section
+// when the caller obtained these stable scalar fields from raw JSON.
+func NewClashClientFromValues(externalController, secret string) (*ClashClient, error) {
+	client, err := clashapi.NewFromValues(externalController, secret)
+	if err != nil {
+		return nil, err
+	}
+	return &ClashClient{Client: client}, nil
+}
+
 // controllerURL is kept as a package-level name for the tests that pin the
 // bind-address rewrite; the logic now lives in clashapi.
 func controllerURL(controller string) (string, error) {

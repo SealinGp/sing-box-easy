@@ -15,14 +15,15 @@
   rollback.
 - [x] Phase 3: subscription updates mutate only recognized outbounds while
   preserving newer DNS/route sections and unknown outbound records.
-- [ ] Phase 4: migrate every remaining structured editor to section-local,
+- [x] Phase 4: migrate every remaining structured editor to section-local,
   raw-preserving adapters.
   - [x] DNS document, server, hosts, and rule editors, including 1.14
     `evaluate`/`respond` actions.
   - [x] Log and experimental (`clash_api`, `cache_file`, `v2ray_api`) editors.
   - [x] Inbound editor and route rules, rule sets, cascade references, and
     final-policy editor.
-  - [ ] Outbound and node-rule editors.
+  - [x] Outbound and node-rule editors, dashboard persistence, initialization
+    detection, and DNS/route/subscription/traffic probes.
 - [ ] Phase 5: upgrade the optional typed helper dependency after the raw seams
   are established; this does not change the installed sing-box binary.
 - [ ] Phase 6: migrate the full frontend to `/api/v1` and document removal of

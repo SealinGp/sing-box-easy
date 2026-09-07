@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
 func (h *Handler) readRawArraySection(name string) ([]json.RawMessage, error) {
@@ -50,4 +52,8 @@ func readRawObjectSection(raw json.RawMessage, name string) (map[string]json.Raw
 		return nil, fmt.Errorf("failed to parse %s section: %w", name, err)
 	}
 	return object, nil
+}
+
+func (h *Handler) readClashAPISettings() (config.ClashAPISettings, error) {
+	return h.configManager.GetClashAPISettings()
 }

@@ -2,6 +2,7 @@ package v1_13_0
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -52,8 +53,23 @@ func hasMeaningfulSingBoxConfig(mgr *config.Manager) bool {
 	if mgr == nil {
 		return false
 	}
-	cfg, err := mgr.GetConfig()
-	if err != nil || cfg == nil {
+	document, err := mgr.GetConfigDocument()
+	if err != nil {
+		return false
+	}
+	var cfg struct {
+		Outbounds []json.RawMessage `json:"outbounds"`
+		Inbounds  []json.RawMessage `json:"inbounds"`
+		Route     struct {
+			Rules []json.RawMessage `json:"rules"`
+		} `json:"route"`
+		Experimental struct {
+			ClashAPI struct {
+				ExternalController string `json:"external_controller"`
+			} `json:"clash_api"`
+		} `json:"experimental"`
+	}
+	if err := json.Unmarshal(document.Raw, &cfg); err != nil {
 		return false
 	}
 	if len(cfg.Outbounds) > 2 {
@@ -62,15 +78,13 @@ func hasMeaningfulSingBoxConfig(mgr *config.Manager) bool {
 	if len(cfg.Inbounds) > 0 {
 		return true
 	}
-	if cfg.Route.Rules != nil && len(cfg.Route.Rules) > 0 {
+	if len(cfg.Route.Rules) > 0 {
 		return true
 	}
 	// A configured Clash API external_controller is a reliable signal that
 	// the operator has already set up the app (possibly through the wizard).
 	// Treat it as "meaningful" so the wizard does not re-run on upgrades.
-	if cfg.Experimental != nil &&
-		cfg.Experimental.ClashAPI != nil &&
-		cfg.Experimental.ClashAPI.ExternalController != "" {
+	if cfg.Experimental.ClashAPI.ExternalController != "" {
 		return true
 	}
 	return false

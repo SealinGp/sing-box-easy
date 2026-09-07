@@ -37,7 +37,7 @@ func (h *Handler) ProbeRoute(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	cfg, err := h.configManager.GetConfig()
+	cfg, err := h.configManager.GetConfigSubset("route", "outbounds", "endpoints")
 	if err != nil {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
@@ -55,7 +55,8 @@ func (h *Handler) ProbeRoute(ctx context.Context, c *app.RequestContext) {
 	// Both extras come from the running instance and both are optional: a
 	// stopped sing-box degrades the prediction rather than failing it, which
 	// is the case the offline walk exists for in the first place.
-	if client, clientErr := dnsprobe.NewClashClient(cfg.Options.Experimental); clientErr == nil {
+	clash, clashErr := h.readClashAPISettings()
+	if client, clientErr := dnsprobe.NewClashClientFromValues(clash.ExternalController, clash.Secret); clashErr == nil && clientErr == nil {
 		options.Resolve = clashResolver(client)
 		if mode, modeErr := client.Mode(); modeErr == nil {
 			options.ClashMode = mode

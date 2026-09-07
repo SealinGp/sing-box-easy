@@ -6,7 +6,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	singjson "github.com/sagernet/sing/common/json"
 )
+
+// GetConfigSubset decodes only the requested top-level sections through the
+// compiled sing-box schema. It must not fail because an unrelated section
+// uses a newer core feature.
+func (m *Manager) GetConfigSubset(names ...string) (*SingBoxConfig, error) {
+	document, err := m.GetConfigDocument()
+	if err != nil {
+		return nil, err
+	}
+	var allSections map[string]json.RawMessage
+	if err := json.Unmarshal(document.Raw, &allSections); err != nil {
+		return nil, fmt.Errorf("failed to read config sections: %w", err)
+	}
+	sections := make(map[string]json.RawMessage, len(names))
+	for _, name := range names {
+		raw, ok := allSections[name]
+		if ok {
+			sections[name] = raw
+		}
+	}
+	encoded, err := json.Marshal(sections)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config subset: %w", err)
+	}
+	var cfg SingBoxConfig
+	if err := singjson.UnmarshalContext(CreateContext(context.Background()), encoded, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config subset: %w", err)
+	}
+	return &cfg, nil
+}
+
+// ClashAPISettings is the stable scalar subset shared by panel clients. It is
+// independent of sing-box option structs so newer experimental fields cannot
+// prevent controller access.
+type ClashAPISettings struct {
+	ExternalController    string `json:"external_controller"`
+	Secret                string `json:"secret"`
+	ExternalUI            string `json:"external_ui"`
+	ExternalUIDownloadURL string `json:"external_ui_download_url"`
+}
+
+func (m *Manager) GetClashAPISettings() (ClashAPISettings, error) {
+	raw, ok, err := m.GetConfigSection("experimental")
+	if err != nil || !ok {
+		return ClashAPISettings{}, err
+	}
+	var experimental struct {
+		ClashAPI ClashAPISettings `json:"clash_api"`
+	}
+	if err := json.Unmarshal(raw, &experimental); err != nil {
+		return ClashAPISettings{}, fmt.Errorf("failed to parse experimental.clash_api: %w", err)
+	}
+	return experimental.ClashAPI, nil
+}
 
 // GetConfigSection returns one top-level JSON value without decoding any
 // sibling section. The returned bytes are detached from the read buffer.

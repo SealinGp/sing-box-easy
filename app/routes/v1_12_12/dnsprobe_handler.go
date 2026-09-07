@@ -2,9 +2,14 @@ package v1_13_0
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/dnsprobe"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/sagernet/sing-box/option"
+	singjson "github.com/sagernet/sing/common/json"
 )
 
 // DNSProbeRequest asks what this deployment does with one domain.
@@ -28,17 +33,18 @@ func (h *Handler) ProbeDNS(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	cfg, err := h.configManager.GetConfig()
+	cfg, attributionError, err := h.loadDNSProbeConfig()
 	if err != nil {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
 	}
 
 	result, err := dnsprobe.Run(&cfg.Options, dnsprobe.Options{
-		Domain:         req.Domain,
-		QueryType:      req.Type,
-		CompareServers: req.CompareServers,
-		Tailer:         h.logTailer(),
+		Domain:           req.Domain,
+		QueryType:        req.Type,
+		CompareServers:   req.CompareServers,
+		Tailer:           h.logTailer(),
+		AttributionError: attributionError,
 	})
 	if err != nil {
 		// The only errors here are invalid input; everything else degrades
@@ -85,7 +91,7 @@ func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	cfg, err := h.configManager.GetConfig()
+	cfg, attributionError, err := h.loadDNSProbeConfig()
 	if err != nil {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
@@ -108,10 +114,11 @@ func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
 	}
 
 	result, err := dnsprobe.RunStaged(&cfg.Options, dnsprobe.Options{
-		Domain:         req.Domain,
-		QueryType:      req.Type,
-		CompareServers: req.CompareServers,
-		Tailer:         h.logTailer(),
+		Domain:           req.Domain,
+		QueryType:        req.Type,
+		CompareServers:   req.CompareServers,
+		Tailer:           h.logTailer(),
+		AttributionError: attributionError,
 	}, onStage)
 	if err != nil {
 		// Invalid input. Everything else degrades into the result itself.
@@ -123,4 +130,49 @@ func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
 	// ignored the intermediate stages still ends up with exactly what the unary
 	// endpoint would have returned.
 	logStreamEnd("dns-probe", stream.Event("done", result))
+}
+
+// loadDNSProbeConfig isolates DNS probing from unrelated top-level sections.
+// When the installed core accepts DNS actions newer than the compiled schema,
+// it retains the servers/final settings needed for live and comparison probes
+// but disables the incompatible offline rule walk explicitly.
+func (h *Handler) loadDNSProbeConfig() (*configpkg.SingBoxConfig, string, error) {
+	cfg, typedErr := h.configManager.GetConfigSubset("dns")
+	attributionError := ""
+	if typedErr != nil {
+		raw, ok, err := h.configManager.GetConfigSection("dns")
+		if err != nil {
+			return nil, "", err
+		}
+		if !ok {
+			cfg = &configpkg.SingBoxConfig{}
+		} else {
+			var dnsObject map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &dnsObject); err != nil {
+				return nil, "", fmt.Errorf("failed to parse dns section: %w", err)
+			}
+			delete(dnsObject, "rules")
+			sanitized, err := json.Marshal(dnsObject)
+			if err != nil {
+				return nil, "", err
+			}
+			var dnsOptions option.DNSOptions
+			if err := singjson.UnmarshalContext(configpkg.CreateContext(context.Background()), sanitized, &dnsOptions); err != nil {
+				return nil, "", fmt.Errorf("failed to parse DNS probe settings: %w", err)
+			}
+			cfg = &configpkg.SingBoxConfig{}
+			cfg.DNS = &dnsOptions
+		}
+		attributionError = "offline attribution unavailable: DNS rules use actions newer than the compiled schema; live and log evidence are still authoritative"
+	}
+
+	clash, err := h.readClashAPISettings()
+	if err != nil {
+		return nil, "", err
+	}
+	cfg.Experimental = &option.ExperimentalOptions{ClashAPI: &option.ClashAPIOptions{
+		ExternalController: clash.ExternalController,
+		Secret:             clash.Secret,
+	}}
+	return cfg, attributionError, nil
 }

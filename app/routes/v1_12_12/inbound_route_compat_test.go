@@ -50,6 +50,74 @@ func TestInboundAndRouteReadsDoNotDecodeNewerDNSRules(t *testing.T) {
 	}
 }
 
+func TestOutboundAndNodeRuleReadsDoNotDecodeNewerDNSRules(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	raw := []byte(`{
+  "dns":{"rules":[{"action":"evaluate","server":"router"}]},
+  "outbounds":[{"type":"direct","tag":"direct"}]
+}`)
+	if err := os.WriteFile(configPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+
+	t.Run("outbounds", func(t *testing.T) {
+		requestContext := app.NewContext(0)
+		handler.GetOutbounds(context.Background(), requestContext)
+		var response BasicResponse[json.RawMessage]
+		if err := json.Unmarshal(requestContext.Response.Body(), &response); err != nil || response.Code != CodeSuccess {
+			t.Fatalf("unexpected response: %s (%v)", requestContext.Response.Body(), err)
+		}
+	})
+
+	// A nil manager makes PreviewNodeRules unsuitable as a handler-level test;
+	// its config read uses the same section-only manager entry point, pinned
+	// directly here so a future regression cannot restore GetConfig unnoticed.
+	if _, err := handler.configManager.GetOutboundsConfig(); err != nil {
+		t.Fatalf("GetOutboundsConfig() decoded unrelated DNS: %v", err)
+	}
+}
+
+func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	raw := []byte(`{
+  "dns":{
+    "servers":[{"type":"udp","tag":"router","server":"192.0.2.1"}],
+    "rules":[{"action":"evaluate","server":"router","tag":"candidate"}]
+  },
+  "route":{"final":"direct"},
+  "outbounds":[{"type":"direct","tag":"direct"}],
+  "experimental":{"clash_api":{"external_controller":"127.0.0.1:9090","secret":"test","external_ui":"/custom/ui"}}
+}`)
+	if err := os.WriteFile(configPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+
+	routeConfig, err := handler.configManager.GetConfigSubset("route", "outbounds")
+	if err != nil || routeConfig.Route == nil || routeConfig.Route.Final != "direct" {
+		t.Fatalf("route subset failed: cfg=%+v err=%v", routeConfig, err)
+	}
+
+	dnsConfig, attributionError, err := handler.loadDNSProbeConfig()
+	if err != nil {
+		t.Fatalf("DNS probe config failed: %v", err)
+	}
+	if attributionError == "" || dnsConfig.DNS == nil || len(dnsConfig.DNS.Servers) != 1 {
+		t.Fatalf("expected transparent degraded attribution with retained servers: cfg=%+v error=%q", dnsConfig, attributionError)
+	}
+	if dnsConfig.Experimental == nil || dnsConfig.Experimental.ClashAPI == nil || dnsConfig.Experimental.ClashAPI.ExternalController != "127.0.0.1:9090" {
+		t.Fatalf("clash API settings were not retained: %+v", dnsConfig.Experimental)
+	}
+
+	clash, err := handler.readClashAPISettings()
+	if err != nil || clash.ExternalUI != "/custom/ui" {
+		t.Fatalf("raw clash settings failed: %+v err=%v", clash, err)
+	}
+}
+
 func TestRouteMutationPreservesNewerDNSRules(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("test helper is a POSIX shell script")

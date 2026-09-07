@@ -252,7 +252,7 @@ func (h *Handler) buildPreview(pool noderules.NodePool) ([]previewFilter, []stri
 // PreviewNodeRules is a dry-run: it reports how current endpoints would be
 // assigned WITHOUT writing the config.
 func (h *Handler) PreviewNodeRules(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	cfg, err := h.configManager.GetOutboundsConfig()
 	if err != nil {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
@@ -297,7 +297,7 @@ func (h *Handler) ApplyNodeRules(ctx context.Context, c *app.RequestContext) {
 		endpoints      int
 		unmatched      int
 	)
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		pool := noderules.NodePool{
 			Endpoints: config.EndpointTags(cfg.Outbounds),
 			OptIn:     config.OptInTags(cfg.Outbounds),

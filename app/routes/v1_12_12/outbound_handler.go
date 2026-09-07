@@ -15,7 +15,7 @@ import (
 
 // GetOutbounds returns all outbound configurations
 func (h *Handler) GetOutbounds(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	cfg, err := h.configManager.GetOutboundsConfig()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -61,7 +61,7 @@ func (h *Handler) managedOutboundTags() []string {
 func (h *Handler) GetOutboundByTag(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	cfg, err := h.configManager.GetConfig()
+	cfg, err := h.configManager.GetOutboundsConfig()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -106,7 +106,7 @@ func (h *Handler) AddOutbound(ctx context.Context, c *app.RequestContext) {
 	candidates := config.OutboundTagCandidates(outbound.Tag, outbound)
 	outbound.Tag = candidates[0]
 
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		// Check if the tag already exists, under any shape this panel has minted.
 		taken := make(map[string]bool, len(cfg.Outbounds))
 		for _, existing := range cfg.Outbounds {
@@ -208,7 +208,7 @@ func (h *Handler) UpdateOutbound(ctx context.Context, c *app.RequestContext) {
 	// Ensure the tag matches
 	outbound.Tag = tag
 
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		found := false
 		for i, existing := range cfg.Outbounds {
 			if existing.Tag == tag {
@@ -244,7 +244,7 @@ func (h *Handler) DeleteOutbound(ctx context.Context, c *app.RequestContext) {
 		idx = -1
 	}
 
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		newOutbounds := make([]config.Outbound, 0, len(cfg.Outbounds))
 		deletedTags := make(map[string]struct{})
 		found := false
@@ -313,7 +313,7 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 		notFoundTags []string
 	)
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err := h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		// Build a set of existing tags once so the not-found check is O(n+m)
 		// rather than the previous O(n*m).
 		existing := make(map[string]bool, len(cfg.Outbounds))
@@ -364,7 +364,7 @@ func (h *Handler) DeleteOutboundsBatch(ctx context.Context, c *app.RequestContex
 
 // GetOutboundGroups returns all group type outbounds (selector/urltest)
 func (h *Handler) GetOutboundGroups(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	cfg, err := h.configManager.GetOutboundsConfig()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
@@ -394,7 +394,7 @@ func (h *Handler) UpdateOutboundMembers(ctx context.Context, c *app.RequestConte
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
+	err := h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		found := false
 		for i, outbound := range cfg.Outbounds {
 			if outbound.Tag == tag {

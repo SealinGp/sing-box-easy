@@ -36,13 +36,13 @@ const trafficFlowInterval = time.Second
 // to be disabled for, but a race between the status poll and a stop is
 // ordinary, so it is reported rather than assumed away.
 func (h *Handler) StreamTrafficFlow(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	clash, err := h.readClashAPISettings()
 	if err != nil {
 		respErr(ctx, c, CodeConfigError, err.Error())
 		return
 	}
 
-	client, err := clashapi.New(cfg.Options.Experimental)
+	client, err := clashapi.NewFromValues(clash.ExternalController, clash.Secret)
 	if err != nil {
 		if errors.Is(err, clashapi.ErrDisabled) {
 			respErr(ctx, c, CodeServiceError, "live traffic needs experimental.clash_api.external_controller to be set")

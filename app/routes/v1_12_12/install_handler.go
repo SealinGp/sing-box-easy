@@ -157,12 +157,12 @@ func (h *Handler) DownloadDashboard(ctx context.Context, c *app.RequestContext) 
 	targetDir := req.TargetDir
 	downloadURL := req.DownloadURL
 	if targetDir == "" {
-		cfg, err := h.configManager.GetConfig()
-		if err == nil && cfg.Experimental != nil && cfg.Experimental.ClashAPI != nil {
-			targetDir = cfg.Experimental.ClashAPI.ExternalUI
+		clash, err := h.readClashAPISettings()
+		if err == nil {
+			targetDir = clash.ExternalUI
 			// Also try to get download URL from config if not provided
-			if downloadURL == "" && cfg.Experimental.ClashAPI.ExternalUIDownloadURL != "" {
-				downloadURL = cfg.Experimental.ClashAPI.ExternalUIDownloadURL
+			if downloadURL == "" && clash.ExternalUIDownloadURL != "" {
+				downloadURL = clash.ExternalUIDownloadURL
 			}
 		}
 	}
@@ -209,10 +209,10 @@ func (h *Handler) GetDashboardTask(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) GetDashboardStatus(ctx context.Context, c *app.RequestContext) {
 	// Get target dir from config
 	targetDir := "/etc/sing-box/ui"
-	cfg, err := h.configManager.GetConfig()
-	if err == nil && cfg.Experimental != nil && cfg.Experimental.ClashAPI != nil {
-		if cfg.Experimental.ClashAPI.ExternalUI != "" {
-			targetDir = cfg.Experimental.ClashAPI.ExternalUI
+	clash, err := h.readClashAPISettings()
+	if err == nil {
+		if clash.ExternalUI != "" {
+			targetDir = clash.ExternalUI
 		}
 	}
 
@@ -265,9 +265,9 @@ func (h *Handler) UploadDashboard(ctx context.Context, c *app.RequestContext) {
 
 	// Get target dir from config if not specified
 	if targetDir == "" {
-		cfg, err := h.configManager.GetConfig()
-		if err == nil && cfg.Experimental != nil && cfg.Experimental.ClashAPI != nil {
-			targetDir = cfg.Experimental.ClashAPI.ExternalUI
+		clash, err := h.readClashAPISettings()
+		if err == nil {
+			targetDir = clash.ExternalUI
 		}
 	}
 
