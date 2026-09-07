@@ -151,8 +151,16 @@ func (h *Handler) loadDNSProbeConfig() (*configpkg.SingBoxConfig, string, error)
 			if err := json.Unmarshal(raw, &dnsObject); err != nil {
 				return nil, "", fmt.Errorf("failed to parse dns section: %w", err)
 			}
-			delete(dnsObject, "rules")
-			sanitized, err := json.Marshal(dnsObject)
+			// Project only the settings consumed by live/comparison probes.
+			// Removing rules alone still feeds newer fields (e.g. optimistic)
+			// into the compiled core's strict decoder.
+			probeSettings := make(map[string]json.RawMessage)
+			for _, field := range []string{"servers", "final", "strategy"} {
+				if value, exists := dnsObject[field]; exists {
+					probeSettings[field] = value
+				}
+			}
+			sanitized, err := json.Marshal(probeSettings)
 			if err != nil {
 				return nil, "", err
 			}
@@ -163,7 +171,7 @@ func (h *Handler) loadDNSProbeConfig() (*configpkg.SingBoxConfig, string, error)
 			cfg = &configpkg.SingBoxConfig{}
 			cfg.DNS = &dnsOptions
 		}
-		attributionError = "offline attribution unavailable: DNS rules use actions newer than the compiled schema; live and log evidence are still authoritative"
+		attributionError = "offline attribution unavailable: DNS configuration is incompatible with the compiled schema; live and log evidence are still authoritative"
 	}
 
 	clash, err := h.readClashAPISettings()

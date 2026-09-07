@@ -80,7 +80,10 @@ func encodeUpdatedOutbounds(records []outboundRecord, outbounds []Outbound) (jso
 			items = append(items, record.raw)
 			continue
 		}
-		encoded, err := singjson.MarshalContext(jsonCtx, outbound)
+		if outbound.Options == nil {
+			outbound.Options = struct{}{}
+		}
+		encoded, err := singjson.MarshalContext(jsonCtx, &outbound)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal outbound %q: %w", outbound.Tag, err)
 		}
@@ -93,7 +96,12 @@ func encodeUpdatedOutbounds(records []outboundRecord, outbounds []Outbound) (jso
 		if used[i] {
 			continue
 		}
-		encoded, err := singjson.MarshalContext(jsonCtx, outbound)
+		// Pseudo-outbounds such as block have no protocol options, but the
+		// core marshaler still expects an object to flatten.
+		if outbound.Options == nil {
+			outbound.Options = struct{}{}
+		}
+		encoded, err := singjson.MarshalContext(jsonCtx, &outbound)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal outbound %q: %w", outbound.Tag, err)
 		}

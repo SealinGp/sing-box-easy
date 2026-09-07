@@ -85,7 +85,12 @@ func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
 	raw := []byte(`{
   "dns":{
     "servers":[{"type":"udp","tag":"router","server":"192.0.2.1"}],
-    "rules":[{"action":"evaluate","server":"router","tag":"candidate"}]
+    "rules":[{"action":"evaluate","server":"router","tag":"candidate"}],
+    "optimistic":{"enabled":true,"timeout":"1h"},
+    "timeout":"5s",
+    "future_dns_setting":true,
+    "final":"router",
+    "strategy":"prefer_ipv4"
   },
   "route":{"final":"direct"},
   "outbounds":[{"type":"direct","tag":"direct"}],
@@ -107,6 +112,9 @@ func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
 	}
 	if attributionError == "" || dnsConfig.DNS == nil || len(dnsConfig.DNS.Servers) != 1 {
 		t.Fatalf("expected transparent degraded attribution with retained servers: cfg=%+v error=%q", dnsConfig, attributionError)
+	}
+	if dnsConfig.DNS.Final != "router" || dnsConfig.DNS.Strategy.String() != "prefer_ipv4" {
+		t.Fatalf("DNS probe settings were lost: %+v", dnsConfig.DNS)
 	}
 	if dnsConfig.Experimental == nil || dnsConfig.Experimental.ClashAPI == nil || dnsConfig.Experimental.ClashAPI.ExternalController != "127.0.0.1:9090" {
 		t.Fatalf("clash API settings were not retained: %+v", dnsConfig.Experimental)

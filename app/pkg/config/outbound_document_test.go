@@ -5,8 +5,37 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/sagernet/sing-box/option"
 )
+
+func TestEncodeUpdatedOutboundsRetainsGeneratedGroupMembers(t *testing.T) {
+	records, err := decodeOutboundRecords(json.RawMessage(`[{"type":"selector","tag":"existing","outbounds":["old"]}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cover both replacement and addition: both must invoke the pointer
+	// marshaler that flattens protocol options into the outbound object.
+	updated := []Outbound{
+		{Type: "selector", Tag: "existing", Options: &option.SelectorOutboundOptions{Outbounds: []string{"node"}}},
+		{Type: "urltest", Tag: "new", Options: &option.URLTestOutboundOptions{Outbounds: []string{"node"}, URL: "https://www.gstatic.com/generate_204"}},
+	}
+	raw, err := encodeUpdatedOutbounds(records, updated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeOutboundRecords(raw)
+	if err != nil || len(decoded) != 2 {
+		t.Fatalf("decode generated outbounds: %s, %v", raw, err)
+	}
+	for i, record := range decoded {
+		if record.typed == nil || !reflect.DeepEqual(*record.typed, updated[i]) {
+			t.Fatalf("outbound options lost at index %d: %s", i, raw)
+		}
+	}
+}
 
 func TestUpdateOutboundsConfigPreservesNewerAndUnknownConfiguration(t *testing.T) {
 	dir := t.TempDir()
