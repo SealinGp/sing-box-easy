@@ -18,10 +18,12 @@ import {
  */
 
 describe('action names', () => {
-  test('is exactly the four DNS rule actions', () => {
+  test('includes the 1.12 actions and the capability-gated 1.14 actions', () => {
     expect(DNS_RULE_ACTION_TYPE_NAMES.map(String).sort()).toEqual([
+      'evaluate',
       'predefined',
       'reject',
+      'respond',
       'route',
       'route-options',
     ])
@@ -100,6 +102,14 @@ describe('resolveDNSRuleActionFields', () => {
     const server = resolveDNSRuleActionFields('route').find((f) => f.key === 'server')
     expect(server?.control).toBe('dns-server')
     expect(server?.tier).toBe('core')
+  })
+
+  test('evaluate and respond expose the 1.14 response-racing fields', () => {
+    expect(keysFor('evaluate').sort()).toEqual(['server', 'tag', 'timeout'])
+    expect(keysFor('respond').sort()).toEqual(['match_response', 'race', 'response_rcode'])
+    expect(resolveDNSRuleActionFields('evaluate').find((f) => f.key === 'server')?.control).toBe(
+      'dns-server',
+    )
   })
 
   // sing-box rejects anything outside these two with "unknown reject method".
@@ -217,6 +227,25 @@ describe('validateDNSRuleAction', () => {
   test('route requires a server', () => {
     expect(validateDNSRuleAction({ action: 'route' })).toBe('dns.rules.form.errors.serverRequired')
     expect(validateDNSRuleAction({ action: 'route', server: 'dns-remote' })).toBeUndefined()
+  })
+
+  test('evaluate requires both a server and response tag', () => {
+    expect(validateDNSRuleAction({ action: 'evaluate' })).toBe(
+      'dns.rules.form.errors.evaluateServerRequired',
+    )
+    expect(validateDNSRuleAction({ action: 'evaluate', server: 'router' })).toBe(
+      'dns.rules.form.errors.evaluateTagRequired',
+    )
+    expect(
+      validateDNSRuleAction({ action: 'evaluate', server: 'router', tag: 'router_result' }),
+    ).toBeUndefined()
+  })
+
+  test('respond requires the evaluate response tag', () => {
+    expect(validateDNSRuleAction({ action: 'respond' })).toBe(
+      'dns.rules.form.errors.matchResponseRequired',
+    )
+    expect(validateDNSRuleAction({ action: 'respond', match_response: 'router_result' })).toBeUndefined()
   })
 
   // "empty DNS route option action" — the struct's own UnmarshalJSON rejects an

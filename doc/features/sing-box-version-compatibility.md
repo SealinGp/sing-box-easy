@@ -1,6 +1,6 @@
 # sing-box Version Compatibility
 
-> **Status**: accepted; implementation in progress
+> **Status**: accepted; core compatibility and DNS editor implemented
 >
 > **Target core versions**: 1.12.12, 1.13.x, and 1.14.x
 > **Primary decision**: the installed sing-box binary is the authority for
@@ -17,10 +17,17 @@
   preserving newer DNS/route sections and unknown outbound records.
 - [ ] Phase 4: migrate every remaining structured editor to section-local,
   raw-preserving adapters.
+  - [x] DNS document, server, hosts, and rule editors, including 1.14
+    `evaluate`/`respond` actions.
+  - [ ] Route, inbound, outbound, log, experimental, and node-rule editors.
 - [ ] Phase 5: upgrade the optional typed helper dependency after the raw seams
   are established; this does not change the installed sing-box binary.
 - [ ] Phase 6: migrate the full frontend to `/api/v1` and document removal of
   the legacy route. Core and raw-config endpoints are already published there.
+
+The frontend now consumes the core capability response for DNS action gating.
+It keeps using the legacy API prefix for feature endpoints until those routes
+are all available under `/api/v1`.
 
 ---
 

@@ -15,8 +15,8 @@ func TestUpdateOutboundsConfigPreservesNewerAndUnknownConfiguration(t *testing.T
   "dns":{"rules":[{"action":"evaluate","server":"dns_router","future_rule_field":true}]},
   "future_section":{"value":7},
   "outbounds":[
-    {"type":"direct","tag":"direct","future_outbound_field":"keep"},
-    {"type":"future-protocol","tag":"future-node","token":"keep-secret"}
+    {"type":"future-protocol","tag":"future-node","token":"keep-secret"},
+    {"type":"direct","tag":"direct","future_outbound_field":"keep"}
   ]
 }`)
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
@@ -60,11 +60,18 @@ func TestUpdateOutboundsConfigPreservesNewerAndUnknownConfiguration(t *testing.T
 		t.Fatal(err)
 	}
 	byTag := make(map[string]map[string]json.RawMessage)
+	tags := make([]string, 0, len(outbounds))
 	for _, outbound := range outbounds {
 		var tag string
 		if err := json.Unmarshal(outbound["tag"], &tag); err == nil {
 			byTag[tag] = outbound
+			tags = append(tags, tag)
 		}
+	}
+	// route.final defaults to the first outbound, so opaque entries must stay
+	// in place during a mutation that does not own them.
+	if len(tags) == 0 || tags[0] != "future-node" {
+		t.Fatalf("unknown first outbound moved and changed the implicit route.final: %v", tags)
 	}
 	if _, ok := byTag["blocked"]; !ok {
 		t.Fatalf("new outbound was not added: %s", document["outbounds"])

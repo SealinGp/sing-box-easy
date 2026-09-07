@@ -48,25 +48,36 @@ func typedOutbounds(records []outboundRecord) []Outbound {
 }
 
 func encodeUpdatedOutbounds(records []outboundRecord, outbounds []Outbound) (json.RawMessage, error) {
-	knownByTag := make(map[string][]outboundRecord)
-	unknown := make([]json.RawMessage, 0)
+	items := make([]json.RawMessage, 0, len(outbounds)+len(records))
+	used := make([]bool, len(outbounds))
+	jsonCtx := CreateContext(context.Background())
+
+	// Walk the original array first. Opaque records remain at their exact
+	// position; recognized records are replaced, retained, or deleted in place.
+	// This is semantically important because route.final defaults to the first
+	// outbound when it is empty.
 	for _, record := range records {
 		if record.typed == nil {
-			unknown = append(unknown, record.raw)
+			items = append(items, record.raw)
 			continue
 		}
-		knownByTag[record.typed.Tag] = append(knownByTag[record.typed.Tag], record)
-	}
 
-	items := make([]json.RawMessage, 0, len(outbounds)+len(unknown))
-	jsonCtx := CreateContext(context.Background())
-	for _, outbound := range outbounds {
-		candidates := knownByTag[outbound.Tag]
-		if len(candidates) > 0 && reflect.DeepEqual(*candidates[0].typed, outbound) {
+		matched := -1
+		for i := range outbounds {
+			if !used[i] && outbounds[i].Tag == record.typed.Tag {
+				matched = i
+				break
+			}
+		}
+		if matched < 0 {
+			continue // The mutator deleted or renamed this record.
+		}
+		used[matched] = true
+		outbound := outbounds[matched]
+		if reflect.DeepEqual(*record.typed, outbound) {
 			// Preserve the original object when the mutator did not change it,
 			// including fields the compiled adapter does not understand.
-			items = append(items, candidates[0].raw)
-			knownByTag[outbound.Tag] = candidates[1:]
+			items = append(items, record.raw)
 			continue
 		}
 		encoded, err := singjson.MarshalContext(jsonCtx, outbound)
@@ -75,9 +86,19 @@ func encodeUpdatedOutbounds(records []outboundRecord, outbounds []Outbound) (jso
 		}
 		items = append(items, encoded)
 	}
-	// Records from protocols unknown to this panel are outside the mutation's
-	// ownership. Keep them byte-for-byte as JSON values.
-	items = append(items, unknown...)
+
+	// Additions and renames have no original slot. Append them in the order
+	// supplied by the mutator without disturbing any surviving record.
+	for i, outbound := range outbounds {
+		if used[i] {
+			continue
+		}
+		encoded, err := singjson.MarshalContext(jsonCtx, outbound)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal outbound %q: %w", outbound.Tag, err)
+		}
+		items = append(items, encoded)
+	}
 	encoded, err := json.Marshal(items)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal outbounds array: %w", err)

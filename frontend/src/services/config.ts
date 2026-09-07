@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { BasicResponse, ConfigVersion, SingBoxConfig } from '../types/api'
+import type { BasicResponse, ConfigVersion, CoreInfo, SingBoxConfig } from '../types/api'
 
 export class ConfigService {
   private api: ApiService
@@ -10,6 +10,11 @@ export class ConfigService {
 
   async getConfig(): Promise<BasicResponse<SingBoxConfig>> {
     const response = await this.api.get<BasicResponse<SingBoxConfig>>('/config')
+    return response.data
+  }
+
+  async getCoreInfo(): Promise<BasicResponse<CoreInfo>> {
+    const response = await this.api.get<BasicResponse<CoreInfo>>('/core')
     return response.data
   }
 

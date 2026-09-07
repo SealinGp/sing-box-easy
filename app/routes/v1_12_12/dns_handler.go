@@ -2,58 +2,45 @@ package v1_13_0
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"fmt"
-	"net/netip"
 	"strconv"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/json"
-	"github.com/sagernet/sing/common/json/badjson"
-	"github.com/sagernet/sing/common/json/badoption"
 )
 
 // GetDNS returns the complete DNS configuration
 func (h *Handler) GetDNS(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	dns, ok, err := h.configManager.GetConfigSection("dns")
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if cfg.DNS == nil {
-		respOK(ctx, c, map[string]any{"servers": []option.DNSServerOptions{}})
+	if !ok {
+		respOK(ctx, c, map[string]any{"servers": []any{}})
 		return
 	}
-
-	respOK(ctx, c, cfg.DNS)
+	respOK(ctx, c, dns)
 }
 
 // UpdateDNS updates the complete DNS configuration
 func (h *Handler) UpdateDNS(ctx context.Context, c *app.RequestContext) {
-	var dnsOptions option.DNSOptions
-
-	// Use sing-box JSON deserialization to properly parse DNS config
 	body, err := c.Body()
 	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
 
-	dnsCtx := config.CreateContext(ctx)
-	if err := json.UnmarshalContext(dnsCtx, body, &dnsOptions); err != nil {
+	if err := requireJSONObject(body); err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid DNS configuration: "+err.Error())
 		return
 	}
-
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		cfg.DNS = &dnsOptions
-		return nil
+	err = h.configManager.UpdateConfigSection(ctx, "dns", func(stdjson.RawMessage) (stdjson.RawMessage, error) {
+		return cloneRaw(body), nil
 	})
-
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondConfigError(ctx, c, err)
 		return
 	}
 
@@ -62,36 +49,29 @@ func (h *Handler) UpdateDNS(ctx context.Context, c *app.RequestContext) {
 
 // GetDNSServers returns all DNS servers
 func (h *Handler) GetDNSServers(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	dns, _, err := readDNSDocument(h.configManager)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	if cfg.DNS == nil {
-		respOK(ctx, c, map[string]any{"servers": []option.DNSServerOptions{}})
-		return
-	}
-
-	respOK(ctx, c, map[string]any{"servers": cfg.DNS.Servers})
+	respOK(ctx, c, map[string]any{"servers": rawList(dns, "servers")})
 }
 
 // GetDNSServerByTag returns a specific DNS server by tag
 func (h *Handler) GetDNSServerByTag(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	cfg, err := h.configManager.GetConfig()
+	dns, _, err := readDNSDocument(h.configManager)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	if cfg.DNS != nil {
-		for _, server := range cfg.DNS.Servers {
-			if server.Tag == tag {
-				respOK(ctx, c, server)
-				return
-			}
+	for _, server := range rawList(dns, "servers") {
+		if rawStringField(server, "tag") == tag {
+			respOK(ctx, c, server)
+			return
 		}
 	}
 
@@ -111,20 +91,15 @@ func (h *Handler) AddDNSServer(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			cfg.DNS = &option.DNSOptions{}
-		}
-
-		// Check if tag already exists
-		for _, existing := range cfg.DNS.Servers {
-			if existing.Tag == server.Tag {
+	raw := cloneRaw(c.Request.Body())
+	err := h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		servers := rawList(dns, "servers")
+		for _, existing := range servers {
+			if rawStringField(existing, "tag") == server.Tag {
 				return fmt.Errorf("DNS server with tag '%s' already exists", server.Tag)
 			}
 		}
-
-		cfg.DNS.Servers = append(cfg.DNS.Servers, server)
-		return nil
+		return setRawList(dns, "servers", append(servers, raw))
 	})
 
 	if err != nil {
@@ -155,25 +130,20 @@ func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			return fmt.Errorf("DNS configuration not found")
-		}
-
-		found := false
-		for i, existing := range cfg.DNS.Servers {
-			if existing.Tag == tag {
-				cfg.DNS.Servers[i] = server
-				found = true
-				break
+	raw, err := withRawStringField(c.Request.Body(), "tag", tag)
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid DNS server: "+err.Error())
+		return
+	}
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		servers := rawList(dns, "servers")
+		for i, existing := range servers {
+			if rawStringField(existing, "tag") == tag {
+				servers[i] = raw
+				return setRawList(dns, "servers", servers)
 			}
 		}
-
-		if !found {
-			return fmt.Errorf("DNS server not found")
-		}
-
-		return nil
+		return fmt.Errorf("DNS server not found")
 	})
 
 	if err != nil {
@@ -191,28 +161,18 @@ func (h *Handler) UpdateDNSServer(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) DeleteDNSServer(ctx context.Context, c *app.RequestContext) {
 	tag := c.Param("tag")
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			return fmt.Errorf("DNS configuration not found")
-		}
-
-		newServers := make([]option.DNSServerOptions, 0)
-		found := false
-
-		for _, server := range cfg.DNS.Servers {
-			if server.Tag != tag {
+	err := h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		servers := rawList(dns, "servers")
+		newServers := make([]stdjson.RawMessage, 0, len(servers))
+		for _, server := range servers {
+			if rawStringField(server, "tag") != tag {
 				newServers = append(newServers, server)
-			} else {
-				found = true
 			}
 		}
-
-		if !found {
+		if len(newServers) == len(servers) {
 			return fmt.Errorf("DNS server not found")
 		}
-
-		cfg.DNS.Servers = newServers
-		return nil
+		return setRawList(dns, "servers", newServers)
 	})
 
 	if err != nil {
@@ -228,22 +188,20 @@ func (h *Handler) DeleteDNSServer(ctx context.Context, c *app.RequestContext) {
 
 // GetDNSHosts returns the hosts configuration
 func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	dns, _, err := readDNSDocument(h.configManager)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
-
-	if cfg.DNS != nil {
-		for _, server := range cfg.DNS.Servers {
-			if server.Tag == "dns_lan" && server.Type == "hosts" {
-				hostsOpts, ok := server.Options.(option.HostsDNSServerOptions)
-				if !ok {
-					respErr(ctx, c, CodeInternalError, "failed to parse hosts configuration")
-					return
-				}
-
-				respOK(ctx, c, map[string]any{"hosts": hostsOpts.Predefined})
+	for _, server := range rawList(dns, "servers") {
+		if rawStringField(server, "tag") == "dns_lan" && rawStringField(server, "type") == "hosts" {
+			var object map[string]stdjson.RawMessage
+			if err := stdjson.Unmarshal(server, &object); err != nil {
+				respErr(ctx, c, CodeInternalError, "failed to parse hosts configuration")
+				return
+			}
+			if predefined, ok := object["predefined"]; ok {
+				respOK(ctx, c, map[string]any{"hosts": predefined})
 				return
 			}
 		}
@@ -254,45 +212,36 @@ func (h *Handler) GetDNSHosts(ctx context.Context, c *app.RequestContext) {
 
 // UpdateDNSHosts updates the hosts configuration
 func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
-	var hosts badjson.TypedMap[string, badoption.Listable[netip.Addr]]
-	if err := c.Bind(&hosts); err != nil {
+	body, err := c.Body()
+	if err != nil {
+		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
+		return
+	}
+	if err := requireJSONObject(body); err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			cfg.DNS = &option.DNSOptions{}
-		}
-
-		found := false
-		for i, server := range cfg.DNS.Servers {
-			if server.Type == "hosts" {
-				hostsOpts, ok := server.Options.(*option.HostsDNSServerOptions)
-				if !ok {
-					continue
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		servers := rawList(dns, "servers")
+		for i, server := range servers {
+			if rawStringField(server, "type") == "hosts" && rawStringField(server, "tag") == "dns_lan" {
+				updated, err := withRawField(server, "predefined", cloneRaw(body))
+				if err != nil {
+					return err
 				}
-				hostsOpts.Predefined = &hosts
-				server.Options = hostsOpts
-
-				cfg.DNS.Servers[i] = server
-				found = true
-				break
+				servers[i] = updated
+				return setRawList(dns, "servers", servers)
 			}
 		}
-
-		if !found {
-			opts := &option.HostsDNSServerOptions{
-				Predefined: &hosts,
-			}
-			cfg.DNS.Servers = append(cfg.DNS.Servers, option.DNSServerOptions{
-				Tag:     "dns_lan",
-				Type:    "hosts",
-				Options: opts,
-			})
+		server, err := stdjson.Marshal(map[string]stdjson.RawMessage{
+			"type":       stdjson.RawMessage(`"hosts"`),
+			"tag":        stdjson.RawMessage(`"dns_lan"`),
+			"predefined": cloneRaw(body),
+		})
+		if err != nil {
+			return err
 		}
-
-		return nil
+		return setRawList(dns, "servers", append(servers, server))
 	})
 
 	if err != nil {
@@ -305,44 +254,28 @@ func (h *Handler) UpdateDNSHosts(ctx context.Context, c *app.RequestContext) {
 
 // GetDNSRules returns all DNS rules
 func (h *Handler) GetDNSRules(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	dns, _, err := readDNSDocument(h.configManager)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	if cfg.DNS == nil {
-		respOK(ctx, c, map[string]any{"rules": []option.DNSRule{}})
-		return
-	}
-
-	respOK(ctx, c, map[string]any{"rules": cfg.DNS.Rules})
+	respOK(ctx, c, map[string]any{"rules": rawList(dns, "rules")})
 }
 
 // AddDNSRule adds a new DNS rule
 func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
-	// Parse with sing-box's JSON (not c.Bind): option.DNSRule is polymorphic and
-	// relies on its custom UnmarshalJSON to default an omitted "type" to "default"
-	// and populate the per-type options. Hertz's reflection binder skips that, so
-	// the rule would marshal back with an empty type ("unknown rule type: ").
 	body, err := c.Body()
 	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
-	var rule option.DNSRule
-	if err := json.UnmarshalContext(config.CreateContext(ctx), body, &rule); err != nil {
+	if err := requireJSONObject(body); err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid DNS rule: "+err.Error())
 		return
 	}
-
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			cfg.DNS = &option.DNSOptions{}
-		}
-
-		cfg.DNS.Rules = append(cfg.DNS.Rules, rule)
-		return nil
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		return setRawList(dns, "rules", append(rawList(dns, "rules"), cloneRaw(body)))
 	})
 
 	if err != nil {
@@ -358,10 +291,6 @@ func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 // Registered on the collection path (PUT /dns/rules) for the same reason as
 // the route one: `/dns/rules/:index` already owns the next path segment, and a
 // static sibling there collides in the Hertz router.
-//
-// Note this one moves already-decoded `option.DNSRule` values around rather
-// than re-parsing anything — the polymorphic decode that AddDNSRule has to do
-// by hand is exactly what a reorder must NOT repeat.
 func (h *Handler) ReorderDNSRules(ctx context.Context, c *app.RequestContext) {
 	var body ReorderRulesRequest
 	if err := c.Bind(&body); err != nil {
@@ -369,18 +298,13 @@ func (h *Handler) ReorderDNSRules(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil {
-			return fmt.Errorf("no DNS configuration")
-		}
-
-		reordered, err := applyOrder(cfg.DNS.Rules, body.Order)
+	err := h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		rules := rawList(dns, "rules")
+		reordered, err := applyOrder(rules, body.Order)
 		if err != nil {
 			return err
 		}
-
-		cfg.DNS.Rules = reordered
-		return nil
+		return setRawList(dns, "rules", reordered)
 	})
 
 	if err != nil {
@@ -400,28 +324,22 @@ func (h *Handler) UpdateDNSRule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Parse with sing-box's JSON (not c.Bind): option.DNSRule is polymorphic and
-	// relies on its custom UnmarshalJSON to default an omitted "type" to "default"
-	// and populate the per-type options. Hertz's reflection binder skips that, so
-	// the rule would marshal back with an empty type ("unknown rule type: ").
 	body, err := c.Body()
 	if err != nil {
 		respErr(ctx, c, CodeBadRequest, "failed to read request body: "+err.Error())
 		return
 	}
-	var rule option.DNSRule
-	if err := json.UnmarshalContext(config.CreateContext(ctx), body, &rule); err != nil {
+	if err := requireJSONObject(body); err != nil {
 		respErr(ctx, c, CodeBadRequest, "invalid DNS rule: "+err.Error())
 		return
 	}
-
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil || index < 0 || index >= len(cfg.DNS.Rules) {
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		rules := rawList(dns, "rules")
+		if index < 0 || index >= len(rules) {
 			return fmt.Errorf("DNS rule not found at index %d", index)
 		}
-
-		cfg.DNS.Rules[index] = rule
-		return nil
+		rules[index] = cloneRaw(body)
+		return setRawList(dns, "rules", rules)
 	})
 
 	if err != nil {
@@ -444,13 +362,12 @@ func (h *Handler) DeleteDNSRule(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err = h.configManager.UpdateConfig(func(cfg *config.SingBoxConfig) error {
-		if cfg.DNS == nil || index < 0 || index >= len(cfg.DNS.Rules) {
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		rules := rawList(dns, "rules")
+		if index < 0 || index >= len(rules) {
 			return fmt.Errorf("DNS rule not found at index %d", index)
 		}
-
-		cfg.DNS.Rules = append(cfg.DNS.Rules[:index], cfg.DNS.Rules[index+1:]...)
-		return nil
+		return setRawList(dns, "rules", append(rules[:index], rules[index+1:]...))
 	})
 
 	if err != nil {
@@ -462,4 +379,103 @@ func (h *Handler) DeleteDNSRule(ctx context.Context, c *app.RequestContext) {
 		"message": "DNS rule deleted successfully",
 		"index":   index,
 	})
+}
+
+// readDNSDocument decodes only the DNS object. It deliberately does not decode
+// option.DNSOptions: the panel may be built against 1.12 while the installed
+// core accepts newer actions such as evaluate/respond.
+func readDNSDocument(manager *config.Manager) (map[string]stdjson.RawMessage, bool, error) {
+	raw, ok, err := manager.GetConfigSection("dns")
+	if err != nil || !ok {
+		return map[string]stdjson.RawMessage{}, ok, err
+	}
+	var dns map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(raw, &dns); err != nil {
+		return nil, true, fmt.Errorf("decode DNS configuration: %w", err)
+	}
+	if dns == nil {
+		dns = map[string]stdjson.RawMessage{}
+	}
+	return dns, true, nil
+}
+
+func (h *Handler) updateDNSDocument(
+	ctx context.Context,
+	update func(map[string]stdjson.RawMessage) error,
+) error {
+	return h.configManager.UpdateConfigSection(ctx, "dns", func(raw stdjson.RawMessage) (stdjson.RawMessage, error) {
+		dns := map[string]stdjson.RawMessage{}
+		if len(raw) > 0 && string(raw) != "null" {
+			if err := stdjson.Unmarshal(raw, &dns); err != nil {
+				return nil, fmt.Errorf("decode DNS configuration: %w", err)
+			}
+		}
+		if err := update(dns); err != nil {
+			return nil, err
+		}
+		return stdjson.Marshal(dns)
+	})
+}
+
+func rawList(object map[string]stdjson.RawMessage, key string) []stdjson.RawMessage {
+	var values []stdjson.RawMessage
+	_ = stdjson.Unmarshal(object[key], &values)
+	if values == nil {
+		return []stdjson.RawMessage{}
+	}
+	return values
+}
+
+func setRawList(object map[string]stdjson.RawMessage, key string, values []stdjson.RawMessage) error {
+	raw, err := stdjson.Marshal(values)
+	if err != nil {
+		return err
+	}
+	object[key] = raw
+	return nil
+}
+
+func rawStringField(raw stdjson.RawMessage, key string) string {
+	var object map[string]stdjson.RawMessage
+	if stdjson.Unmarshal(raw, &object) != nil {
+		return ""
+	}
+	var value string
+	_ = stdjson.Unmarshal(object[key], &value)
+	return value
+}
+
+func withRawStringField(raw stdjson.RawMessage, key, value string) (stdjson.RawMessage, error) {
+	field, err := stdjson.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return withRawField(raw, key, field)
+}
+
+func withRawField(raw stdjson.RawMessage, key string, value stdjson.RawMessage) (stdjson.RawMessage, error) {
+	var object map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(raw, &object); err != nil {
+		return nil, err
+	}
+	if object == nil {
+		return nil, fmt.Errorf("expected JSON object")
+	}
+	object[key] = value
+	return stdjson.Marshal(object)
+}
+
+func requireJSONObject(raw []byte) error {
+	if !stdjson.Valid(raw) {
+		return fmt.Errorf("invalid JSON")
+	}
+	var object map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(raw, &object); err != nil || object == nil {
+		return fmt.Errorf("expected JSON object")
+	}
+	return nil
+}
+
+func cloneRaw(raw []byte) stdjson.RawMessage {
+	return append(stdjson.RawMessage(nil), raw...)
 }

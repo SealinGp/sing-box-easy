@@ -53,7 +53,7 @@ import {
   DNS_RULE_ACTION_INVENTORY,
   type DNSRuleActionFieldKey,
   type DNSRuleActionTypeName,
-} from './dnsRuleActionInventory.generated'
+} from './dnsRuleActionInventory'
 import { createSchema, isFieldFilled, type FieldCuration } from './optionSchema'
 import { DOMAIN_STRATEGIES } from './vocabularies'
 
@@ -146,6 +146,18 @@ const BY_ACTION: {
     ns: { tier: 'advanced', order: 100, control: 'chips' },
     extra: { tier: 'advanced', order: 110, control: 'chips' },
   },
+
+  evaluate: {
+    server: { tier: 'core', order: 10, control: 'dns-server' },
+    tag: { tier: 'core', order: 20, placeholder: 'primary_result' },
+    timeout: { tier: 'typical', order: 30, placeholder: '3s' },
+  },
+
+  respond: {
+    match_response: { tier: 'core', order: 10, placeholder: 'primary_result' },
+    response_rcode: { tier: 'typical', order: 20, control: 'select', options: RCODES },
+    race: { tier: 'typical', order: 30 },
+  },
 }
 
 const schema = createSchema<DNSRuleActionTypeName>({
@@ -169,16 +181,15 @@ export const isDNSRuleAction = schema.isKnownType
 /**
  * DNS actions that STOP rule matching.
  *
- * From dns/router.go:147-195, where `route`, `reject` and `predefined` each
- * `return` and `route-options` falls through to the next rule — it only
- * accumulates options (strategy, disable_cache, rewrite_ttl, client_subnet)
- * onto the query and keeps going.
+ * `route`, `reject`, `predefined`, and 1.14's `respond` finish the query.
+ * `route-options` falls through after accumulating options; `evaluate` falls
+ * through after saving the upstream response under its tag.
  *
  * Note this differs from the ROUTE rule list: there `route-options`, `direct`,
  * `resolve` and `sniff` are the non-terminal ones. Same words, different
  * families — see RouteRuleActionTypes.
  */
-const TERMINAL_ACTIONS: readonly string[] = ['route', 'reject', 'predefined']
+const TERMINAL_ACTIONS: readonly string[] = ['route', 'reject', 'predefined', 'respond']
 
 export function isTerminalAction(action: string): boolean {
   return TERMINAL_ACTIONS.includes(action)
@@ -231,9 +242,21 @@ export function validateDNSRuleAction(
     return 'dns.rules.form.errors.noDropWithDrop'
   }
 
+  if (action === 'evaluate' && !isFieldFilled(rule.server)) {
+    return 'dns.rules.form.errors.evaluateServerRequired'
+  }
+
+  if (action === 'evaluate' && !isFieldFilled(rule.tag)) {
+    return 'dns.rules.form.errors.evaluateTagRequired'
+  }
+
+  if (action === 'respond' && !isFieldFilled(rule.match_response)) {
+    return 'dns.rules.form.errors.matchResponseRequired'
+  }
+
   return undefined
 }
 
 export { DNS_RULE_ACTION_INVENTORY }
 export type { DNSRuleActionTypeName }
-export { DNS_RULE_ACTION_TYPE_NAMES } from './dnsRuleActionInventory.generated'
+export { DNS_RULE_ACTION_TYPE_NAMES } from './dnsRuleActionInventory'

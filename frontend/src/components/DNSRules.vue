@@ -10,7 +10,7 @@ import DNSRuleConditions from './DNSRuleConditions.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
 import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
-import {  dnsService } from '../services'
+import { configService, dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDragReorder } from '../composables/useDragReorder'
 import { useDNSStore } from '../stores/dns'
@@ -41,6 +41,7 @@ const { ruleSets } = storeToRefs(routeStore)
 // Local state for DNS rules
 const loading = ref(false)
 const dnsRules = ref<DNSRule[]>([])
+const coreCapabilities = ref({ dns_evaluate: false, dns_respond: false })
 
 // Modal state
 const showRuleModal = ref(false)
@@ -134,14 +135,20 @@ const flowOutcome = computed(() => {
       return r.rcode
         ? t('dns.rules.flow.then.predefinedRcode', { rcode: String(r.rcode) })
         : t('dns.rules.flow.then.predefined')
+    case 'evaluate':
+      return r.server
+        ? t('dns.rules.flow.then.evaluate', { server: String(r.server), tag: String(r.tag || '') })
+        : t('dns.rules.flow.then.evaluateIncomplete')
+    case 'respond':
+      return t('dns.rules.flow.then.respond', { tag: String(r.match_response || '') })
     default:
       return currentAction.value
   }
 })
 
 /**
- * Only `route-options` keeps matching — dns/router.go:147-195, where route,
- * reject and predefined each return and route-options falls through.
+ * `route-options` and 1.14's `evaluate` keep matching. Evaluate stores a
+ * response under its tag so a later `respond` rule can select it.
  *
  * Note the RouteRule list is different: there route-options, direct, resolve
  * and sniff are the non-terminal ones. Same words, different families.
@@ -223,7 +230,23 @@ const actionTypes = computed(() => [
   // no "block" DNS server type. Without it, blocking a domain at the DNS layer
   // is unreachable from this UI.
   { value: 'predefined', label: t('dns.rules.actionTypes.predefined') },
+  ...(coreCapabilities.value.dns_evaluate || currentAction.value === 'evaluate'
+    ? [{ value: 'evaluate', label: t('dns.rules.actionTypes.evaluate') }]
+    : []),
+  ...(coreCapabilities.value.dns_respond || currentAction.value === 'respond'
+    ? [{ value: 'respond', label: t('dns.rules.actionTypes.respond') }]
+    : []),
 ])
+
+async function fetchCoreCapabilities() {
+  try {
+    const { data } = await configService.getCoreInfo()
+    coreCapabilities.value = data.capabilities
+  } catch {
+    // Older panel backends do not expose /core. Existing newer actions remain
+    // editable through the currentAction exceptions above.
+  }
+}
 
 // The rcode vocabulary, the reject methods and the DNS server picker all used to
 // be built here. They now live in schemas/dnsRuleActionFields.ts (the first two,
@@ -497,6 +520,7 @@ async function persistOrder(order: number[]) {
 
 // Load data on mount
 onMounted(() => {
+  fetchCoreCapabilities()
   fetchDNSRules()
   routeStore.fetchRuleSets() // Fetch shared rule sets
   dnsStore.fetchDNSServers() // Fetch shared DNS servers

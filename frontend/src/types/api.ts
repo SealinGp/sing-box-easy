@@ -106,6 +106,20 @@ export interface ConfigVersion {
   created_at: string
 }
 
+export interface CoreInfo {
+  version: string
+  supported: boolean
+  minimum: string
+  maximum_tested: string
+  capabilities: {
+    dns_evaluate: boolean
+    dns_respond: boolean
+    dns_race: boolean
+    dns_match_response: boolean
+    dns_optimistic: boolean
+  }
+}
+
 // Application settings exposed to the frontend.
 export interface AppSettings {
   /** Non-secret settings only — secrets are stripped server-side. */

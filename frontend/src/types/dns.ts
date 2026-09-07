@@ -170,7 +170,7 @@ export type DNSServerOptions =
  * carried a second, correct one — which is exactly the drift the generator exists
  * to remove. Now there is one source, checked against the option structs.
  */
-import type { DNSRuleActionTypeName } from '../schemas/dnsRuleActionInventory.generated'
+import type { DNSRuleActionTypeName } from '../schemas/dnsRuleActionInventory'
 
 export type DNSRuleActionType = DNSRuleActionTypeName
 
