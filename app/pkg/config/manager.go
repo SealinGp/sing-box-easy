@@ -6,9 +6,8 @@ import (
 	js "encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
@@ -53,8 +52,13 @@ type Manager struct {
 	newConfigPath string
 	singBoxPath   string // Path to sing-box binary
 	templatePath  string // Path to template config file
+	core          CoreAdapter
 
 	store VersionStore // historical config snapshots (nil => disabled), set once at startup
+	// mutationMu protects the single staging path and serializes atomic config
+	// replacement. Validation also uses that path, so it participates in the
+	// same lock even though it does not modify the active file.
+	mutationMu sync.Mutex
 
 	// keepVersions (how many historical versions to retain) is read by
 	// snapshotCurrent on config-save goroutines and written by SetKeepVersions
@@ -80,6 +84,7 @@ func NewManager(configPath, singBoxPath, templatePath string) *Manager {
 		newConfigPath: filepath.Join(dir, stagingFileName),
 		singBoxPath:   singBoxPath,
 		templatePath:  templatePath,
+		core:          NewBinaryCoreAdapter(singBoxPath),
 	}
 	// Best-effort cleanup of a stale legacy staging file from older versions.
 	// It is never the authoritative config, and leaving a "config_new.json"
@@ -150,19 +155,11 @@ func (m *Manager) createNewConfig(config *SingBoxConfig) error {
 // validation error if sing-box reports one. This is a pure read of the given
 // file — it does not modify or remove it.
 func (m *Manager) runSingBoxCheck(path string) error {
-	cmdParams := []string{"check", "-c", path}
-	cmd := exec.Command(m.singBoxPath, cmdParams...)
-	cmd.Env = append(os.Environ(), "ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("config validation failed: %s", string(output))
+	err := m.core.Validate(context.Background(), path)
+	if err == nil {
+		logger.Infof("%s check -c %s completed successfully", m.singBoxPath, path)
 	}
-
-	logger.Infof("%s %s output:%s", m.singBoxPath, strings.Join(cmdParams, " "), output)
-	if bytes.Contains(output, []byte("ERROR")) || bytes.Contains(output, []byte("FATAL")) {
-		return fmt.Errorf("config validation failed: %s", string(output))
-	}
-	return nil
+	return err
 }
 
 // ValidateConfig validates the configuration using sing-box binary.
@@ -170,6 +167,12 @@ func (m *Manager) runSingBoxCheck(path string) error {
 // can reuse it (e.g. SaveConfig's rename). On failure, the temp file is removed
 // so it doesn't linger and confuse the next save.
 func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
+	m.mutationMu.Lock()
+	defer m.mutationMu.Unlock()
+	return m.validateConfigLocked(config)
+}
+
+func (m *Manager) validateConfigLocked(config *SingBoxConfig) error {
 	if err := m.createNewConfig(config); err != nil {
 		return err
 	}
@@ -196,12 +199,15 @@ func (m *Manager) ValidateConfig(config *SingBoxConfig) error {
 // warning and let the save proceed. If the baseline was clean and our change
 // introduces a failure, keep blocking (the common production case).
 func (m *Manager) SaveConfig(config *SingBoxConfig) error {
+	m.mutationMu.Lock()
+	defer m.mutationMu.Unlock()
+
 	// Capture the baseline state once, before we write the proposed config.
 	// A baseline error is informational only — it controls how we react to a
 	// post-change error below.
 	baselineErr := m.runSingBoxCheck(m.configPath)
 
-	if err := m.ValidateConfig(config); err != nil {
+	if err := m.validateConfigLocked(config); err != nil {
 		if baselineErr != nil {
 			// Baseline was already broken. Recreate the temp file (ValidateConfig
 			// removed it on error) and proceed with the save.

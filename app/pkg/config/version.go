@@ -108,6 +108,39 @@ func (m *Manager) GetVersion(id int64) (*SingBoxConfig, error) {
 	return &cfg, nil
 }
 
+// GetVersionDocument returns a historical config without decoding it through
+// the panel's compiled sing-box schema.
+func (m *Manager) GetVersionDocument(id int64) (ConfigDocument, error) {
+	if m.store == nil {
+		return ConfigDocument{}, fmt.Errorf("version store not configured")
+	}
+	content, err := m.store.Get(id)
+	if err != nil {
+		return ConfigDocument{}, fmt.Errorf("failed to read version %d: %w", id, err)
+	}
+	document, err := NewConfigDocument(content)
+	if err != nil {
+		return ConfigDocument{}, fmt.Errorf("failed to parse version %d: %w", id, err)
+	}
+	return document, nil
+}
+
+// GetBackupDocument returns the newest historical config as an opaque JSON
+// document. It is the version-tolerant counterpart of GetBackupConfig.
+func (m *Manager) GetBackupDocument() (ConfigDocument, error) {
+	if m.store == nil {
+		return ConfigDocument{}, fmt.Errorf("no backup available")
+	}
+	versions, err := m.store.List()
+	if err != nil {
+		return ConfigDocument{}, fmt.Errorf("failed to list versions: %w", err)
+	}
+	if len(versions) == 0 {
+		return ConfigDocument{}, fmt.Errorf("no backup config found")
+	}
+	return m.GetVersionDocument(versions[0].ID)
+}
+
 // DeleteVersion removes a single historical version by id. It only touches the
 // history store and never affects the live config, so it is safe regardless of
 // which version is the latest.
@@ -126,6 +159,9 @@ func (m *Manager) DeleteVersion(id int64) error {
 // and the version was valid when first saved. A structural parse is still done
 // so a corrupt row can never clobber the live config.
 func (m *Manager) RollbackToVersion(id int64) error {
+	m.mutationMu.Lock()
+	defer m.mutationMu.Unlock()
+
 	if m.store == nil {
 		return fmt.Errorf("version store not configured")
 	}
@@ -134,10 +170,9 @@ func (m *Manager) RollbackToVersion(id int64) error {
 		return fmt.Errorf("failed to read version %d: %w", id, err)
 	}
 
-	// Structural sanity: a parse failure means the stored row is unusable.
-	var cfg SingBoxConfig
-	jsonCtx := CreateContext(context.Background())
-	if err := json.UnmarshalContext(jsonCtx, content, &cfg); err != nil {
+	// Structural sanity only: semantic compatibility is deliberately not
+	// checked because rollback is a recovery escape hatch.
+	if _, err := NewConfigDocument(content); err != nil {
 		return fmt.Errorf("version %d is not a valid config: %w", id, err)
 	}
 

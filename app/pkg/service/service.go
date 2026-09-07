@@ -80,11 +80,7 @@ func NewController(configManager *config.Manager, singBoxPath string) *Controlle
 // validateConfig reads and validates the current config; every state-changing
 // operation goes through this before touching the service.
 func (c *Controller) validateConfig() error {
-	cfg, err := c.configManager.GetConfig()
-	if err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
-	}
-	if err := c.configManager.ValidateConfig(cfg); err != nil {
+	if err := c.configManager.ValidateCurrentConfig(context.Background()); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
 	return nil
@@ -162,7 +158,7 @@ func (c *Controller) Start() error {
 // backend can still start is better than refusing to start over an integration
 // step, so the error is logged and the start proceeds.
 func (c *Controller) applyHostNetwork() error {
-	cfg, err := c.configManager.GetConfig()
+	cfg, err := c.configManager.GetRuntimeConfig()
 	if err != nil {
 		logger.Warn("could not read the config for host network integration; skipping",
 			zap.Error(err))
@@ -255,7 +251,7 @@ func (c *Controller) FollowLogs(ctx context.Context) (<-chan FollowEvent, error)
 // logOutputPath returns the configured sing-box log.output file path, or ""
 // when logging goes to stdout (no file to tail).
 func (c *Controller) logOutputPath() string {
-	cfg, err := c.configManager.GetConfig()
+	cfg, err := c.configManager.GetRuntimeConfig()
 	if err != nil || cfg.Log == nil {
 		return ""
 	}

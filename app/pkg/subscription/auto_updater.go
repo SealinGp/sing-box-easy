@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -310,7 +311,10 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	info = append(info, nodeInfo...)
 
 	// Step 2: Get current configuration
-	cfg, err := au.configManager.GetConfig()
+	// Subscription refresh owns only the outbounds section. Reading it through
+	// the section adapter keeps newer DNS/route actions outside the compiled
+	// sing-box schema and preserves them when the mutation is saved.
+	cfg, err := au.configManager.GetOutboundsConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
@@ -329,7 +333,7 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 
 	// Step 4: Apply changes (skip the write if the diff is empty)
 	if len(toDelete) > 0 || len(toAdd) > 0 || len(toUpdate) > 0 {
-		if applyErr := au.applyChanges(cfg, toDelete, toAdd, toUpdate, sub.ID); applyErr != nil {
+		if applyErr := au.applyChanges(toDelete, toAdd, toUpdate, sub.ID); applyErr != nil {
 			err = fmt.Errorf("failed to apply changes: %w", applyErr)
 			return nil, err
 		}
@@ -613,14 +617,14 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 // would silently keep dangling tags pointing at gone nodes.
 //
 // NOTE on concurrency: the diff (toDelete/toAdd/toUpdate) is computed against
-// a snapshot read by an earlier GetConfig call, while UpdateConfig re-reads the
-// config from disk. The deletedTags/renameMap built below are derived from the
-// *fresh* snapshot inside the closure, so the group-reference rewrite is always
-// internally consistent. The remaining TOCTOU window between the outer diff and
-// the inner write is a pre-existing concern in this codebase (Manager has no
-// lock); fixing it would require pushing diffNodes into the closure too.
-func (au *AutoUpdater) applyChanges(cfg *config.SingBoxConfig, toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound, subID string) error {
-	return au.configManager.UpdateConfig(func(c *config.SingBoxConfig) error {
+// a snapshot read by an earlier GetOutboundsConfig call, while
+// UpdateOutboundsConfig re-reads and locks the document for the mutation. The
+// deletedTags/renameMap below are derived from that fresh locked snapshot, so
+// group-reference rewriting is internally consistent. A config edit between
+// the earlier diff and this mutation may still make the diff stale; removing
+// that remaining window requires moving diffNodes into this closure.
+func (au *AutoUpdater) applyChanges(toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound, subID string) error {
+	return au.configManager.UpdateOutboundsConfig(context.Background(), func(c *config.SingBoxConfig) error {
 		// Create new outbounds slice
 		newOutbounds := make([]config.Outbound, 0, len(c.Outbounds)-len(toDelete)+len(toAdd))
 

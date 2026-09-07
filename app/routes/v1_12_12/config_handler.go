@@ -7,29 +7,35 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // GetConfig returns the current configuration
 func (h *Handler) GetConfig(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetConfig()
+	document, err := h.configManager.GetConfigDocument()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	respOK(ctx, c, cfg)
+	respOK(ctx, c, document)
+}
+
+// GetRawConfig returns the active document directly for exact export and raw
+// editor use. Unlike GetConfig, this endpoint has no response envelope.
+func (h *Handler) GetRawConfig(ctx context.Context, c *app.RequestContext) {
+	document, err := h.configManager.GetConfigDocument()
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, err.Error())
+		return
+	}
+	c.Data(consts.StatusOK, "application/json; charset=utf-8", document.Raw)
 }
 
 // UpdateConfig saves the provided configuration
 func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
-	var cfg config.SingBoxConfig
-	if err := c.Bind(&cfg); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
-		return
-	}
-
-	if err := h.configManager.SaveConfig(&cfg); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+	if err := h.configManager.SaveRawConfig(ctx, c.Request.Body()); err != nil {
+		respondConfigError(ctx, c, err)
 		return
 	}
 
@@ -40,14 +46,8 @@ func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
 
 // ValidateConfig validates the provided configuration
 func (h *Handler) ValidateConfig(ctx context.Context, c *app.RequestContext) {
-	var cfg config.SingBoxConfig
-	if err := c.Bind(&cfg); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
-		return
-	}
-
-	if err := h.configManager.ValidateConfig(&cfg); err != nil {
-		respErr(ctx, c, CodeValidationError, err.Error())
+	if err := h.configManager.ValidateRawConfig(ctx, c.Request.Body()); err != nil {
+		respondConfigError(ctx, c, err)
 		return
 	}
 
@@ -59,13 +59,13 @@ func (h *Handler) ValidateConfig(ctx context.Context, c *app.RequestContext) {
 
 // GetBackupConfig returns the backup configuration
 func (h *Handler) GetBackupConfig(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetBackupConfig()
+	document, err := h.configManager.GetBackupDocument()
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return
 	}
 
-	respOK(ctx, c, cfg)
+	respOK(ctx, c, document)
 }
 
 // RollbackConfig restores the most recent historical configuration.
@@ -97,7 +97,7 @@ func (h *Handler) GetConfigVersion(ctx context.Context, c *app.RequestContext) {
 		respErr(ctx, c, CodeBadRequest, "invalid version id")
 		return
 	}
-	cfg, err := h.configManager.GetVersion(id)
+	document, err := h.configManager.GetVersionDocument(id)
 	if err != nil {
 		if errors.Is(err, config.ErrVersionNotFound) {
 			respErr(ctx, c, CodeNotFound, err.Error())
@@ -106,7 +106,42 @@ func (h *Handler) GetConfigVersion(ctx context.Context, c *app.RequestContext) {
 		}
 		return
 	}
-	respOK(ctx, c, cfg)
+	respOK(ctx, c, document)
+}
+
+// GetCoreInfo reports the installed core version and structured-editor feature
+// gates. Raw config validation remains available for newer, untested versions.
+func (h *Handler) GetCoreInfo(ctx context.Context, c *app.RequestContext) {
+	capabilities, err := h.configManager.CoreCapabilities(ctx)
+	if err != nil {
+		respErr(ctx, c, CodeServiceError, err.Error())
+		return
+	}
+	respOK(ctx, c, map[string]any{
+		"version":        capabilities.Version,
+		"supported":      capabilities.Supported,
+		"minimum":        capabilities.Minimum,
+		"maximum_tested": capabilities.MaximumTested,
+		"capabilities": map[string]bool{
+			"dns_evaluate":       capabilities.DNSEvaluate,
+			"dns_respond":        capabilities.DNSRespond,
+			"dns_race":           capabilities.DNSRace,
+			"dns_match_response": capabilities.DNSMatchResponse,
+			"dns_optimistic":     capabilities.DNSOptimistic,
+		},
+	})
+}
+
+func respondConfigError(ctx context.Context, c *app.RequestContext, err error) {
+	var validationErr *config.ValidationError
+	if errors.As(err, &validationErr) {
+		resp(ctx, c, CodeValidationError, map[string]any{
+			"stage":        validationErr.Stage,
+			"core_version": validationErr.CoreVersion,
+		}, validationErr.Error())
+		return
+	}
+	respErr(ctx, c, CodeInternalError, err.Error())
 }
 
 // DeleteConfigVersion removes a single historical version by id. This only

@@ -7,6 +7,13 @@ import (
 // RegisterRoutes registers all v1.12.12 API routes
 func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	v1 := h.Group("/api/1.12.12")
+	stable := h.Group("/api/v1")
+	stableAuth := stable.Group("", AuthMiddleware(handler.userManager, handler.authEnabled))
+	stableAuth.GET("/core", handler.GetCoreInfo)
+	stableAuth.GET("/config", handler.GetConfig)
+	stableAuth.GET("/config/raw", handler.GetRawConfig)
+	stableAuth.PUT("/config", handler.UpdateConfig)
+	stableAuth.POST("/config/validate", handler.ValidateConfig)
 
 	// Public APIs
 	v1.POST("/user/login", handler.Login)
@@ -26,8 +33,10 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Configuration Management APIs
 	auth.GET("/config", handler.GetConfig)
+	auth.GET("/config/raw", handler.GetRawConfig)
 	auth.PUT("/config", handler.UpdateConfig)
 	auth.POST("/config/validate", handler.ValidateConfig)
+	auth.GET("/core", handler.GetCoreInfo)
 	auth.GET("/config/backup", handler.GetBackupConfig)
 	auth.POST("/config/rollback", handler.RollbackConfig)
 

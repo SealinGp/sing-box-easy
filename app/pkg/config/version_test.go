@@ -153,6 +153,48 @@ func TestDeleteVersion(t *testing.T) {
 	}
 }
 
+func TestGetVersionDocumentPreservesUnknownFields(t *testing.T) {
+	store := newFakeStore()
+	manager, _ := newTestManager(t, store, 10)
+	raw := []byte("{\n  \"dns\": {\"rules\": [{\"action\": \"evaluate\", \"future\": true}]}\n}\n")
+	id, err := store.Save(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	document, err := manager.GetVersionDocument(id)
+	if err != nil {
+		t.Fatalf("GetVersionDocument() error = %v", err)
+	}
+	if string(document.Raw) != string(raw) {
+		t.Fatalf("GetVersionDocument().Raw = %q, want %q", document.Raw, raw)
+	}
+}
+
+func TestRollbackToVersionAcceptsJSONUnknownToCompiledSchema(t *testing.T) {
+	store := newFakeStore()
+	manager, configPath := newTestManager(t, store, 10)
+	if err := os.WriteFile(configPath, []byte(`{"log":{"level":"info"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(`{"dns":{"rules":[{"action":"evaluate","server":"dns_router"}]}}`)
+	id, err := store.Save(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := manager.RollbackToVersion(id); err != nil {
+		t.Fatalf("RollbackToVersion() error = %v", err)
+	}
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(raw) {
+		t.Fatalf("rolled back config = %q, want %q", got, raw)
+	}
+}
+
 func TestSetKeepVersionsClamp(t *testing.T) {
 	m, _ := newTestManager(t, newFakeStore(), 10)
 	m.SetKeepVersions(0)

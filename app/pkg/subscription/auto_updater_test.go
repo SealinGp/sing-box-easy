@@ -1,14 +1,62 @@
 package subscription
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
 type fakeServiceRestarter struct {
 	calls int
 	err   error
+}
+
+func TestApplyChangesPreservesNewerDNSConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test helper is a POSIX shell script")
+	}
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "sing-box")
+	if err := os.WriteFile(binaryPath, []byte("#!/bin/sh\nif [ \"$1\" = check ]; then exit 0; fi\nif [ \"$1\" = version ]; then echo 'sing-box version 1.14.0'; exit 0; fi\nexit 1\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(dir, "config.json")
+	raw := []byte(`{
+  "dns":{"rules":[{"action":"evaluate","server":"dns_router","future":true}]},
+  "outbounds":[{"type":"direct","tag":"direct"}]
+}`)
+	if err := os.WriteFile(configPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	updater := &AutoUpdater{configManager: config.NewManager(configPath, binaryPath, "")}
+	if err := updater.applyChanges(nil, []config.Outbound{{Type: "block", Tag: "blocked"}}, nil, "sub_test"); err != nil {
+		t.Fatalf("applyChanges() error = %v", err)
+	}
+
+	updated, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(updated, &document); err != nil {
+		t.Fatal(err)
+	}
+	var dns struct {
+		Rules []map[string]any `json:"rules"`
+	}
+	if err := json.Unmarshal(document["dns"], &dns); err != nil {
+		t.Fatal(err)
+	}
+	if len(dns.Rules) != 1 || dns.Rules[0]["action"] != "evaluate" || dns.Rules[0]["future"] != true {
+		t.Fatalf("DNS rules changed during subscription outbound update: %s", document["dns"])
+	}
 }
 
 func (f *fakeServiceRestarter) Restart() error {
