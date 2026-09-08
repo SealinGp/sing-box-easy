@@ -2,53 +2,43 @@ package v1_13_0
 
 import (
 	"context"
-	"strings"
+	"github.com/SealinGp/sing-box-easy/app/bootstrap"
+	"github.com/SealinGp/sing-box-easy/app/pkg/configuration"
+	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/system"
+	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/configversion"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
-	"github.com/SealinGp/sing-box-easy/app/pkg/initstate"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installer"
-	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
-	"github.com/SealinGp/sing-box-easy/app/pkg/service"
+	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
+	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
-	"github.com/SealinGp/sing-box-easy/app/pkg/subprobe"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
-	"github.com/SealinGp/sing-box-easy/app/pkg/user"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/sagernet/sing/common/json"
-	"go.uber.org/zap"
 )
 
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
-	configManager       *config.Manager
-	serviceController   *service.Controller
-	subscriptionManager subscription.SubscriptionManager
-	sublink             *sublink.SubLink
-	installer           *installer.Manager
-	dashboardManager    *installer.DashboardManager
-	initStateManager    initstate.InitStateManager
-	autoUpdater         *subscription.AutoUpdater
-	schedulerHandler    *schedulerHandler
-	versionStore        *configversion.StoreXORM
-	versionCleaner      *configversion.Cleaner
-	settingsManager     *settings.ManagerXORM
-	nodeRulesManager    *noderules.ManagerXORM
-	// Subscription quality probing: availability + latency per subscription,
-	// sampled on a schedule. The store holds the history; the runner owns the
-	// schedule and the latest per-node detail.
-	probeStore  *subprobe.StoreXORM
-	probeRunner *subprobe.Runner
-	userManager user.UserManager
-	updater     *appupdate.Updater
-	githubAuth  *githubauth.Manager
+	system                *system.Service
+	installationModule    *installer.Service
+	trafficServiceModule  *trafficflow.Service
+	settingsServiceModule *settings.Service
+	diagnosticsModule     *diagnostics.Service
+	outboundsModule       *outbounds.Service
+	configurationModule   *configuration.Service
+	subscriptions         *subscription.Service
+	configManager         *config.Manager
+	serviceController     *service.Controller
+	schedulerHandler      *schedulerHandler
+	userManager           user.UserManager
+	updater               *appupdate.Updater
+	githubAuth            *githubauth.Manager
 	// authEnabled is the resolved login requirement (server.auth × platform).
 	// false means every request runs as an administrator.
 	authEnabled bool
@@ -57,196 +47,24 @@ type Handler struct {
 	systemType service.SystemType
 }
 
-// NewHandler creates a new v1.12.12 handler using XORM-backed managers.
-// authMode is the raw server.auth config value (auto/enabled/disabled).
-func NewHandler(
-	configPath, singBoxPath string,
-	adminUser, adminPass string,
-	sublinkParser *sublink.SubLink,
-	githubConfig appconfig.GitHubConfig,
-	authMode string,
-) *Handler {
-	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
-	serviceController := service.NewController(configManager, singBoxPath)
-
-	// Use XORM-backed managers
-	subscriptionManager := subscription.NewManagerXORM()
-	if err := subscriptionManager.Init(); err != nil {
-		logger.Fatal("Failed to initialize subscription manager", zap.Error(err))
-	}
-	initStateManager := initstate.NewManagerXORM()
-
-	// Config version history (DB-backed) + application settings.
-	versionStore := configversion.NewStoreXORM()
-	versionCleaner := configversion.NewCleaner(versionStore, configversion.DefaultMaxAge)
-	settingsManager := settings.NewManagerXORM()
-	configManager.SetVersionStore(versionStore)
-
-	// Pass initStateManager and configManager to installer
-	installerManager := installer.NewManager(initStateManager, configManager)
-	dashboardManager := installer.NewDashboardManager(initStateManager, configManager)
-
-	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
-	// subscription nodes.
-	nodeRulesManager := noderules.NewManagerXORM()
-
-	// Subscription quality prober. Its environment resolves subscriptions,
-	// outbound tags, the Clash client and the settings on every sweep, so a
-	// change to any of them lands on the next tick without a restart.
-	probeStore := subprobe.NewStoreXORM()
-	probeRunner := subprobe.NewRunner(probeStore, &probeEnvironment{
-		subscriptions: subscriptionManager,
-		configManager: configManager,
-		settings:      settingsManager,
-	})
-
-	// Initialize auto-updater (rules-aware)
-	autoUpdater := subscription.NewAutoUpdater(configManager, subscriptionManager, sublinkParser, nodeRulesManager, settingsManager, serviceController)
-	schedulerHandler := newSchedulerHandler(autoUpdater)
-
-	// Initialize user manager
-	userManager := user.NewManagerXORM(adminUser, adminPass)
-
-	// Self-update manager (GitHub releases -> binary + frontend swap + restart).
-	// The token is resolved per request from settings, so signing in through
-	// the UI lifts the GitHub rate limit without a restart.
-	updater := appupdate.NewUpdater(githubConfig.Proxy, settingsManager.GetGitHubToken)
-
-	// GitHub sign-in (OAuth device flow) — issues the token the updater reads.
-	//
-	// The client ID is resolved per call, database first: an operator can paste
-	// one into Settings and sign in immediately, with app.yml /
-	// GITHUB_OAUTH_CLIENT_ID remaining the fallback for headless deployments
-	// that prefer to bake it in.
-	fallbackClientID := strings.TrimSpace(githubConfig.OAuthClientID)
-	githubAuth := githubauth.NewManager(
-		func() string {
-			if stored := settingsManager.GetGitHubOAuthClientID(); stored != "" {
-				return stored
-			}
-			return fallbackClientID
-		},
-		githubConfig.Proxy,
-		settingsManager,
-	)
-
-	systemType := service.DetectSystemType()
-	authEnabled := ResolveAuthEnabled(authMode, systemType)
-	if !authEnabled {
-		logger.Warn("==================================================================")
-		logger.Warn("AUTHENTICATION IS DISABLED — every visitor has admin access.")
-		logger.Warn("Anyone who can reach this panel's port can control sing-box.")
-		logger.Warn("Set server.auth: enabled in app.yml to require login.")
-		logger.Warn("==================================================================")
-	}
-
+func NewHandler(m *bootstrap.Modules) *Handler {
 	return &Handler{
-		configManager:       configManager,
-		serviceController:   serviceController,
-		subscriptionManager: subscriptionManager,
-		sublink:             sublinkParser,
-		installer:           installerManager,
-		dashboardManager:    dashboardManager,
-		initStateManager:    initStateManager,
-		autoUpdater:         autoUpdater,
-		schedulerHandler:    schedulerHandler,
-		versionStore:        versionStore,
-		versionCleaner:      versionCleaner,
-		settingsManager:     settingsManager,
-		nodeRulesManager:    nodeRulesManager,
-		probeStore:          probeStore,
-		probeRunner:         probeRunner,
-		userManager:         userManager,
-		updater:             updater,
-		githubAuth:          githubAuth,
-		authEnabled:         authEnabled,
-		systemType:          systemType,
-	}
-}
-
-// Init initializes all components and returns error if any fails
-func (h *Handler) Init() error {
-	// Initialize state manager
-	if err := h.initStateManager.Init(); err != nil {
-		return err
-	}
-
-	// Initialize installer manager
-	if err := h.installer.Init(); err != nil {
-		return err
-	}
-
-	// Initialize config version store + settings, then apply the configured
-	// retention count to the config manager.
-	if err := h.versionStore.Init(); err != nil {
-		return err
-	}
-	if err := h.settingsManager.Init(); err != nil {
-		return err
-	}
-	h.configManager.SetKeepVersions(h.settingsManager.GetConfigVersionsKeep())
-
-	// Initialize node-rules tables + seed the mandatory fallback Filter.
-	if err := h.nodeRulesManager.Init(); err != nil {
-		return err
-	}
-
-	// Subscription probe history table.
-	if err := h.probeStore.Init(); err != nil {
-		return err
-	}
-
-	// Initialize user manager (sync tables, seed admin)
-	if err := h.userManager.Init(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// StartAutoUpdater starts the auto-updater with the given cron expression.
-//
-// The quality prober is started alongside it: both are background samplers of
-// the same subscriptions, and a deployment that wants neither turns them off
-// per subscription rather than by having two lifecycles to reason about.
-func (h *Handler) StartAutoUpdater(cronExpression string) error {
-	if h.probeRunner != nil {
-		h.probeRunner.Start()
-	}
-	if h.autoUpdater == nil {
-		return nil // Auto-updater not initialized, skip silently
-	}
-	return h.autoUpdater.Start(cronExpression)
-}
-
-// StopProbeRunner halts the quality prober. Exposed for a graceful shutdown so
-// a sweep is not left writing to a database that is being closed.
-func (h *Handler) StopProbeRunner() {
-	if h.probeRunner != nil {
-		h.probeRunner.Stop()
-	}
-}
-
-// StopAutoUpdater stops the auto-updater
-func (h *Handler) StopAutoUpdater() {
-	if h.autoUpdater != nil {
-		h.autoUpdater.Stop()
-	}
-}
-
-// StartVersionCleaner starts the daily retention sweep that deletes config
-// versions older than the configured max age.
-func (h *Handler) StartVersionCleaner() error {
-	if h.versionCleaner == nil {
-		return nil
-	}
-	return h.versionCleaner.Start(configversion.DefaultCleanupCron)
-}
-
-// StopVersionCleaner stops the retention sweep.
-func (h *Handler) StopVersionCleaner() {
-	if h.versionCleaner != nil {
-		h.versionCleaner.Stop()
+		system:                m.System,
+		installationModule:    m.Installation,
+		trafficServiceModule:  m.TrafficService,
+		settingsServiceModule: m.SettingsService,
+		diagnosticsModule:     m.Diagnostics,
+		outboundsModule:       m.Outbounds,
+		configurationModule:   m.Configuration,
+		subscriptions:         m.SubscriptionManager,
+		configManager:         m.ConfigManager,
+		serviceController:     m.ServiceController,
+		userManager:           m.UserManager,
+		updater:               m.Updater,
+		githubAuth:            m.GithubAuth,
+		authEnabled:           m.AuthEnabled,
+		systemType:            m.SystemType,
+		schedulerHandler:      newSchedulerHandler(m.SubscriptionManager),
 	}
 }
 

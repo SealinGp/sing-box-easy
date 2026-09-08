@@ -21,7 +21,7 @@ func TestGetCacheFileDoesNotDecodeNewerDNSRules(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")})
 	requestContext := app.NewContext(0)
 	handler.GetCacheFile(context.Background(), requestContext)
 
@@ -50,7 +50,7 @@ func TestUpdateCacheFilePreservesNewerDNSAndExperimentalFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler := &Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")})
 	requestContext := app.NewContext(0)
 	requestContext.Request.SetBody([]byte(`{"enabled":true,"path":"/tmp/new-cache.db","rdrc_timeout":""}`))
 	handler.UpdateCacheFile(context.Background(), requestContext)

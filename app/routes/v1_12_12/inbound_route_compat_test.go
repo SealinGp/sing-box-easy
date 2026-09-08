@@ -24,7 +24,7 @@ func TestInboundAndRouteReadsDoNotDecodeNewerDNSRules(t *testing.T) {
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")})
 
 	tests := []struct {
 		name string
@@ -60,7 +60,7 @@ func TestOutboundAndNodeRuleReadsDoNotDecodeNewerDNSRules(t *testing.T) {
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")})
 
 	t.Run("outbounds", func(t *testing.T) {
 		requestContext := app.NewContext(0)
@@ -99,14 +99,14 @@ func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")})
 
 	routeConfig, err := handler.configManager.GetConfigSubset("route", "outbounds")
 	if err != nil || routeConfig.Route == nil || routeConfig.Route.Final != "direct" {
 		t.Fatalf("route subset failed: cfg=%+v err=%v", routeConfig, err)
 	}
 
-	dnsConfig, attributionError, err := handler.loadDNSProbeConfig()
+	dnsConfig, attributionError, err := handler.diagnostics().DNSConfig()
 	if err != nil {
 		t.Fatalf("DNS probe config failed: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
 		t.Fatalf("clash API settings were not retained: %+v", dnsConfig.Experimental)
 	}
 
-	clash, err := handler.readClashAPISettings()
+	clash, err := handler.configManager.GetClashAPISettings()
 	if err != nil || clash.ExternalUI != "/custom/ui" {
 		t.Fatalf("raw clash settings failed: %+v err=%v", clash, err)
 	}
@@ -141,7 +141,7 @@ func TestRouteMutationPreservesNewerDNSRules(t *testing.T) {
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	handler := &Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")})
 	requestContext := app.NewContext(0)
 	requestContext.Request.SetBody([]byte(`{"final":"new"}`))
 	handler.UpdateRouteFinal(context.Background(), requestContext)
@@ -156,20 +156,5 @@ func TestRouteMutationPreservesNewerDNSRules(t *testing.T) {
 	}
 	if !bytes.Contains(saved, []byte(`"action": "evaluate"`)) || !bytes.Contains(saved, []byte(`"future_route": 7`)) {
 		t.Fatalf("unrelated fields were lost: %s", saved)
-	}
-}
-
-func TestRawRuleSetCascadeSupportsNewerDNSActions(t *testing.T) {
-	rules := []json.RawMessage{
-		json.RawMessage(`{"action":"evaluate","server":"router","tag":"result","rule_set":["remove","keep"]}`),
-		json.RawMessage(`{"action":"respond","match_response":"result","rule_set":"remove"}`),
-		json.RawMessage(`{"action":"route","server":"router","rule_set":"remove"}`),
-	}
-	updated, err := scrubRawRules(rules, "remove", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(updated) != 2 || !bytes.Contains(updated[0], []byte(`"action":"evaluate"`)) || !bytes.Contains(updated[0], []byte(`"keep"`)) || !bytes.Contains(updated[1], []byte(`"match_response":"result"`)) {
-		t.Fatalf("unexpected cascade result: %s", updated)
 	}
 }

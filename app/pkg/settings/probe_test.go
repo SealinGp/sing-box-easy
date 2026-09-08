@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 // writes cannot become another's "default".
 func newTestManager(t *testing.T) *ManagerXORM {
 	t.Helper()
-	m := NewManagerXORM()
+	m := NewManagerXORM(testEngine())
 	if err := m.Init(); err != nil {
 		t.Fatalf("init: %v", err)
 	}

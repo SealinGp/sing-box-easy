@@ -2,324 +2,139 @@ package v1_13_0
 
 import (
 	"context"
-	"errors"
-
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
-// nodeRulesErr maps domain errors to the response envelope codes.
-func nodeRulesErr(ctx context.Context, c *app.RequestContext, err error) {
-	switch {
-	case errors.Is(err, noderules.ErrNotFound):
-		respErr(ctx, c, CodeNotFound, err.Error())
-	case errors.Is(err, noderules.ErrInvalidInput):
-		respErr(ctx, c, CodeValidationError, err.Error())
-	case errors.Is(err, noderules.ErrDuplicateName):
-		respErr(ctx, c, CodeConflict, err.Error())
-	case errors.Is(err, noderules.ErrFallbackProtected):
-		respErr(ctx, c, CodeForbidden, err.Error())
-	default:
-		respErr(ctx, c, CodeInternalError, err.Error())
-	}
-}
-
-// GetNodeRules returns the full ruleset (filters + groups).
 func (h *Handler) GetNodeRules(ctx context.Context, c *app.RequestContext) {
-	filters, err := h.nodeRulesManager.ListFilters()
+	result, err := h.outbounds().GetNodeRules(ctx)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	groups, err := h.nodeRulesManager.ListGroups()
-	if err != nil {
-		nodeRulesErr(ctx, c, err)
-		return
-	}
-	respOK(ctx, c, map[string]any{"filters": filters, "groups": groups})
+	respOK(ctx, c, result)
 }
-
-// ---- Filters ----
-
-type filterRequest struct {
-	Name          string              `json:"name"`
-	Matchers      []noderules.Matcher `json:"matchers"`
-	Excludes      []noderules.Matcher `json:"excludes"`
-	OutboundType  string              `json:"outbound_type"`
-	Priority      int                 `json:"priority"`
-	TestURL       string              `json:"test_url"`
-	TestInterval  string              `json:"test_interval"`
-	TestTolerance int                 `json:"test_tolerance"`
-}
-
-// toFilter maps a request body to a domain Filter (id assigned separately).
-func (r filterRequest) toFilter(id string) *noderules.Filter {
-	return &noderules.Filter{
-		ID:            id,
-		Name:          r.Name,
-		Matchers:      r.Matchers,
-		Excludes:      r.Excludes,
-		OutboundType:  r.OutboundType,
-		Priority:      r.Priority,
-		TestURL:       r.TestURL,
-		TestInterval:  r.TestInterval,
-		TestTolerance: r.TestTolerance,
-	}
-}
-
 func (h *Handler) GetFilters(ctx context.Context, c *app.RequestContext) {
-	filters, err := h.nodeRulesManager.ListFilters()
+	result, err := h.outbounds().GetFilters(ctx)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, map[string]any{"filters": filters})
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) CreateFilter(ctx context.Context, c *app.RequestContext) {
-	var req filterRequest
+	var req outbounds.FilterRequest
 	if err := c.Bind(&req); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
-	created, err := h.nodeRulesManager.CreateFilter(req.toFilter(""))
+	result, err := h.outbounds().CreateFilter(ctx, req)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, created)
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) UpdateFilter(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	var req filterRequest
+	var req outbounds.FilterRequest
 	if err := c.Bind(&req); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
-	updated, err := h.nodeRulesManager.UpdateFilter(req.toFilter(id))
+	result, err := h.outbounds().UpdateFilter(ctx, c.Param("id"), req)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, updated)
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) DeleteFilter(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	if err := h.nodeRulesManager.DeleteFilter(id); err != nil {
-		nodeRulesErr(ctx, c, err)
+	result, err := h.outbounds().DeleteFilter(ctx, c.Param("id"))
+	if err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, map[string]any{"message": "filter deleted", "id": id})
+	respOK(ctx, c, result)
 }
-
-// ---- Groups ----
-
-type groupRequest struct {
-	Name      string   `json:"name"`
-	FilterIDs []string `json:"filter_ids"`
-	// ExtraTags: outbounds the Group names directly (e.g. `direct`), which no
-	// Filter can collect on its own.
-	ExtraTags []string `json:"extra_tags"`
-	Priority  int      `json:"priority"`
-}
-
 func (h *Handler) GetGroups(ctx context.Context, c *app.RequestContext) {
-	groups, err := h.nodeRulesManager.ListGroups()
+	result, err := h.outbounds().GetGroups(ctx)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, map[string]any{"groups": groups})
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) CreateGroup(ctx context.Context, c *app.RequestContext) {
-	var req groupRequest
+	var req outbounds.GroupRequest
 	if err := c.Bind(&req); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
-	created, err := h.nodeRulesManager.CreateGroup(&noderules.Group{
-		Name:      req.Name,
-		FilterIDs: req.FilterIDs,
-		ExtraTags: req.ExtraTags,
-		Priority:  req.Priority,
-	})
+	result, err := h.outbounds().CreateGroup(ctx, req)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, created)
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) UpdateGroup(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	var req groupRequest
+	var req outbounds.GroupRequest
 	if err := c.Bind(&req); err != nil {
-		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}
-	updated, err := h.nodeRulesManager.UpdateGroup(&noderules.Group{
-		ID:        id,
-		Name:      req.Name,
-		FilterIDs: req.FilterIDs,
-		ExtraTags: req.ExtraTags,
-		Priority:  req.Priority,
-	})
+	result, err := h.outbounds().UpdateGroup(ctx, c.Param("id"), req)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, updated)
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) DeleteGroup(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	if err := h.nodeRulesManager.DeleteGroup(id); err != nil {
-		nodeRulesErr(ctx, c, err)
+	result, err := h.outbounds().DeleteGroup(ctx, c.Param("id"))
+	if err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
-	respOK(ctx, c, map[string]any{"message": "group deleted", "id": id})
+	respOK(ctx, c, result)
 }
-
-// ---- Catalog / Templates ----
-
 func (h *Handler) GetNodeRuleKeywords(ctx context.Context, c *app.RequestContext) {
-	respOK(ctx, c, map[string]any{"keywords": noderules.Catalog()})
+	result, err := h.outbounds().GetNodeRuleKeywords(ctx)
+	if err != nil {
+		respondOperationError(ctx, c, err)
+		return
+	}
+	respOK(ctx, c, result)
 }
-
 func (h *Handler) GetNodeRuleTemplates(ctx context.Context, c *app.RequestContext) {
-	respOK(ctx, c, map[string]any{"templates": noderules.Templates()})
+	result, err := h.outbounds().GetNodeRuleTemplates(ctx)
+	if err != nil {
+		respondOperationError(ctx, c, err)
+		return
+	}
+	respOK(ctx, c, result)
 }
-
-// ApplyNodeRuleTemplate creates a Filter from a built-in template.
 func (h *Handler) ApplyNodeRuleTemplate(ctx context.Context, c *app.RequestContext) {
-	id := c.Param("id")
-	tpl, ok := noderules.TemplateByID(id)
-	if !ok {
-		respErr(ctx, c, CodeNotFound, "template not found: "+id)
+	result, err := h.outbounds().ApplyNodeRuleTemplate(ctx, c.Param("id"))
+	if err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
-	created, err := h.nodeRulesManager.CreateFilter(&noderules.Filter{
-		Name:         tpl.Name,
-		Matchers:     tpl.Matchers,
-		OutboundType: tpl.OutboundType,
-	})
-	if err != nil {
-		nodeRulesErr(ctx, c, err)
-		return
-	}
-	respOK(ctx, c, created)
+	respOK(ctx, c, result)
 }
-
-// ---- Apply / Preview ----
-
-// previewFilter is the per-Filter summary returned by preview/apply.
-type previewFilter struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	OutboundType string   `json:"outbound_type"`
-	IsFallback   bool     `json:"is_fallback"`
-	MemberCount  int      `json:"member_count"`
-	Members      []string `json:"members"`
-}
-
-// buildPreview runs the matcher over the given node pool and returns a
-// frontend-friendly per-Filter breakdown plus the unmatched tags.
-func (h *Handler) buildPreview(pool noderules.NodePool) ([]previewFilter, []string, error) {
-	filters, err := h.nodeRulesManager.ListFilters()
-	if err != nil {
-		return nil, nil, err
-	}
-	membership, others := noderules.AssignFilters(pool, filters)
-	out := make([]previewFilter, 0, len(filters))
-	for _, f := range filters {
-		members := membership[f.ID]
-		out = append(out, previewFilter{
-			ID:           f.ID,
-			Name:         f.Name,
-			OutboundType: f.OutboundType,
-			IsFallback:   f.IsFallback,
-			MemberCount:  len(members),
-			Members:      members,
-		})
-	}
-	return out, others, nil
-}
-
-// PreviewNodeRules is a dry-run: it reports how current endpoints would be
-// assigned WITHOUT writing the config.
 func (h *Handler) PreviewNodeRules(ctx context.Context, c *app.RequestContext) {
-	cfg, err := h.configManager.GetOutboundsConfig()
+	result, err := h.outbounds().PreviewNodeRules(ctx)
 	if err != nil {
-		respErr(ctx, c, CodeConfigError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
-	pool := noderules.NodePool{
-		Endpoints: config.EndpointTags(cfg.Outbounds),
-		OptIn:     config.OptInTags(cfg.Outbounds),
-	}
-	preview, others, err := h.buildPreview(pool)
-	if err != nil {
-		nodeRulesErr(ctx, c, err)
-		return
-	}
-	// `optional` is the pool the UI may offer for explicit inclusion/exclusion
-	// (the `direct` outbounds). They are absent from `unmatched` by design, so
-	// without this the picker could not see them at all.
-	respOK(ctx, c, map[string]any{
-		"endpoints": len(pool.Endpoints),
-		"filters":   preview,
-		"unmatched": others,
-		"optional":  pool.OptIn,
-	})
+	respOK(ctx, c, result)
 }
-
-// ApplyNodeRules rebuilds the Filter/Group outbounds in the live config from the
-// current rules (no subscription fetch).
 func (h *Handler) ApplyNodeRules(ctx context.Context, c *app.RequestContext) {
-	filters, err := h.nodeRulesManager.ListFilters()
+	result, err := h.outbounds().ApplyNodeRules(ctx)
 	if err != nil {
-		nodeRulesErr(ctx, c, err)
+		respondOperationError(ctx, c, err)
 		return
 	}
-	groups, err := h.nodeRulesManager.ListGroups()
-	if err != nil {
-		nodeRulesErr(ctx, c, err)
-		return
-	}
-
-	var (
-		emittedFilters int
-		emittedGroups  int
-		endpoints      int
-		unmatched      int
-	)
-	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
-		pool := noderules.NodePool{
-			Endpoints: config.EndpointTags(cfg.Outbounds),
-			OptIn:     config.OptInTags(cfg.Outbounds),
-		}
-		filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
-		cfg.Outbounds = config.BuildGroupOutbounds(cfg.Outbounds, filterSpecs, groupSpecs)
-		endpoints = len(pool.Endpoints)
-		unmatched = len(others)
-		emittedFilters = len(filterSpecs)
-		emittedGroups = len(groupSpecs)
-		return nil
-	})
-	if err != nil {
-		respErr(ctx, c, CodeConfigError, "failed to apply node rules: "+err.Error())
-		return
-	}
-
-	respOK(ctx, c, map[string]any{
-		"message":   "node rules applied",
-		"endpoints": endpoints,
-		"filters":   emittedFilters,
-		"groups":    emittedGroups,
-		"unmatched": unmatched,
-	})
+	respOK(ctx, c, result)
 }

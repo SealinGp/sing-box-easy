@@ -35,7 +35,7 @@ func TestApplyChangesPreservesNewerDNSConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updater := &AutoUpdater{configManager: config.NewManager(configPath, binaryPath, "")}
+	updater := &Service{configManager: config.NewManager(configPath, binaryPath, "")}
 	if err := updater.applyChanges(nil, []config.Outbound{{Type: "block", Tag: "blocked"}}, nil, "sub_test"); err != nil {
 		t.Fatalf("applyChanges() error = %v", err)
 	}
@@ -67,7 +67,7 @@ func (f *fakeServiceRestarter) Restart() error {
 func TestRestartService(t *testing.T) {
 	t.Run("calls configured restarter", func(t *testing.T) {
 		restarter := &fakeServiceRestarter{}
-		au := &AutoUpdater{serviceRestarter: restarter}
+		au := &Service{serviceRestarter: restarter}
 
 		if err := au.restartService(); err != nil {
 			t.Fatalf("restartService() = %v", err)
@@ -79,7 +79,7 @@ func TestRestartService(t *testing.T) {
 
 	t.Run("propagates restart failure", func(t *testing.T) {
 		want := errors.New("restart failed")
-		au := &AutoUpdater{serviceRestarter: &fakeServiceRestarter{err: want}}
+		au := &Service{serviceRestarter: &fakeServiceRestarter{err: want}}
 
 		if err := au.restartService(); !errors.Is(err, want) {
 			t.Fatalf("restartService() = %v, want %v", err, want)
@@ -87,7 +87,7 @@ func TestRestartService(t *testing.T) {
 	})
 
 	t.Run("rejects missing restarter", func(t *testing.T) {
-		if err := (&AutoUpdater{}).restartService(); err == nil {
+		if err := (&Service{}).restartService(); err == nil {
 			t.Fatal("restartService() = nil, want configuration error")
 		}
 	})

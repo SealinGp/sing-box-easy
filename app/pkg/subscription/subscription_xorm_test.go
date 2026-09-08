@@ -1,23 +1,33 @@
 package subscription
 
 import (
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"testing"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 )
 
-func newTestManager(t *testing.T) *ManagerXORM {
+func newTestManager(t *testing.T) *repo.Store {
 	t.Helper()
-	m := NewManagerXORM()
+	e, err := database.GetEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := repo.NewStore(e)
 	if err := m.Init(); err != nil {
 		t.Fatalf("manager init: %v", err)
 	}
-	e, err := database.GetEngine()
+	e, err = database.GetEngine()
 	if err != nil {
 		t.Fatalf("get engine: %v", err)
 	}
 	if _, err := e.Exec("DELETE FROM subscriptions"); err != nil {
 		t.Fatalf("truncate subscriptions: %v", err)
+	}
+	for _, table := range []string{"subscription_pending_deletions", "subscription_probe_samples"} {
+		if _, err := e.Exec("DELETE FROM " + table); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return m
 }

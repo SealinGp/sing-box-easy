@@ -4,23 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
 // releaseView is the release shape returned to the frontend. It deliberately
 // omits GitHub fields the UI has no use for.
-type releaseView struct {
-	Tag         string `json:"tag"`
-	Name        string `json:"name"`
-	Prerelease  bool   `json:"prerelease"`
-	PublishedAt string `json:"published_at"`
-	URL         string `json:"url"`
-	Notes       string `json:"notes"`
-	IsCurrent   bool   `json:"is_current"`
-	IsNewer     bool   `json:"is_newer"`
-}
-
 // GetVersionStatus returns the running version alongside the newest published
 // release, so the UI can render "<current> -> <latest> [Update]".
 //
@@ -37,36 +25,12 @@ func (h *Handler) GetVersionStatus(ctx context.Context, c *app.RequestContext) {
 func (h *Handler) ListVersions(ctx context.Context, c *app.RequestContext) {
 	force := parseBoolQuery(c, "refresh")
 
-	releases, err := h.updater.Releases(force)
+	result, err := h.updater.ReleaseOverview(force)
 	if err != nil {
 		respErr(ctx, c, CodeServiceError, err.Error())
 		return
 	}
-
-	current := appupdate.Current()
-	views := make([]releaseView, 0, len(releases))
-	for _, r := range releases {
-		view := releaseView{
-			Tag:        r.TagName,
-			Name:       r.Name,
-			Prerelease: r.Prerelease,
-			URL:        r.HTMLURL,
-			Notes:      r.Body,
-			IsCurrent:  appupdate.CompareVersions(r.TagName, current) == 0 && appupdate.IsKnown(),
-			IsNewer:    appupdate.IsNewer(r.TagName, current),
-		}
-		if !r.PublishedAt.IsZero() {
-			view.PublishedAt = r.PublishedAt.UTC().Format("2006-01-02T15:04:05Z")
-		}
-		views = append(views, view)
-	}
-
-	respOK(ctx, c, map[string]any{
-		"current_version": current,
-		"current_known":   appupdate.IsKnown(),
-		"releases":        views,
-		"rate_limit":      h.updater.RateLimit(),
-	})
+	respOK(ctx, c, result)
 }
 
 // StartVersionUpdate downloads and installs a release, then restarts the

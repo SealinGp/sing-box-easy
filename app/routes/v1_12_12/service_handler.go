@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/service"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

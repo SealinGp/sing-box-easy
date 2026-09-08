@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings/repo"
 	"go.uber.org/zap"
@@ -72,11 +71,7 @@ type ManagerXORM struct {
 }
 
 // NewManagerXORM creates a new XORM-backed settings manager.
-func NewManagerXORM() *ManagerXORM {
-	e, err := database.GetEngine()
-	if err != nil {
-		logger.Fatal("Failed to get database engine", zap.Error(err))
-	}
+func NewManagerXORM(e *xorm.Engine) *ManagerXORM {
 	return &ManagerXORM{e: e}
 }
 

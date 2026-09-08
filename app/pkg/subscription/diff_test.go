@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/node"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 
 // opts builds an outbound options map with a server endpoint.
@@ -44,7 +44,7 @@ func minted(name, server string, port int) string {
 // many distinct nodes can share one server:port (a relay/CDN endpoint) without
 // collapsing onto one tag.
 func TestDiffNodesPrefixOwnership(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	sub := &Subscription{ID: testSubID}
 
 	cfg := &config.SingBoxConfig{}
@@ -88,7 +88,7 @@ func TestDiffNodesPrefixOwnership(t *testing.T) {
 // tag-prefixing or added manually) whose server is in the feed are re-tagged
 // into the subscription namespace, preserving group memberships via a rename.
 func TestDiffNodesLegacyMigration(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	sub := &Subscription{ID: testSubID}
 
 	cfg := &config.SingBoxConfig{}
@@ -131,7 +131,7 @@ func TestDiffNodesLegacyMigration(t *testing.T) {
 // via the prefix: the old prefixed tag (absent from the feed) is deleted and the
 // new prefixed tag is added.
 func TestDiffNodesNameChange(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	sub := &Subscription{ID: testSubID}
 
 	cfg := &config.SingBoxConfig{}
@@ -161,7 +161,7 @@ func TestDiffNodesNameChange(t *testing.T) {
 // and re-add it bare, so a config that worked before the upgrade would come
 // back with half-empty groups.
 func TestDiffNodesMigratesLegacyEndpointTagsAsRenames(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	sub := &Subscription{ID: testSubID}
 
 	cfg := &config.SingBoxConfig{}
@@ -221,4 +221,14 @@ func TestFingerprintLegacyTagIgnoresCurrentFormat(t *testing.T) {
 
 func itoa(n int) string {
 	return strconv.Itoa(n)
+}
+
+func TestDiffNodesPreservesOtherSubscriptionOnSharedServer(t *testing.T) {
+	other := "Other" + subscriptionTagSuffix("sub_other")
+	cfg := &config.SingBoxConfig{}
+	cfg.Outbounds = []config.Outbound{ob(other, "relay", 443)}
+	deleted, added, updated := (&Service{}).diffNodes(cfg, &Subscription{ID: testSubID}, []*node.SubNode{sn("New", "relay", 443)})
+	if len(deleted) != 0 || len(updated) != 0 || len(added) != 1 {
+		t.Fatalf("other subscription changed: deleted=%v updated=%v added=%v", deleted, updated, added)
+	}
 }

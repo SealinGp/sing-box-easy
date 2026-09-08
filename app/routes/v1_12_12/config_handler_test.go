@@ -25,7 +25,7 @@ func TestValidateConfigDelegatesNewDNSActionsToInstalledCore(t *testing.T) {
 	}
 
 	manager := configpkg.NewManager(filepath.Join(dir, "config.json"), binaryPath, "")
-	handler := &Handler{configManager: manager}
+	handler := testHandler(&Handler{configManager: manager})
 	requestContext := app.NewContext(0)
 	requestContext.Request.SetBody([]byte(`{"dns":{"rules":[{"action":"evaluate","server":"dns_router"}]}}`))
 
@@ -51,7 +51,7 @@ func TestGetConfigReturnsUnknownFieldsInsideResponseEnvelope(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler := &Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, "sing-box", "")})
 	requestContext := app.NewContext(0)
 	handler.GetConfig(context.Background(), requestContext)
 

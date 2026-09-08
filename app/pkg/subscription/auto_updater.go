@@ -11,10 +11,15 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/node"
-	"github.com/robfig/cron/v3"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/autoupdate"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/probe"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"go.uber.org/zap"
 )
 
@@ -27,19 +32,22 @@ type NodeRulesProvider interface {
 	ListGroups() ([]*noderules.Group, error)
 }
 
-// AutoUpdater handles automatic subscription updates
-type AutoUpdater struct {
-	subscriptionManager SubscriptionManager
-	sublinkManager      *sublink.SubLink
-	configManager       *config.Manager
-	serviceRestarter    ServiceRestarter
-	nodeRules           NodeRulesProvider
-	infoKeywords        InfoKeywordsProvider
-	cron                *cron.Cron
-	mutex               sync.RWMutex
-	isRunning           bool
-	lastCheckTime       time.Time
-	updateStats         map[string]*UpdateStats
+// Service handles automatic subscription updates
+type Service struct {
+	probeRunner      *subprobe.Runner
+	probeStore       *repo.ProbeStore
+	settingsManager  *settings.ManagerXORM
+	repository       repo.Repository
+	sublinkManager   feedResolver
+	configManager    *config.Manager
+	serviceRestarter ServiceRestarter
+	nodeRules        NodeRulesProvider
+	infoKeywords     InfoKeywordsProvider
+	scheduler        *autoupdate.Scheduler
+	operationLocks   sync.Map
+	mutex            sync.RWMutex
+	lastCheckTime    time.Time
+	updateStats      map[string]*UpdateStats
 }
 
 // UpdateStats tracks statistics for each subscription
@@ -68,98 +76,55 @@ func (r *UpdateResult) Counts() (added, updated, deleted int) {
 	return len(r.AddedTags), len(r.UpdatedTags), len(r.DeletedKeys)
 }
 
-// NewAutoUpdater creates a new auto-updater instance. serviceRestarter must be
+// NewService creates a new auto-updater instance. serviceRestarter must be
 // configured so a successful refresh can be applied to the running sing-box.
 // nodeRules may be nil, in
 // which case the legacy "append new nodes into non-group collections" behavior
 // is used; when present, the Outbound Node Rules engine owns node placement.
 // infoKeywords may also be nil, in which case the built-in
 // DefaultInfoLabelKeywords decide which feed entries are account metadata.
-func NewAutoUpdater(
+func newService(
 	configManager *config.Manager,
-	subscriptionManager SubscriptionManager,
-	sublinkManager *sublink.SubLink,
+	repository repo.Repository,
+	sublinkManager feedResolver,
 	nodeRules NodeRulesProvider,
 	infoKeywords InfoKeywordsProvider,
 	serviceRestarter ServiceRestarter,
-) *AutoUpdater {
-	return &AutoUpdater{
-		subscriptionManager: subscriptionManager,
-		sublinkManager:      sublinkManager,
-		configManager:       configManager,
-		serviceRestarter:    serviceRestarter,
-		nodeRules:           nodeRules,
-		infoKeywords:        infoKeywords,
-		updateStats:         make(map[string]*UpdateStats),
+) *Service {
+	s := &Service{
+		repository:       repository,
+		sublinkManager:   sublinkManager,
+		configManager:    configManager,
+		serviceRestarter: serviceRestarter,
+		nodeRules:        nodeRules,
+		infoKeywords:     infoKeywords,
+		updateStats:      make(map[string]*UpdateStats),
 	}
+	s.scheduler = autoupdate.New(s.checkSubscriptions)
+	return s
 }
 
 // infoLabelKeywords resolves the keyword list for this refresh. It is read per
 // update (not cached) so an edit on the Subscriptions page takes effect on the
 // very next refresh without a restart.
-func (au *AutoUpdater) infoLabelKeywords() []string {
+func (au *Service) infoLabelKeywords() []string {
 	if au.infoKeywords == nil {
 		return DefaultInfoLabelKeywords
 	}
 	return EffectiveInfoKeywords(au.infoKeywords.GetSubscriptionInfoKeywords())
 }
 
-// Start starts the cron job for automatic updates
-func (au *AutoUpdater) Start(cronExpression string) error {
-	au.mutex.Lock()
-	defer au.mutex.Unlock()
-
-	if au.isRunning {
-		return fmt.Errorf("auto-updater is already running")
-	}
-
-	// Default to every 5 minutes if no expression provided
-	if cronExpression == "" {
-		cronExpression = "*/5 * * * *"
-	}
-
-	au.cron = cron.New()
-	_, err := au.cron.AddFunc(cronExpression, au.CheckSubscriptions)
-	if err != nil {
-		return fmt.Errorf("failed to add cron job: %w", err)
-	}
-
-	au.cron.Start()
-	au.isRunning = true
-	logger.Info("Auto-updater started", zap.String("cron", cronExpression))
-
-	// Delay the initial check by 30 s so the HTTP server is fully up and any
-	// in-flight config edits the operator made just before restarting the
-	// service are not immediately overwritten by a subscription refresh.
-	go func() {
-		time.Sleep(30 * time.Second)
-		au.CheckSubscriptions()
-	}()
-
-	return nil
-}
-
-// Stop stops the cron job
-func (au *AutoUpdater) Stop() {
-	au.mutex.Lock()
-	defer au.mutex.Unlock()
-
-	if au.cron != nil {
-		au.cron.Stop()
-		au.isRunning = false
-		logger.Info("Auto-updater stopped")
+func (s *Service) Start(expression string) error { return s.scheduler.Start(expression) }
+func (s *Service) Stop() {
+	if s.scheduler != nil {
+		s.scheduler.Stop()
 	}
 }
-
-// IsRunning returns whether the auto-updater is running
-func (au *AutoUpdater) IsRunning() bool {
-	au.mutex.RLock()
-	defer au.mutex.RUnlock()
-	return au.isRunning
-}
+func (s *Service) IsRunning() bool { return s.scheduler != nil && s.scheduler.Running() }
 
 // CheckSubscriptions checks all subscriptions and updates those that need it
-func (au *AutoUpdater) CheckSubscriptions() {
+func (au *Service) CheckSubscriptions() { au.checkSubscriptions(context.Background()) }
+func (au *Service) checkSubscriptions(ctx context.Context) {
 	au.mutex.Lock()
 	au.lastCheckTime = time.Now()
 	au.mutex.Unlock()
@@ -167,7 +132,7 @@ func (au *AutoUpdater) CheckSubscriptions() {
 	logger.Info("Starting subscription check")
 
 	// List all subscriptions
-	subscriptions, err := au.subscriptionManager.List()
+	subscriptions, err := au.repository.List()
 	logger.Info("subscriptions list", zap.Any("subscriptions", subscriptions))
 	if err != nil {
 		logger.Error("Failed to list subscriptions", zap.Error(err))
@@ -179,6 +144,9 @@ func (au *AutoUpdater) CheckSubscriptions() {
 	failedCount := 0
 
 	for _, sub := range subscriptions {
+		if ctx.Err() != nil {
+			return
+		}
 		// Skip subscriptions that don't have auto-update enabled
 		if !sub.AutoUpdate {
 			continue
@@ -195,7 +163,7 @@ func (au *AutoUpdater) CheckSubscriptions() {
 		// Update subscription sequentially to ensure config integrity.
 		// UpdateSubscription records success/failure stats internally so both
 		// the cron path and the manual route path stay consistent.
-		result, err := au.UpdateSubscription(sub)
+		result, err := au.updateSubscription(ctx, sub)
 		if err != nil {
 			failedCount++
 			logger.Error("Failed to update subscription",
@@ -231,7 +199,7 @@ func (au *AutoUpdater) CheckSubscriptions() {
 }
 
 // shouldUpdate checks if a subscription needs updating
-func (au *AutoUpdater) shouldUpdate(sub *Subscription) bool {
+func (au *Service) shouldUpdate(sub *Subscription) bool {
 	// Parse update interval
 	intervalDuration := parseDuration(sub.UpdateInterval)
 	if intervalDuration <= 0 {
@@ -248,12 +216,15 @@ func (au *AutoUpdater) shouldUpdate(sub *Subscription) bool {
 // loop, and restarts sing-box before reporting success. The manual route
 // handler should call this instead of touching configManager or the service
 // controller directly.
-func (au *AutoUpdater) RefreshByID(id string) (*UpdateResult, error) {
-	sub, err := au.subscriptionManager.Get(id)
+func (au *Service) RefreshByID(id string) (*UpdateResult, error) {
+	return au.Refresh(context.Background(), id)
+}
+func (au *Service) Refresh(ctx context.Context, id string) (*UpdateResult, error) {
+	sub, err := au.repository.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("subscription not found: %w", err)
 	}
-	result, err := au.UpdateSubscription(sub)
+	result, err := au.updateSubscription(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +237,7 @@ func (au *AutoUpdater) RefreshByID(id string) (*UpdateResult, error) {
 
 // restartService applies the config written by a successful refresh. It is a
 // separate seam so updater tests do not need a real init system or process.
-func (au *AutoUpdater) restartService() error {
+func (au *Service) restartService() error {
 	if au.serviceRestarter == nil {
 		return fmt.Errorf("sing-box service restarter is not configured")
 	}
@@ -276,7 +247,24 @@ func (au *AutoUpdater) restartService() error {
 // UpdateSubscription updates a single subscription: fetch → diff → apply.
 // Records success/failure stats internally so the cron loop and the manual
 // route both produce identical bookkeeping.
-func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResult, err error) {
+func (au *Service) UpdateSubscription(sub *Subscription) (*UpdateResult, error) {
+	return au.updateSubscription(context.Background(), sub)
+}
+func (au *Service) updateSubscription(ctx context.Context, sub *Subscription) (result *UpdateResult, err error) {
+	unlock := au.lockSubscription(sub.ID)
+	defer unlock()
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if err := au.checkActive(sub.ID); err != nil {
+		return nil, err
+	}
+	// A scheduled sweep may hold a record read before deletion or an edit.
+	sub, err = au.repository.Get(sub.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	defer func() {
 		if err != nil {
 			au.recordFailure(sub.ID, err)
@@ -289,7 +277,7 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	// honoring the per-subscription fetch strategy (direct / clean-DNS / proxy)
 	// for censored networks.
 	lines := []string{sub.URL}
-	newNodes, meta, err := au.sublinkManager.ListNodesWithMetaOpts(lines, sublink.FetchOptions{
+	newNodes, meta, err := au.sublinkManager.Resolve(ctx, lines, sublink.FetchOptions{
 		Mode:     sub.FetchMode,
 		ProxyURL: sub.ProxyURL,
 	})
@@ -310,45 +298,26 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	info := parseUserinfo(meta.Userinfo)
 	info = append(info, nodeInfo...)
 
-	// Step 2: Get current configuration
-	// Subscription refresh owns only the outbounds section. Reading it through
-	// the section adapter keeps newer DNS/route actions outside the compiled
-	// sing-box schema and preserves them when the mutation is saved.
-	cfg, err := au.configManager.GetOutboundsConfig()
+	// Compute the diff and rewrite references against the same locked document.
+	err = outbounds.NewReconciler(au.configManager, au.nodeRules).Apply(ctx, sub.ID, func(cfg *config.SingBoxConfig) outbounds.Changes {
+		deleted, added, updated := au.diffNodes(cfg, sub, realNodes)
+		result = &UpdateResult{AddedTags: collectTags(added), UpdatedTags: collectTagsFromMap(updated), DeletedKeys: collectKeys(deleted)}
+		return outbounds.Changes{Delete: deleted, Add: added, Update: updated}
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
-
-	// Step 3: Compare and diff nodes
-	toDelete, toAdd, toUpdate := au.diffNodes(cfg, sub, realNodes)
-
-	// Build the result up-front from the diff so callers (route handler,
-	// cron logger) get the same shape regardless of whether any change was
-	// applied this round.
-	result = &UpdateResult{
-		AddedTags:   collectTags(toAdd),
-		UpdatedTags: collectTagsFromMap(toUpdate),
-		DeletedKeys: collectKeys(toDelete),
-	}
-
-	// Step 4: Apply changes (skip the write if the diff is empty)
-	if len(toDelete) > 0 || len(toAdd) > 0 || len(toUpdate) > 0 {
-		if applyErr := au.applyChanges(toDelete, toAdd, toUpdate, sub.ID); applyErr != nil {
-			err = fmt.Errorf("failed to apply changes: %w", applyErr)
-			return nil, err
-		}
+		return nil, fmt.Errorf("failed to apply changes: %w", err)
 	}
 
 	// Step 5: Update subscription's last update time. A failure here doesn't
 	// roll back the config — we just log it.
-	if uerr := au.subscriptionManager.UpdateLastUpdate(sub.ID); uerr != nil {
+	if uerr := au.repository.UpdateLastUpdate(sub.ID); uerr != nil {
 		logger.Warn("Failed to update last update time", zap.String("id", sub.ID), zap.Error(uerr))
 	}
 
 	// Step 6: Persist the extracted account metadata (traffic/expiry/reset).
 	// Always written (even empty) so stale info clears; a failure here is logged
 	// but does not roll back the applied config.
-	if ierr := au.subscriptionManager.UpdateInfo(sub.ID, info); ierr != nil {
+	if ierr := au.repository.UpdateInfo(sub.ID, info); ierr != nil {
 		logger.Warn("Failed to update subscription info", zap.String("id", sub.ID), zap.Error(ierr))
 	}
 
@@ -357,7 +326,7 @@ func (au *AutoUpdater) UpdateSubscription(sub *Subscription) (result *UpdateResu
 	// (providers move domains, and a mirror often reports the old one) must not
 	// have that correction undone by the next refresh.
 	if site := officialURLToPersist(sub.OfficialURL, meta.SiteURL, info); site != "" {
-		if serr := au.subscriptionManager.UpdateOfficialURL(sub.ID, site); serr != nil {
+		if serr := au.repository.UpdateOfficialURL(sub.ID, site); serr != nil {
 			logger.Warn("Failed to update subscription official url",
 				zap.String("id", sub.ID), zap.Error(serr))
 		}
@@ -424,11 +393,11 @@ func subscriptionTagSuffix(subID string) string {
 //
 // Exported because it is the ONE rule that decides which outbounds a
 // subscription is answerable for, and a second consumer now needs it: the
-// quality prober (app/pkg/subprobe) groups nodes by subscription to compute
+// quality prober (app/pkg/subscription/internal/probe) groups nodes by subscription to compute
 // availability. A prober carrying its own copy of the suffix rule would keep
 // measuring the wrong nodes for a while after this one changed.
 func TagBelongsToSubscription(tag, subID string) bool {
-	return strings.HasSuffix(tag, subscriptionTagSuffix(subID))
+	return model.TagBelongsToSubscription(tag, subID)
 }
 
 // fingerprintLegacyTag rewrites a pre-fingerprint subscription tag
@@ -485,7 +454,7 @@ func fingerprintLegacyTag(tag, subID string) string {
 //     adopted into the namespace), which is applied as a group-reference rename
 //     in applyChanges.
 //   - toAdd:    feed nodes with no matching existing outbound.
-func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
+func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNodes []*node.SubNode) (toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound) {
 	toDelete = make(map[string]struct{})
 	toUpdate = make(map[string]config.Outbound)
 
@@ -558,7 +527,8 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 	// namespace so future passes can rely solely on the suffix. Running after
 	// pass 1 guarantees already-suffixed nodes win the match for a feed entry.
 	for _, outbound := range cfg.Outbounds {
-		if TagBelongsToSubscription(outbound.Tag, sub.ID) {
+		// Any namespace denotes ownership; another subscription is never legacy.
+		if strings.Contains(outbound.Tag, subscriptionTagSeparator) {
 			continue
 		}
 		// Only outbounds whose server is present in this feed are candidates,
@@ -605,152 +575,6 @@ func (au *AutoUpdater) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, n
 	}
 
 	return toDelete, toAdd, toUpdate
-}
-
-// applyChanges applies the calculated changes to the configuration.
-//
-// In addition to the outbound list itself, this also rewrites every
-// selector/urltest group outbound so it no longer references tags that were
-// deleted, and picks up the new tag for any outbound that was renamed by an
-// update (the server endpoint survives but the human-facing tag changed).
-// Without this pass, `sing-box check` would still pass but selector groups
-// would silently keep dangling tags pointing at gone nodes.
-//
-// NOTE on concurrency: the diff (toDelete/toAdd/toUpdate) is computed against
-// a snapshot read by an earlier GetOutboundsConfig call, while
-// UpdateOutboundsConfig re-reads and locks the document for the mutation. The
-// deletedTags/renameMap below are derived from that fresh locked snapshot, so
-// group-reference rewriting is internally consistent. A config edit between
-// the earlier diff and this mutation may still make the diff stale; removing
-// that remaining window requires moving diffNodes into this closure.
-func (au *AutoUpdater) applyChanges(toDelete map[string]struct{}, toAdd []config.Outbound, toUpdate map[string]config.Outbound, subID string) error {
-	return au.configManager.UpdateOutboundsConfig(context.Background(), func(c *config.SingBoxConfig) error {
-		// Create new outbounds slice
-		newOutbounds := make([]config.Outbound, 0, len(c.Outbounds)-len(toDelete)+len(toAdd))
-
-		// Tags collected while filtering — needed to scrub stale references
-		// from selector/urltest groups after the rebuild.
-		deletedTags := make(map[string]struct{})
-		renameMap := make(map[string]string)
-
-		// emitted guards against duplicate tags ever reaching the config (which
-		// would fail `sing-box check`): the final outbound list has at most one
-		// entry per tag. Keyed by the tag actually written to newOutbounds.
-		emitted := make(map[string]bool)
-
-		// First pass: keep non-deleted outbounds and apply updates. Identity is
-		// the outbound tag (matching diffNodes), not server:port.
-		for _, outbound := range c.Outbounds {
-			if _, ok := toDelete[outbound.Tag]; ok {
-				deletedTags[outbound.Tag] = struct{}{}
-				continue // Skip deleted
-			}
-
-			if updatedOutbound, ok := toUpdate[outbound.Tag]; ok {
-				if outbound.Tag != updatedOutbound.Tag {
-					renameMap[outbound.Tag] = updatedOutbound.Tag
-				}
-				// Multiple existing outbounds can resolve to the same updated
-				// node (e.g. pre-existing duplicates or legacy renames); emit it
-				// only once so we never write a duplicate tag.
-				if emitted[updatedOutbound.Tag] {
-					continue
-				}
-				emitted[updatedOutbound.Tag] = true
-				newOutbounds = append(newOutbounds, updatedOutbound)
-				continue
-			}
-
-			// Keep existing outbound, dropping any stray duplicate-tag copy.
-			if emitted[outbound.Tag] {
-				logger.Warn("dropping duplicate outbound tag during subscription update",
-					zap.String("subscription", subID), zap.String("tag", outbound.Tag))
-				continue
-			}
-			emitted[outbound.Tag] = true
-			newOutbounds = append(newOutbounds, outbound)
-		}
-
-		// Add new outbounds (same duplicate guard).
-		for _, outbound := range toAdd {
-			if emitted[outbound.Tag] {
-				logger.Warn("dropping duplicate outbound tag during subscription update",
-					zap.String("subscription", subID), zap.String("tag", outbound.Tag))
-				continue
-			}
-			emitted[outbound.Tag] = true
-			newOutbounds = append(newOutbounds, outbound)
-		}
-
-		// Strip references to deleted tags and rewrite renamed tags inside
-		// selector/urltest outbounds. When the Outbound Node Rules engine is
-		// active it owns node placement, so we do NOT append new nodes here
-		// (addTags=nil); the rebuild below assigns them. Without rules, fall back
-		// to the legacy "append into non-group collections" behavior.
-		addTags := []string(nil)
-		if au.nodeRules == nil {
-			addTags = collectTags(toAdd)
-		}
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap, addTags)
-
-		// Rules-driven rebuild: reassign every endpoint to its matching Filters
-		// and regenerate Filter/Group outbounds from the current rule set. This
-		// is a full, deterministic rebuild from (endpoints + rules), so it
-		// handles adds/deletes/renames and multiple subscriptions uniformly.
-		rebuilt, rerr := au.rebuildNodeRules(newOutbounds, subID)
-		if rerr != nil {
-			// A rules failure must not abandon the subscription update; log and
-			// keep the pruned outbounds as-is.
-			logger.Warn("node-rules rebuild skipped", zap.String("subscription", subID), zap.Error(rerr))
-		} else {
-			newOutbounds = rebuilt
-		}
-
-		// Update the configuration
-		c.Outbounds = newOutbounds
-
-		logger.Info("Applied subscription changes",
-			zap.String("subscription", subID),
-			zap.Int("deleted", len(toDelete)),
-			zap.Int("added", len(toAdd)),
-			zap.Int("updated", len(toUpdate)),
-			zap.Int("group_refs_renamed", len(renameMap)))
-
-		return nil
-	})
-}
-
-// rebuildNodeRules regenerates the rule-managed Filter/Group outbounds from the
-// current rule set and the endpoints present in `outbounds`. Returns the new
-// outbound list. When no rules provider is configured it returns the input
-// unchanged (the legacy path already handled additions).
-func (au *AutoUpdater) rebuildNodeRules(outbounds []config.Outbound, subID string) ([]config.Outbound, error) {
-	if au.nodeRules == nil {
-		return outbounds, nil
-	}
-	filters, err := au.nodeRules.ListFilters()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list filters: %w", err)
-	}
-	groups, err := au.nodeRules.ListGroups()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list groups: %w", err)
-	}
-
-	pool := noderules.NodePool{
-		Endpoints: config.EndpointTags(outbounds),
-		OptIn:     config.OptInTags(outbounds),
-	}
-	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
-	rebuilt := config.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
-
-	logger.Info("Rebuilt node-rules groups",
-		zap.String("subscription", subID),
-		zap.Int("endpoints", len(pool.Endpoints)),
-		zap.Int("filters", len(filterSpecs)),
-		zap.Int("groups", len(groupSpecs)),
-		zap.Int("unmatched", len(others)))
-	return rebuilt, nil
 }
 
 // outboundsDeepEqual performs deep comparison of two outbounds via JSON.
@@ -815,7 +639,7 @@ func parseDuration(s string) time.Duration {
 }
 
 // recordSuccess records a successful update
-func (au *AutoUpdater) recordSuccess(subID string) {
+func (au *Service) recordSuccess(subID string) {
 	au.mutex.Lock()
 	defer au.mutex.Unlock()
 
@@ -831,7 +655,7 @@ func (au *AutoUpdater) recordSuccess(subID string) {
 }
 
 // recordFailure records a failed update
-func (au *AutoUpdater) recordFailure(subID string, err error) {
+func (au *Service) recordFailure(subID string, err error) {
 	au.mutex.Lock()
 	defer au.mutex.Unlock()
 
@@ -846,7 +670,7 @@ func (au *AutoUpdater) recordFailure(subID string, err error) {
 }
 
 // GetStats returns update statistics
-func (au *AutoUpdater) GetStats() map[string]*UpdateStats {
+func (au *Service) GetStats() map[string]*UpdateStats {
 	au.mutex.RLock()
 	defer au.mutex.RUnlock()
 
@@ -865,13 +689,24 @@ func (au *AutoUpdater) GetStats() map[string]*UpdateStats {
 }
 
 // GetLastCheckTime returns the last time subscriptions were checked
-func (au *AutoUpdater) GetLastCheckTime() time.Time {
+func (au *Service) GetLastCheckTime() time.Time {
 	au.mutex.RLock()
 	defer au.mutex.RUnlock()
 	return au.lastCheckTime
 }
 
 // TriggerCheck manually triggers a subscription check
-func (au *AutoUpdater) TriggerCheck() {
-	go au.CheckSubscriptions()
+func (au *Service) TriggerCheck() {
+	au.scheduler.Trigger()
+}
+
+func (s *Service) lockSubscription(id string) func() {
+	value, _ := s.operationLocks.LoadOrStore(id, &sync.Mutex{})
+	mu := value.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+type feedResolver interface {
+	Resolve(context.Context, []string, sublink.FetchOptions) ([]*node.SubNode, *sublink.FetchMeta, error)
 }

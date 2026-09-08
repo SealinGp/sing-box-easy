@@ -15,10 +15,10 @@ import (
 // (added/updated/deleted all zero regardless of input).
 func TestGetOutboundServerKey_TypedOptions(t *testing.T) {
 	tests := []struct {
-		name        string
-		outbound    Outbound
-		wantKey     string
-		wantServer  string
+		name       string
+		outbound   Outbound
+		wantKey    string
+		wantServer string
 	}{
 		{
 			name: "vmess typed struct (parser output)",

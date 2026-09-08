@@ -1,0 +1,139 @@
+package configversion
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/config/history/repo"
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"go.uber.org/zap"
+	"xorm.io/xorm"
+)
+
+// StoreXORM is the database-backed implementation of config.VersionStore.
+type StoreXORM struct {
+	e *xorm.Engine
+}
+
+// NewStoreXORM creates a new XORM-backed config version store.
+func NewStoreXORM(e *xorm.Engine) *StoreXORM {
+	return &StoreXORM{e: e}
+}
+
+// Init ensures the config_versions table exists.
+func (s *StoreXORM) Init() error {
+	if err := s.e.Sync2(new(repo.ConfigVersion)); err != nil {
+		logger.Error("Failed to sync config_versions table", zap.Error(err))
+		return err
+	}
+	logger.Info("Config version store initialized with XORM")
+	return nil
+}
+
+// Save persists a snapshot and returns its new id.
+func (s *StoreXORM) Save(content []byte) (int64, error) {
+	row := &repo.ConfigVersion{
+		Content: string(content),
+		Size:    len(content),
+	}
+	if _, err := s.e.Insert(row); err != nil {
+		return 0, fmt.Errorf("failed to insert config version: %w", err)
+	}
+	return row.ID, nil
+}
+
+// List returns version metadata (id/size/created_at only), newest first.
+// Content is intentionally excluded so listing never loads every blob.
+func (s *StoreXORM) List() ([]config.VersionInfo, error) {
+	var rows []repo.ConfigVersion
+	if err := s.e.Cols("id", "size", "created_at").Desc("id").Find(&rows); err != nil {
+		return nil, fmt.Errorf("failed to list config versions: %w", err)
+	}
+	out := make([]config.VersionInfo, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, config.VersionInfo{
+			ID:        r.ID,
+			Size:      r.Size,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
+// Get returns the full content of a single version.
+func (s *StoreXORM) Get(id int64) ([]byte, error) {
+	var row repo.ConfigVersion
+	has, err := s.e.ID(id).Get(&row)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config version %d: %w", id, err)
+	}
+	if !has {
+		return nil, fmt.Errorf("config version %d: %w", id, config.ErrVersionNotFound)
+	}
+	return []byte(row.Content), nil
+}
+
+// Delete removes a single version by id. Returns ErrVersionNotFound (wrapped)
+// when no row matched, so callers can map it to a 404.
+func (s *StoreXORM) Delete(id int64) error {
+	affected, err := s.e.ID(id).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return fmt.Errorf("failed to delete config version %d: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("config version %d: %w", id, config.ErrVersionNotFound)
+	}
+	return nil
+}
+
+// DeleteBatch removes multiple versions by id in a single statement and returns
+// the number of rows actually deleted (ids that don't exist are ignored).
+func (s *StoreXORM) DeleteBatch(ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	affected, err := s.e.In("id", ids).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return 0, fmt.Errorf("failed to batch delete config versions: %w", err)
+	}
+	return affected, nil
+}
+
+// DeleteOlderThan removes every version whose created_at is older than maxAge
+// ago, returning the number deleted. Used by the retention cron. A non-positive
+// maxAge is treated as a no-op to avoid accidentally wiping all history.
+func (s *StoreXORM) DeleteOlderThan(maxAge time.Duration) (int64, error) {
+	if maxAge <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().Add(-maxAge)
+	affected, err := s.e.Where("created_at < ?", cutoff).Delete(new(repo.ConfigVersion))
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete config versions older than %s: %w", maxAge, err)
+	}
+	return affected, nil
+}
+
+// Prune deletes the oldest versions beyond `keep`. When keep <= 0 it is a no-op
+// (the manager clamps keep to a sane minimum before calling).
+func (s *StoreXORM) Prune(keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+
+	// Find the id of the newest row that must be kept; delete everything older.
+	var keepRows []repo.ConfigVersion
+	if err := s.e.Cols("id").Desc("id").Limit(1, keep-1).Find(&keepRows); err != nil {
+		return fmt.Errorf("failed to find prune boundary: %w", err)
+	}
+	if len(keepRows) == 0 {
+		return nil // fewer than `keep` rows exist
+	}
+
+	boundaryID := keepRows[0].ID
+	if _, err := s.e.Where("id < ?", boundaryID).Delete(new(repo.ConfigVersion)); err != nil {
+		return fmt.Errorf("failed to prune config versions: %w", err)
+	}
+	return nil
+}

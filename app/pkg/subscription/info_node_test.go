@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/node"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 
 // TestIsInfoLabel covers the second info-node signal: providers that publish
@@ -157,31 +157,6 @@ func TestPartitionNodes(t *testing.T) {
 	}
 }
 
-// TestMarshalUnmarshalInfo verifies the JSON column round-trips, and that
-// empty/invalid encodings decode to nil rather than erroring.
-func TestMarshalUnmarshalInfo(t *testing.T) {
-	in := []SubInfo{{Key: "剩余流量", Value: "4.59 TB"}, {Key: "套餐到期", Value: "2026-10-19"}}
-	encoded, err := marshalInfo(in)
-	if err != nil {
-		t.Fatalf("marshalInfo error: %v", err)
-	}
-	if got := unmarshalInfo(encoded); !reflect.DeepEqual(got, in) {
-		t.Errorf("round-trip = %+v, want %+v", got, in)
-	}
-
-	if got := unmarshalInfo(""); got != nil {
-		t.Errorf("unmarshalInfo(\"\") = %+v, want nil", got)
-	}
-	if got := unmarshalInfo("not json"); got != nil {
-		t.Errorf("unmarshalInfo(invalid) = %+v, want nil", got)
-	}
-
-	// nil marshals to an empty JSON array (clears stale info).
-	if encoded, _ := marshalInfo(nil); encoded != "[]" {
-		t.Errorf("marshalInfo(nil) = %q, want %q", encoded, "[]")
-	}
-}
-
 // TestParseUserinfo verifies the standard Subscription-Userinfo header is turned
 // into human-readable entries, using the real header observed from 白月光.
 func TestParseUserinfo(t *testing.T) {
@@ -301,13 +276,13 @@ func TestIsInfoLabelCustomKeywords(t *testing.T) {
 // TestInfoLabelKeywordsProvider verifies the updater reads the operator's list
 // per refresh (nil provider → defaults).
 func TestInfoLabelKeywordsProvider(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	if got := au.infoLabelKeywords(); !reflect.DeepEqual(got, DefaultInfoLabelKeywords) {
 		t.Errorf("nil provider = %v, want defaults", got)
 	}
 
 	provider := &fakeInfoKeywords{keywords: []string{"Kontingent"}}
-	au = &AutoUpdater{infoKeywords: provider}
+	au = &Service{infoKeywords: provider}
 	if got := au.infoLabelKeywords(); !reflect.DeepEqual(got, []string{"kontingent"}) {
 		t.Errorf("override = %v, want [kontingent]", got)
 	}

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/user"
+	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
@@ -161,19 +161,11 @@ func (h *Handler) UpdateUser(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Security Policy: Non-admins can only update themselves, and cannot change their role
-	if currentUser.Role != "admin" {
-		if currentUser.ID != id {
-			respErr(ctx, c, CodeForbidden, "You can only update your own profile")
-			return
-		}
-		// Clear role change attempt for non-admin
-		req.Role = ""
-	}
-
-	u, err := h.userManager.UpdateUser(id, req.Username, req.Password, req.Role)
+	u, err := user.UpdateAs(h.userManager, currentUser, id, req.Username, req.Password, req.Role)
 	if err != nil {
-		if errors.Is(err, user.ErrUserNotFound) {
+		if isOperationFault(err) {
+			respondOperationError(ctx, c, err)
+		} else if errors.Is(err, user.ErrUserNotFound) {
 			respErr(ctx, c, CodeNotFound, "User not found")
 		} else if errors.Is(err, user.ErrUsernameExists) {
 			respErr(ctx, c, CodeConflict, "Username is already taken")
@@ -203,15 +195,11 @@ func (h *Handler) DeleteUser(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Cannot delete yourself
-	if currentUser.ID == id {
-		respErr(ctx, c, CodeForbidden, "You cannot delete your own account")
-		return
-	}
-
-	err = h.userManager.DeleteUser(id)
+	err = user.DeleteAs(h.userManager, currentUser, id)
 	if err != nil {
-		if errors.Is(err, user.ErrUserNotFound) {
+		if isOperationFault(err) {
+			respondOperationError(ctx, c, err)
+		} else if errors.Is(err, user.ErrUserNotFound) {
 			respErr(ctx, c, CodeNotFound, "User not found")
 		} else if errors.Is(err, user.ErrLastAdminDeletion) {
 			respErr(ctx, c, CodeForbidden, "Cannot delete the last administrator account")

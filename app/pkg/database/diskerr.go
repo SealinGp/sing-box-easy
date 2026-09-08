@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/sysinfo"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 // diskErrorMarkers are the driver strings that a full or read-only filesystem

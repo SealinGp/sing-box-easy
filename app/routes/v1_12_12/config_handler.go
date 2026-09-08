@@ -188,7 +188,7 @@ func (h *Handler) DeleteConfigVersionsBatch(ctx context.Context, c *app.RequestC
 		}
 	}
 
-	deleted, err := h.versionStore.DeleteBatch(req.IDs)
+	deleted, err := h.configManager.DeleteVersions(req.IDs)
 	if err != nil {
 		respErr(ctx, c, CodeInternalError, err.Error())
 		return

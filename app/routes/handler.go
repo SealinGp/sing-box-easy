@@ -2,7 +2,6 @@ package routes
 
 import (
 	"context"
-	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
@@ -20,8 +19,7 @@ func (r *Route) ListNodes(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	lines := strings.Split(reqBody.Lines, "\n")
-	nodes, err := r.sl.ListNodes(lines)
+	nodes, err := r.modules.SubscriptionManager.ImportPreview(ctx, reqBody.Lines)
 	if err != nil {
 		c.JSON(consts.StatusInternalServerError, utils.H{"error": err.Error()})
 		return

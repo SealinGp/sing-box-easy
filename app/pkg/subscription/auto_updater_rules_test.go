@@ -8,7 +8,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/noderules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -79,7 +79,7 @@ func hasTag(obs []config.Outbound, tag string) bool {
 // assigned to Filters (multi-match), the fallback collects leftovers, a Group
 // references its Filters, and a user-authored selector is preserved.
 func TestRebuildNodeRules_AssignsAndBuilds(t *testing.T) {
-	au := &AutoUpdater{nodeRules: &fakeRules{
+	au := &Service{nodeRules: &fakeRules{
 		filters: []*noderules.Filter{
 			{ID: "f_asia", Name: "Asia", Priority: 10, OutboundType: "urltest", Matchers: []noderules.Matcher{
 				{Type: noderules.MatcherCode, Value: "HK"}, {Type: noderules.MatcherCode, Value: "JP"},
@@ -138,7 +138,7 @@ func TestRebuildNodeRules_Idempotent(t *testing.T) {
 			{ID: noderules.FallbackFilterID, Name: noderules.FallbackFilterName, IsFallback: true, Priority: noderules.FallbackPriority, OutboundType: "urltest"},
 		},
 	}
-	au := &AutoUpdater{nodeRules: provider}
+	au := &Service{nodeRules: provider}
 	outbounds := []config.Outbound{ep("🇭🇰 HK-1 | sub_a"), ep("🇭🇰 HK-2 | sub_a"), ep("US | sub_a")}
 
 	first, err := au.rebuildNodeRules(outbounds, "sub_a")
@@ -164,7 +164,7 @@ func TestRebuildNodeRules_Idempotent(t *testing.T) {
 // TestRebuildNodeRules_NilProviderNoop verifies a nil rules provider leaves the
 // outbounds unchanged (legacy path owns additions).
 func TestRebuildNodeRules_NilProviderNoop(t *testing.T) {
-	au := &AutoUpdater{}
+	au := &Service{}
 	outbounds := []config.Outbound{ep("HK-1 | sub_a")}
 	got, err := au.rebuildNodeRules(outbounds, "sub_a")
 	if err != nil {

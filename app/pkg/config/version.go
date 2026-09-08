@@ -191,3 +191,11 @@ func (m *Manager) RollbackToVersion(id int64) error {
 	}
 	return nil
 }
+
+// DeleteVersions deletes a requested set through the configuration module.
+func (m *Manager) DeleteVersions(ids []int64) (int64, error) {
+	if store, ok := m.store.(interface{ DeleteBatch([]int64) (int64, error) }); ok {
+		return store.DeleteBatch(ids)
+	}
+	return 0, fmt.Errorf("config version history is unavailable")
+}

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SealinGp/sing-box-easy/app/bootstrap"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink"
 	v1_12_12 "github.com/SealinGp/sing-box-easy/app/routes/v1_12_12"
 	"github.com/SealinGp/sing-box-easy/app/webui"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -41,12 +41,12 @@ func mustResolve(p string) string {
 }
 
 type Route struct {
-	hz     *server.Hertz
-	sl     *sublink.SubLink
-	config *appconfig.Config
+	hz      *server.Hertz
+	modules *bootstrap.Modules
+	config  *appconfig.Config
 }
 
-func NewRoute(hp string, config *appconfig.Config) *Route {
+func NewRoute(hp string, config *appconfig.Config, modules *bootstrap.Modules) *Route {
 	// Configure Hertz to use zap logger
 	hlog.SetLogger(logger.NewHertzLogger(logger.Logger))
 
@@ -56,8 +56,8 @@ func NewRoute(hp string, config *appconfig.Config) *Route {
 			// Increase max request body size to 100MB for dashboard uploads
 			server.WithMaxRequestBodySize(100*1024*1024), // 100MB
 		),
-		sl:     new(sublink.SubLink),
-		config: config,
+		modules: modules,
+		config:  config,
 	}
 }
 
@@ -70,35 +70,7 @@ func (r *Route) initEndpoints() error {
 	})
 
 	// Register v1.12.12 API routes with configuration
-	v1Handler := v1_12_12.NewHandler(
-		r.config.SingBox.ConfigPath,
-		r.config.SingBox.BinaryPath,
-		r.config.AdminUser,
-		r.config.AdminPass,
-		r.sl,
-		r.config.GitHub,
-		r.config.Server.Auth,
-	)
-
-	// Initialize handler components
-	if err := v1Handler.Init(); err != nil {
-		return err
-	}
-
-	// Start the auto-updater with default cron expression
-	if err := v1Handler.StartAutoUpdater("*/5 * * * *"); err != nil {
-		// Log error but don't fail initialization
-		logger.L.Error("Failed to start auto-updater", zap.Error(err))
-	} else {
-		logger.L.Info("Auto-updater started successfully with 5-minute interval")
-	}
-
-	// Start the config-version retention sweep (deletes versions older than 60 days).
-	if err := v1Handler.StartVersionCleaner(); err != nil {
-		logger.L.Error("Failed to start config version cleaner", zap.Error(err))
-	} else {
-		logger.L.Info("Config version cleaner started (daily, 60-day retention)")
-	}
+	v1Handler := v1_12_12.NewHandler(r.modules)
 
 	v1_12_12.RegisterRoutes(r.hz, v1Handler)
 

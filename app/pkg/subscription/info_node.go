@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/sublink/node"
+	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 
 // Account metadata (traffic left, expiry, reset countdown) reaches us through

@@ -24,7 +24,7 @@ const (
 	KeyProbeMaxPoints     = "probe_max_points"
 )
 
-// Defaults and bounds. These mirror app/pkg/subprobe's own clamps: the prober
+// Defaults and bounds. These mirror app/pkg/subscription/internal/probe's own clamps: the prober
 // re-normalizes whatever it is handed, so a value that slipped past here (a row
 // written by an older build, or edited in the database directly) still cannot
 // make it spin. Duplicated deliberately — this layer is where a BAD value is

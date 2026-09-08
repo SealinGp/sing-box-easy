@@ -46,7 +46,7 @@ func IsOptInMemberType(outboundType string) bool {
 //
 // DEPRECATED / LEGACY: this name heuristic is only used by PruneGroupReferences'
 // addTags path, which is itself a fallback for when the Outbound Node Rules
-// engine (app/pkg/noderules) is not configured. When rules are active (the
+// engine (app/pkg/outbounds/rules) is not configured. When rules are active (the
 // default in production), node placement is owned by the rules engine and this
 // heuristic is never consulted. Kept so direct AutoUpdater usage without a rules
 // provider still degrades gracefully.
@@ -58,7 +58,7 @@ var groupNameMarkers = []string{"分组", "group"}
 // freshly-added subscription nodes into selector/urltest member lists.
 //
 // LEGACY: superseded by the Outbound Node Rules engine (see
-// app/pkg/noderules); retained only for the no-rules fallback path.
+// app/pkg/outbounds/rules); retained only for the no-rules fallback path.
 func IsNodeGroup(tag string) bool {
 	lower := strings.ToLower(tag)
 	for _, marker := range groupNameMarkers {

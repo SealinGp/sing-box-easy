@@ -33,6 +33,7 @@ export class SubscriptionService {
     return response.data
   }
 
+  // Removes the subscription and its imported nodes, then applies the config to sing-box.
   async deleteSubscription(id: string): Promise<BasicResponse<{ message: string; id: string }>> {
     const response = await this.api.delete<BasicResponse<{ message: string; id: string }>>(`/subscriptions/${id}`)
     return response.data

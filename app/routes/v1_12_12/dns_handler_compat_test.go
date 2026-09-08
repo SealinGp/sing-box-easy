@@ -32,7 +32,7 @@ func TestAddDNSRulePreservesNewerActionsAndUnknownConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler := &Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")})
 	requestContext := app.NewContext(0)
 	requestContext.Request.SetBody([]byte(`{"match_response":"first","response_rcode":"NOERROR","action":"respond","race":true}`))
 	handler.AddDNSRule(context.Background(), requestContext)

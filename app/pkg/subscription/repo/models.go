@@ -20,7 +20,7 @@ type Subscription struct {
 	// OfficialURL is the provider's own site, auto-filled from the feed.
 	OfficialURL string `xorm:"'official_url' notnull default('')" json:"official_url"`
 	// ProbeEnabled / ProbeURL drive the availability + latency prober
-	// (app/pkg/subprobe). The default of 1 matters for the migration path:
+	// (app/pkg/subscription/internal/probe). The default of 1 matters for the migration path:
 	// subscriptions that existed before this feature start being measured
 	// rather than staying silently absent from the quality chart.
 	ProbeEnabled bool      `xorm:"'probe_enabled' notnull default(1)" json:"probe_enabled"`
