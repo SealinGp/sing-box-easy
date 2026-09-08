@@ -113,7 +113,7 @@ onMounted(load)
           <Button variant="ghost" size="sm" :disabled="index === 0" :aria-label="t('overview.layout.earlier', { name: t(card.title) })" @click="reorder.nudge(index, -1)">↑</Button>
           <Button variant="ghost" size="sm" :disabled="index === order.length - 1" :aria-label="t('overview.layout.later', { name: t(card.title) })" @click="reorder.nudge(index, 1)">↓</Button>
         </div>
-        <component :is="card.component" />
+        <component :is="card.component" class="overview-card quiet-scrollbar" />
         </div>
       </div>
     </TransitionGroup>
@@ -128,6 +128,11 @@ onMounted(load)
 }
 .overview-grid { isolation: isolate; }
 .overview-tile { min-width: 0; }
+.overview-card {
+  max-height: 32rem;
+  overflow: auto;
+}
+.overview-card.overview-card-frame { overflow: hidden; }
 .overview-tile-surface {
   border-radius: var(--radius-surface);
   transition: transform 180ms ease-out, opacity 180ms ease-out, box-shadow 180ms ease-out;

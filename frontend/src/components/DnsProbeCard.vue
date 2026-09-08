@@ -14,7 +14,7 @@ const DIAGNOSTICS_ROUTE = '/dashboard/dns/diagnostics'
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
+  <div class="overview-card-frame bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
     <div class="flex items-start justify-between gap-3 mb-4">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
         {{ $t('dnsProbe.title') }}
@@ -28,6 +28,8 @@ const DIAGNOSTICS_ROUTE = '/dashboard/dns/diagnostics'
       </RouterLink>
     </div>
 
-    <DnsProbePanel compact />
+    <div class="overview-card-body quiet-scrollbar" tabindex="0" role="region" :aria-label="$t('dnsProbe.title')">
+      <DnsProbePanel compact />
+    </div>
   </div>
 </template>

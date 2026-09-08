@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
+  <div class="overview-card-frame bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
     <!-- Where the body went while it is full-window. -->
     <div v-if="expanded" class="flex items-center justify-between gap-3">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">{{ $t('routeFlow.title') }}</h3>
@@ -382,8 +382,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!--
-      `display: contents` while docked, so the wrapper adds no box to the
-      card; a fixed, viewport-filling column while expanded. Same children in
+      A constrained flex column while docked; a fixed, viewport-filling column
+      while expanded. Same children in
       both cases — see `expanded` in the script for why it moves rather than
       re-renders.
 
@@ -396,8 +396,8 @@ onBeforeUnmount(() => {
       <div
         :class="
           expanded
-            ? 'fixed inset-0 z-40 flex flex-col bg-white dark:bg-slate-900 p-4 sm:p-6 overflow-hidden'
-            : 'contents'
+            ? 'topology-content fixed inset-0 z-40 flex flex-col bg-white dark:bg-slate-900 p-4 sm:p-6 overflow-hidden'
+            : 'topology-content flex flex-col min-h-0'
         "
         :role="expanded ? 'dialog' : undefined"
         :aria-modal="expanded ? 'true' : undefined"
@@ -689,12 +689,13 @@ onBeforeUnmount(() => {
         unreadable. Full-window, the wrapper takes the remaining height and the
         diagram fits it — the whole ladder at once is the point of the mode.
       -->
-      <div :class="expanded ? 'relative flex-1 min-h-0' : 'relative'">
+      <div class="topology-canvas relative flex min-h-0 flex-col" :class="expanded ? 'flex-1' : ''">
         <div
           :ref="zoom.bindViewport"
           tabindex="0"
           :class="[
-            expanded ? 'h-full overflow-auto -mx-1 px-1' : 'overflow-auto max-h-[34rem] -mx-1 px-1',
+            'quiet-scrollbar min-h-0 overflow-auto -mx-1 px-1',
+            expanded ? 'h-full' : '',
             'focus:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 rounded',
             // The gesture is otherwise invisible: the cursor is the only thing
             // that says the held modifier turned the diagram into a canvas.
@@ -860,3 +861,9 @@ onBeforeUnmount(() => {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.topology-content > :not(.topology-canvas) { flex-shrink: 0; }
+/* This wrapper must shrink with the capped card, leaving one canvas scrollport. */
+.overview-card-frame > .topology-content { flex-shrink: 1; }
+</style>

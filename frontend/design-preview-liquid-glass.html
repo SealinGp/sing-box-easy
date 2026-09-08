@@ -1218,6 +1218,16 @@
     .sort-preview-tile strong { display: block; margin-bottom: 0.75rem; }
     .sort-preview-tile button { color: var(--color-primary); }
     @media (max-width: 600px) { .sort-preview { grid-template-columns: 1fr; } }
+    .scrollbar-demo-card { display: flex; flex-direction: column; max-height: 16rem; min-height: 0; }
+    .scrollbar-demo-card > header { flex: none; padding-bottom: .75rem; }
+    .scrollbar-demo-body { min-height: 0; overflow: auto; }
+    .scrollbar-demo-body p { padding: .75rem; margin: 0; border-top: 1px solid var(--color-border); }
+    .quiet-scrollbar { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent) transparent; }
+    @media (hover: hover) {
+      .quiet-scrollbar { scrollbar-color: transparent transparent; }
+      .quiet-scrollbar:hover, .quiet-scrollbar:focus-within { scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent) transparent; }
+    }
+    @media (forced-colors: active) { .quiet-scrollbar { scrollbar-color: auto; } }
   </style>
 </head>
 <body>
@@ -1288,6 +1298,18 @@
       </aside>
 
       <main class="main">
+        <section id="scrollbars" class="grid-2">
+          <article class="liquid-glass card scrollbar-demo-card">
+            <header><strong>Subscriptions · fixed header</strong><p class="card-note">Hover or focus this list to reveal its scrollbar.</p></header>
+            <div class="scrollbar-demo-body quiet-scrollbar" tabindex="0" role="region" aria-label="Scrollable subscription examples">
+              <p>Home · 120 GB remaining</p><p>Office · 85 GB remaining</p><p>Travel · 40 GB remaining</p><p>Backup · 200 GB remaining</p><p>Mobile · 18 GB remaining</p><p>Lab · 60 GB remaining</p><p>End of subscriptions</p>
+            </div>
+          </article>
+          <article class="liquid-glass card scrollbar-demo-card">
+            <header><strong>Short content · no scrollbar</strong><p class="card-note">The same treatment only scrolls when needed.</p></header>
+            <div class="scrollbar-demo-body quiet-scrollbar"><p>All services are up to date.</p></div>
+          </article>
+        </section>
         <!-- ═════════════════ HEADER ═════════════════ -->
         <section class="liquid-glass card">
           <div class="row" style="justify-content: space-between; align-items: flex-start;">

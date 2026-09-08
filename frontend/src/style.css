@@ -13,7 +13,8 @@
 @import 'tailwindcss';
 
 @import './style/tokens.css'; /* design tokens + semantic utilities  */
-@import './style/base.css'; /* document defaults, scrollbars, keyframes */
+@import './style/scrollbars.css'; /* shared scrollbars + card scrollports */
+@import './style/base.css'; /* document defaults, keyframes */
 @import './style/glass.css'; /* liquid-glass surfaces                */
 @import './style/controls.css'; /* inputs, textareas, selects           */
 @import './style/density.css'; /* tables + page shells (unscoped)      */

@@ -36,7 +36,8 @@ dependency).
 | File | Lines | Contains |
 | --- | --- | --- |
 | `style/tokens.css` | 280 | `@theme` tokens + semantic `@utility` definitions. **The source of truth.** |
-| `style/base.css` | 111 | Document defaults, scrollbars, keyframes, reduced-motion |
+| `style/base.css` | 111 | Document defaults, keyframes, reduced-motion |
+| `style/scrollbars.css` | — | Shared quiet scrollbars and card body layout |
 | `style/glass.css` | 119 | `.liquid-app` backdrop, `.liquid-glass`, `.liquid-glass-float` |
 | `style/controls.css` | 150 | Shared input / textarea / select / `.volt-select` surface |
 | `style/density.css` | 137 | `.scroll-region` / `.data-table` / `.page-shell` |
@@ -588,6 +589,26 @@ stock leading, so the change buys no vertical space at all.
   sidebar/topbar swap changes available width without changing viewport width,
   so viewport breakpoints would lay the same page out wrongly on one of them.
 - Responsive from `xs` through `2xl` otherwise.
+
+### Scrollbars and overview card headers
+
+Overview cards cap at **32rem**. Titles and header actions sit outside the
+scrolling body; use a flex column with `min-height: 0` on the body. The topology
+canvas owns its two-axis scrolling, with no second scrolling card around it.
+Keep zoom controls outside the canvas scrollport and preserve full-window mode.
+
+`style/scrollbars.css` owns the shared treatment. Tracks and corners are
+transparent; thumbs are thin, pill-shaped and use the existing secondary text
+color at 55% opacity. `overflow: auto` creates a scrollbar only when content
+exceeds its container. On hover-capable devices the thumb is transparent at
+rest and appears on container hover or keyboard focus within. Touch devices
+retain the browser's native scrolling visibility. Forced-colors mode retains
+native high-contrast colors. No animation or JavaScript is needed.
+
+Use `.quiet-scrollbar` on a scrollport, never on a non-scrolling outer card.
+Do not use `scrollbar-width: none` or change scrollbar width on hover: users
+must still be able to drag the thumb without shifting the layout. The design
+preview includes overflowing and short-content examples with fixed headers.
 
 ### 10.1 Density
 

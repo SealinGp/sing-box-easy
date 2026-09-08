@@ -425,7 +425,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
+  <div class="overview-card-frame bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
     <div class="flex items-center justify-between gap-3 mb-3">
       <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
         {{ $t('overview.subscriptions.title') }}
@@ -470,6 +470,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
       </div>
     </div>
 
+    <div class="overview-card-body quiet-scrollbar" tabindex="0" role="region" :aria-label="$t('overview.subscriptions.title')">
     <div v-if="loading" class="flex items-center justify-center py-6">
       <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
     </div>
@@ -789,6 +790,8 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
           </Transition>
         </li>
       </ul>
+    </div>
+
     </div>
 
     <!-- Quality history + latest per-node detail, shared with the

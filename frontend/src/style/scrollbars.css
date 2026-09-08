@@ -1,0 +1,35 @@
+/* Native scrolling, shared theme colors, no opaque track inside glass. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent) transparent;
+}
+/* Fallback for engines without the standard scrollbar properties. */
+@supports not (scrollbar-width: thin) {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-text-secondary) 55%, transparent);
+    border-radius: var(--radius-pill);
+  }
+}
+@media (hover: hover) {
+  .quiet-scrollbar { scrollbar-color: transparent transparent; }
+  .quiet-scrollbar:hover, .quiet-scrollbar:focus-within {
+    scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent) transparent;
+  }
+  @supports not (scrollbar-width: thin) {
+    .quiet-scrollbar::-webkit-scrollbar-thumb { background: transparent; }
+    .quiet-scrollbar:hover::-webkit-scrollbar-thumb,
+    .quiet-scrollbar:focus-within::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--color-text-secondary) 55%, transparent);
+    }
+  }
+}
+@media (forced-colors: active) {
+  *, .quiet-scrollbar, .quiet-scrollbar:hover, .quiet-scrollbar:focus-within { scrollbar-color: auto; }
+}
+
+/* A capped card's header stays in normal flow above its scrollport. */
+.overview-card-frame { display: flex; flex-direction: column; min-height: 0; }
+.overview-card-frame > :not(.overview-card-body) { flex-shrink: 0; }
+.overview-card-body { min-height: 0; overflow: auto; }

@@ -1,5 +1,5 @@
 /*
- * Base layer — document defaults, scrollbars, and keyframes.
+ * Base layer — document defaults and keyframes.
  * No component or theme rules belong here.
  */
 
@@ -16,37 +16,6 @@ body {
    * changing a single utility class.
    */
   line-height: 1.45;
-}
-
-/* ── Scrollbars ──────────────────────────────────────────────────────── */
-
-/*
- * 6px, not 8px. Tables now scroll inside their own container, so scrollbars
- * appear nested inside cards rather than only at the page edge — at 8px that
- * reads as furniture inside the content.
- */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-bg-tertiary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border-dark);
-  border-radius: var(--radius-xs);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
-}
-
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-tertiary);
-  }
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────────── */
