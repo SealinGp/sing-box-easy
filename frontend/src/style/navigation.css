@@ -116,10 +116,9 @@
   background:var(--color-bg-tertiary);
 }
 .nav-destination.selected {
-  background:var(--nav-active);
+  background:transparent;
   color:var(--nav-active-ink);
   font-weight:600;
-  box-shadow:inset 3px 0 0 var(--color-primary);
 }
 .nav-destination span {
   overflow-wrap:anywhere;
@@ -249,7 +248,7 @@
 }
 .topbar-groups button.selected {
   color:var(--nav-active-ink);
-  border-bottom-color:var(--color-primary);
+  border-bottom-color:transparent;
 }
 .group-current-dot {
   width:4px;
@@ -272,7 +271,37 @@
 }
 .topbar-destinations .nav-destination.selected {
   box-shadow:none;
-  border-color:color-mix(in srgb,var(--color-primary) 18%,transparent);
+  border-color:transparent;
+}
+/* One persistent highlight moves between entries instead of switching backgrounds. */
+.sidebar-groups,.topbar-groups,.topbar-destinations,.tab-navigation {
+  position:relative;
+  isolation:isolate;
+}
+.nav-active-indicator {
+  position:absolute;
+  top:0;
+  left:0;
+  z-index:-1;
+  margin:0;
+  pointer-events:none;
+  opacity:0;
+  border-radius:6px;
+  background:var(--nav-active);
+}
+.nav-active-indicator.is-animated {
+  transition:transform .28s cubic-bezier(.22,1,.36,1),width .28s cubic-bezier(.22,1,.36,1),height .28s cubic-bezier(.22,1,.36,1),opacity .15s ease;
+}
+.sidebar-active-indicator {
+  box-shadow:inset 3px 0 0 var(--color-primary);
+}
+.topbar-active-indicator {
+  border:1px solid color-mix(in srgb,var(--color-primary) 18%,transparent);
+}
+.topbar-group-indicator,.tab-active-indicator {
+  background:transparent;
+  border-radius:0;
+  border-bottom:2px solid var(--color-primary);
 }
 .nav-skip-link {
   position:fixed;
@@ -416,7 +445,7 @@
   }
 }
 @media (prefers-reduced-motion:reduce) {
-  .nav-destination {
+  .nav-destination,.nav-active-indicator.is-animated {
     transition:none;
   }
 }

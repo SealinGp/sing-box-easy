@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useNavIndicator } from '../composables/useNavIndicator'
 import { useRoute } from 'vue-router'
 
 interface Tab {
@@ -6,11 +8,17 @@ interface Tab {
   label: string
 }
 
-defineProps<{
+const props = defineProps<{
   tabs: Tab[]
 }>()
 
 const route = useRoute()
+const nav = ref<HTMLElement | null>(null)
+const indicator = ref<HTMLElement | null>(null)
+const { measure } = useNavIndicator({
+  scroller: nav, content: nav, indicator, selector: '[aria-current="page"]',
+})
+watch([() => route.path, () => props.tabs], measure, { deep: true, flush: 'post' })
 
 // Check if a tab is active based on current route
 const isActiveTab = (path: string) => {
@@ -21,8 +29,7 @@ const isActiveTab = (path: string) => {
 <template>
   <!--
     `page-shell` (style/density.css) is the gutter for every tabbed section —
-    Outbounds, DNS, Route and Experimental all render through here, so this one
-    element sets the page padding for 12 views. It was `p-8`.
+    DNS, Route and Experimental render through here.
 
     `pt-3` trims the top gutter to 12px for tabbed pages only, which lines the
     tab strip up with the top edge of the sidebar / top bar card (both `m-3`).
@@ -41,15 +48,17 @@ const isActiveTab = (path: string) => {
       gap.
     -->
     <div class="border-b border-gray-200 dark:border-gray-700">
-      <nav class="-mb-px flex space-x-4">
+      <nav ref="nav" class="tab-navigation -mb-px flex gap-4 overflow-x-auto">
+        <span ref="indicator" class="nav-active-indicator tab-active-indicator" aria-hidden="true" />
         <RouterLink
           v-for="tab in tabs"
           :key="tab.path"
           :to="tab.path"
+          :aria-current="isActiveTab(tab.path) ? 'page' : undefined"
           :class="[
-            'py-1 px-0.5 border-b-2 font-medium text-sm transition-colors',
+            'shrink-0 whitespace-nowrap py-1 px-0.5 border-b-2 border-transparent font-medium text-sm transition-colors',
             isActiveTab(tab.path)
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              ? 'text-primary-600 dark:text-primary-400'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
           ]"
         >

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { useNavIndicator } from '../composables/useNavIndicator'
 import { useRoute } from 'vue-router'
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import type { MenuGroup } from '../navigation/menu'
@@ -17,7 +18,20 @@ watch([() => route.path, selected], async () => {
   await nextTick()
   destinations.value?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }, { flush: 'post' })
-const destinations = ref<HTMLElement>()
+const destinations = ref<HTMLElement | null>(null)
+const groups = ref<HTMLElement | null>(null)
+const groupIndicator = ref<HTMLElement | null>(null)
+const destinationIndicator = ref<HTMLElement | null>(null)
+const { measure: measureGroups } = useNavIndicator({
+  scroller: groups, content: groups, indicator: groupIndicator, selector: '[aria-pressed="true"]',
+})
+const { measure: measureDestinations } = useNavIndicator({
+  scroller: destinations, content: destinations, indicator: destinationIndicator, selector: '[aria-current="page"]',
+})
+watch([() => route.path, selected, () => props.menuItems], () => {
+  measureGroups()
+  measureDestinations()
+}, { deep: true, flush: 'post' })
 const currentGroup = computed(() => props.menuItems.find(group => group.id === selected.value))
 </script>
 
@@ -35,12 +49,14 @@ const currentGroup = computed(() => props.menuItems.find(group => group.id === s
       </div>
     </div>
     <nav :aria-label="$t('nav.navigation')">
-      <div class="topbar-groups">
+      <div ref="groups" class="topbar-groups">
+        <span ref="groupIndicator" class="nav-active-indicator topbar-group-indicator" aria-hidden="true" />
         <button v-for="group in menuItems" :key="group.id" @click="selected = group.id" :aria-pressed="selected === group.id" aria-controls="topbar-destinations" :class="{ selected: selected === group.id }">
           {{ group.name }}<span v-if="group.items.some(item => isMenuActive(item.path, route.path))" class="group-current-dot" aria-hidden="true" />
         </button>
       </div>
       <ul id="topbar-destinations" ref="destinations" class="topbar-destinations" :aria-label="currentGroup?.name">
+        <li ref="destinationIndicator" class="nav-active-indicator topbar-active-indicator" aria-hidden="true" role="presentation" />
         <li v-for="item in currentGroup?.items" :key="item.path">
           <router-link :to="item.path" class="nav-destination" :class="{ selected: isMenuActive(item.path, route.path) }" :aria-current="isMenuActive(item.path, route.path) ? 'page' : undefined">
             <component :is="item.icon" class="h-4 w-4 shrink-0" /><span>{{ item.name }}</span>

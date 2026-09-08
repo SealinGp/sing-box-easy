@@ -1,12 +1,20 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useNavIndicator } from '../composables/useNavIndicator'
 import { useRoute } from 'vue-router'
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import type { MenuGroup } from '../navigation/menu'
 import { isMenuActive } from '../navigation/menu'
 import NavUtilities from './NavUtilities.vue'
-defineProps<{ menuItems: MenuGroup[] }>()
+const props = defineProps<{ menuItems: MenuGroup[] }>()
 defineEmits<{ search: [] }>()
 const route = useRoute()
+const groups = ref<HTMLElement | null>(null)
+const indicator = ref<HTMLElement | null>(null)
+const { measure } = useNavIndicator({
+  scroller: groups, content: groups, indicator, selector: '[aria-current="page"]',
+})
+watch([() => route.path, () => props.menuItems], measure, { deep: true, flush: 'post' })
 </script>
 
 <template>
@@ -19,7 +27,8 @@ const route = useRoute()
       <MagnifyingGlassIcon class="h-4 w-4 shrink-0" />
       <span>{{ $t('nav.search') }}</span><kbd>⌘ / Ctrl K</kbd>
     </button>
-    <nav class="sidebar-groups" :aria-label="$t('nav.navigation')">
+    <nav ref="groups" class="sidebar-groups" :aria-label="$t('nav.navigation')">
+      <span ref="indicator" class="nav-active-indicator sidebar-active-indicator" aria-hidden="true" />
       <section v-for="group in menuItems" :key="group.id" :aria-labelledby="'sidebar-' + group.id">
         <h2 :id="'sidebar-' + group.id" class="nav-group-label">{{ group.name }}</h2>
         <ul>

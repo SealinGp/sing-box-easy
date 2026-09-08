@@ -427,8 +427,14 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 <template>
   <div class="overview-card-frame bg-white dark:bg-slate-800 p-4 rounded-surface shadow-surface">
     <div class="flex items-center justify-between gap-3 mb-3">
-      <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
-        {{ $t('overview.subscriptions.title') }}
+      <h3 class="flex min-w-0 items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
+        <span>{{ $t('overview.subscriptions.title') }}</span>
+        <span
+          v-if="loaded"
+          class="inline-flex min-w-5 shrink-0 items-center justify-center rounded-pill bg-gray-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+        >
+          {{ formatCount(subscriptions.length) }}
+        </span>
       </h3>
       <div class="flex items-center gap-1 flex-shrink-0">
         <!--
@@ -498,16 +504,6 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
     </div>
 
     <div v-else class="space-y-4">
-      <!-- Headline counts -->
-      <div class="flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ formatCount(rows.length) }}
-        </span>
-        <span class="text-sm text-gray-500 dark:text-gray-400">
-          {{ $t('overview.subscriptions.count', rows.length) }}
-        </span>
-      </div>
-
       <!-- Per-subscription plan detail -->
       <ul class="space-y-3">
         <!--
@@ -619,113 +615,130 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
             </span>
           </div>
 
-          <!-- Quota bar, only when both Used and Total were reported -->
+          <!-- Quota details appear on hover or keyboard focus. -->
           <div v-if="row.plan.usedRatio !== null" class="mt-2">
-            <div class="flex items-center justify-between text-xs mb-1">
-              <span class="text-gray-500 dark:text-gray-400">
-                {{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}
-              </span>
-              <span class="font-mono text-gray-500 dark:text-gray-400">
-                {{ usagePercent(row.plan.usedRatio) }}%
-              </span>
-            </div>
-            <div
-              class="h-1.5 w-full rounded-pill bg-gray-200 dark:bg-gray-700 overflow-hidden"
-              role="progressbar"
-              :aria-valuenow="usagePercent(row.plan.usedRatio)"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              :aria-label="$t('overview.subscriptions.usageLabel', { name: row.name })"
-            >
+            <div class="group/quota relative">
               <div
-                class="h-full rounded-pill transition-all duration-300"
-                :class="usageBarClass(row.plan.usedRatio)"
-                :style="{ width: `${usagePercent(row.plan.usedRatio)}%` }"
-              ></div>
+                class="relative w-full cursor-default overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                role="progressbar"
+                tabindex="0"
+                :aria-valuenow="usagePercent(row.plan.usedRatio)"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-label="$t('overview.subscriptions.usageLabel', { name: row.name })"
+                :aria-describedby="`quota-details-${row.id}`"
+              >
+                <div
+                  class="quota-fill absolute inset-y-0 left-0 overflow-hidden opacity-25 transition-[width] duration-300 dark:opacity-35"
+                  :class="usageBarClass(row.plan.usedRatio)"
+                  :style="{ width: `${usagePercent(row.plan.usedRatio)}%` }"
+                  aria-hidden="true"
+                ></div>
+                <div class="relative flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-2 py-1 text-xs font-medium tabular-nums text-gray-900 dark:text-gray-100">
+                  <span>{{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}</span>
+                  <span class="ml-auto">{{ usagePercent(row.plan.usedRatio) }}%</span>
+                </div>
+              </div>
+              <div
+                :id="`quota-details-${row.id}`"
+                role="tooltip"
+                class="pointer-events-none absolute bottom-full left-0 z-20 w-max max-w-full rounded-md bg-gray-900/95 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-100 group-hover/quota:opacity-100 group-focus-within/quota:opacity-100 dark:bg-gray-700"
+              >
+                <p v-if="row.plan.usedLabel">
+                  {{ $t('overview.subscriptions.used') }}:
+                  <span class="font-medium">{{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}</span>
+                </p>
+                <p v-if="row.plan.remainingLabel">
+                  {{ $t('overview.subscriptions.remaining') }}:
+                  <span class="font-medium">{{ row.plan.remainingLabel }}</span>
+                </p>
+              </div>
             </div>
-            <p v-if="row.plan.remainingLabel" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ $t('overview.subscriptions.remaining') }}:
-              <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.remainingLabel }}</span>
-            </p>
           </div>
 
-          <!--
-            Quota reported without a usable total (e.g. unlimited plans, which
-            send total=0): show the figures we do have, without a bar.
-          -->
-          <p
-            v-else-if="row.plan.usedLabel || row.plan.remainingLabel"
-            class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+          <div
+            v-if="row.probe || (row.plan.usedRatio === null && (row.plan.usedLabel || row.plan.remainingLabel))"
+            class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2"
           >
-            <span v-if="row.plan.usedLabel">
-              {{ $t('overview.subscriptions.used') }}:
-              <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.usedLabel }}</span>
-            </span>
-            <span v-if="row.plan.usedLabel && row.plan.remainingLabel"> · </span>
-            <span v-if="row.plan.remainingLabel">
-              {{ $t('overview.subscriptions.remaining') }}:
-              <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.remainingLabel }}</span>
-            </span>
-          </p>
+            <!--
+              Node quality: how much of this feed actually works right now. It
+              sits with quota and expiry because it answers the other half of
+              "should I renew this" — a subscription with plenty of traffic left
+              and 0% reachable nodes is worth nothing.
 
-          <!--
-            Node quality: how much of this feed actually works right now. It
-            sits with quota and expiry because it answers the other half of
-            "should I renew this" — a subscription with plenty of traffic left
-            and 0% reachable nodes is worth nothing.
+              Rendered only when a measurement exists: a deployment without
+              clash_api never probes, and an empty placeholder on every row would
+              be noise about a feature that deployment does not have.
+            -->
+            <p v-if="row.probe" class="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <!-- Labelled, because this row can sit directly under a quota
+                   percentage and two bare percentages would be ambiguous. -->
+              <span>{{ $t('subProbe.column') }}:</span>
+              <SegmentedProgress
+                :percent="100"
+                :steps="5"
+                :stroke-color="qualityStepColors(row.probe.reachable, row.probe.total)"
+                size="xs"
+                :aria-label="
+                  $t('subProbe.nodesTested', {
+                    reachable: row.probe.reachable,
+                    total: row.probe.total,
+                  })
+                "
+              />
+              <span>
+                <span class="font-medium" :class="probeToneClass(row.probe)">
+                  {{ formatAvailability(row.probe) }}
+                </span>
+                <span class="text-gray-400 dark:text-gray-500">
+                  ({{ row.probe.reachable }}/{{ row.probe.total }})
+                </span>
+                <span v-if="row.probe.reachable > 0">
+                  · {{ formatLatency(row.probe.avg_ms) }}
+                </span>
+              </span>
 
-            Rendered only when a measurement exists: a deployment without
-            clash_api never probes, and an empty placeholder on every row would
-            be noise about a feature that deployment does not have.
-          -->
-          <p v-if="row.probe" class="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-            <!-- Labelled, because this row can sit directly under a quota
-                 percentage and two bare percentages would be ambiguous. -->
-            <span>{{ $t('subProbe.column') }}:</span>
-            <SegmentedProgress
-              :percent="100"
-              :steps="5"
-              :stroke-color="qualityStepColors(row.probe.reachable, row.probe.total)"
-              size="xs"
-              :aria-label="
-                $t('subProbe.nodesTested', {
-                  reachable: row.probe.reachable,
-                  total: row.probe.total,
-                })
-              "
-            />
-            <span>
-              <span class="font-medium" :class="probeToneClass(row.probe)">
-                {{ formatAvailability(row.probe) }}
-              </span>
-              <span class="text-gray-400 dark:text-gray-500">
-                ({{ row.probe.reachable }}/{{ row.probe.total }})
-              </span>
-              <span v-if="row.probe.reachable > 0">
-                · {{ formatLatency(row.probe.avg_ms) }}
-              </span>
-            </span>
+              <!--
+                Opens the trend. Hidden until the row is hovered, exactly like the
+                row's update button above: this card is a summary first, and four
+                subscriptions must not read as eight buttons.
+
+                It reuses that button's three-state reveal rather than inventing
+                one — `group-focus-within` so it is reachable by keyboard, and
+                always visible below `sm` where no hover exists at all. Anything
+                narrower would be a control only a mouse user could find.
+              -->
+              <button
+                type="button"
+                class="cursor-pointer shrink-0 rounded p-0.5 text-gray-400 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                :title="$t('subProbe.openDetail', { name: row.name })"
+                :aria-label="$t('subProbe.openDetail', { name: row.name })"
+                @click="openQuality(row.id)"
+              >
+                <ChartBarIcon class="h-3.5 w-3.5" />
+              </button>
+            </p>
 
             <!--
-              Opens the trend. Hidden until the row is hovered, exactly like the
-              row's update button above: this card is a summary first, and four
-              subscriptions must not read as eight buttons.
-
-              It reuses that button's three-state reveal rather than inventing
-              one — `group-focus-within` so it is reachable by keyboard, and
-              always visible below `sm` where no hover exists at all. Anything
-              narrower would be a control only a mouse user could find.
+              Quota reported without a usable total (e.g. unlimited plans, which
+              send total=0): show the figures we do have, without a bar.
             -->
-            <button
-              type="button"
-              class="cursor-pointer shrink-0 rounded p-0.5 text-gray-400 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-              :title="$t('subProbe.openDetail', { name: row.name })"
-              :aria-label="$t('subProbe.openDetail', { name: row.name })"
-              @click="openQuality(row.id)"
+            <p
+              v-if="row.plan.usedRatio === null && (row.plan.usedLabel || row.plan.remainingLabel)"
+              class="text-xs text-gray-500 dark:text-gray-400"
             >
-              <ChartBarIcon class="h-3.5 w-3.5" />
-            </button>
-          </p>
+              <span v-if="row.plan.usedLabel">
+                {{ $t('overview.subscriptions.used') }}:
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.usedLabel }}</span>
+              </span>
+              <span v-if="row.plan.usedLabel && row.plan.remainingLabel"> · </span>
+              <span v-if="row.plan.remainingLabel">
+                {{ $t('overview.subscriptions.remaining') }}:
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.remainingLabel }}</span>
+              </span>
+            </p>
+
+          </div>
 
           <!--
             Provider-defined entries, shown verbatim: their keys are arbitrary
@@ -799,3 +812,23 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
     <SubscriptionQualityDialog v-model="showQuality" :subscription="qualitySubscription" />
   </div>
 </template>
+
+<style scoped>
+.quota-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0 -32px 0 0;
+  background: repeating-linear-gradient(135deg, transparent 0 11.3137px, rgb(255 255 255 / 45%) 11.3137px 22.6274px);
+  animation: quota-flow 1.8s linear infinite;
+}
+
+@keyframes quota-flow {
+  from { transform: translateX(-32px); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quota-fill { transition: none; }
+  .quota-fill::after { animation: none; }
+}
+</style>
