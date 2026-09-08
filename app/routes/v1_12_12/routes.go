@@ -23,6 +23,8 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth := v1.Group("", AuthMiddleware(handler.userManager, handler.authEnabled))
 	auth.POST("/user/logout", handler.Logout)
 	auth.GET("/user/me", handler.GetMe)
+	auth.GET("/user/me/preferences", handler.GetPreferences)
+	auth.PUT("/user/me/preferences", handler.UpdatePreferences)
 	auth.PUT("/users/:id", handler.UpdateUser) // Handled inside to allow self-update
 
 	// Admin-only APIs Group

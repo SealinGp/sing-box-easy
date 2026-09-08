@@ -1,4 +1,5 @@
-import { computed, ref, shallowRef, type Ref } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, type Ref } from 'vue'
+import { startDragAutoScroll } from '../utils/dragAutoScroll'
 
 /**
  * Drag-to-reorder for an index-addressed list, shared by the route rules
@@ -77,7 +78,12 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
   /** Has the session actually moved anything? Drives the Save/Done label. */
   const dirty = computed(() => !!sessionOrder.value && !isIdentity(sessionOrder.value))
 
+  let stopAutoScroll: (() => void) | undefined
+  if (getCurrentScope()) onScopeDispose(clearDrag)
+
   function clearDrag() {
+    stopAutoScroll?.()
+    stopAutoScroll = undefined
     dragPos.value = null
     armedIndex.value = null
   }
@@ -194,6 +200,9 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     event.dataTransfer?.setData('text/plain', String(index))
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
     dragPos.value = index
+    stopAutoScroll?.()
+    const source = event.currentTarget as HTMLElement | null
+    if (source?.ownerDocument) stopAutoScroll = startDragAutoScroll(source)
   }
 
   /**
@@ -210,8 +219,14 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     const from = dragPos.value
     if (from === null) return
 
-    const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    const after = event.clientY >= box.top + box.height / 2
+    const row = event.currentTarget as HTMLElement
+    const box = row.getBoundingClientRect()
+    // TransitionGroup translates a card from its previous slot. Hit testing
+    // follows its destination, so moving neighbours cannot oscillate the order.
+    const transform = row.ownerDocument?.defaultView?.getComputedStyle(row).transform
+    const translateY = transform && transform !== 'none' && typeof DOMMatrixReadOnly !== 'undefined'
+      ? new DOMMatrixReadOnly(transform).m42 : 0
+    const after = event.clientY >= box.top - translateY + box.height / 2
 
     // `insertAt` is a slot in the pre-move list; removing the row first shifts
     // every later slot down by one, hence the decrement.
@@ -270,7 +285,10 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
       // The list has been sorting itself on dragover, so the row is already
       // where it belongs. This only cancels the browser default, which would
       // try to navigate to the drag payload.
-      onDrop: (event: DragEvent) => event.preventDefault(),
+      onDrop: (event: DragEvent) => {
+        event.preventDefault()
+        clearDrag()
+      },
       onDragend: onDragEnd,
     }
   }
@@ -300,6 +318,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     keyAt,
     rowAttrs,
     handleAttrs,
+    nudge,
   }
 }
 

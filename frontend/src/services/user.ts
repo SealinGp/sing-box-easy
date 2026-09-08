@@ -1,6 +1,10 @@
 import { ApiService } from './api'
 import type { User, LoginResponse, AuthStatus, BasicResponse } from '../types/api'
 
+export interface UserPreferences {
+  overview_order: string[]
+}
+
 export class UserService {
   private api: ApiService
 
@@ -30,6 +34,16 @@ export class UserService {
 
   async getMe(): Promise<User> {
     const { data } = await this.api.get<BasicResponse<User>>('/user/me')
+    return data.data
+  }
+
+  async getPreferences(): Promise<UserPreferences> {
+    const { data } = await this.api.get<BasicResponse<UserPreferences>>('/user/me/preferences')
+    return data.data
+  }
+
+  async updatePreferences(preferences: UserPreferences): Promise<UserPreferences> {
+    const { data } = await this.api.put<BasicResponse<UserPreferences>>('/user/me/preferences', preferences)
     return data.data
   }
 

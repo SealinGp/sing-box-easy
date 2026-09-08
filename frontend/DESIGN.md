@@ -497,6 +497,22 @@ on ~5rem of content and read as a stutter), and **220ms** for the select panel.
 
 ## 8. Motion
 
+### Overview arrangement
+
+Overview uses Vue's built-in `TransitionGroup` with stable card IDs. Cards slide
+between grid slots over **280ms**, using `cubic-bezier(0.22, 1, 0.36, 1)` to settle
+quickly and gently. No animation dependency is needed in `package.json`.
+The outer tile owns the positional transform; an inner surface owns the **180ms**
+drag feedback (98.5% scale, 65% opacity, float shadow and primary outline).
+Keeping these transforms separate preserves grid movement and mounted card state.
+The handle wiggles twice on entering arrange mode to identify the grab point;
+large charts never continuously shake. A sticky toolbar uses float-tier glass
+because content scrolls beneath it. Existing edge scrolling remains active.
+Reduced motion removes sliding, scaling, and handle animation; the outline and
+opacity still identify the card being moved. Keyboard and move-button changes,
+Cancel, and Reset use the same positional transition as dragging.
+
+
 | Where | Duration | Easing |
 | --- | --- | --- |
 | Nav pill slide | 320ms | `cubic-bezier(.32,.72,0,1)` |

@@ -4,12 +4,13 @@ import "time"
 
 // User represents a user in the system
 type User struct {
-	ID           int64     `xorm:"pk autoincr 'id'" json:"id"`
-	Username     string    `xorm:"unique notnull 'username'" json:"username"`
-	PasswordHash string    `xorm:"notnull 'password_hash'" json:"-"` // Hidden from JSON responses
-	Role         string    `xorm:"notnull default('viewer') 'role'" json:"role"` // "admin" or "viewer"
-	CreatedAt    time.Time `xorm:"created 'created_at'" json:"created_at"`
-	UpdatedAt    time.Time `xorm:"updated 'updated_at'" json:"updated_at"`
+	OverviewOrder string    `xorm:"TEXT 'overview_order'" json:"-"`
+	ID            int64     `xorm:"pk autoincr 'id'" json:"id"`
+	Username      string    `xorm:"unique notnull 'username'" json:"username"`
+	PasswordHash  string    `xorm:"notnull 'password_hash'" json:"-"`             // Hidden from JSON responses
+	Role          string    `xorm:"notnull default('viewer') 'role'" json:"role"` // "admin" or "viewer"
+	CreatedAt     time.Time `xorm:"created 'created_at'" json:"created_at"`
+	UpdatedAt     time.Time `xorm:"updated 'updated_at'" json:"updated_at"`
 }
 
 // TableName specifies the table name for User

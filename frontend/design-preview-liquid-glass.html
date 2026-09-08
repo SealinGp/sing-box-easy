@@ -1211,6 +1211,13 @@
     .density-note b { display: block; color: var(--color-text-primary); font-weight: 600; }
     .density-note s { opacity: 0.55; }
 
+
+    /* Overview sorting: same 280ms settling curve as Vue TransitionGroup. */
+    .sort-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .sort-preview-tile { padding: 1rem; border-radius: var(--radius-surface); background: var(--glass-bg); border: 1px solid var(--glass-border-muted); }
+    .sort-preview-tile strong { display: block; margin-bottom: 0.75rem; }
+    .sort-preview-tile button { color: var(--color-primary); }
+    @media (max-width: 600px) { .sort-preview { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -1933,6 +1940,16 @@
           </div>
         </section>
 
+        <section class="liquid-glass card">
+          <h3 class="card-title">Overview — slide to sort</h3>
+          <p class="card-note">Move a tile to watch its neighbours slide into place. The dashboard uses the same 280ms settling curve for dragging, keyboard moves, reset and cancel. Reduced motion skips the slide.</p>
+          <div class="sort-preview" id="sort-preview">
+            <div class="sort-preview-tile"><strong>Flow topology</strong><button class="btn secondary sm" type="button">Move to end →</button></div>
+            <div class="sort-preview-tile"><strong>Service status</strong><button class="btn secondary sm" type="button">Move to end →</button></div>
+            <div class="sort-preview-tile"><strong>Subscriptions</strong><button class="btn secondary sm" type="button">Move to end →</button></div>
+          </div>
+        </section>
+
         <!-- ═════════════════ RULES ═════════════════ -->
         <section class="liquid-glass card">
           <h3 class="card-title">If you are adding UI</h3>
@@ -1990,5 +2007,25 @@
       </main>
     </div>
   </div>
+<script>
+  // Dependency-free motion sample; production uses Vue TransitionGroup.
+  const sortPreview = document.getElementById('sort-preview');
+  sortPreview.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    const tiles = [...sortPreview.children];
+    tiles.forEach(tile => tile.getAnimations().forEach(animation => animation.finish()));
+    const before = new Map(tiles.map(tile => [tile, tile.getBoundingClientRect()]));
+    sortPreview.append(button.closest('.sort-preview-tile'));
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    tiles.forEach(tile => {
+      const old = before.get(tile), next = tile.getBoundingClientRect();
+      tile.animate([
+        { transform: `translate(${old.left - next.left}px, ${old.top - next.top}px)` },
+        { transform: 'translate(0, 0)' }
+      ], { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    });
+  });
+</script>
 </body>
 </html>

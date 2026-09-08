@@ -1,5 +1,18 @@
 // Dashboard Overview page (Overview.vue).
 export default {
+  layout: {
+    retry: 'Retry',
+    customize: 'Arrange cards',
+    hint: 'Drag a handle or use the move buttons. Save to keep your layout.',
+    local: 'Without login, this layout is saved in this browser.',
+    reset: 'Reset order',
+    earlier: 'Move {name} earlier',
+    later: 'Move {name} later',
+    handle: 'Drag {name}; use arrow keys to move',
+    loadError: 'Could not load your layout.',
+    saveError: 'Could not save your layout.',
+    saved: 'Layout saved.',
+  },
   title: 'Dashboard Overview',
   serviceStatus: 'Service Status',
   pid: 'PID',

@@ -223,3 +223,41 @@ func (h *Handler) DeleteUser(ctx context.Context, c *app.RequestContext) {
 
 	respOK(ctx, c, map[string]any{"message": "User deleted successfully"})
 }
+
+// Preferences belong to the authenticated account, including viewers.
+func (h *Handler) GetPreferences(ctx context.Context, c *app.RequestContext) {
+	u, ok := GetCurrentUser(c)
+	if !ok || u.ID == 0 {
+		respErr(ctx, c, CodeUnauthorized, "A signed-in account is required")
+		return
+	}
+	preferences, err := h.userManager.GetPreferences(u.ID)
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, "Failed to load preferences")
+		return
+	}
+	respOK(ctx, c, preferences)
+}
+
+func (h *Handler) UpdatePreferences(ctx context.Context, c *app.RequestContext) {
+	u, ok := GetCurrentUser(c)
+	if !ok || u.ID == 0 {
+		respErr(ctx, c, CodeUnauthorized, "A signed-in account is required")
+		return
+	}
+	var req user.Preferences
+	if err := c.BindJSON(&req); err != nil || req.OverviewOrder == nil {
+		respErr(ctx, c, CodeBadRequest, "overview_order must be an array of card IDs")
+		return
+	}
+	preferences, err := h.userManager.UpdatePreferences(u.ID, req)
+	if errors.Is(err, user.ErrInvalidPreferences) {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		respErr(ctx, c, CodeInternalError, "Failed to save preferences")
+		return
+	}
+	respOK(ctx, c, preferences)
+}

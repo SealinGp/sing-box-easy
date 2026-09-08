@@ -1,5 +1,18 @@
 // 仪表盘概览页（Overview.vue）。
 export default {
+  layout: {
+    retry: '重试',
+    customize: '排列卡片',
+    hint: '拖动手柄或使用移动按钮，保存后保留此布局。',
+    local: '未启用登录时，布局仅保存在当前浏览器。',
+    reset: '恢复默认顺序',
+    earlier: '将{name}前移',
+    later: '将{name}后移',
+    handle: '拖动{name}；也可使用方向键移动',
+    loadError: '无法加载布局。',
+    saveError: '无法保存布局。',
+    saved: '布局已保存。',
+  },
   title: '仪表盘概览',
   serviceStatus: '服务状态',
   pid: 'PID',

@@ -36,6 +36,8 @@ type UserManager interface {
 	DeleteUser(id int64) error
 	GetUserByID(id int64) (*repo.User, error)
 	ListUsers() ([]repo.User, error)
+	GetPreferences(id int64) (*Preferences, error)
+	UpdatePreferences(id int64, preferences Preferences) (*Preferences, error)
 }
 
 // ManagerXORM implements UserManager using XORM and SQLite
@@ -77,7 +79,7 @@ func (m *ManagerXORM) seedDefaultAdmin() error {
 
 	if count == 0 {
 		logger.Warn("No users found in database. Seeding default administrator account.")
-		
+
 		adminUser := m.adminUser
 		if adminUser == "" {
 			adminUser = "admin"
