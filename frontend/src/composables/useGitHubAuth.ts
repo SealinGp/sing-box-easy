@@ -35,6 +35,7 @@ export function useGitHubAuth() {
 
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let pollStartedAt = 0
+  let disposed = false
 
   const isPending = computed(() => session.value?.status === 'pending')
 
@@ -96,6 +97,7 @@ export function useGitHubAuth() {
 
   function startPolling() {
     stopPolling()
+    if (disposed) return
     pollStartedAt = Date.now()
 
     pollTimer = setInterval(async () => {
@@ -113,6 +115,7 @@ export function useGitHubAuth() {
 
       try {
         const next = await githubAuthService.getSession(current.id)
+        if (disposed) return
         session.value = next
 
         if (next.status !== 'pending') {
@@ -167,7 +170,10 @@ export function useGitHubAuth() {
   }
 
   // A component unmounting mid-login must not leave an interval running.
-  onUnmounted(stopPolling)
+  onUnmounted(() => {
+    disposed = true
+    stopPolling()
+  })
 
   return {
     status,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * GitHub sign-in card (OAuth device flow).
+ * GitHub account dialog, opened from the release picker (OAuth device flow).
  *
  * Anonymous GitHub API calls are capped at 60/hour per IP, which the update
  * checker exhausts behind a shared egress. Signing in raises the cap to
@@ -9,11 +9,15 @@
  * Device flow is used because this app is self-hosted at arbitrary addresses:
  * there is no stable callback URL to register, and no client secret to ship.
  */
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGitHubAuth } from '../composables/useGitHubAuth'
 import { useNotify } from '../composables/useNotify'
 import { settingsService } from '../services'
+import Dialog from '../volt/Dialog.vue'
+
+const visible = defineModel<boolean>({ required: true })
+const emit = defineEmits<{ changed: [] }>()
 
 const {
   status,
@@ -33,6 +37,13 @@ const {
 
 const { t } = useI18n()
 const notify = useNotify()
+const description = ref<HTMLElement>()
+const focusDialog = async () => { await nextTick(); description.value?.focus() }
+
+// Initial status loading is read-only; a later sign-in/disconnect refreshes releases.
+watch([() => Boolean(status.value.connected), () => status.value.login ?? ''], () => {
+  if (!loading.value) emit('changed')
+})
 
 /**
  * OAuth App client ID, editable here and stored in the database.
@@ -64,6 +75,7 @@ const saveClientId = async () => {
     // The manager reads the ID per call, so sign-in becomes available at once.
     await refresh()
     notify.success(t('settings.githubAuth.clientIdSaved'))
+    emit('changed')
   } catch (err) {
     notify.apiError(err, t('settings.githubAuth.clientIdSaveFailed'))
   } finally {
@@ -88,11 +100,15 @@ async function copyCode() {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-      {{ $t('settings.githubAuth.title') }}
-    </h3>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+  <Dialog
+    v-model:visible="visible"
+    modal
+    :header="$t('settings.githubAuth.title')"
+    :close-button-props="{ 'aria-label': $t('common.close') }"
+    class="max-w-lg"
+    @show="focusDialog"
+  >
+    <p ref="description" tabindex="-1" class="text-sm text-gray-500 dark:text-gray-400 mb-4">
       {{ $t('settings.githubAuth.desc') }}
     </p>
 
@@ -110,30 +126,6 @@ async function copyCode() {
         {{ $t('settings.githubAuth.notConfigured') }}
       </p>
 
-      <!-- Saved to the database, not app.yml: no file edit, no restart. The
-           client ID is public by design (device flow has no client secret),
-           so a plain text input is appropriate here. -->
-      <div class="mt-3 flex items-stretch gap-2">
-        <input
-          v-model="clientIdInput"
-          type="text"
-          spellcheck="false"
-          autocomplete="off"
-          placeholder="Ov23li..."
-          class="flex-1 min-w-0 rounded-control border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-900 px-3 py-2 font-mono text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-          @keyup.enter="saveClientId"
-        />
-        <button
-          @click="saveClientId"
-          :disabled="savingClientId || !clientIdInput.trim()"
-          class="flex-shrink-0 px-4 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
-          {{ savingClientId ? $t('common.saving') : $t('common.save') }}
-        </button>
-      </div>
-      <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">
-        {{ $t('settings.githubAuth.clientIdHelp') }}
-      </p>
     </div>
 
     <template v-else>
@@ -252,11 +244,40 @@ async function copyCode() {
         </button>
       </div>
 
-      <p v-if="error" class="text-sm text-red-600 dark:text-red-400 mt-3">{{ error }}</p>
-
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
         {{ $t('settings.githubAuth.scopeHint') }}
       </p>
     </template>
-  </div>
+    <div v-if="!loading && !isPending" class="mt-4 border-t border-border pt-4">
+      <!-- Saved to the database, not app.yml: no file edit, no restart. The
+           client ID is public by design (device flow has no client secret),
+           so a plain text input is appropriate here. -->
+      <label for="github-client-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ $t('settings.githubAuth.clientIdLabel') }}
+      </label>
+      <div class="mt-2 flex items-stretch gap-2">
+        <input
+          id="github-client-id"
+          v-model="clientIdInput"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Ov23li..."
+          class="flex-1 min-w-0 rounded-control border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-900 px-3 py-2 font-mono text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          @keyup.enter="saveClientId"
+        />
+        <button
+          @click="saveClientId"
+          :disabled="savingClientId || !clientIdInput.trim()"
+          class="flex-shrink-0 px-4 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {{ savingClientId ? $t('common.saving') : $t('common.save') }}
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {{ $t('settings.githubAuth.clientIdHelp') }}
+      </p>
+    </div>
+    <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400 mt-3">{{ error }}</p>
+  </Dialog>
 </template>

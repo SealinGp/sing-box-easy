@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { settingsService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
 import AboutCard from '../../components/AboutCard.vue'
-import GitHubAuthCard from '../../components/GitHubAuthCard.vue'
 import ProbeSettingsCard from '../../components/ProbeSettingsCard.vue'
 
 const notify = useNotify()
@@ -73,9 +72,6 @@ const saveSettings = async () => {
           operator checks together when reporting or diagnosing a problem.
         -->
         <AboutCard />
-
-        <!-- GitHub sign-in (lifts the 60 req/h anonymous API rate limit) -->
-        <GitHubAuthCard />
 
         <!-- Subscription node quality probing -->
         <ProbeSettingsCard />

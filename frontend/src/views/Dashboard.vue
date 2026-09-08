@@ -1,149 +1,59 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useI18n } from "vue-i18n";
-import type { Component } from "vue";
-import Sidebar from "../components/Sidebar.vue";
-import Topbar from "../components/Topbar.vue";
-import { useDeployment } from "../composables/useDeployment";
-import {
-  ChartBarIcon,
-  ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
-  GlobeAltIcon,
-  MapIcon,
-  DocumentTextIcon,
-  BeakerIcon,
-  ServerIcon,
-  ShieldCheckIcon,
-  CogIcon,
-  QueueListIcon,
-  UsersIcon,
-  AdjustmentsHorizontalIcon,
-  AdjustmentsVerticalIcon,
-} from "@heroicons/vue/24/outline";
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { GlobeAltIcon, MapIcon, BeakerIcon, UserCircleIcon } from '@heroicons/vue/24/outline'
+import Sidebar from '../components/Sidebar.vue'
+import Topbar from '../components/Topbar.vue'
+import NavigationSearch from '../components/NavigationSearch.vue'
+import { useDeployment } from '../composables/useDeployment'
+import { createMenu, type MenuItem } from '../navigation/menu'
+import '../style/navigation.css'
 
-interface MenuItem {
-  name: string;
-  icon: Component;
-  path?: string;
-  badge?: number | string;
-  children?: MenuItem[];
+const { t } = useI18n()
+const { isOpenWrt, authEnabled } = useDeployment()
+const menuItems = computed(() => createMenu(t, authEnabled.value))
+const searchGroups = computed(() => {
+  const deep = (parent: string, keys: string[], paths: string[], icon: MenuItem['icon']) =>
+    keys.map((key, index) => ({ name: t(parent) + ' · ' + t(key), path: '/dashboard/' + paths[index], icon }))
+  return [...menuItems.value, { id: 'pages', name: t('nav.pages'), items: [
+    ...deep('nav.dns', ['dns.tabs.servers', 'dns.tabs.rules', 'dns.tabs.settings', 'dns.tabs.diagnostics'],
+      ['dns/servers', 'dns/rules', 'dns/settings', 'dns/diagnostics'], GlobeAltIcon),
+    ...deep('nav.route', ['route.tabs.rules', 'route.tabs.ruleSets', 'route.tabs.finalPolicy', 'route.tabs.diagnostics'],
+      ['route/rules', 'route/rule-sets', 'route/final-policy', 'route/diagnostics'], MapIcon),
+    ...deep('nav.experimental', ['experimental.tabs.cacheFile', 'experimental.tabs.clashApi', 'experimental.tabs.v2rayApi'],
+      ['experimental/cache-file', 'experimental/clash-api', 'experimental/v2ray-api'], BeakerIcon),
+    ...(authEnabled.value ? [{ name: t('nav.profile'), path: '/dashboard/profile', icon: UserCircleIcon }] : []),
+  ] }]
+})
+const searchOpen = ref(false)
+const media = window.matchMedia('(max-width: 1023px)')
+const narrow = ref(media.matches)
+const useTopbar = computed(() => isOpenWrt.value || narrow.value)
+function resize() { narrow.value = media.matches }
+function shortcut(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.altKey) {
+    // Keep editor shortcuts and existing dialogs local to their own workflow.
+    if (!searchOpen.value && (document.querySelector('[role="dialog"]') || (event.target instanceof Element && event.target.closest('.monaco-editor')))) return
+    event.preventDefault()
+    searchOpen.value = !searchOpen.value
+  }
 }
-
-const { t } = useI18n();
-
-// OpenWrt routers are administered through LuCI, which already owns a sidebar
-// on the left. Stacking a second one there wastes the width these small
-// screens do not have, so that platform gets a top bar instead. The platform is
-// resolved by the router guard before this view mounts, so the correct layout
-// renders on the first paint.
-const { isOpenWrt, authEnabled } = useDeployment();
-
-// Computed so labels re-translate when the locale changes. Icons/paths are
-// static; only the display `name` is localized.
-const menuItems = computed<MenuItem[]>(() => [
-  {
-    name: t("nav.overview"),
-    icon: ChartBarIcon,
-    path: "/dashboard/overview",
-  },
-  {
-    name: t("nav.proxy"),
-    icon: ServerIcon,
-    children: [
-      {
-        name: t("nav.inbounds"),
-        icon: ArrowDownTrayIcon,
-        path: "/dashboard/inbounds",
-      },
-      {
-        name: t("nav.outbounds"),
-        icon: ArrowUpTrayIcon,
-        path: "/dashboard/outbounds",
-      },
-    ],
-  },
-  {
-    name: t("nav.network"),
-    icon: ShieldCheckIcon,
-    children: [
-      { name: t("nav.dns"), icon: GlobeAltIcon, path: "/dashboard/dns" },
-      { name: t("nav.route"), icon: MapIcon, path: "/dashboard/route" },
-    ],
-  },
-  {
-    name: t("nav.advanced"),
-    icon: AdjustmentsHorizontalIcon,
-    children: [
-      {
-        name: t("nav.experimental"),
-        icon: BeakerIcon,
-        path: "/dashboard/experimental",
-      },
-      { name: t("nav.config"), icon: DocumentTextIcon, path: "/dashboard/config" },
-    ],
-  },
-  {
-    name: t("nav.settings"),
-    icon: CogIcon,
-    children: [
-      {
-        name: t("nav.general"),
-        icon: AdjustmentsVerticalIcon,
-        path: "/dashboard/settings",
-      },
-      // User management is meaningless where there is no login flow (OpenWrt
-      // under `server.auth: auto`): accounts created there could never be used
-      // to sign in, and the UI would not say so. The router guard blocks the
-      // route too, so a bookmark cannot reach it either.
-      ...(authEnabled.value
-        ? [
-            {
-              name: t("nav.users"),
-              icon: UsersIcon,
-              path: "/dashboard/users",
-            },
-          ]
-        : []),
-      {
-        name: t("nav.logs"),
-        icon: QueueListIcon,
-        path: "/dashboard/logs",
-      },
-    ],
-  },
-]);
+onMounted(() => {
+  media.addEventListener('change', resize)
+  window.addEventListener('keydown', shortcut)
+})
+onBeforeUnmount(() => {
+  media.removeEventListener('change', resize)
+  window.removeEventListener('keydown', shortcut)
+})
 </script>
 
 <template>
-  <!--
-    OpenWrt: horizontal navigation, content below it.
-
-    This header is why `<Table>`/`<List>` measure their available height instead
-    of subtracting a constant from the viewport: it uses `flex-wrap`, so it is
-    45px on a wide screen and 180px once it wraps. See useFillHeight.ts.
-  -->
-  <div v-if="isOpenWrt" class="liquid-app flex flex-col h-screen overflow-hidden">
-    <Topbar :menu-items="menuItems" />
-
-    <main class="flex-1 overflow-auto">
-      <router-view />
-    </main>
-  </div>
-
-  <!-- Everything else: the standard sidebar layout. -->
-  <div v-else class="liquid-app flex h-screen">
-    <!-- Beautiful Sidebar Component with backdrop -->
-    <div class="relative">
-      <Sidebar :menu-items="menuItems" />
-    </div>
-
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Main Content Area -->
-      <main class="flex-1 overflow-auto">
-        <router-view />
-      </main>
-    </div>
+  <div class="liquid-app dashboard-shell" :class="{ 'horizontal-shell': useTopbar }">
+    <a href="#dashboard-content" class="nav-skip-link">{{ $t('nav.skipContent') }}</a>
+    <Topbar v-if="useTopbar" :menu-items="menuItems" @search="searchOpen = true" />
+    <Sidebar v-else :menu-items="menuItems" @search="searchOpen = true" />
+    <main id="dashboard-content" tabindex="-1" class="dashboard-content"><router-view /></main>
+    <NavigationSearch v-model="searchOpen" :groups="searchGroups" />
   </div>
 </template>

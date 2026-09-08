@@ -1,5 +1,20 @@
 // 侧边栏品牌/底部 + 仪表盘导航标签。
 export default {
+  monitor: '运行监控',
+  connections: '连接与节点',
+  system: '系统管理',
+  workspace: '网络控制台',
+  navigation: '主导航',
+  search: '查找页面',
+  searchPlaceholder: '搜索页面、DNS、订阅…',
+  noResults: '没有匹配的页面，请尝试其他名称。',
+  browse: '选择',
+  open: '打开',
+  close: '关闭',
+  pages: '更多页面',
+  profile: '个人资料',
+  skipContent: '跳转到内容',
+
   settings: '设置',
   general: '通用设置',
   users: '用户管理',

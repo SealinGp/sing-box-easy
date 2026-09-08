@@ -47,6 +47,8 @@ declare module 'vue' {
     Loading: typeof import('./src/components/Loading.vue')['default']
     MonacoDiffEditor: typeof import('./src/components/MonacoDiffEditor.vue')['default']
     MonacoEditor: typeof import('./src/components/MonacoEditor.vue')['default']
+    NavigationSearch: typeof import('./src/components/NavigationSearch.vue')['default']
+    NavUtilities: typeof import('./src/components/NavUtilities.vue')['default']
     NodeList: typeof import('./src/components/NodeList.vue')['default']
     OutboundsList: typeof import('./src/components/OutboundsList.vue')['default']
     PopConfirm: typeof import('./src/components/PopConfirm.vue')['default']

@@ -11,11 +11,13 @@
  * Settings "About" card, which already states the running version — the
  * redundant "current version" chip is hidden in that mode.
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpCircleIcon, ChevronDownIcon, QuestionMarkCircleIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { useAppUpdate } from '../composables/useAppUpdate'
-import { useConfirm } from '../composables/useConfirm'
+import PopConfirm from './PopConfirm.vue'
+import GitHubAuthCard from './GitHubAuthCard.vue'
+import { isDifferentRelease } from '../utils/appRelease'
 import { useNotify } from '../composables/useNotify'
 import { Select } from '../volt'
 import { FILTER_THRESHOLD } from '../utils/selectFilter'
@@ -24,7 +26,6 @@ withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const { t } = useI18n()
 const notify = useNotify()
-const { confirm } = useConfirm()
 
 const {
   status,
@@ -71,6 +72,13 @@ const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 /** Empty string means "latest release". */
 const selectedTag = ref('')
 const showNotes = ref(false)
+const showGitHubAuth = ref(false)
+const githubTrigger = ref<HTMLButtonElement>()
+watch(showGitHubAuth, async visible => {
+  if (!visible) { await nextTick(); githubTrigger.value?.focus() }
+})
+const githubHelp = computed(() => t(releases.value.length
+  ? 'settings.githubAuth.manageHint' : 'settings.githubAuth.missingReleasesHint'))
 
 onMounted(async () => {
   const result = await refreshStatus(false)
@@ -108,8 +116,10 @@ const selectedNotes = computed(() => {
   return releases.value.find((r) => r.tag === selectedTag.value)?.notes ?? ''
 })
 
-/** Enabled whenever there is something concrete to install. */
-const canUpdate = computed(() => !busy.value && Boolean(targetVersion.value))
+/** A selected older release is still allowed; reinstalling the current one is not. */
+const canUpdate = computed(() => !busy.value
+  && isDifferentRelease(currentVersion.value, targetVersion.value)
+  && !releases.value.some(release => release.tag === targetVersion.value && release.is_current))
 
 const progressLabel = computed(() => {
   switch (phase.value) {
@@ -162,20 +172,11 @@ const releaseOptions = computed(() => [
 ])
 
 const runUpdate = async () => {
+  if (!canUpdate.value) return
   const version = targetVersion.value
-  if (!version) return
-
-  const ok = await confirm({
-    title: t('settings.update.confirmTitle'),
-    message: t('settings.update.confirmMessage', { version }),
-    confirmLabel: t('settings.update.update'),
-    cancelLabel: t('common.cancel'),
-    tone: 'danger',
-  })
-  if (!ok) return
 
   try {
-    await startUpdate(selectedTag.value || undefined)
+    await startUpdate(version)
     notify.success(t('settings.update.toast.started'))
   } catch (err) {
     notify.apiError(err, t('settings.update.toast.startFailed'))
@@ -187,7 +188,7 @@ const runUpdate = async () => {
  * router changes except a file appearing in /tmp.
  */
 const runPrepare = async () => {
-  if (!targetVersion.value) return
+  if (!canUpdate.value) return
   try {
     await preparePackage(selectedTag.value || undefined)
   } catch (err) {
@@ -253,7 +254,7 @@ const runPrepare = async () => {
         command rather than installing itself.
       -->
       <button
-        v-if="!busy && isOpkgManaged"
+        v-if="canUpdate && isOpkgManaged"
         @click="runPrepare"
         :disabled="!canUpdate"
         class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -261,15 +262,19 @@ const runPrepare = async () => {
         <ArrowDownTrayIcon class="h-4 w-4" />
         <span>{{ targetVersion ? $t('settings.update.opkg.prepareTo', { version: targetVersion }) : $t('settings.update.opkg.prepare') }}</span>
       </button>
-      <button
-        v-else-if="!busy"
-        @click="runUpdate"
-        :disabled="!canUpdate"
-        class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      <PopConfirm
+        v-else-if="canUpdate"
+        :key="targetVersion"
+        :message="$t('settings.update.confirmMessage', { version: targetVersion })"
+        :confirm-label="$t('settings.update.update')"
+        tone="primary"
+        class="ml-auto"
+        trigger-class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors cursor-pointer"
+        @confirm="runUpdate"
       >
         <ArrowUpCircleIcon class="h-4 w-4" />
-        <span>{{ targetVersion ? $t('settings.update.updateTo', { version: targetVersion }) : $t('settings.update.update') }}</span>
-      </button>
+        <span>{{ $t('settings.update.updateTo', { version: targetVersion }) }}</span>
+      </PopConfirm>
     </div>
 
     <!-- Why the button says "Prepare" instead of "Update" on this host. -->
@@ -293,22 +298,38 @@ const runPrepare = async () => {
 
     <!-- Version picker -->
     <div v-if="!busy" class="flex flex-wrap items-end gap-3">
-      <div>
+      <div class="w-full max-w-sm">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {{ $t('settings.update.chooseVersion') }}
         </label>
-        <Select
-          class="min-w-56"
-          v-model="selectedTag"
-          :options="releaseOptions"
-          optionLabel="label"
-          optionValue="value"
-          :filter="releaseOptions.length >= FILTER_THRESHOLD"
-          :filterPlaceholder="$t('common.search')"
-          :emptyFilterMessage="$t('common.noMatch')"
-          :placeholder="latestOptionLabel"
-          :disabled="loadingReleases"
-        />
+        <div class="flex items-center gap-2">
+          <Select
+            class="w-full min-w-0"
+            v-model="selectedTag"
+            :options="releaseOptions"
+            optionLabel="label"
+            optionValue="value"
+            :filter="releaseOptions.length >= FILTER_THRESHOLD"
+            :filterPlaceholder="$t('common.search')"
+            :emptyFilterMessage="$t('common.noMatch')"
+            :placeholder="latestOptionLabel"
+            :disabled="loadingReleases"
+          />
+          <button
+            ref="githubTrigger"
+            type="button"
+            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control transition-colors hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-primary-500"
+            :class="releases.length ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-400'"
+            :title="githubHelp"
+            :aria-label="githubHelp"
+            aria-haspopup="dialog"
+            :aria-expanded="showGitHubAuth"
+            @click="showGitHubAuth = true"
+          >
+            <InformationCircleIcon v-if="releases.length" class="h-5 w-5" />
+            <QuestionMarkCircleIcon v-else class="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <button
@@ -320,6 +341,12 @@ const runPrepare = async () => {
         <ChevronDownIcon class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showNotes }" />
       </button>
     </div>
+
+    <GitHubAuthCard
+      v-if="showGitHubAuth"
+      v-model="showGitHubAuth"
+      @changed="checkAgain"
+    />
 
     <!-- Release notes -->
     <pre

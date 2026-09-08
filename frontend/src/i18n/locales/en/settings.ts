@@ -65,6 +65,10 @@ export default {
     retry: 'Try again',
   },
   githubAuth: {
+    manageHint: 'Manage GitHub account for release checks',
+    missingReleasesHint: 'No versions listed? Connect GitHub to help with API rate limits.',
+    clientIdLabel: 'GitHub OAuth client ID',
+
     title: 'GitHub account',
     desc: 'Without a connected account, GitHub allows only 60 API requests per hour per IP address, which update checks can exhaust — especially behind a shared network. Signing in raises that to 5000 requests per hour.',
     signIn: 'Sign in with GitHub',

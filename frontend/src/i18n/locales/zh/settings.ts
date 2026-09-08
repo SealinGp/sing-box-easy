@@ -64,6 +64,10 @@ export default {
     retry: '重试',
   },
   githubAuth: {
+    manageHint: '管理用于查询发行版的 GitHub 账号',
+    missingReleasesHint: '版本未列出？连接 GitHub 账号可帮助解决 API 请求频率限制。',
+    clientIdLabel: 'GitHub OAuth 客户端 ID',
+
     title: 'GitHub 账号',
     desc: '未连接账号时，GitHub 对每个 IP 仅允许每小时 60 次 API 请求，检查更新很容易耗尽——在共享网络下尤其如此。登录后可提升到每小时 5000 次。',
     signIn: '使用 GitHub 登录',

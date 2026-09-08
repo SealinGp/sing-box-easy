@@ -1,5 +1,20 @@
 // Sidebar brand/footer + Dashboard navigation labels.
 export default {
+  monitor: 'Monitor',
+  connections: 'Connections',
+  system: 'System',
+  workspace: 'Network workspace',
+  navigation: 'Main navigation',
+  search: 'Find a page',
+  searchPlaceholder: 'Search pages, DNS, subscriptions…',
+  noResults: 'No matching pages. Try another name.',
+  browse: 'Browse',
+  open: 'Open',
+  close: 'Close',
+  pages: 'More pages',
+  profile: 'Profile',
+  skipContent: 'Skip to content',
+
   settings: 'Settings',
   general: 'General',
   users: 'Users',
