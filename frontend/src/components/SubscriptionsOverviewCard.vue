@@ -384,6 +384,34 @@ const usageBarClass = (ratio: number) => {
 
 const usagePercent = (ratio: number) => Math.round(ratio * 100)
 
+// Escape the card's scrollport: z-index alone cannot overcome overflow clipping.
+const quotaTooltip = ref<{ id: string; left: number; top: number; width: number } | null>(null)
+const quotaTooltipRow = computed(() => rows.value.find((row) => row.id === quotaTooltip.value?.id))
+
+function showQuotaTooltip(event: Event, id: string) {
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  quotaTooltip.value = { id, left: bounds.left, top: bounds.top, width: bounds.width }
+}
+
+function hideQuotaTooltip() {
+  quotaTooltip.value = null
+}
+
+function leaveQuotaTooltip(event: Event) {
+  const target = event.currentTarget as HTMLElement
+  if (!target.matches(':hover') && !target.contains(document.activeElement)) hideQuotaTooltip()
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', hideQuotaTooltip, true)
+  window.addEventListener('resize', hideQuotaTooltip)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', hideQuotaTooltip, true)
+  window.removeEventListener('resize', hideQuotaTooltip)
+})
+
 /**
  * "in 12 days" / "expires today" / "expired". Falls back to the raw provider
  * string when the date could not be interpreted.
@@ -617,7 +645,14 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 
           <!-- Quota details appear on hover or keyboard focus. -->
           <div v-if="row.plan.usedRatio !== null" class="mt-2">
-            <div class="group/quota relative">
+            <div
+              class="relative"
+              @mouseenter="showQuotaTooltip($event, row.id)"
+              @mouseleave="leaveQuotaTooltip"
+              @focusin="showQuotaTooltip($event, row.id)"
+              @focusout="leaveQuotaTooltip"
+              @keydown.esc="hideQuotaTooltip"
+            >
               <div
                 class="relative w-full cursor-default overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 role="progressbar"
@@ -638,20 +673,6 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
                   <span>{{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}</span>
                   <span class="ml-auto">{{ usagePercent(row.plan.usedRatio) }}%</span>
                 </div>
-              </div>
-              <div
-                :id="`quota-details-${row.id}`"
-                role="tooltip"
-                class="pointer-events-none absolute bottom-full left-0 z-20 w-max max-w-full rounded-md bg-gray-900/95 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-100 group-hover/quota:opacity-100 group-focus-within/quota:opacity-100 dark:bg-gray-700"
-              >
-                <p v-if="row.plan.usedLabel">
-                  {{ $t('overview.subscriptions.used') }}:
-                  <span class="font-medium">{{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}</span>
-                </p>
-                <p v-if="row.plan.remainingLabel">
-                  {{ $t('overview.subscriptions.remaining') }}:
-                  <span class="font-medium">{{ row.plan.remainingLabel }}</span>
-                </p>
               </div>
             </div>
           </div>
@@ -806,6 +827,25 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
     </div>
 
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="quotaTooltip && quotaTooltipRow"
+        :id="`quota-details-${quotaTooltip.id}`"
+        role="tooltip"
+        class="pointer-events-none fixed z-50 w-max -translate-y-full rounded-md bg-gray-900/95 px-2 py-1 text-xs text-white shadow-lg dark:bg-gray-700"
+        :style="{ left: `${quotaTooltip.left}px`, top: `${quotaTooltip.top}px`, maxWidth: `${quotaTooltip.width}px` }"
+      >
+        <p v-if="quotaTooltipRow.plan.usedLabel">
+          {{ $t('overview.subscriptions.used') }}:
+          <span class="font-medium">{{ quotaTooltipRow.plan.usedLabel }} / {{ quotaTooltipRow.plan.totalLabel }}</span>
+        </p>
+        <p v-if="quotaTooltipRow.plan.remainingLabel">
+          {{ $t('overview.subscriptions.remaining') }}:
+          <span class="font-medium">{{ quotaTooltipRow.plan.remainingLabel }}</span>
+        </p>
+      </div>
+    </Teleport>
 
     <!-- Quality history + latest per-node detail, shared with the
          Subscriptions page. -->
