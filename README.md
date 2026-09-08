@@ -6,26 +6,24 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 
 ### 🖥️ Web 仪表盘
 - **大盘**:
-<img width="2942" height="1558" alt="image" src="https://github.com/user-attachments/assets/acce8372-a380-4f2a-9f24-84ab0118be3a" />
-
+<img width="3840" height="1744" alt="image" src="https://github.com/user-attachments/assets/df9c6eb3-bccf-497f-a82e-16f3673bb57c" />
+- **订阅质量**:
+<img width="1812" height="1564" alt="image" src="https://github.com/user-attachments/assets/0e61dfe1-081f-4408-bb2a-2f086fa3eae1" />
 
 - **可视化配置管理**：内置 Monaco Editor，支持 JSON 语法高亮、补全与校验。 版本管理
-[![Editor](./doc/images/editor.png)]
-[![Editor](./doc/images/version.png)]
+<img width="3346" height="1686" alt="image" src="https://github.com/user-attachments/assets/3115d6b4-08b7-49bf-874b-60eefbd4cb5a" />
+<img width="1530" height="1222" alt="image" src="https://github.com/user-attachments/assets/a71a6ea7-cdc4-42e9-9951-953f4948fc33" />
+
 - **节点与订阅**：直观的节点列表、分组（selector / urltest）编辑、订阅自动更新调度器。
-[![Editor](./doc/images/subscriptions.png)]
-[![Editor](./doc/images/filters.png)]
+<img width="3326" height="1054" alt="image" src="https://github.com/user-attachments/assets/298de227-2b2c-4d2f-ab3b-a08f5530720c" />
+<img width="3298" height="1704" alt="image" src="https://github.com/user-attachments/assets/81994352-9699-40c6-b941-b774cd1e99f6" />
+
 - **初始化向导**：首次启动自动进入 `/init` 引导，分步完成 sing-box 安装、配置生成、Dashboard UI 部署。
 - **实时监控**：查看 sing-box 进程状态与日志。
-[![Editor](./doc/images/logs.png)]
-- **现代化 UI**：Vue 3 + TypeScript + TailwindCSS v4 + DaisyUI + PrimeVue。
 
 ### ⚙️ 后端核心
-- **RESTful API**：覆盖配置、DNS、Inbound/Outbound、路由、订阅、调度器、安装、Dashboard、初始化等共 79 个端点。
 - **配置安全**：每次写盘都走 `写临时文件 → sing-box check → 原子替换 → 备份` 流程，可一键 `/config/rollback` 回滚。
-- **引用一致性**：删除 outbound 或订阅刷新时自动清理 `selector` / `urltest` 中已失效的引用，避免 sing-box 静默运行时悬挂指针。
 - **多协议解析**：Shadowsocks (`ss://`)、VMess (`vmess://`)、Trojan (`trojan://`)。
-- **统一响应信封**：所有业务接口返回 `{ code, data, msg }`，HTTP 状态码恒为 200，前端按业务 `code` 分流。
 - **订阅自动更新**：cron 调度器（默认每 5 分钟）按订阅配置的 `update_interval` 增量拉取、差分应用。
 - **高性能存储**：SQLite + XORM（`modernc.org/sqlite` 纯 Go，无需 CGO）。
 
