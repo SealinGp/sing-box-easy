@@ -3,7 +3,7 @@ import { useDeployment } from '../composables/useDeployment'
 import { useNavChrome } from '../composables/useNavChrome'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import { ArrowLeftOnRectangleIcon, ArrowUpRightIcon } from '@heroicons/vue/24/outline'
-defineProps<{ compact?: boolean }>()
+defineProps<{ compact?: boolean; hideVersion?: boolean }>()
 const { authEnabled } = useDeployment()
 const { version, latestVersion, updateOffered, username, userInitial, serviceDotClass, serviceLabel, handleLogout } = useNavChrome()
 </script>
@@ -16,10 +16,10 @@ const { version, latestVersion, updateOffered, username, userInitial, serviceDot
       <span class="health-label">{{ serviceLabel }}</span>
     </router-link>
     <div class="nav-utility-row">
-      <router-link v-if="updateOffered" to="/dashboard/settings" class="nav-version update" :title="$t('settings.update.updateTo', { version: latestVersion })">
+      <router-link v-if="!hideVersion && updateOffered" to="/dashboard/settings" class="nav-version update" :title="$t('settings.update.updateTo', { version: latestVersion })">
         {{ latestVersion }} <ArrowUpRightIcon class="h-3 w-3" />
       </router-link>
-      <span v-else class="nav-version">{{ version }}</span>
+      <span v-else-if="!hideVersion" class="nav-version">{{ version }}</span>
       <LanguageSwitcher variant="compact" />
       <template v-if="authEnabled">
         <router-link to="/dashboard/profile" class="nav-avatar" :aria-label="username" :title="username">{{ userInitial }}</router-link>

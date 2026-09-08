@@ -21,15 +21,6 @@ const systemType = ref<SystemType>('unknown')
  */
 export type LayoutOverride = 'auto' | 'sidebar' | 'topbar'
 
-/**
- * Development builds can force the navigation layout, so the OpenWrt top bar
- * can be previewed — including how it paints on first load — without an actual
- * router. Release builds stamp a real version via the `VITE_APP_VERSION`
- * define, so this is a compile-time constant there and the override, its
- * storage access and its UI are dropped from the bundle.
- */
-export const isDevBuild = __APP_VERSION__ === 'dev'
-
 const LAYOUT_OVERRIDE_KEY = 'sb_layout_override'
 
 const isLayoutOverride = (value: unknown): value is LayoutOverride =>
@@ -41,7 +32,6 @@ const isLayoutOverride = (value: unknown): value is LayoutOverride =>
  * means "follow the platform".
  */
 const readStoredOverride = (): LayoutOverride => {
-  if (!isDevBuild) return 'auto'
   try {
     const stored = localStorage.getItem(LAYOUT_OVERRIDE_KEY)
     return isLayoutOverride(stored) ? stored : 'auto'
@@ -55,7 +45,6 @@ const readStoredOverride = (): LayoutOverride => {
 const layoutOverride = ref<LayoutOverride>(readStoredOverride())
 
 const setLayoutOverride = (value: LayoutOverride) => {
-  if (!isDevBuild) return
   layoutOverride.value = value
   try {
     if (value === 'auto') {
@@ -69,13 +58,11 @@ const setLayoutOverride = (value: LayoutOverride) => {
   }
 }
 
-/** OpenWrt gets the horizontal navigation layout. */
-const isOpenWrt = computed(() => {
-  if (isDevBuild && layoutOverride.value !== 'auto') {
-    return layoutOverride.value === 'topbar'
-  }
-  return systemType.value === 'openwrt'
-})
+/** Platform detection also controls setup defaults; appearance must not change it. */
+const isOpenWrt = computed(() => systemType.value === 'openwrt')
+const prefersTopbar = computed(() => layoutOverride.value === 'auto'
+  ? isOpenWrt.value
+  : layoutOverride.value === 'topbar')
 
 let loaded: Promise<void> | null = null
 
@@ -103,7 +90,7 @@ export const useDeployment = () => ({
   authEnabled,
   systemType,
   isOpenWrt,
-  isDevBuild,
+  prefersTopbar,
   layoutOverride,
   setLayoutOverride,
   ensureDeployment,

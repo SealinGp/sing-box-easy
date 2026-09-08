@@ -115,7 +115,7 @@ export default {
     },
     layout: {
       title: 'Navigation layout',
-      desc: 'Force a layout to preview it, including how it paints on first load. Development builds only — the choice is remembered across reloads.',
+      desc: 'Choose your navigation layout. Saved in this browser and applied immediately. Auto follows the device platform; small screens use a menu drawer.',
       auto: 'Auto',
       sidebar: 'Sidebar',
       topbar: 'Top bar',

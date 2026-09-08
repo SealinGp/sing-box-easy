@@ -30,9 +30,8 @@ const loading = ref(true)
 // finishes without a page reload.
 const { currentVersion } = useAppUpdate()
 
-// Dev builds can force the navigation layout to preview the OpenWrt top bar
-// without a router. Absent from release builds entirely.
-const { isDevBuild, layoutOverride, setLayoutOverride } = useDeployment()
+// Appearance preferences apply immediately and persist in this browser.
+const { layoutOverride, setLayoutOverride } = useDeployment()
 
 const layoutOptions: { value: LayoutOverride; label: string }[] = [
   { value: 'auto', label: 'settings.about.layout.auto' },
@@ -149,30 +148,17 @@ const rows = computed(() => {
       <LanguageSwitcher variant="full" />
     </div>
 
-    <!-- Self-update -->
+    <!-- Navigation preference -->
     <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
-      <AppUpdateCard embedded />
-    </div>
-
-    <!--
-      Dev-only: force the navigation layout. `isDevBuild` is a compile-time
-      constant, so this block is dropped from release bundles.
-    -->
-    <div v-if="isDevBuild" class="mt-5 pt-5 border-t border-dashed border-amber-400/60">
       <div class="flex items-center gap-2 mb-1">
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <h4 id="navigation-layout-label" class="text-sm font-semibold text-gray-900 dark:text-gray-100">
           {{ $t('settings.about.layout.title') }}
         </h4>
-        <span
-          class="px-1.5 py-0.5 rounded-pill bg-amber-400/20 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
-        >
-          dev
-        </span>
       </div>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
         {{ $t('settings.about.layout.desc') }}
       </p>
-      <div class="inline-flex rounded-control border border-gray-300 dark:border-gray-600 overflow-hidden">
+      <div role="group" aria-labelledby="navigation-layout-label" class="inline-flex rounded-control border border-gray-300 dark:border-gray-600 overflow-hidden">
         <button
           v-for="option in layoutOptions"
           :key="option.value"
@@ -189,5 +175,11 @@ const rows = computed(() => {
         </button>
       </div>
     </div>
+
+    <!-- Self-update -->
+    <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+      <AppUpdateCard embedded />
+    </div>
+
   </div>
 </template>

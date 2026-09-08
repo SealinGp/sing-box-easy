@@ -1,5 +1,6 @@
 // 侧边栏品牌/底部 + 仪表盘导航标签。
 export default {
+  more: '更多',
   monitor: '运行监控',
   connections: '连接与节点',
   system: '系统管理',

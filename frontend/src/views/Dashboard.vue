@@ -10,7 +10,7 @@ import { createMenu, type MenuItem } from '../navigation/menu'
 import '../style/navigation.css'
 
 const { t } = useI18n()
-const { isOpenWrt, authEnabled } = useDeployment()
+const { prefersTopbar, authEnabled } = useDeployment()
 const menuItems = computed(() => createMenu(t, authEnabled.value))
 const searchGroups = computed(() => {
   const deep = (parent: string, keys: string[], paths: string[], icon: MenuItem['icon']) =>
@@ -28,12 +28,12 @@ const searchGroups = computed(() => {
 const searchOpen = ref(false)
 const media = window.matchMedia('(max-width: 1023px)')
 const narrow = ref(media.matches)
-const useTopbar = computed(() => isOpenWrt.value || narrow.value)
+const useTopbar = computed(() => prefersTopbar.value || narrow.value)
 function resize() { narrow.value = media.matches }
 function shortcut(event: KeyboardEvent) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.altKey) {
     // Keep editor shortcuts and existing dialogs local to their own workflow.
-    if (!searchOpen.value && (document.querySelector('[role="dialog"]') || (event.target instanceof Element && event.target.closest('.monaco-editor')))) return
+    if (!searchOpen.value && (document.querySelector('[role="dialog"], dialog[open]') || (event.target instanceof Element && event.target.closest('.monaco-editor')))) return
     event.preventDefault()
     searchOpen.value = !searchOpen.value
   }

@@ -1,5 +1,6 @@
 // Sidebar brand/footer + Dashboard navigation labels.
 export default {
+  more: 'More',
   monitor: 'Monitor',
   connections: 'Connections',
   system: 'System',
