@@ -3,7 +3,9 @@ export default {
   layout: {
     retry: 'Retry',
     customize: 'Arrange cards',
-    hint: 'Drag a handle or use the move buttons. Save to keep your layout.',
+    arranging: 'Arrange cards',
+    done: 'Done',
+    hint: 'Drag a card or use its move buttons. Choose Done to keep your layout.',
     local: 'Without login, this layout is saved in this browser.',
     reset: 'Reset order',
     earlier: 'Move {name} earlier',

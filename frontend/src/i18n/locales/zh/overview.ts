@@ -3,7 +3,9 @@ export default {
   layout: {
     retry: '重试',
     customize: '排列卡片',
-    hint: '拖动手柄或使用移动按钮，保存后保留此布局。',
+    arranging: '排列卡片',
+    done: '完成',
+    hint: '拖动卡片或使用移动按钮，点击完成后保留此布局。',
     local: '未启用登录时，布局仅保存在当前浏览器。',
     reset: '恢复默认顺序',
     earlier: '将{name}前移',
