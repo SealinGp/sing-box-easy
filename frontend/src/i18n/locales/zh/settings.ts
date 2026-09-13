@@ -1,6 +1,5 @@
 // 设置页（Settings.vue）。
 export default {
-  title: '设置',
   versionHistory: {
     title: '配置版本历史',
     desc: '保留多少个历史配置。超出该数量的旧版本会在每次保存后自动清理。范围 {min}–{max}。',

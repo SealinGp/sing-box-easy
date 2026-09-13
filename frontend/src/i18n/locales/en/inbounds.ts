@@ -1,6 +1,5 @@
 // Inbounds page (Inbounds.vue).
 export default {
-  title: 'Inbounds Management',
   add: 'Add Inbound',
   addFirst: 'Add Your First Inbound',
   empty: 'No inbounds configured',

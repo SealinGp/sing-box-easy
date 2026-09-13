@@ -300,8 +300,7 @@ onMounted(fetchInbounds)
 
 <template>
   <div class="page-shell">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('inbounds.title') }}</h2>
+    <div class="flex justify-end items-center mb-2">
       <Button @click="openAddModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
         {{ $t('inbounds.add') }}

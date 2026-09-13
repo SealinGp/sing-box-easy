@@ -1,6 +1,5 @@
 // Settings page (Settings.vue).
 export default {
-  title: 'Settings',
   versionHistory: {
     title: 'Config version history',
     desc: 'How many historical configurations to keep. Older versions beyond this count are pruned automatically after each save. Range {min}–{max}.',

@@ -1,6 +1,5 @@
 // 入站页（Inbounds.vue）。
 export default {
-  title: '入站管理',
   add: '添加入站',
   addFirst: '添加第一个入站',
   empty: '尚未配置入站',

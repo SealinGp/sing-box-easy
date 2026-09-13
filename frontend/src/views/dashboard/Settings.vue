@@ -47,8 +47,6 @@ const saveSettings = async () => {
 
 <template>
   <div class="page-shell">
-    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ $t('settings.title') }}</h2>
-
     <!--
       Cards flow into a responsive grid rather than a single narrow column:
       one per row when cramped, two from a 768px-wide container, three from
