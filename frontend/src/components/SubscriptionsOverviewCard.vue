@@ -25,7 +25,7 @@ import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
 import { safeExternalUrl } from '../utils/safeExternalUrl'
-import { summarizeUpdate } from '../utils/subscriptionUpdate'
+import { summarizeUpdate, updateSubscriptionsSequentially } from '../utils/subscriptionUpdate'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
 import { subscriptionHealth, type SubscriptionHealth } from '../utils/subscriptionHealth'
 import { formatRelativeTime } from '../utils/relativeTime'
@@ -260,10 +260,12 @@ async function updateOne(id: string) {
  * which is why this is the update, not a refresh.
  *
  * Sequential on purpose. This runs on a home router; firing a fetch at every
- * provider at once is how the panel ends up timing out. The Subscriptions page
- * does the same. The sequence is also what makes the per-row states legible:
- * exactly one row says "updating" at a time, so the card shows progress instead
- * of freezing until the last provider answers.
+ * provider at once is how the panel ends up timing out. The shared helper also
+ * leaves the same service-recovery window as the Subscriptions page: an update
+ * restarts sing-box, whose local DNS listener may not be ready the instant the
+ * request resolves. The sequence also makes the per-row states legible: exactly
+ * one row says "updating" at a time, so the card shows progress instead of
+ * freezing until the last provider answers.
  *
  * One provider failing must not abandon the rest — refreshOne catches per
  * subscription and reports on that row.
@@ -273,9 +275,7 @@ async function updateAll() {
   updating.value = true
 
   try {
-    for (const subscription of subscriptions.value) {
-      await refreshOne(subscription)
-    }
+    await updateSubscriptionsSequentially(subscriptions.value, refreshOne)
 
     // Re-read regardless: the ones that did succeed have new figures. Row
     // statuses survive it — they are keyed by ID, not by list position.

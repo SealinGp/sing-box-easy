@@ -16,7 +16,10 @@ import SubscriptionQualityDialog from "../../components/SubscriptionQualityDialo
 import SubscriptionQualityCell from "../../components/SubscriptionQualityCell.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
-import { summarizeUpdate } from "../../utils/subscriptionUpdate";
+import {
+  summarizeUpdate,
+  updateSubscriptionsSequentially,
+} from "../../utils/subscriptionUpdate";
 import { isLinkableSiteInput, safeExternalUrl } from "../../utils/safeExternalUrl";
 import { subProbeService } from "../../services";
 import type { ProbePoint } from "../../types/subprobe";
@@ -308,11 +311,10 @@ const updateSubscription = async (subscription: Subscription) => {
 };
 
 const updateAllSubscriptions = async () => {
-  for (const subscription of subscriptions.value) {
-    await updateSubscription(subscription);
-    // Small delay between requests to avoid overwhelming the server
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+  await updateSubscriptionsSequentially(
+    subscriptions.value,
+    updateSubscription,
+  );
 };
 
 const formatDate = (dateString?: string) => {

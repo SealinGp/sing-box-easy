@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { summarizeUpdate } from './subscriptionUpdate'
+import { summarizeUpdate, updateSubscriptionsSequentially } from './subscriptionUpdate'
 
 // Stands in for vue-i18n: echoes the key with its count so assertions read as
 // the shape of the output rather than as translated prose.
@@ -25,5 +25,34 @@ describe('summarizeUpdate', () => {
     expect(summarizeUpdate({ added: 0, updated: 0, deleted: 0 }, t)).toBe(
       'subscriptions.notify.noChanges',
     )
+  })
+})
+
+describe('updateSubscriptionsSequentially', () => {
+  it('waits for the service cooldown between updates, but not after the last one', async () => {
+    const events: string[] = []
+
+    await updateSubscriptionsSequentially(
+      ['first', 'second', 'third'],
+      async (id) => {
+        events.push(`update:start:${id}`)
+        await Promise.resolve()
+        events.push(`update:end:${id}`)
+      },
+      async (milliseconds) => {
+        events.push(`wait:${milliseconds}`)
+      },
+    )
+
+    expect(events).toEqual([
+      'update:start:first',
+      'update:end:first',
+      'wait:1000',
+      'update:start:second',
+      'update:end:second',
+      'wait:1000',
+      'update:start:third',
+      'update:end:third',
+    ])
   })
 })
