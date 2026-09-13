@@ -1,6 +1,13 @@
 import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, type Ref } from 'vue'
 import { startDragAutoScroll } from '../utils/dragAutoScroll'
 
+export interface DragReorderOptions {
+  longPressMs?: number
+  movementTolerancePx?: number
+}
+
+const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, summary, [role="button"], [contenteditable="true"], [data-reorder-control]'
+
 /**
  * Drag-to-reorder for an index-addressed list, shared by the route rules
  * (`<List>`) and the DNS rules (`<Table>`).
@@ -37,7 +44,11 @@ import { startDragAutoScroll } from '../utils/dragAutoScroll'
  *                success/failure reporting; rejecting is enough to tell this
  *                composable to stop.
  */
-export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) => Promise<void>) {
+export function useDragReorder<T>(
+  items: Ref<T[]>,
+  persist: (order: number[]) => Promise<void>,
+  options: DragReorderOptions = {},
+) {
   /** Reorder is a MODE: handles appear, per-row edit/delete gets out of the way. */
   const enabled = ref(false)
 
@@ -54,6 +65,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
   /** Live index of the row being carried, and the row armed for dragging. */
   const dragPos = ref<number | null>(null)
   const armedIndex = ref<number | null>(null)
+  const holdingIndex = ref<number | null>(null)
 
   /**
    * Everything the session has done so far, expressed in the SERVER's indices
@@ -74,12 +86,23 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
   const snapshot = shallowRef<{ items: T[]; keys: number[] } | null>(null)
 
   const saving = ref(false)
+  const longPressMs = Math.max(0, options.longPressMs ?? 500)
+  const movementTolerancePx = Math.max(0, options.movementTolerancePx ?? 8)
 
   /** Has the session actually moved anything? Drives the Save/Done label. */
   const dirty = computed(() => !!sessionOrder.value && !isIdentity(sessionOrder.value))
 
   let stopAutoScroll: (() => void) | undefined
-  if (getCurrentScope()) onScopeDispose(clearDrag)
+  let activationTimer: ReturnType<typeof setTimeout> | undefined
+  let activationPointerId: number | null = null
+  let activationX = 0
+  let activationY = 0
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      clearDrag()
+      cancelActivation()
+    })
+  }
 
   function clearDrag() {
     stopAutoScroll?.()
@@ -90,6 +113,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
 
   function clearSession() {
     clearDrag()
+    cancelActivation()
     sessionOrder.value = null
     snapshot.value = null
   }
@@ -320,6 +344,58 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
         arm(index)
       },
       onPointerup: disarm,
+      onPointercancel: disarm,
+      onContextmenu: (event: Event) => event.preventDefault(),
+    }
+  }
+
+  function cancelActivation(event?: PointerEvent) {
+    if (event && activationPointerId !== event.pointerId) return
+    if (activationTimer !== undefined) clearTimeout(activationTimer)
+    activationTimer = undefined
+    activationPointerId = null
+    holdingIndex.value = null
+  }
+
+  /**
+   * Turns a deliberate hold on a non-interactive card area into arrangement
+   * mode. Pointer release, leaving the surface, or a small scroll-sized move
+   * cancels the pending gesture so normal card clicks and page scrolling win.
+   */
+  function activationAttrs(index: number): Record<string, unknown> {
+    return {
+      onPointerdown: (event: PointerEvent) => {
+        if (enabled.value || saving.value || event.button !== 0) return
+        const target = event.target as Element | null
+        if (target?.closest?.(INTERACTIVE_SELECTOR)) return
+
+        cancelActivation()
+        holdingIndex.value = index
+        activationPointerId = event.pointerId
+        activationX = event.clientX
+        activationY = event.clientY
+        activationTimer = setTimeout(() => {
+          activationTimer = undefined
+          activationPointerId = null
+          holdingIndex.value = null
+          start()
+          // Keep the held card armed so desktop users can continue the same
+          // gesture into a native drag after arrangement mode appears.
+          arm(index)
+        }, longPressMs)
+      },
+      onPointermove: (event: PointerEvent) => {
+        if (activationPointerId !== event.pointerId) return
+        if (Math.hypot(event.clientX - activationX, event.clientY - activationY) > movementTolerancePx) {
+          cancelActivation(event)
+        }
+      },
+      onPointerup: (event: PointerEvent) => cancelActivation(event),
+      onPointercancel: (event: PointerEvent) => cancelActivation(event),
+      onPointerleave: (event: PointerEvent) => cancelActivation(event),
+      onContextmenu: (event: Event) => {
+        if (holdingIndex.value === index || enabled.value) event.preventDefault()
+      },
     }
   }
 
@@ -327,6 +403,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     enabled,
     saving,
     dirty,
+    holdingIndex,
     start,
     save,
     cancel,
@@ -335,6 +412,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     rowAttrs,
     handleAttrs,
     surfaceAttrs,
+    activationAttrs,
     nudge,
   }
 }
