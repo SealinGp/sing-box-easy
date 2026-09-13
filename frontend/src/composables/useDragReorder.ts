@@ -307,6 +307,22 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     }
   }
 
+  /**
+   * Makes an item's full surface the pointer drag handle while allowing
+   * controls layered over that surface to opt out. Keyboard reordering stays
+   * on explicit controls, where its focus and accessible name are visible.
+   */
+  function surfaceAttrs(index: number): Record<string, unknown> {
+    return {
+      onPointerdown: (event: PointerEvent) => {
+        const target = event.target as Element | null
+        if (target?.closest?.('[data-reorder-control]')) return
+        arm(index)
+      },
+      onPointerup: disarm,
+    }
+  }
+
   return {
     enabled,
     saving,
@@ -318,6 +334,7 @@ export function useDragReorder<T>(items: Ref<T[]>, persist: (order: number[]) =>
     keyAt,
     rowAttrs,
     handleAttrs,
+    surfaceAttrs,
     nudge,
   }
 }
