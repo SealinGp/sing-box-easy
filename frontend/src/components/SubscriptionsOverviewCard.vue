@@ -11,7 +11,6 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import {
   ArrowTopRightOnSquareIcon,
-  ChartBarIcon,
   CheckCircleIcon,
   CloudArrowDownIcon,
   ClockIcon,
@@ -691,7 +690,17 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
               clash_api never probes, and an empty placeholder on every row would
               be noise about a feature that deployment does not have.
             -->
-            <p v-if="row.probe" class="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <!-- The summary is the trend's direct entry point. Making the
+                 whole value a button gives mouse, touch, and keyboard users
+                 the same generous target without a second chart icon. -->
+            <button
+              v-if="row.probe"
+              type="button"
+              class="-m-1 flex cursor-pointer flex-wrap items-center gap-1 rounded-control p-1 text-left text-xs text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-400"
+              :title="$t('subProbe.openDetail', { name: row.name })"
+              :aria-label="$t('subProbe.openDetail', { name: row.name })"
+              @click="openQuality(row.id)"
+            >
               <!-- Labelled, because this row can sit directly under a quota
                    percentage and two bare percentages would be ambiguous. -->
               <span>{{ $t('subProbe.column') }}:</span>
@@ -718,27 +727,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
                   · {{ formatLatency(row.probe.avg_ms) }}
                 </span>
               </span>
-
-              <!--
-                Opens the trend. Hidden until the row is hovered, exactly like the
-                row's update button above: this card is a summary first, and four
-                subscriptions must not read as eight buttons.
-
-                It reuses that button's three-state reveal rather than inventing
-                one — `group-focus-within` so it is reachable by keyboard, and
-                always visible below `sm` where no hover exists at all. Anything
-                narrower would be a control only a mouse user could find.
-              -->
-              <button
-                type="button"
-                class="cursor-pointer shrink-0 rounded p-0.5 text-gray-400 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                :title="$t('subProbe.openDetail', { name: row.name })"
-                :aria-label="$t('subProbe.openDetail', { name: row.name })"
-                @click="openQuality(row.id)"
-              >
-                <ChartBarIcon class="h-3.5 w-3.5" />
-              </button>
-            </p>
+            </button>
 
             <!--
               Quota reported without a usable total (e.g. unlimited plans, which
