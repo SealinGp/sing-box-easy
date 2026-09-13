@@ -17,10 +17,13 @@ import { qualityStepColors } from '../utils/qualitySteps'
 import SegmentedProgress from './SegmentedProgress.vue'
 import SubscriptionQualityDialog from './SubscriptionQualityDialog.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   point?: ProbePoint
   subscription: Subscription
-}>()
+  size?: 'small' | 'default'
+}>(), {
+  size: 'default',
+})
 const emit = defineEmits<{ refresh: [] }>()
 
 const showQuality = ref(false)
@@ -63,25 +66,52 @@ const stepColors = computed(() =>
   <button
     v-if="point"
     type="button"
-    class="flex cursor-pointer flex-col items-start gap-0.5 rounded p-1 -m-1 text-left transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-gray-700/40"
+    class="-m-1 cursor-pointer rounded-control p-1 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+    :class="
+      size === 'small'
+        ? 'flex flex-wrap items-center gap-1 text-xs text-gray-500 hover:bg-primary-50 hover:text-primary-700 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-400'
+        : 'flex flex-col items-start gap-0.5 hover:bg-gray-50 dark:hover:bg-gray-700/40'
+    "
     :title="$t('subProbe.openDetail', { name: subscription.name })"
     :aria-label="$t('subProbe.openDetail', { name: subscription.name })"
     @click="openQuality"
   >
-    <span class="text-sm font-semibold" :class="toneClass">
-      {{ formatAvailability(point) }}
-    </span>
-    <SegmentedProgress
-      :percent="100"
-      :steps="5"
-      :stroke-color="stepColors"
-      size="sm"
-      :aria-label="$t('subProbe.nodesTested', { reachable: point.reachable, total: point.total })"
-    />
-    <span class="text-xs text-gray-500 dark:text-gray-400">{{ latency }}</span>
-    <span class="text-xs text-gray-400 dark:text-gray-500">
-      {{ $t('subProbe.nodesTested', { reachable: point.reachable, total: point.total }) }}
-    </span>
+    <template v-if="size === 'small'">
+      <span>{{ $t('subProbe.column') }}:</span>
+      <SegmentedProgress
+        :percent="100"
+        :steps="5"
+        :stroke-color="stepColors"
+        size="xs"
+        :aria-label="$t('subProbe.nodesTested', { reachable: point.reachable, total: point.total })"
+      />
+      <span>
+        <span class="font-medium" :class="toneClass">
+          {{ formatAvailability(point) }}
+        </span>
+        <span class="text-gray-400 dark:text-gray-500">
+          ({{ point.reachable }}/{{ point.total }})
+        </span>
+        <span v-if="point.reachable > 0"> · {{ latency }} </span>
+      </span>
+    </template>
+
+    <template v-else>
+      <span class="text-sm font-semibold" :class="toneClass">
+        {{ formatAvailability(point) }}
+      </span>
+      <SegmentedProgress
+        :percent="100"
+        :steps="5"
+        :stroke-color="stepColors"
+        size="sm"
+        :aria-label="$t('subProbe.nodesTested', { reachable: point.reachable, total: point.total })"
+      />
+      <span class="text-xs text-gray-500 dark:text-gray-400">{{ latency }}</span>
+      <span class="text-xs text-gray-400 dark:text-gray-500">
+        {{ $t('subProbe.nodesTested', { reachable: point.reachable, total: point.total }) }}
+      </span>
+    </template>
   </button>
 
   <!--

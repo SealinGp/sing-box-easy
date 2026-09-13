@@ -27,6 +27,22 @@ export interface PlanSummary {
 }
 
 /**
+ * Flattens arbitrary provider metadata into one readable line.
+ *
+ * Providers sometimes put announcements in multiline info nodes. Those line
+ * breaks would make a compact dashboard row grow unpredictably, so each break
+ * becomes a visible ellipsis. The entry separator is different (`·`) so the
+ * reader can still tell a new field from a continued value.
+ */
+export const formatPlanExtras = (entries: SubInfoEntry[]): string =>
+  entries
+    .map(({ key, value }) => {
+      const label = value ? `${key}: ${value}` : key
+      return label.replace(/\s*(?:\r\n?|\n)+\s*/g, ' … ')
+    })
+    .join(' · ')
+
+/**
  * The four keys the backend derives from the `subscription-userinfo` header.
  *
  * These are a fixed spec rather than provider labels, which is precisely why

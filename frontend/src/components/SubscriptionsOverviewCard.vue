@@ -21,7 +21,7 @@ import Button from './Button.vue'
 import SubscriptionQualityCell from './SubscriptionQualityCell.vue'
 import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
-import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
+import { formatPlanExtras, summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
 import { safeExternalUrl } from '../utils/safeExternalUrl'
 import { summarizeUpdate, updateSubscriptionsSequentially } from '../utils/subscriptionUpdate'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -267,6 +267,8 @@ interface SubscriptionRow {
   /** What the health dot means, and why it is that colour. */
   healthDetail: string
   plan: PlanSummary
+  /** All provider-defined plan fields flattened for the one-line summary. */
+  extrasText: string
   /** Transient outcome of the last update, or null when there is none. */
   status: RowStatus | null
   /** Newest quality sample, or null when this subscription has none. */
@@ -274,17 +276,21 @@ interface SubscriptionRow {
 }
 
 const rows = computed<SubscriptionRow[]>(() =>
-  subscriptions.value.map((subscription) => ({
-    subscription,
-    id: subscription.id,
-    name: subscription.name,
-    officialUrl: safeExternalUrl(subscription.official_url),
-    health: subscriptionHealth(subscription),
-    healthDetail: healthDetail(subscription),
-    plan: summarizePlan(subscription),
-    status: rowStatus.value[subscription.id] ?? null,
-    probe: probeLatest.value[subscription.id] ?? null,
-  })),
+  subscriptions.value.map((subscription) => {
+    const plan = summarizePlan(subscription)
+    return {
+      subscription,
+      id: subscription.id,
+      name: subscription.name,
+      officialUrl: safeExternalUrl(subscription.official_url),
+      health: subscriptionHealth(subscription),
+      healthDetail: healthDetail(subscription),
+      plan,
+      extrasText: formatPlanExtras(plan.extras),
+      status: rowStatus.value[subscription.id] ?? null,
+      probe: probeLatest.value[subscription.id] ?? null,
+    }
+  }),
 )
 
 const healthDotClass = (health: SubscriptionHealth) => {
@@ -349,7 +355,14 @@ const usageBarClass = (ratio: number) => {
 const usagePercent = (ratio: number) => Math.round(ratio * 100)
 
 // Escape the card's scrollport: z-index alone cannot overcome overflow clipping.
-const quotaTooltip = ref<{ id: string; left: number; top: number; width: number } | null>(null)
+interface AnchoredTooltip {
+  id: string
+  left: number
+  top: number
+  width: number
+}
+
+const quotaTooltip = ref<AnchoredTooltip | null>(null)
 const quotaTooltipRow = computed(() => rows.value.find((row) => row.id === quotaTooltip.value?.id))
 
 function showQuotaTooltip(event: Event, id: string) {
@@ -366,14 +379,39 @@ function leaveQuotaTooltip(event: Event) {
   if (!target.matches(':hover') && !target.contains(document.activeElement)) hideQuotaTooltip()
 }
 
+const extrasTooltip = ref<AnchoredTooltip | null>(null)
+const extrasTooltipRow = computed(() => rows.value.find((row) => row.id === extrasTooltip.value?.id))
+
+function showExtrasTooltip(event: Event, id: string) {
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const margin = 8
+  const width = Math.min(384, window.innerWidth - margin * 2)
+  const left = Math.min(Math.max(bounds.left, margin), window.innerWidth - width - margin)
+  extrasTooltip.value = { id, left, top: bounds.top, width }
+}
+
+function hideExtrasTooltip() {
+  extrasTooltip.value = null
+}
+
+function leaveExtrasTooltip(event: Event) {
+  const target = event.currentTarget as HTMLElement
+  if (!target.matches(':hover') && !target.contains(document.activeElement)) hideExtrasTooltip()
+}
+
+function hideAnchoredTooltips() {
+  hideQuotaTooltip()
+  hideExtrasTooltip()
+}
+
 onMounted(() => {
-  window.addEventListener('scroll', hideQuotaTooltip, true)
-  window.addEventListener('resize', hideQuotaTooltip)
+  window.addEventListener('scroll', hideAnchoredTooltips, true)
+  window.addEventListener('resize', hideAnchoredTooltips)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', hideQuotaTooltip, true)
-  window.removeEventListener('resize', hideQuotaTooltip)
+  window.removeEventListener('scroll', hideAnchoredTooltips, true)
+  window.removeEventListener('resize', hideAnchoredTooltips)
 })
 
 /**
@@ -661,6 +699,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
               v-if="row.probe"
               :point="row.probe"
               :subscription="row.subscription"
+              size="small"
               @refresh="loadProbe"
             />
 
@@ -685,22 +724,25 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 
           </div>
 
-          <!--
-            Provider-defined entries, shown verbatim: their keys are arbitrary
-            localized text, so the UI must not try to interpret them.
-          -->
-          <div v-if="row.plan.extras.length" class="mt-2 flex flex-wrap gap-1.5">
-            <span
-              v-for="(entry, index) in row.plan.extras"
-              :key="`${entry.key}-${index}`"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill bg-gray-100 dark:bg-gray-700 text-xs"
-              :title="entry.value ? `${entry.key}: ${entry.value}` : entry.key"
+          <!-- Provider-defined entries stay to one line here. Hovering or
+               focusing reveals every full entry in the unclipped tooltip. -->
+          <div
+            v-if="row.plan.extras.length"
+            class="mt-2 min-w-0"
+            @mouseenter="showExtrasTooltip($event, row.id)"
+            @mouseleave="leaveExtrasTooltip"
+            @focusin="showExtrasTooltip($event, row.id)"
+            @focusout="leaveExtrasTooltip"
+            @keydown.esc="hideExtrasTooltip"
+          >
+            <p
+              class="truncate rounded-pill bg-gray-100 px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-gray-700 dark:text-gray-300"
+              tabindex="0"
+              :aria-label="row.extrasText"
+              :aria-describedby="`plan-extras-${row.id}`"
             >
-              <span class="text-gray-500 dark:text-gray-400">{{ entry.key }}</span>
-              <span v-if="entry.value" class="font-medium text-gray-700 dark:text-gray-200">
-                {{ entry.value }}
-              </span>
-            </span>
+              {{ row.extrasText }}
+            </p>
           </div>
 
           <p
@@ -767,6 +809,24 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
         <p v-if="quotaTooltipRow.plan.remainingLabel">
           {{ $t('overview.subscriptions.remaining') }}:
           <span class="font-medium">{{ quotaTooltipRow.plan.remainingLabel }}</span>
+        </p>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="extrasTooltip && extrasTooltipRow && extrasTooltipRow.plan.extras.length"
+        :id="`plan-extras-${extrasTooltip.id}`"
+        role="tooltip"
+        class="pointer-events-none fixed z-50 -translate-y-full space-y-1 rounded-md bg-gray-900/95 px-2 py-1.5 text-xs text-white shadow-lg dark:bg-gray-700"
+        :style="{ left: `${extrasTooltip.left}px`, top: `${extrasTooltip.top}px`, width: `${extrasTooltip.width}px` }"
+      >
+        <p
+          v-for="(entry, index) in extrasTooltipRow.plan.extras"
+          :key="`${entry.key}-${index}`"
+          class="break-words"
+        >
+          {{ formatPlanExtras([entry]) }}
         </p>
       </div>
     </Teleport>
