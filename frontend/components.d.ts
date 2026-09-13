@@ -76,6 +76,7 @@ declare module 'vue' {
     SubscriptionInfoKeywords: typeof import('./src/components/SubscriptionInfoKeywords.vue')['default']
     SubscriptionQualityCell: typeof import('./src/components/SubscriptionQualityCell.vue')['default']
     SubscriptionQualityDialog: typeof import('./src/components/SubscriptionQualityDialog.vue')['default']
+    SubscriptionQuotaDetails: typeof import('./src/components/SubscriptionQuotaDetails.vue')['default']
     SubscriptionsOverviewCard: typeof import('./src/components/SubscriptionsOverviewCard.vue')['default']
     Table: typeof import('./src/components/Table.vue')['default']
     TabNav: typeof import('./src/components/TabNav.vue')['default']
