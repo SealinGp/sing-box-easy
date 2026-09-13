@@ -17,6 +17,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CheckIcon, ClipboardDocumentIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useNotify } from '../composables/useNotify'
+import { writeTextToClipboard } from '../utils/clipboard'
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'sm',
@@ -66,33 +67,6 @@ const title = computed(() => {
   return props.label || t('common.copy')
 })
 
-/**
- * `navigator.clipboard` is undefined outside a secure context, and this panel
- * is routinely served over plain HTTP on a LAN address — so the deprecated
- * `execCommand` path is the one that actually runs for most users here, not a
- * legacy fallback.
- */
-async function writeToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none'
-  document.body.appendChild(textarea)
-  try {
-    textarea.focus()
-    textarea.select()
-    if (!document.execCommand('copy')) {
-      throw new Error('execCommand copy failed')
-    }
-  } finally {
-    document.body.removeChild(textarea)
-  }
-}
-
 function flash(next: State) {
   state.value = next
   clearTimeout(timer)
@@ -104,7 +78,7 @@ function flash(next: State) {
 async function copy() {
   if (!props.text) return
   try {
-    await writeToClipboard(props.text)
+    await writeTextToClipboard(props.text)
     flash('copied')
     emit('copied', props.text)
   } catch (error) {

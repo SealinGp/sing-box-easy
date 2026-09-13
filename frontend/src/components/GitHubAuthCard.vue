@@ -15,6 +15,7 @@ import { useGitHubAuth } from '../composables/useGitHubAuth'
 import { useNotify } from '../composables/useNotify'
 import { settingsService } from '../services'
 import Dialog from '../volt/Dialog.vue'
+import { writeTextToClipboard } from '../utils/clipboard'
 
 const visible = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ changed: [] }>()
@@ -89,7 +90,7 @@ const copied = ref(false)
 async function copyCode() {
   if (!session.value?.user_code) return
   try {
-    await navigator.clipboard.writeText(session.value.user_code)
+    await writeTextToClipboard(session.value.user_code)
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
   } catch {

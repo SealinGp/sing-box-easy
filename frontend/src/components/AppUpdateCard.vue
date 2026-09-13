@@ -21,6 +21,7 @@ import { isDifferentRelease } from '../utils/appRelease'
 import { useNotify } from '../composables/useNotify'
 import { Select } from '../volt'
 import { FILTER_THRESHOLD } from '../utils/selectFilter'
+import { writeTextToClipboard } from '../utils/clipboard'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
@@ -55,14 +56,14 @@ const copied = ref('')
 
 const copyCommand = async (command: string) => {
   try {
-    await navigator.clipboard.writeText(command)
+    await writeTextToClipboard(command)
     copied.value = command
     setTimeout(() => {
       if (copied.value === command) copied.value = ''
     }, 2000)
   } catch {
-    // Clipboard access is denied over plain HTTP in some browsers — the
-    // command stays selectable, so this is not worth an error toast.
+    // Both the Clipboard API and the LAN-HTTP fallback failed. The command
+    // remains selectable, so tell the operator how to recover.
     notify.error(t('settings.update.opkg.copyFailed'))
   }
 }
