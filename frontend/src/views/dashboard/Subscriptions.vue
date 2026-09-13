@@ -12,7 +12,6 @@ import Table from "../../components/Table.vue";
 import CopyIcon from "../../components/CopyIcon.vue";
 import PopConfirm from "../../components/PopConfirm.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
-import SubscriptionQualityDialog from "../../components/SubscriptionQualityDialog.vue";
 import SubscriptionQualityCell from "../../components/SubscriptionQualityCell.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
@@ -355,8 +354,6 @@ const getStatusBadge = (subscription: Subscription) => {
  * N round trips to draw a column is N-1 too many.
  */
 const probeLatest = ref<Record<string, ProbePoint>>({});
-const showQuality = ref(false);
-const qualitySubscription = ref<Subscription | null>(null);
 
 const loadProbeStatus = async () => {
   try {
@@ -368,11 +365,6 @@ const loadProbeStatus = async () => {
     // with an empty column. The dialog reports the error when it is opened.
     probeLatest.value = {};
   }
-};
-
-const openQuality = (subscription: Subscription) => {
-  qualitySubscription.value = subscription;
-  showQuality.value = true;
 };
 
 // Lifecycle
@@ -620,9 +612,8 @@ onMounted(() => {
           <td class="align-top">
             <SubscriptionQualityCell
               :point="probeLatest[subscription.id]"
-              :enabled="subscription.probe_enabled !== false"
-              :name="subscription.name"
-              @open="openQuality(subscription)"
+              :subscription="subscription"
+              @refresh="loadProbeStatus"
             />
           </td>
 
@@ -700,12 +691,6 @@ onMounted(() => {
 
     <!-- Info-label keywords editor -->
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />
-
-    <!-- Quality history + latest per-node detail -->
-    <SubscriptionQualityDialog
-      v-model="showQuality"
-      :subscription="qualitySubscription"
-    />
 
     <!-- Add/Edit Modal -->
     <Dialog v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">

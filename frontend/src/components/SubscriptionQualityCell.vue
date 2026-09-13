@@ -1,27 +1,39 @@
 <script setup lang="ts">
 /**
- * The Subscriptions table's quality cell: latest availability + latency, and
- * the way into the history.
+ * A subscription's quality summary: latest availability + latency, and the
+ * way into the history.
  *
  * Its own component rather than markup inside the table, because the row's
  * three states (measured / never probed / probing off) each need their own
  * treatment, and a single figure is not enough to judge a provider by — so the
- * cell is a button into the trend rather than a read-only readout.
+ * summary is a button into the trend rather than a read-only readout. It owns
+ * that dialog too, so every caller gets the same rendering and interaction.
  */
-import { computed } from 'vue'
-import { ChartBarIcon } from '@heroicons/vue/24/outline'
+import { computed, ref, watch } from 'vue'
+import type { Subscription } from '../types/api'
 import type { ProbePoint } from '../types/subprobe'
 import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
 import { qualityStepColors } from '../utils/qualitySteps'
 import SegmentedProgress from './SegmentedProgress.vue'
+import SubscriptionQualityDialog from './SubscriptionQualityDialog.vue'
 
 const props = defineProps<{
   point?: ProbePoint
-  /** False when the operator turned probing off for this subscription. */
-  enabled: boolean
-  name: string
+  subscription: Subscription
 }>()
-defineEmits<{ open: [] }>()
+const emit = defineEmits<{ refresh: [] }>()
+
+const showQuality = ref(false)
+
+function openQuality() {
+  showQuality.value = true
+}
+
+// Probe Now can change the summary while the dialog is open. Refresh the
+// caller's shared status map after it closes so this row shows the same sample.
+watch(showQuality, (open, wasOpen) => {
+  if (wasOpen && !open) emit('refresh')
+})
 
 /** Availability colour: this is a health figure, so a bad one is red. */
 const toneClass = computed(() => {
@@ -51,17 +63,13 @@ const stepColors = computed(() =>
   <button
     v-if="point"
     type="button"
-    class="group/q flex cursor-pointer flex-col items-start gap-0.5 rounded p-1 -m-1 text-left transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-gray-700/40"
-    :title="$t('subProbe.openDetail', { name })"
-    @click="$emit('open')"
+    class="flex cursor-pointer flex-col items-start gap-0.5 rounded p-1 -m-1 text-left transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-gray-700/40"
+    :title="$t('subProbe.openDetail', { name: subscription.name })"
+    :aria-label="$t('subProbe.openDetail', { name: subscription.name })"
+    @click="openQuality"
   >
-    <span class="flex items-center gap-1.5">
-      <span class="text-sm font-semibold" :class="toneClass">
-        {{ formatAvailability(point) }}
-      </span>
-      <ChartBarIcon
-        class="h-3.5 w-3.5 text-gray-300 transition-colors group-hover/q:text-primary-500 dark:text-gray-600"
-      />
+    <span class="text-sm font-semibold" :class="toneClass">
+      {{ formatAvailability(point) }}
     </span>
     <SegmentedProgress
       :percent="100"
@@ -85,9 +93,16 @@ const stepColors = computed(() =>
     v-else
     type="button"
     class="cursor-pointer rounded p-1 -m-1 text-xs text-gray-300 transition-colors hover:text-primary-600 dark:text-gray-600 dark:hover:text-primary-400"
-    :title="$t('subProbe.openDetail', { name })"
-    @click="$emit('open')"
+    :title="$t('subProbe.openDetail', { name: subscription.name })"
+    :aria-label="$t('subProbe.openDetail', { name: subscription.name })"
+    @click="openQuality"
   >
-    {{ enabled ? $t('subProbe.never') : $t('subProbe.disabled') }}
+    {{ subscription.probe_enabled !== false ? $t('subProbe.never') : $t('subProbe.disabled') }}
   </button>
+
+  <SubscriptionQualityDialog
+    v-if="showQuality"
+    v-model="showQuality"
+    :subscription="subscription"
+  />
 </template>
