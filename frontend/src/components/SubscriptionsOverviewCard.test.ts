@@ -36,4 +36,30 @@ describe('shared subscription quality interaction', () => {
   test('the shared rendering has no separate chart icon', async () => {
     expect(await sourceOf('./SubscriptionQualityCell.vue')).not.toContain('ChartBarIcon')
   })
+
+  test('the quality cell offers a compact original-style probe alongside its default size', async () => {
+    const qualityCell = await sourceOf('./SubscriptionQualityCell.vue')
+    expect(qualityCell).toContain("size?: 'small' | 'default'")
+    expect(qualityCell).toContain("size: 'default'")
+    expect(qualityCell).toContain(`v-if="size === 'small'"`)
+    expect(qualityCell).toContain('size="xs"')
+    expect(qualityCell).toContain('size="sm"')
+    expect(qualityCell).toContain("$t('subProbe.column')")
+  })
+
+  test('the overview selects the compact quality-cell size', async () => {
+    expect(await sourceOf('./SubscriptionsOverviewCard.vue')).toMatch(
+      /<SubscriptionQualityCell\s+v-if="row\.probe"[\s\S]*?size="small"/,
+    )
+  })
+
+  test('plan extras use one ellipsized line with a full hover and focus tooltip', async () => {
+    const overview = await sourceOf('./SubscriptionsOverviewCard.vue')
+    expect(overview).toMatch(/row\.plan\.extras\.length[\s\S]*?class="[^"]*truncate[^"]*"/)
+    expect(overview).toContain('@mouseenter="showExtrasTooltip($event, row.id)"')
+    expect(overview).toContain('@focusin="showExtrasTooltip($event, row.id)"')
+    expect(overview).toMatch(
+      /<Teleport to="body">[\s\S]*?extrasTooltipRow\.plan\.extras[\s\S]*?role="tooltip"/,
+    )
+  })
 })
