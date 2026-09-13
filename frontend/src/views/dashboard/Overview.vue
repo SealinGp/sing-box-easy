@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ArrowsUpDownIcon, Bars3Icon } from '@heroicons/vue/24/outline'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
 import Button from '../../components/Button.vue'
 import { userService } from '../../services'
 import { useDeployment } from '../../composables/useDeployment'
@@ -30,7 +30,6 @@ const { t } = useI18n()
 const { authEnabled } = useDeployment()
 const notify = useNotify()
 const loading = ref(true)
-const loadFailed = ref(false)
 const localKey = 'sbe-overview-order:anonymous'
 let savedOrder = [...defaults]
 
@@ -41,7 +40,6 @@ function normalize(value: unknown): string[] {
 
 async function load() {
   loading.value = true
-  loadFailed.value = false
   try {
     const value = authEnabled.value
       ? (await userService.getPreferences()).overview_order
@@ -49,7 +47,6 @@ async function load() {
     order.value = normalize(value)
     savedOrder = [...order.value]
   } catch {
-    loadFailed.value = true
     notify.error(t('overview.layout.loadError'))
   } finally {
     loading.value = false
@@ -72,7 +69,7 @@ const reorder = useDragReorder(order, async () => {
   }
 })
 reorder.syncKeys(defaults.length)
-const { dirty, enabled, saving } = reorder
+const { dirty, enabled, holdingIndex, saving } = reorder
 
 function reset() {
   defaults.forEach((id, target) => {
@@ -89,28 +86,7 @@ onMounted(load)
 
 <template>
   <div class="page-shell">
-    <header v-if="!enabled" class="overview-page-header mb-4 flex min-h-8 items-center justify-between gap-3">
-      <h1 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('overview.title') }}</h1>
-      <Button v-if="loadFailed" variant="secondary" size="sm" action @click="load">
-        {{ t('overview.layout.retry') }}
-      </Button>
-      <Button
-        v-else
-        variant="secondary"
-        size="sm"
-        action
-        :aria-label="t('overview.layout.customize')"
-        :title="t('overview.layout.customize')"
-        :disabled="loading || saving"
-        :loading="saving"
-        @click="reorder.start"
-      >
-        <ArrowsUpDownIcon class="h-4 w-4" aria-hidden="true" />
-        <span class="hidden sm:inline">{{ t('overview.layout.customize') }}</span>
-      </Button>
-    </header>
-
-    <div v-else class="overview-toolbar is-arranging mb-4 flex flex-wrap items-center gap-2" aria-live="polite">
+    <div v-if="enabled" class="overview-toolbar is-arranging mb-4 flex flex-wrap items-center gap-2" aria-live="polite">
       <div class="mr-auto min-w-0">
         <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('overview.layout.arranging') }}</p>
         <p class="hidden text-xs text-gray-500 dark:text-gray-400 sm:block">{{ t('overview.layout.hint') }}</p>
@@ -129,7 +105,8 @@ onMounted(load)
         :class="[card.id === 'route-topology' ? 'md:col-span-2 lg:col-span-3' : '', enabled ? 'is-arranging' : '']">
         <div
           class="overview-tile-surface"
-          v-bind="enabled ? reorder.surfaceAttrs(index) : {}"
+          v-bind="enabled ? reorder.surfaceAttrs(index) : reorder.activationAttrs(index)"
+          :class="{ 'is-holding': !enabled && holdingIndex === index }"
           :title="enabled ? t('overview.layout.handle', { name: t(card.title) }) : undefined"
         >
           <div v-if="enabled" class="overview-arrange-chrome">
@@ -166,6 +143,11 @@ onMounted(load)
   position: relative;
   border-radius: var(--radius-surface);
   transition: transform 180ms ease-out, opacity 180ms ease-out, box-shadow 180ms ease-out;
+}
+.overview-tile-surface.is-holding {
+  transform: scale(0.992);
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  box-shadow: var(--shadow-float), var(--glass-highlight);
 }
 .overview-tile.is-arranging > .overview-tile-surface {
   cursor: grab;

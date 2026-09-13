@@ -1,8 +1,6 @@
 // Dashboard Overview page (Overview.vue).
 export default {
   layout: {
-    retry: 'Retry',
-    customize: 'Arrange cards',
     arranging: 'Arrange cards',
     done: 'Done',
     hint: 'Drag a card or use its move buttons. Choose Done to keep your layout.',
@@ -15,7 +13,6 @@ export default {
     saveError: 'Could not save your layout.',
     saved: 'Layout saved.',
   },
-  title: 'Dashboard Overview',
   serviceStatus: 'Service Status',
   pid: 'PID',
   uptime: 'Uptime',
