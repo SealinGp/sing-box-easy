@@ -61,4 +61,80 @@ describe('overview arrangement sessions', () => {
     })
     expect(reorder.rowAttrs(0).draggable).toBe(false)
   })
+
+  test('pressing and holding a card surface enters arrangement mode', async () => {
+    const items = ref(['topology', 'status'])
+    const reorder = useDragReorder(items, async () => {}, { longPressMs: 5 })
+    reorder.syncKeys(items.value.length)
+
+    const surface = reorder.activationAttrs(0)
+    const pointerDown = surface.onPointerdown as (event: unknown) => void
+
+    pointerDown({
+      button: 0,
+      pointerId: 1,
+      clientX: 24,
+      clientY: 40,
+      target: { closest: () => null },
+    })
+    expect(reorder.holdingIndex.value).toBe(0)
+
+    await Bun.sleep(10)
+    expect(reorder.enabled.value).toBe(true)
+    expect(reorder.holdingIndex.value).toBeNull()
+    expect(reorder.rowAttrs(0).draggable).toBe(true)
+  })
+
+  test('releasing or moving before the hold delay preserves normal card interaction', async () => {
+    const items = ref(['topology', 'status'])
+    const reorder = useDragReorder(items, async () => {}, { longPressMs: 10 })
+    reorder.syncKeys(items.value.length)
+
+    const releasedSurface = reorder.activationAttrs(0)
+    ;(releasedSurface.onPointerdown as (event: unknown) => void)({
+      button: 0,
+      pointerId: 1,
+      clientX: 10,
+      clientY: 10,
+      target: { closest: () => null },
+    })
+    ;(releasedSurface.onPointerup as (event: unknown) => void)({ pointerId: 1 })
+    await Bun.sleep(15)
+    expect(reorder.enabled.value).toBe(false)
+
+    const movedSurface = reorder.activationAttrs(0)
+    ;(movedSurface.onPointerdown as (event: unknown) => void)({
+      button: 0,
+      pointerId: 2,
+      clientX: 10,
+      clientY: 10,
+      target: { closest: () => null },
+    })
+    ;(movedSurface.onPointermove as (event: unknown) => void)({
+      pointerId: 2,
+      clientX: 24,
+      clientY: 10,
+    })
+    await Bun.sleep(15)
+    expect(reorder.enabled.value).toBe(false)
+  })
+
+  test('pressing an interactive card control never starts the hold gesture', async () => {
+    const items = ref(['topology', 'status'])
+    const reorder = useDragReorder(items, async () => {}, { longPressMs: 5 })
+    reorder.syncKeys(items.value.length)
+
+    const surface = reorder.activationAttrs(0)
+    ;(surface.onPointerdown as (event: unknown) => void)({
+      button: 0,
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+      target: { closest: () => ({ tagName: 'BUTTON' }) },
+    })
+
+    await Bun.sleep(10)
+    expect(reorder.enabled.value).toBe(false)
+    expect(reorder.holdingIndex.value).toBeNull()
+  })
 })
