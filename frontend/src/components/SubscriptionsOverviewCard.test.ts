@@ -53,13 +53,43 @@ describe('shared subscription quality interaction', () => {
     )
   })
 
-  test('plan extras use one ellipsized line with a full hover and focus tooltip', async () => {
-    const overview = await sourceOf('./SubscriptionsOverviewCard.vue')
-    expect(overview).toMatch(/row\.plan\.extras\.length[\s\S]*?class="[^"]*truncate[^"]*"/)
-    expect(overview).toContain('@mouseenter="showExtrasTooltip($event, row.id)"')
-    expect(overview).toContain('@focusin="showExtrasTooltip($event, row.id)"')
-    expect(overview).toMatch(
-      /<Teleport to="body">[\s\S]*?extrasTooltipRow\.plan\.extras[\s\S]*?role="tooltip"/,
+})
+
+describe('shared subscription quota details', () => {
+  test('the quota module owns the progress bar and its accessible tooltip', async () => {
+    const quota = await sourceOf('./SubscriptionQuotaDetails.vue')
+    expect(quota).toContain('role="progressbar"')
+    expect(quota).toContain('@mouseenter="showTooltip($event, \'quota\')"')
+    expect(quota).toContain('@focusin="showTooltip($event, \'quota\')"')
+    expect(quota).toMatch(/<Teleport to="body">[\s\S]*?role="tooltip"/)
+  })
+
+  test('the quota module owns fallback, expiry, and ellipsized plan extras', async () => {
+    const quota = await sourceOf('./SubscriptionQuotaDetails.vue')
+    expect(quota).toContain('showExpiry?: boolean')
+    expect(quota).toMatch(/plan\.extras\.length[\s\S]*?class="[^"]*truncate[^"]*"/)
+    expect(quota).toContain("formatPlanExtras(plan.extras)")
+    expect(quota).toContain("activeTooltip === 'extras'")
+    expect(quota).toContain("$t('overview.subscriptions.noPlanInfo')")
+  })
+
+  test('the overview delegates quota rendering and hides its duplicate expiry line', async () => {
+    expect(await sourceOf('./SubscriptionsOverviewCard.vue')).toMatch(
+      /<SubscriptionQuotaDetails[\s\S]*?:plan="row\.plan"[\s\S]*?:subscription-name="row\.name"[\s\S]*?:show-expiry="false"/,
     )
+  })
+
+  test('the subscriptions table uses the same quota module', async () => {
+    expect(await sourceOf('../views/dashboard/Subscriptions.vue')).toMatch(
+      /<SubscriptionQuotaDetails[\s\S]*?:plan="summarizePlan\(subscription\)"[\s\S]*?:subscription-name="subscription\.name"/,
+    )
+  })
+
+  test('callers no longer own quota bars or plan-detail tooltip state', async () => {
+    const overview = await sourceOf('./SubscriptionsOverviewCard.vue')
+    const subscriptions = await sourceOf('../views/dashboard/Subscriptions.vue')
+    expect(`${overview}\n${subscriptions}`).not.toContain('showQuotaTooltip')
+    expect(`${overview}\n${subscriptions}`).not.toContain('quota-fill')
+    expect(subscriptions).not.toContain('v-for="(entry, i) in subscription.info"')
   })
 })
