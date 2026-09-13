@@ -37,4 +37,28 @@ describe('overview arrangement sessions', () => {
     reorder.cancel()
     expect(items.value).toEqual(['topology', 'status', 'dns'])
   })
+
+  test('an arrange surface arms the whole item but ignores its controls', () => {
+    const items = ref(['topology', 'status'])
+    const reorder = useDragReorder(items, async () => {})
+    reorder.syncKeys(items.value.length)
+    reorder.start()
+
+    const surface = reorder.surfaceAttrs(0)
+    const pointerDown = surface.onPointerdown as (event: unknown) => void
+    const pointerUp = surface.onPointerup as () => void
+
+    pointerDown({ target: { closest: () => null } })
+    expect(reorder.rowAttrs(0).draggable).toBe(true)
+
+    pointerUp()
+    expect(reorder.rowAttrs(0).draggable).toBe(false)
+
+    pointerDown({
+      target: {
+        closest: (selector: string) => selector === '[data-reorder-control]' ? {} : null,
+      },
+    })
+    expect(reorder.rowAttrs(0).draggable).toBe(false)
+  })
 })
