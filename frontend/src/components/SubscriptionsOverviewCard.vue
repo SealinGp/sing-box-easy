@@ -19,9 +19,10 @@ import {
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
 import SubscriptionQualityCell from './SubscriptionQualityCell.vue'
+import SubscriptionQuotaDetails from './SubscriptionQuotaDetails.vue'
 import { subProbeService, subscriptionService } from '../services'
 import { useNotify } from '../composables/useNotify'
-import { formatPlanExtras, summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
+import { summarizePlan, type PlanSummary } from '../utils/subscriptionInfo'
 import { safeExternalUrl } from '../utils/safeExternalUrl'
 import { summarizeUpdate, updateSubscriptionsSequentially } from '../utils/subscriptionUpdate'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -267,8 +268,6 @@ interface SubscriptionRow {
   /** What the health dot means, and why it is that colour. */
   healthDetail: string
   plan: PlanSummary
-  /** All provider-defined plan fields flattened for the one-line summary. */
-  extrasText: string
   /** Transient outcome of the last update, or null when there is none. */
   status: RowStatus | null
   /** Newest quality sample, or null when this subscription has none. */
@@ -286,7 +285,6 @@ const rows = computed<SubscriptionRow[]>(() =>
       health: subscriptionHealth(subscription),
       healthDetail: healthDetail(subscription),
       plan,
-      extrasText: formatPlanExtras(plan.extras),
       status: rowStatus.value[subscription.id] ?? null,
       probe: probeLatest.value[subscription.id] ?? null,
     }
@@ -344,75 +342,6 @@ const healthDetail = (subscription: Subscription): string => {
   }
   return t('overview.subscriptions.healthOkDetail', { when })
 }
-
-/** Quota bar turns amber past 75% and red past 90% — before it runs out. */
-const usageBarClass = (ratio: number) => {
-  if (ratio >= 0.9) return 'bg-red-500'
-  if (ratio >= 0.75) return 'bg-amber-500'
-  return 'bg-primary-600'
-}
-
-const usagePercent = (ratio: number) => Math.round(ratio * 100)
-
-// Escape the card's scrollport: z-index alone cannot overcome overflow clipping.
-interface AnchoredTooltip {
-  id: string
-  left: number
-  top: number
-  width: number
-}
-
-const quotaTooltip = ref<AnchoredTooltip | null>(null)
-const quotaTooltipRow = computed(() => rows.value.find((row) => row.id === quotaTooltip.value?.id))
-
-function showQuotaTooltip(event: Event, id: string) {
-  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  quotaTooltip.value = { id, left: bounds.left, top: bounds.top, width: bounds.width }
-}
-
-function hideQuotaTooltip() {
-  quotaTooltip.value = null
-}
-
-function leaveQuotaTooltip(event: Event) {
-  const target = event.currentTarget as HTMLElement
-  if (!target.matches(':hover') && !target.contains(document.activeElement)) hideQuotaTooltip()
-}
-
-const extrasTooltip = ref<AnchoredTooltip | null>(null)
-const extrasTooltipRow = computed(() => rows.value.find((row) => row.id === extrasTooltip.value?.id))
-
-function showExtrasTooltip(event: Event, id: string) {
-  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const margin = 8
-  const width = Math.min(384, window.innerWidth - margin * 2)
-  const left = Math.min(Math.max(bounds.left, margin), window.innerWidth - width - margin)
-  extrasTooltip.value = { id, left, top: bounds.top, width }
-}
-
-function hideExtrasTooltip() {
-  extrasTooltip.value = null
-}
-
-function leaveExtrasTooltip(event: Event) {
-  const target = event.currentTarget as HTMLElement
-  if (!target.matches(':hover') && !target.contains(document.activeElement)) hideExtrasTooltip()
-}
-
-function hideAnchoredTooltips() {
-  hideQuotaTooltip()
-  hideExtrasTooltip()
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', hideAnchoredTooltips, true)
-  window.addEventListener('resize', hideAnchoredTooltips)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', hideAnchoredTooltips, true)
-  window.removeEventListener('resize', hideAnchoredTooltips)
-})
 
 /**
  * "in 12 days" / "expires today" / "expired". Falls back to the raw provider
@@ -645,44 +574,16 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
             </span>
           </div>
 
-          <!-- Quota details appear on hover or keyboard focus. -->
-          <div v-if="row.plan.usedRatio !== null" class="mt-2">
-            <div
-              class="relative"
-              @mouseenter="showQuotaTooltip($event, row.id)"
-              @mouseleave="leaveQuotaTooltip"
-              @focusin="showQuotaTooltip($event, row.id)"
-              @focusout="leaveQuotaTooltip"
-              @keydown.esc="hideQuotaTooltip"
-            >
-              <div
-                class="relative w-full cursor-default overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                role="progressbar"
-                tabindex="0"
-                :aria-valuenow="usagePercent(row.plan.usedRatio)"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                :aria-label="$t('overview.subscriptions.usageLabel', { name: row.name })"
-                :aria-describedby="`quota-details-${row.id}`"
-              >
-                <div
-                  class="quota-fill absolute inset-y-0 left-0 overflow-hidden opacity-25 transition-[width] duration-300 dark:opacity-35"
-                  :class="usageBarClass(row.plan.usedRatio)"
-                  :style="{ width: `${usagePercent(row.plan.usedRatio)}%` }"
-                  aria-hidden="true"
-                ></div>
-                <div class="relative flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-2 py-1 text-xs font-medium tabular-nums text-gray-900 dark:text-gray-100">
-                  <span>{{ row.plan.usedLabel }} / {{ row.plan.totalLabel }}</span>
-                  <span class="ml-auto">{{ usagePercent(row.plan.usedRatio) }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- The shared module owns the bar, fallbacks, extras, and tooltips.
+               Expiry stays in the name line above on this compact card. -->
+          <SubscriptionQuotaDetails
+            class="mt-2"
+            :plan="row.plan"
+            :subscription-name="row.name"
+            :show-expiry="false"
+          />
 
-          <div
-            v-if="row.probe || (row.plan.usedRatio === null && (row.plan.usedLabel || row.plan.remainingLabel))"
-            class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2"
-          >
+          <div v-if="row.probe" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
             <!--
               Node quality: how much of this feed actually works right now. It
               sits with quota and expiry because it answers the other half of
@@ -703,54 +604,7 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
               @refresh="loadProbe"
             />
 
-            <!--
-              Quota reported without a usable total (e.g. unlimited plans, which
-              send total=0): show the figures we do have, without a bar.
-            -->
-            <p
-              v-if="row.plan.usedRatio === null && (row.plan.usedLabel || row.plan.remainingLabel)"
-              class="text-xs text-gray-500 dark:text-gray-400"
-            >
-              <span v-if="row.plan.usedLabel">
-                {{ $t('overview.subscriptions.used') }}:
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.usedLabel }}</span>
-              </span>
-              <span v-if="row.plan.usedLabel && row.plan.remainingLabel"> · </span>
-              <span v-if="row.plan.remainingLabel">
-                {{ $t('overview.subscriptions.remaining') }}:
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ row.plan.remainingLabel }}</span>
-              </span>
-            </p>
-
           </div>
-
-          <!-- Provider-defined entries stay to one line here. Hovering or
-               focusing reveals every full entry in the unclipped tooltip. -->
-          <div
-            v-if="row.plan.extras.length"
-            class="mt-2 min-w-0"
-            @mouseenter="showExtrasTooltip($event, row.id)"
-            @mouseleave="leaveExtrasTooltip"
-            @focusin="showExtrasTooltip($event, row.id)"
-            @focusout="leaveExtrasTooltip"
-            @keydown.esc="hideExtrasTooltip"
-          >
-            <p
-              class="truncate rounded-pill bg-gray-100 px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-gray-700 dark:text-gray-300"
-              tabindex="0"
-              :aria-label="row.extrasText"
-              :aria-describedby="`plan-extras-${row.id}`"
-            >
-              {{ row.extrasText }}
-            </p>
-          </div>
-
-          <p
-            v-if="!row.plan.hasAny"
-            class="mt-2 text-xs text-gray-400 dark:text-gray-500"
-          >
-            {{ $t('overview.subscriptions.noPlanInfo') }}
-          </p>
 
           <!--
             The outcome of "update all", on the row it belongs to. Transient by
@@ -794,62 +648,5 @@ const formatCount = (value: number) => value.toLocaleString(locale.value)
 
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="quotaTooltip && quotaTooltipRow"
-        :id="`quota-details-${quotaTooltip.id}`"
-        role="tooltip"
-        class="pointer-events-none fixed z-50 w-max -translate-y-full rounded-md bg-gray-900/95 px-2 py-1 text-xs text-white shadow-lg dark:bg-gray-700"
-        :style="{ left: `${quotaTooltip.left}px`, top: `${quotaTooltip.top}px`, maxWidth: `${quotaTooltip.width}px` }"
-      >
-        <p v-if="quotaTooltipRow.plan.usedLabel">
-          {{ $t('overview.subscriptions.used') }}:
-          <span class="font-medium">{{ quotaTooltipRow.plan.usedLabel }} / {{ quotaTooltipRow.plan.totalLabel }}</span>
-        </p>
-        <p v-if="quotaTooltipRow.plan.remainingLabel">
-          {{ $t('overview.subscriptions.remaining') }}:
-          <span class="font-medium">{{ quotaTooltipRow.plan.remainingLabel }}</span>
-        </p>
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <div
-        v-if="extrasTooltip && extrasTooltipRow && extrasTooltipRow.plan.extras.length"
-        :id="`plan-extras-${extrasTooltip.id}`"
-        role="tooltip"
-        class="pointer-events-none fixed z-50 -translate-y-full space-y-1 rounded-md bg-gray-900/95 px-2 py-1.5 text-xs text-white shadow-lg dark:bg-gray-700"
-        :style="{ left: `${extrasTooltip.left}px`, top: `${extrasTooltip.top}px`, width: `${extrasTooltip.width}px` }"
-      >
-        <p
-          v-for="(entry, index) in extrasTooltipRow.plan.extras"
-          :key="`${entry.key}-${index}`"
-          class="break-words"
-        >
-          {{ formatPlanExtras([entry]) }}
-        </p>
-      </div>
-    </Teleport>
-
   </div>
 </template>
-
-<style scoped>
-.quota-fill::after {
-  content: '';
-  position: absolute;
-  inset: 0 -32px 0 0;
-  background: repeating-linear-gradient(135deg, transparent 0 11.3137px, rgb(255 255 255 / 45%) 11.3137px 22.6274px);
-  animation: quota-flow 1.8s linear infinite;
-}
-
-@keyframes quota-flow {
-  from { transform: translateX(-32px); }
-  to { transform: translateX(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .quota-fill { transition: none; }
-  .quota-fill::after { animation: none; }
-}
-</style>

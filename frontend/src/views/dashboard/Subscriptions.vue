@@ -13,6 +13,7 @@ import CopyIcon from "../../components/CopyIcon.vue";
 import PopConfirm from "../../components/PopConfirm.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
 import SubscriptionQualityCell from "../../components/SubscriptionQualityCell.vue";
+import SubscriptionQuotaDetails from "../../components/SubscriptionQuotaDetails.vue";
 import { parseDurationToHours, isValidDuration } from "../../plugins/dayjs";
 import { subscriptionHealth } from "../../utils/subscriptionHealth";
 import {
@@ -20,6 +21,7 @@ import {
   updateSubscriptionsSequentially,
 } from "../../utils/subscriptionUpdate";
 import { isLinkableSiteInput, safeExternalUrl } from "../../utils/safeExternalUrl";
+import { summarizePlan } from "../../utils/subscriptionInfo";
 import { subProbeService } from "../../services";
 import type { ProbePoint } from "../../types/subprobe";
 import {
@@ -617,23 +619,12 @@ onMounted(() => {
             />
           </td>
 
-          <!-- Plan info: generic key/value entries -->
+          <!-- The same quota interpretation and tooltip used by Overview. -->
           <td class="align-top">
-            <div
-              v-if="subscription.info && subscription.info.length"
-              class="flex flex-col gap-1"
-            >
-              <span
-                v-for="(entry, i) in subscription.info"
-                :key="i"
-                class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap"
-                :title="`${entry.key}: ${entry.value}`"
-              >
-                <span class="text-gray-400 dark:text-gray-500">{{ entry.key }}</span>
-                <span v-if="entry.value" class="font-medium ml-1">{{ entry.value }}</span>
-              </span>
-            </div>
-            <span v-else class="text-xs text-gray-300 dark:text-gray-600">—</span>
+            <SubscriptionQuotaDetails
+              :plan="summarizePlan(subscription)"
+              :subscription-name="subscription.name"
+            />
           </td>
           <td class="align-top col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
