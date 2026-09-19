@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	singjson "github.com/sagernet/sing/common/json"
+	"go.uber.org/zap"
 )
 
 // ValidationStage identifies which validation boundary rejected a document.
@@ -85,8 +87,21 @@ func (m *Manager) GetConfigDocument() (ConfigDocument, error) {
 }
 
 // GetRuntimeConfig decodes only the sections needed by service lifecycle
-// integration. A new DNS or route feature therefore cannot prevent host
-// network setup or log discovery.
+// integration: log for discovery, and inbounds + dns + route for the OpenWrt
+// host plan. A feature landing in any other section therefore cannot prevent
+// host network setup.
+//
+// dns and route are not optional extras here. openwrtnet.DerivePlan reads the
+// hijack-dns rule out of route.rules to learn which inbound is the resolver,
+// and the hosts server out of dns.servers to learn which names need a rebind
+// exemption. Omitting either makes the plan report "no DNS redirect needed",
+// dnsmasq is silently left pointing at the ISP, and every DNS rule in the
+// config is bypassed — with the firewall zone still applied, so the failure
+// looks like a working setup.
+//
+// Each section is decoded independently: a section this build's option structs
+// cannot parse is logged and skipped rather than failing the whole start,
+// which preserves the original resilience goal without the silent bypass.
 func (m *Manager) GetRuntimeConfig() (*SingBoxConfig, error) {
 	document, err := m.GetConfigDocument()
 	if err != nil {
@@ -99,14 +114,23 @@ func (m *Manager) GetRuntimeConfig() (*SingBoxConfig, error) {
 
 	var cfg SingBoxConfig
 	jsonCtx := CreateContext(context.Background())
-	if raw := sections["log"]; len(raw) > 0 {
-		if err := singjson.UnmarshalContext(jsonCtx, raw, &cfg.Log); err != nil {
-			return nil, fmt.Errorf("failed to parse log config: %w", err)
-		}
+	targets := []struct {
+		name string
+		into any
+	}{
+		{"log", &cfg.Log},
+		{"inbounds", &cfg.Inbounds},
+		{"dns", &cfg.DNS},
+		{"route", &cfg.Route},
 	}
-	if raw := sections["inbounds"]; len(raw) > 0 {
-		if err := singjson.UnmarshalContext(jsonCtx, raw, &cfg.Inbounds); err != nil {
-			return nil, fmt.Errorf("failed to parse inbound config: %w", err)
+	for _, target := range targets {
+		raw := sections[target.name]
+		if len(raw) == 0 {
+			continue
+		}
+		if err := singjson.UnmarshalContext(jsonCtx, raw, target.into); err != nil {
+			logger.Warn("could not parse a config section for the host plan; skipping it",
+				zap.String("section", target.name), zap.Error(err))
 		}
 	}
 	return &cfg, nil
