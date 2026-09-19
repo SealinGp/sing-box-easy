@@ -6,7 +6,8 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 
 ### 🖥️ Web 仪表盘
 - **大盘**:
-<img width="3840" height="1744" alt="image" src="https://github.com/user-attachments/assets/df9c6eb3-bccf-497f-a82e-16f3673bb57c" />
+<img width="2992" height="1516" alt="image" src="https://github.com/user-attachments/assets/ed1f5336-90c8-499a-a575-f823aba94a7c" />
+
 - **订阅质量**:
 <img width="1812" height="1564" alt="image" src="https://github.com/user-attachments/assets/0e61dfe1-081f-4408-bb2a-2f086fa3eae1" />
 
@@ -15,7 +16,7 @@ sing-box-easy 是一个带有现代化 Web 界面的 sing-box 配置管理工具
 <img width="1530" height="1222" alt="image" src="https://github.com/user-attachments/assets/a71a6ea7-cdc4-42e9-9951-953f4948fc33" />
 
 - **节点与订阅**：直观的节点列表、分组（selector / urltest）编辑、订阅自动更新调度器。
-<img width="3326" height="1054" alt="image" src="https://github.com/user-attachments/assets/298de227-2b2c-4d2f-ab3b-a08f5530720c" />
+<img width="2542" height="926" alt="image" src="https://github.com/user-attachments/assets/fb610eb3-914a-4886-83a4-7a1eaa010bf6" />
 <img width="3298" height="1704" alt="image" src="https://github.com/user-attachments/assets/81994352-9699-40c6-b941-b774cd1e99f6" />
 
 - **初始化向导**：首次启动自动进入 `/init` 引导，分步完成 sing-box 安装、配置生成、Dashboard UI 部署。
