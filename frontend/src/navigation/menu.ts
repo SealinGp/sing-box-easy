@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { ChartBarIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, GlobeAltIcon, MapIcon,
   DocumentTextIcon, BeakerIcon, QueueListIcon, UsersIcon, Cog6ToothIcon,
-  ArrowPathIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
+  ArrowPathIcon, AdjustmentsHorizontalIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 
 export interface MenuItem {
   name: string
@@ -32,6 +32,8 @@ export function createMenu(t: (key: string) => string, authEnabled: boolean): Me
     { id: 'network', name: t('nav.network'), items: [
       item('nav.dns', GlobeAltIcon, 'dns', 'dns resolver 域名'),
       item('nav.route', MapIcon, 'route', 'routing rules 路由'),
+      item('nav.diagnostics', WrenchScrewdriverIcon, 'diagnostics',
+        'probe test ipv6 ipv4 dual stack dns route 诊断 探测 双栈'),
     ] },
     { id: 'system', name: t('nav.system'), items: [
       item('nav.config', DocumentTextIcon, 'config', 'json configuration history 配置'),

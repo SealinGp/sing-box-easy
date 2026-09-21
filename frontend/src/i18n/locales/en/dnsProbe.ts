@@ -34,6 +34,10 @@ export default {
       'Other DNS activity was logged at the same moment, so the decisions below may not all belong to this query.',
     readError: 'Could not read the sing-box log: {error}',
   },
+  continued: 'matched, then continued',
+  ruleSetTier: {
+    'sing-box': 'answered by the installed sing-box',
+  },
   state: {
     matched: 'matched',
     not_matched: 'no match',

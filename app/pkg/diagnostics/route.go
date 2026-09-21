@@ -37,6 +37,13 @@ func (h *Service) ProbeRoute(ctx context.Context, req RouteProbeRequest) (any, e
 		return nil, fault.New(fault.Configuration, err.Error())
 	}
 
+	// Built here rather than inside routeprobe so it carries the binary
+	// fallback: on a host whose sing-box is newer than the pinned library,
+	// every remote rule set is otherwise undecidable, and a rule-set-driven
+	// config is then almost entirely unexplained.
+	sets := h.ruleSetLoader()
+	defer sets.Close()
+
 	options := routeprobe.Options{
 		Destination: req.Destination,
 		Port:        req.Port,
@@ -44,6 +51,7 @@ func (h *Service) ProbeRoute(ctx context.Context, req RouteProbeRequest) (any, e
 		Inbound:     req.Inbound,
 		SourceIP:    req.SourceIP,
 		Protocol:    req.Protocol,
+		Sets:        sets,
 	}
 
 	// Both extras come from the running instance and both are optional: a

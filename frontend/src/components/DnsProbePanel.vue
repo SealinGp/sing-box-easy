@@ -19,12 +19,14 @@ import {
 import Button from './Button.vue'
 import Table from './Table.vue'
 import DnsProbeTimeline from './DnsProbeTimeline.vue'
+import RuleSetIssues from './RuleSetIssues.vue'
 import { Select } from '../volt'
 import { dnsService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import {
   DNS_QUERY_TYPES,
   type DnsProbeResult,
+  type DnsRuleEvaluation,
   type DnsServerResult,
   type MatchState,
 } from '../types/dnsprobe'
@@ -159,9 +161,43 @@ const stateClass = (state: MatchState) => {
 
 const stateLabel = (state: MatchState) => t(`dnsProbe.state.${state}`)
 
+/** Lamp colour for one rule set's own verdict, independent of its rule's. */
+const ruleSetClass = (state: MatchState) => {
+  switch (state) {
+    case 'matched':
+      return 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+    case 'not_matched':
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+    default:
+      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+  }
+}
+
 /** Why a configured server was left out of the comparison. */
 const skipLabel = (server: DnsServerResult) =>
   server.skip_reason ? t(`dnsProbe.skip.${server.skip_reason}`, { detail: server.skip_detail ?? '' }) : ''
+
+/**
+ * Rule sets that could not be read, across every rule.
+ *
+ * Surfaced for the same reason the route panel surfaces it: a rule left
+ * undecidable by an unreadable set makes every verdict below it a guess, and
+ * the only useful thing to show is which set and what to do about it. Reasons
+ * arrive as keys so they can be translated here rather than on the server.
+ */
+const brokenRuleSets = computed(() => {
+  const seen = new Map<string, NonNullable<DnsRuleEvaluation['rule_sets']>[number]>()
+  for (const rule of result.value?.attribution.rules ?? []) {
+    for (const set of rule.rule_sets ?? []) {
+      // The same set is reached from many rules; report it once.
+      if (set.reason && !seen.has(set.tag)) seen.set(set.tag, set)
+    }
+  }
+  return [...seen.values()]
+})
+
+// <RuleSetIssues> groups these by cause, so a config with fourteen remote sets
+// and no cache file shows one explanation rather than fourteen.
 
 /**
  * The backend reports the log situation as a code so it can be translated
@@ -249,6 +285,9 @@ const logStatusMessage = computed(() => {
         </p>
       </section>
 
+      <!-- Rule sets that could not be consulted, grouped by cause. -->
+      <RuleSetIssues :sets="brokenRuleSets" />
+
       <!-- Rule ladder -->
       <section
         v-if="!props.compact && result.attribution.rules.length"
@@ -275,8 +314,37 @@ const logStatusMessage = computed(() => {
             </div>
             <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               {{ rule.action }}<template v-if="rule.server">({{ rule.server }})</template>
+              <!--
+                A matched rule that handed over rather than deciding. Stated in
+                words because the distinction is invisible otherwise, and on a
+                1.14 config most matches are of this kind.
+              -->
+              <span
+                v-if="rule.state === 'matched' && rule.terminal === false"
+                class="ml-2 text-gray-400"
+              >
+                · {{ rule.effect || $t('dnsProbe.continued') }}
+              </span>
               <span v-if="rule.unevaluated?.length" class="ml-2 text-amber-600 dark:text-amber-400">
                 {{ $t('dnsProbe.cannotEvaluate', { fields: rule.unevaluated.join(', ') }) }}
+              </span>
+            </div>
+            <!--
+              Per-set verdicts. A rule whose only condition is a rule_set says
+              nothing on its own — "matched" or "not matched" is the set's
+              answer, and which set gave it is the thing worth reading.
+            -->
+            <div v-if="rule.rule_sets?.length" class="mt-1 flex flex-wrap gap-1">
+              <span
+                v-for="set in rule.rule_sets"
+                :key="set.tag"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-pill text-[10px] font-mono"
+                :class="ruleSetClass(set.state)"
+              >
+                {{ set.tag }}
+                <!-- Only the binary tier is marked: an in-process decode is
+                     the norm and a badge on every set would say nothing. -->
+                <span v-if="set.tier === 'sing-box'" :title="$t('dnsProbe.ruleSetTier.sing-box')">⎋</span>
               </span>
             </div>
           </li>

@@ -33,6 +33,10 @@ export default {
     ambiguous: '同一时刻还有其他 DNS 活动被记录，下方的判定未必都属于本次查询。',
     readError: '无法读取 sing-box 日志：{error}',
   },
+  continued: '命中后继续匹配',
+  ruleSetTier: {
+    'sing-box': '由已安装的 sing-box 判定',
+  },
   state: {
     matched: '命中',
     not_matched: '未命中',

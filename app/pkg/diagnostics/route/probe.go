@@ -66,6 +66,11 @@ type RuleSetStatus struct {
 	// UpdatedAtUnix is when sing-box last downloaded the set, 0 when unknown.
 	// A routing surprise is often just a stale set.
 	UpdatedAtUnix int64 `json:"updated_at_unix,omitempty"`
+	// Tier says which layer decided this set: decoded in-process, or answered
+	// by the installed sing-box binary. Surfaced because the two carry
+	// different confidence — and because "the binary answered" is the only
+	// visible sign that this build could not read the set itself.
+	Tier ruleset.Tier `json:"tier,omitempty"`
 }
 
 // RuleEvaluation is one route rule's verdict, in config order.
@@ -165,6 +170,10 @@ type Options struct {
 	Protocol string
 	// Resolve turns a domain into an address so address rules can be decided.
 	Resolve Resolver
+	// Sets resolves `rule_set` tags. Optional — one is built from the config
+	// when absent — but a caller that supplies it can enable the binary
+	// fallback for sets this build cannot decode, and owns Closing it.
+	Sets *ruleset.Loader
 }
 
 // Run evaluates one destination against a config.
@@ -237,8 +246,13 @@ func Run(options *option.Options, opts Options) (*Result, error) {
 		target.SourceIP = address
 	}
 
-	loader := ruleset.NewLoader(nil, options)
-	defer loader.Close()
+	// A caller-supplied loader is NOT closed here: it outlives this call and
+	// its owner releases it. Only one built locally is this function's to free.
+	loader := opts.Sets
+	if loader == nil {
+		loader = ruleset.NewLoader(nil, options)
+		defer loader.Close()
+	}
 
 	evaluator := &evaluator{
 		loader:    loader,

@@ -19,6 +19,8 @@ const DNSDiagnostics = () => import(/* webpackChunkName: "dns-diagnostics" */ '.
 const Route = () => import(/* webpackChunkName: "route" */ '../views/dashboard/Route.vue')
 const RoutingRules = () => import(/* webpackChunkName: "routing-rules" */ '../components/RoutingRules.vue')
 const RouteDiagnostics = () => import(/* webpackChunkName: "route-diagnostics" */ '../views/dashboard/RouteDiagnostics.vue')
+const Diagnostics = () => import(/* webpackChunkName: "diagnostics" */ '../views/dashboard/Diagnostics.vue')
+const DualStackDiagnostics = () => import(/* webpackChunkName: "dual-stack" */ '../views/dashboard/DualStackDiagnostics.vue')
 const RuleSets = () => import(/* webpackChunkName: "rule-sets" */ '../components/RuleSets.vue')
 const FinalPolicy = () => import(/* webpackChunkName: "final-policy" */ '../components/FinalPolicy.vue')
 const Experimental = () => import(/* webpackChunkName: "experimental" */ '../views/dashboard/Experimental.vue')
@@ -113,10 +115,12 @@ const routes: RouteRecordRaw[] = [
             name: 'DNSSettings',
             component: DNSSettings,
           },
+          // Moved to /dashboard/diagnostics/dns; kept as a redirect so
+          // existing bookmarks keep working, the same way the old top-level
+          // subscriptions and node-rules paths are handled below.
           {
             path: 'diagnostics',
-            name: 'DNSDiagnostics',
-            component: DNSDiagnostics,
+            redirect: '/dashboard/diagnostics/dns',
           },
         ],
       },
@@ -143,6 +147,28 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: 'diagnostics',
+            redirect: '/dashboard/diagnostics/route',
+          },
+        ],
+      },
+      {
+        path: 'diagnostics',
+        name: 'DashboardDiagnostics',
+        component: Diagnostics,
+        redirect: '/dashboard/diagnostics/dual-stack',
+        children: [
+          {
+            path: 'dual-stack',
+            name: 'DualStackDiagnostics',
+            component: DualStackDiagnostics,
+          },
+          {
+            path: 'dns',
+            name: 'DNSDiagnostics',
+            component: DNSDiagnostics,
+          },
+          {
+            path: 'route',
             name: 'RouteDiagnostics',
             component: RouteDiagnostics,
           },

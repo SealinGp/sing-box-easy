@@ -78,6 +78,12 @@ type Set struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 
 	rules []matcher
+	// content is the raw, undecoded rule-set body, kept ONLY so the binary
+	// fallback has something to hand over when this build could not read it.
+	// It is not retained for a set that decoded cleanly — a production cache
+	// is ~36MB and holding every set's bytes for a request that no longer
+	// needs them would be pure cost.
+	content []byte
 }
 
 // Match evaluates the set against a target.
@@ -121,6 +127,11 @@ type Loader struct {
 	cachePath   string
 	cacheID     string
 	loaded      map[string]*Set
+
+	// cliBinary enables the tier-2 fallback; empty leaves it off. See tier.go.
+	cliBinary  string
+	cliTimeout time.Duration
+	cliResults map[string]MatchResult
 }
 
 // NewLoader builds a loader for one sing-box config.

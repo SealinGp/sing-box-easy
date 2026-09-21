@@ -225,6 +225,55 @@ func (h *Service) GetDNSRules(ctx context.Context) (any, error) {
 	return map[string]any{"rules": rawList(dns, "rules")}, nil
 }
 
+// AddDNSRulesBatch appends several rules in ONE config write.
+//
+// Not a convenience. The rules this exists for — the evaluate/respond group
+// behind a parallel-resolution race — only work as a complete, ordered set:
+// sing-box fails a query outright when a `respond` is reached with no
+// preceding `evaluate` for its tag, rather than falling through. Appending
+// them one request at a time would leave the config briefly in states that are
+// not slower versions of the target, but broken ones — three evaluates with no
+// responds changes resolution for those domains, and a respond that lands
+// before its evaluate breaks it.
+//
+// One write is also one validation, one snapshot and one atomic rename instead
+// of six, which on a router is the difference between instant and noticeable.
+func (h *Service) AddDNSRulesBatch(ctx context.Context, body []byte) (any, error) {
+	var request struct {
+		Rules []stdjson.RawMessage `json:"rules"`
+	}
+	if err := wirejson.Unmarshal(body, &request); err != nil {
+		return nil, fault.New(fault.Input, "invalid request body: "+err.Error())
+	}
+	if len(request.Rules) == 0 {
+		return nil, fault.New(fault.Input, "rules is required and must not be empty")
+	}
+	// Every entry is checked BEFORE anything is written, so a malformed rule
+	// at position 4 does not leave the first three appended.
+	for i, rule := range request.Rules {
+		if err := requireJSONObject(rule); err != nil {
+			return nil, fault.New(fault.Input,
+				fmt.Sprintf("invalid DNS rule at index %d: %s", i, err.Error()))
+		}
+	}
+
+	err := h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		rules := rawList(dns, "rules")
+		for _, rule := range request.Rules {
+			rules = append(rules, cloneRaw(rule))
+		}
+		return setRawList(dns, "rules", rules)
+	})
+	if err != nil {
+		return nil, fault.New(fault.Internal, err.Error())
+	}
+
+	return map[string]any{
+		"message": "DNS rules added successfully",
+		"added":   len(request.Rules),
+	}, nil
+}
+
 func (h *Service) AddDNSRule(ctx context.Context, body []byte) (any, error) {
 	var err error
 	if err := requireJSONObject(body); err != nil {

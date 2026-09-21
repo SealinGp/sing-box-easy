@@ -2,6 +2,7 @@ import { apiService } from './api'
 import { ConfigService } from './config'
 import { DashboardService } from './dashboard'
 import { DNSService } from './dns'
+import { DiagnosticsService } from './diagnostics'
 import { ExperimentalService } from './experimental'
 import { InboundService } from './inbound'
 import { LogService } from './log'
@@ -24,6 +25,7 @@ export { ApiService } from './api'
 export { ConfigService } from './config'
 export { DashboardService } from './dashboard'
 export { DNSService } from './dns'
+export { DiagnosticsService } from './diagnostics'
 export { ExperimentalService } from './experimental'
 export { InboundService } from './inbound'
 export { LogService } from './log'
@@ -45,6 +47,7 @@ export { VersionService } from './version'
 export const configService = new ConfigService(apiService)
 export const dashboardService = new DashboardService(apiService)
 export const dnsService = new DNSService(apiService)
+export const diagnosticsService = new DiagnosticsService(apiService)
 export const experimentalService = new ExperimentalService(apiService)
 export const inboundService = new InboundService(apiService)
 export const logService = new LogService(apiService)

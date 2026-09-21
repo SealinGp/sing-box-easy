@@ -27,6 +27,9 @@ import init from './init'
 import setup from './setup'
 import users from './users'
 import profile from './profile'
+import diagnostics from './diagnostics'
+import dualStack from './dualStack'
+import ruleSet from './ruleSet'
 
 export default {
   common,
@@ -57,4 +60,7 @@ export default {
   setup,
   users,
   profile,
+  diagnostics,
+  dualStack,
+  ruleSet,
 }

@@ -16,6 +16,7 @@ export default {
   profile: '个人资料',
   skipContent: '跳转到内容',
 
+  diagnostics: '诊断',
   settings: '设置',
   general: '通用设置',
   users: '用户管理',

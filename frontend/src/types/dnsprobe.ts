@@ -9,6 +9,10 @@
  *    so via `exact` and per-rule `unevaluated`.
  */
 
+import type { RuleSetStatus } from './ruleSet'
+
+export type { RuleSetStatus, RuleSetReason, RuleSetTier } from './ruleSet'
+
 /** Verdict for one rule against the probed domain. */
 export type MatchState = 'matched' | 'not_matched' | 'unevaluated'
 
@@ -31,11 +35,34 @@ export interface DnsRuleEvaluation {
   state: MatchState
   /** The rule's conditions, rendered for display. */
   summary: string
-  /** Conditions that could not be decided offline, e.g. ["rule_set"]. */
+  /**
+   * Conditions that could not be decided offline.
+   *
+   * `rule_set` and `query_type` used to live here on every rule that carried
+   * them. Both are now decided — the query type was always known, and rule
+   * sets are read from sing-box's own cache — so seeing either here means the
+   * set genuinely could not be read (`rule_sets` says which, and why) or the
+   * caller did not name a record type.
+   */
   unevaluated?: string[]
   action: string
   server?: string
   strategy?: string
+  /** Per-set detail when the rule references any. Same shape route reports. */
+  rule_sets?: RuleSetStatus[]
+  /**
+   * Whether a match on this rule ENDS the walk.
+   *
+   * Not derivable from the action name. sing-box's matchDNS switch returns
+   * only for route, reject and predefined — so `evaluate` and `route-options`
+   * match, change what the rules below them see, and hand over. A config that
+   * races three `evaluate` resolvers has three matched rules and no decision,
+   * and a ladder that treated the first match as the answer would name the
+   * wrong server with full confidence.
+   */
+  terminal?: boolean
+  /** What a non-terminal match changed for the rules below it. */
+  effect?: string
 }
 
 export interface DnsAttribution {

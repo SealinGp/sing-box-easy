@@ -19,7 +19,9 @@
  */
 import { ApiError, Code, type BasicResponse } from '../types/api'
 
-const BASE_URL = '/api/1.12.12'
+import { API_BASE_URL } from './apiBase'
+
+const BASE_URL = API_BASE_URL
 
 export interface StreamHandlers {
   /** Called per event. `name` is the server's `event:` field. */

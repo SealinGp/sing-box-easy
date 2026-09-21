@@ -5,7 +5,6 @@ export default {
     servers: 'DNS Servers',
     rules: 'DNS Rules',
     settings: 'Settings',
-    diagnostics: 'Diagnostics',
   },
   servers: {
     heading: 'DNS Servers',
@@ -276,6 +275,38 @@ export default {
       deleteFailed: 'Failed to delete DNS rule',
       reordered: 'Rule order saved',
       reorderFailed: 'Failed to save the new rule order',
+    },
+    parallel: {
+      add: 'Parallel resolve',
+      title: 'Parallel resolution group',
+      desc:
+        'Send the same query to several DNS servers at once and answer with the first successful reply. sing-box expresses this as one `evaluate` rule per server followed by a racing `respond` rule for each — generated here because the two halves only work as a matched, ordered set.',
+      whenHeading: 'Which queries',
+      whenHint: 'Leave empty to race every query — useful as a final fallback.',
+      serversHeading: 'Servers to race',
+      serversPlaceholder: 'Pick two or more DNS servers',
+      groupName: 'Group name',
+      groupNameHint: 'Used to name the responses: <group>_<server>. It ends up in config.json.',
+      timeout: 'Timeout per server',
+      timeoutHint: 'Applied to every query in the group. Leave empty for the server default.',
+      previewHeading: 'Rules to be added',
+      previewCount: '{count} rules for {servers} servers',
+      previewEvaluate: 'evaluate → {server}, saved as "{tag}"',
+      previewRespond: 'respond with "{tag}" if it answered NOERROR (racing)',
+      appendNote:
+        'Added at the end of the list, in this order. Every evaluate must stay above its respond — use Reorder to move the whole block together.',
+      create: 'Create group',
+      orphan: 'no evaluate',
+      orphanHint:
+        'This respond rule has no preceding evaluate for its tag. sing-box fails the query outright instead of falling through, so DNS breaks for whatever this rule is reached by.',
+      errors: {
+        needGroup: 'Enter a group name — it names the saved responses.',
+        needTwoServers: 'Pick at least two servers. Racing one server is just a route rule.',
+        tagExists: 'A rule already uses one of these response tags. Choose a different group name.',
+      },
+      toast: {
+        created: 'Added {count} rules',
+      },
     },
     reorder: {
       start: 'Reorder',

@@ -115,11 +115,22 @@ const steps = computed<Step[]>(() => {
       note: attribution.exact ? undefined : t('dnsTimeline.predicted'),
     })
   } else {
+    // "No rule matched" is only true when nothing matched at ALL. Since the
+    // walk became a state machine, a rule can match and hand over — three
+    // racing `evaluate` rules is a normal 1.14 shape — so the headline has to
+    // distinguish "nothing matched" from "nothing DECIDED", or it reads as a
+    // flat contradiction of the ladder sitting next to it.
+    const matchedWithoutDeciding = attribution.rules.filter(
+      (entry) => entry.state === 'matched',
+    ).length
+
     list.push({
       key: 'decision',
       icon: attribution.exact ? ArrowRightCircleIcon : QuestionMarkCircleIcon,
       confidence: attribution.exact ? 'neutral' : 'predicted',
-      title: t('dnsTimeline.noRuleMatched'),
+      title: matchedWithoutDeciding
+        ? t('dnsTimeline.noRuleDecided', { count: matchedWithoutDeciding })
+        : t('dnsTimeline.noRuleMatched'),
       source: 'dns.final',
       detail: t('dnsTimeline.usesFinal'),
       note: attribution.exact ? undefined : t('dnsTimeline.predicted'),

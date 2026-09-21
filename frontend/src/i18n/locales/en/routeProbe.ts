@@ -23,7 +23,6 @@ export default {
   resolvedBySingBox: 'resolved by sing-box',
   resolveFailed: 'Could not resolve the name ({error}). Address-based rules could not be decided.',
   inexact: 'Best guess: {count} rule(s) ahead of this decision could not be evaluated, and any of them could have matched first.',
-  ruleSetsUnavailable: 'Some rule sets could not be read, so rules using them could not be decided:',
 
 
   outboundSource: {
@@ -33,15 +32,6 @@ export default {
     implicit_direct: 'implicit direct (no outbounds configured)',
   },
 
-  ruleSetReason: {
-    unknown_tag: 'no rule set with this tag exists in the config',
-    not_cached: 'never downloaded — update it on the Rule Sets tab',
-    cache_unavailable: 'the sing-box cache file could not be read',
-    cache_disabled: 'experimental.cache_file is off, so remote sets are only in memory',
-    file_missing: 'the local file is missing',
-    unsupported_srs_version: 'built by a newer sing-box than this panel understands',
-    parse_error: 'the content could not be decoded',
-  },
 
   toast: {
     failed: 'Simulation failed',

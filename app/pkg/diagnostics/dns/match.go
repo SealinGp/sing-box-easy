@@ -8,12 +8,12 @@
 package dnsprobe
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/domain"
+	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 )
 
 // MatchState is the verdict for one DNS rule against one domain.
@@ -47,6 +47,58 @@ type RuleEvaluation struct {
 	Action   string `json:"action"`
 	Server   string `json:"server,omitempty"`
 	Strategy string `json:"strategy,omitempty"`
+	// RuleSets carries per-set detail when the rule references any, so a rule
+	// that could not be decided names the set responsible rather than saying
+	// only "rule_set". Same shape the route probe reports.
+	RuleSets []RuleSetStatus `json:"rule_sets,omitempty"`
+	// Terminal reports whether a match on this rule ENDS the walk.
+	//
+	// Not decoration, and not derivable from the action name: sing-box's
+	// matchDNS switch returns only for route, reject and predefined, so
+	// `evaluate` and `route-options` match and hand over. A ladder that showed
+	// every match as the decision would name the wrong server on any config
+	// using them — which, on 1.14, is most of them.
+	Terminal bool `json:"terminal"`
+	// Effect describes what a non-terminal match changed for the rules below.
+	Effect string `json:"effect,omitempty"`
+}
+
+// RuleSetStatus reports one rule set referenced by a DNS rule.
+//
+// Deliberately the same shape routeprobe.RuleSetStatus uses: the two probes
+// answer the same kind of question and the UI renders them with one component,
+// so two near-identical payloads would only invite them to drift.
+type RuleSetStatus struct {
+	Tag string `json:"tag"`
+	// State is the set's own verdict: matched, not_matched or unevaluated.
+	State MatchState `json:"state"`
+	// Reason is populated when the set could not be read at all.
+	Reason ruleset.Reason `json:"reason,omitempty"`
+	Detail string         `json:"detail,omitempty"`
+	// UpdatedAtUnix is when sing-box last downloaded the set, 0 when unknown.
+	UpdatedAtUnix int64 `json:"updated_at_unix,omitempty"`
+	// Tier says which layer decided it: decoded here, or answered by the
+	// installed sing-box binary.
+	Tier ruleset.Tier `json:"tier,omitempty"`
+}
+
+// Query is everything known about the lookup being attributed.
+//
+// It replaces the bare domain string because two of the most decisive
+// conditions in a real config were being discarded: the record type (an
+// AAAA-suppression rule is the basis of every IPv6 split) and the rule sets
+// (on the config this was built against, most rules carry nothing else).
+// Both were already available at the call site and simply never passed down.
+type Query struct {
+	// Domain is the name being looked up; it is normalized here.
+	Domain string
+	// Type is the record type asked for ("A", "AAAA", …). Empty means the
+	// caller did not say, which leaves query_type rules undecidable rather
+	// than assuming one.
+	Type string
+	// Sets resolves rule_set tags. Optional: without it, every rule carrying
+	// a rule_set stays undecidable, which is what this probe did before.
+	Sets *ruleset.Loader
 }
 
 // Attribution is the reconstructed routing decision for a domain.
@@ -76,23 +128,51 @@ type Attribution struct {
 	UnevaluatedBefore int `json:"unevaluated_before"`
 }
 
-// Attribute walks the DNS rules in order and reports what would happen to
-// `domain`, mirroring sing-box's first-match-wins evaluation.
-func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
+// NOTE ON THE ENTRY POINT
+// ───────────────────────
+// There is deliberately no `Attribute(*option.DNSOptions, ...)` wrapper. One
+// was written and removed: re-encoding typed options to hand them to this walk
+// is LOSSY in upstream sing-box. `DNSRuleAction.MarshalJSON` emits the route
+// options only when `Action` is set explicitly, and `Action` is empty for
+// every rule that relies on the default — the most common spelling in real
+// configs. A rule decoded as {"domain":"x","server":"s"} marshals back as
+// {"domain":"x"}, silently losing the server.
+//
+// So the raw section is the only input. That is also the shape a config is
+// stored and read in, which means nothing has to round-trip at all.
+
+// AttributeRaw walks a DNS section given as raw config JSON.
+//
+// Raw rather than typed because the panel is compiled against one sing-box
+// version and the host runs another. sing-box's decoder is strict, so a single
+// 1.14 key — `evaluate`, `match_response`, `optimistic` — rejects the entire
+// section, and the probe's previous response was to disable attribution
+// outright: a ladder with zero rungs on a config with twenty-eight rules.
+//
+// The walk is a STATE MACHINE, not a filter. Only route, reject and predefined
+// end it (dns/router.go); everything else matches, may change what the rules
+// below it see, and hands over.
+func AttributeRaw(section json.RawMessage, query Query) Attribution {
 	result := Attribution{
 		Rules:        []RuleEvaluation{},
 		MatchedIndex: -1,
 		Exact:        true,
 	}
-	if dns == nil {
-		return result
-	}
 
-	normalized := normalizeDomain(queryDomain)
+	rules := decodeRawDNSRules(section)
+	serverExists := rawServerLookup(section)
+
+	query.Domain = normalizeDomain(query.Domain)
+	query.Type = strings.ToUpper(strings.TrimSpace(query.Type))
+
 	decided := false
+	// A non-terminal match may set the strategy for the rules below it
+	// (dns/router.go applies action.Strategy before continuing), so the
+	// deciding rule inherits it when it names none of its own.
+	pendingStrategy := ""
 
-	for i, rule := range dns.Rules {
-		evaluation := evaluateRule(i, rule, normalized)
+	for i, rule := range rules {
+		evaluation := evaluateRawRule(i, rule, query, serverExists)
 		result.Rules = append(result.Rules, evaluation)
 
 		if decided {
@@ -100,10 +180,19 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 		}
 		switch evaluation.State {
 		case MatchStateMatched:
+			if !evaluation.Terminal {
+				if evaluation.Strategy != "" {
+					pendingStrategy = evaluation.Strategy
+				}
+				continue
+			}
 			result.MatchedIndex = i
 			result.Server = evaluation.Server
 			result.Strategy = evaluation.Strategy
 			if evaluation.Strategy != "" {
+				result.StrategySource = "rule"
+			} else if pendingStrategy != "" {
+				result.Strategy = pendingStrategy
 				result.StrategySource = "rule"
 			}
 			decided = true
@@ -116,10 +205,14 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 
 	if !decided {
 		result.FinalUsed = true
-		result.Server = dns.Final
+		result.Server = rawSectionString(section, "final")
+		if pendingStrategy != "" {
+			result.Strategy = pendingStrategy
+			result.StrategySource = "rule"
+		}
 	}
 	if result.Strategy == "" {
-		result.Strategy = dns.Strategy.String()
+		result.Strategy = rawSectionString(section, "strategy")
 		if result.Strategy != "" {
 			result.StrategySource = "default"
 		}
@@ -128,103 +221,207 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 	return result
 }
 
-// evaluateRule decides one rule. Logical rules are not decomposed — they are
-// reported as unevaluated rather than guessed at.
-func evaluateRule(index int, rule option.DNSRule, queryDomain string) RuleEvaluation {
-	switch rule.Type {
-	case "", "default":
-		return evaluateDefaultRule(index, rule.DefaultOptions, queryDomain)
-	default:
-		return RuleEvaluation{
-			Index:       index,
-			Type:        "logical",
-			State:       MatchStateUnevaluated,
-			Summary:     "logical rule",
-			Unevaluated: []string{"logical"},
-			Action:      actionName(rule.LogicalOptions.DNSRuleAction),
-			Server:      rule.LogicalOptions.RouteOptions.Server,
-			Strategy:    rule.LogicalOptions.RouteOptions.Strategy.String(),
-		}
-	}
-}
-
-func evaluateDefaultRule(index int, rule option.DefaultDNSRule, queryDomain string) RuleEvaluation {
+// evaluateRawRule decides one rule, logical or default.
+func evaluateRawRule(
+	index int, rule rawDNSRule, query Query, serverExists func(string) bool,
+) RuleEvaluation {
 	evaluation := RuleEvaluation{
 		Index:    index,
-		Type:     "default",
-		Summary:  summarizeRule(rule),
-		Action:   actionName(rule.DNSRuleAction),
-		Server:   rule.RouteOptions.Server,
-		Strategy: rule.RouteOptions.Strategy.String(),
+		Type:     rule.Type,
+		Summary:  summarizeRawRule(rule),
+		Action:   rule.Action,
+		Server:   rule.Server,
+		Strategy: rule.Strategy,
+		Terminal: dnsActionTerminates(rule.Action, rule.Server, serverExists),
+	}
+	if !evaluation.Terminal {
+		evaluation.Effect = dnsActionEffect(rule.Action)
 	}
 
-	// Conditions we cannot decide without sing-box's runtime state. rule_set
-	// is by far the most common: the sets are usually remote and live inside
-	// sing-box's cache, so their contents are not available here.
-	evaluation.Unevaluated = unevaluableConditions(rule)
-
-	// Domain conditions are decidable, and they are the ones that matter for a
-	// domain probe. A failure here rules the rule out outright, even when
-	// other conditions are unevaluable — sing-box requires all to match.
-	domainDecided, domainMatched := matchDomainConditions(rule, queryDomain)
-	if domainDecided && !domainMatched {
-		evaluation.State = MatchStateNotMatched
-		return evaluation
-	}
-
-	if len(evaluation.Unevaluated) > 0 {
-		evaluation.State = MatchStateUnevaluated
-		return evaluation
-	}
-
-	if !domainDecided {
-		// No domain conditions and nothing unevaluable: the rule matches
-		// everything we can see (e.g. a bare `{"server": "..."}`).
-		evaluation.State = MatchStateMatched
-		return evaluation
-	}
-
-	evaluation.State = MatchStateMatched
-	// Inverted rules flip the verdict, matching sing-box's `invert`.
-	if rule.Invert {
-		evaluation.State = MatchStateNotMatched
+	state, sets := matchRawRule(rule, query)
+	evaluation.State = state
+	evaluation.RuleSets = sets
+	if state == MatchStateUnevaluated {
+		evaluation.Unevaluated = undecidableNames(rule, query)
 	}
 	return evaluation
 }
 
-// matchDomainConditions reports whether the rule carries domain conditions
-// (decided) and whether the query satisfies them (matched). sing-box treats
-// domain/domain_suffix as one matcher and keyword/regex as separate items;
-// a rule matches when every present item matches.
-func matchDomainConditions(rule option.DefaultDNSRule, queryDomain string) (decided bool, matched bool) {
-	matched = true
-
-	if len(rule.Domain) > 0 || len(rule.DomainSuffix) > 0 {
-		decided = true
-		// sing-box's own matcher, so exact/suffix semantics cannot drift from
-		// the router's behaviour.
-		matcher := domain.NewMatcher(rule.Domain, rule.DomainSuffix, false)
-		if !matcher.Match(queryDomain) {
-			matched = false
-		}
+// matchRawRule is the recursive matcher: logical rules combine their children,
+// default rules test their own conditions.
+func matchRawRule(rule rawDNSRule, query Query) (MatchState, []RuleSetStatus) {
+	if rule.Type == "logical" {
+		return matchLogicalRule(rule, query)
 	}
-
-	if len(rule.DomainKeyword) > 0 {
-		decided = true
-		if !anyKeyword(rule.DomainKeyword, queryDomain) {
-			matched = false
-		}
-	}
-
-	if len(rule.DomainRegex) > 0 {
-		decided = true
-		if !anyRegex(rule.DomainRegex, queryDomain) {
-			matched = false
-		}
-	}
-
-	return decided, matched
+	return matchDefaultRule(rule, query)
 }
+
+// matchLogicalRule combines child verdicts.
+//
+// The short-circuits are the point, and they are not symmetric: an AND with
+// one decided miss is a decided miss even if a sibling is undecidable, and an
+// OR with one decided hit is a decided hit. Collapsing either into
+// "unevaluated" would make every logical rule undecidable and defeat walking
+// into them at all — which is what the previous implementation did.
+func matchLogicalRule(rule rawDNSRule, query Query) (MatchState, []RuleSetStatus) {
+	var sets []RuleSetStatus
+	if len(rule.Children) == 0 {
+		return applyInvert(MatchStateMatched, rule.Invert), sets
+	}
+
+	isAnd := rule.Mode != "or"
+	sawUnevaluated := false
+	sawMatch := false
+
+	for _, child := range rule.Children {
+		state, childSets := matchRawRule(child, query)
+		sets = append(sets, childSets...)
+
+		switch state {
+		case MatchStateNotMatched:
+			if isAnd {
+				return applyInvert(MatchStateNotMatched, rule.Invert), sets
+			}
+		case MatchStateMatched:
+			sawMatch = true
+			if !isAnd {
+				return applyInvert(MatchStateMatched, rule.Invert), sets
+			}
+		case MatchStateUnevaluated:
+			sawUnevaluated = true
+		}
+	}
+
+	if sawUnevaluated {
+		return MatchStateUnevaluated, sets
+	}
+	if isAnd {
+		return applyInvert(MatchStateMatched, rule.Invert), sets
+	}
+	if sawMatch {
+		return applyInvert(MatchStateMatched, rule.Invert), sets
+	}
+	return applyInvert(MatchStateNotMatched, rule.Invert), sets
+}
+
+// matchDefaultRule tests one rule's own conditions.
+//
+// Every condition is an AND item, so a single decided miss rules the rule out
+// even when something else could not be evaluated. That asymmetry is why each
+// condition is checked for a definite NO before the undecidable list matters.
+func matchDefaultRule(rule rawDNSRule, query Query) (MatchState, []RuleSetStatus) {
+	domainPresent, domainMatched := matchRawDomainConditions(rule, query.Domain)
+	if domainPresent && !domainMatched {
+		return applyInvert(MatchStateNotMatched, rule.Invert), nil
+	}
+
+	typePresent, typeVerdict := matchRawQueryType(rule, query.Type)
+	if typePresent && typeVerdict == ruleset.VerdictNo {
+		return applyInvert(MatchStateNotMatched, rule.Invert), nil
+	}
+
+	setsPresent, setVerdict, sets := matchRuleSets(rule.RuleSet, query)
+	if setsPresent && setVerdict == ruleset.VerdictNo {
+		return applyInvert(MatchStateNotMatched, rule.Invert), sets
+	}
+
+	// Nothing decided a miss. Anything we could not evaluate now governs.
+	if len(rule.Undecidable) > 0 ||
+		(typePresent && typeVerdict == ruleset.VerdictUnknown) ||
+		(setsPresent && setVerdict == ruleset.VerdictUnknown) {
+		return MatchStateUnevaluated, sets
+	}
+
+	// A rule with no conditions at all matches every query, which sing-box
+	// does explicitly (rule_abstract.go:55). It must not be confused with a
+	// rule whose conditions we merely failed to read.
+	return applyInvert(MatchStateMatched, rule.Invert), sets
+}
+
+// applyInvert flips a decided verdict. An undecidable one stays undecidable —
+// the negation of "I do not know" is still "I do not know".
+func applyInvert(state MatchState, invert bool) MatchState {
+	if !invert {
+		return state
+	}
+	switch state {
+	case MatchStateMatched:
+		return MatchStateNotMatched
+	case MatchStateNotMatched:
+		return MatchStateMatched
+	}
+	return state
+}
+
+// undecidableNames lists what blocked a decision, for the UI.
+func undecidableNames(rule rawDNSRule, query Query) []string {
+	names := append([]string{}, rule.Undecidable...)
+	if len(rule.QueryType) > 0 && query.Type == "" {
+		names = append(names, "query_type")
+	}
+	if len(rule.RuleSet) > 0 {
+		names = append(names, "rule_set")
+	}
+	for _, child := range rule.Children {
+		names = append(names, undecidableNames(child, query)...)
+	}
+	return dedupeStrings(names)
+}
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	unique := values[:0]
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		unique = append(unique, value)
+	}
+	return unique
+}
+
+// rawServerLookup builds a membership test over the configured server tags, so
+// a route naming a server that does not exist can be reported as what
+// sing-box does with it: skip the rule and keep matching.
+func rawServerLookup(section json.RawMessage) func(string) bool {
+	var object map[string]json.RawMessage
+	if json.Unmarshal(section, &object) != nil {
+		return nil
+	}
+	raw, ok := object["servers"]
+	if !ok {
+		return nil
+	}
+	var servers []map[string]json.RawMessage
+	if json.Unmarshal(raw, &servers) != nil {
+		return nil
+	}
+	tags := make(map[string]struct{}, len(servers))
+	for _, server := range servers {
+		var tag string
+		if json.Unmarshal(server["tag"], &tag) == nil && tag != "" {
+			tags[tag] = struct{}{}
+		}
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	return func(tag string) bool {
+		_, ok := tags[tag]
+		return ok
+	}
+}
+
+// rawSectionString reads a top-level string field of the dns section.
+func rawSectionString(section json.RawMessage, key string) string {
+	var object map[string]json.RawMessage
+	if json.Unmarshal(section, &object) != nil {
+		return ""
+	}
+	return rawJSONString(object[key])
+}
+
 
 func anyKeyword(keywords []string, queryDomain string) bool {
 	for _, keyword := range keywords {
@@ -251,98 +448,8 @@ func anyRegex(patterns []string, queryDomain string) bool {
 	return false
 }
 
-// unevaluableConditions lists the conditions on a rule that need runtime state
-// this process does not have.
-func unevaluableConditions(rule option.DefaultDNSRule) []string {
-	var fields []string
-	add := func(present bool, name string) {
-		if present {
-			fields = append(fields, name)
-		}
-	}
 
-	add(len(rule.RuleSet) > 0, "rule_set")
-	add(len(rule.Geosite) > 0, "geosite")
-	add(len(rule.GeoIP) > 0, "geoip")
-	add(len(rule.SourceGeoIP) > 0, "source_geoip")
-	add(len(rule.IPCIDR) > 0, "ip_cidr")
-	add(rule.IPIsPrivate, "ip_is_private")
-	add(rule.IPAcceptAny, "ip_accept_any")
-	add(len(rule.SourceIPCIDR) > 0, "source_ip_cidr")
-	add(rule.SourceIPIsPrivate, "source_ip_is_private")
-	add(len(rule.Inbound) > 0, "inbound")
-	add(len(rule.Outbound) > 0, "outbound")
-	add(rule.ClashMode != "", "clash_mode")
-	add(len(rule.ProcessName) > 0, "process_name")
-	add(len(rule.ProcessPath) > 0, "process_path")
-	add(len(rule.ProcessPathRegex) > 0, "process_path_regex")
-	add(len(rule.PackageName) > 0, "package_name")
-	add(len(rule.User) > 0, "user")
-	add(len(rule.UserID) > 0, "user_id")
-	add(len(rule.AuthUser) > 0, "auth_user")
-	add(len(rule.Protocol) > 0, "protocol")
-	add(len(rule.Network) > 0, "network")
-	add(len(rule.NetworkType) > 0, "network_type")
-	add(rule.NetworkIsExpensive, "network_is_expensive")
-	add(rule.NetworkIsConstrained, "network_is_constrained")
-	add(len(rule.WIFISSID) > 0, "wifi_ssid")
-	add(len(rule.WIFIBSSID) > 0, "wifi_bssid")
-	add(len(rule.Port) > 0, "port")
-	add(len(rule.PortRange) > 0, "port_range")
-	add(len(rule.SourcePort) > 0, "source_port")
-	add(len(rule.SourcePortRange) > 0, "source_port_range")
-	add(rule.IPVersion != 0, "ip_version")
-	add(len(rule.QueryType) > 0, "query_type")
 
-	return fields
-}
-
-// actionName reports the rule's action, defaulting to "route" which is what
-// sing-box assumes when the field is omitted.
-func actionName(action option.DNSRuleAction) string {
-	if action.Action == "" {
-		return "route"
-	}
-	return action.Action
-}
-
-// summarizeRule renders a rule's conditions compactly for the UI.
-func summarizeRule(rule option.DefaultDNSRule) string {
-	var parts []string
-	appendList := func(name string, values []string) {
-		if len(values) == 0 {
-			return
-		}
-		parts = append(parts, name+"="+joinCapped(values, 3))
-	}
-
-	appendList("domain", rule.Domain)
-	appendList("domain_suffix", rule.DomainSuffix)
-	appendList("domain_keyword", rule.DomainKeyword)
-	appendList("domain_regex", rule.DomainRegex)
-	appendList("rule_set", rule.RuleSet)
-	appendList("geosite", rule.Geosite)
-	appendList("geoip", rule.GeoIP)
-	appendList("ip_cidr", rule.IPCIDR)
-	appendList("outbound", rule.Outbound)
-	if rule.IPAcceptAny {
-		parts = append(parts, "ip_accept_any=true")
-	}
-	if rule.IPIsPrivate {
-		parts = append(parts, "ip_is_private=true")
-	}
-	if rule.ClashMode != "" {
-		parts = append(parts, "clash_mode="+rule.ClashMode)
-	}
-	if rule.Invert {
-		parts = append(parts, "invert=true")
-	}
-
-	if len(parts) == 0 {
-		return "(no conditions)"
-	}
-	return strings.Join(parts, " ")
-}
 
 // joinCapped renders at most `limit` values, marking the rest with an ellipsis
 // so a 40-entry rule_set does not flood the UI.

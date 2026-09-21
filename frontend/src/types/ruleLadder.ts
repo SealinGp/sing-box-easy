@@ -10,9 +10,9 @@
  *
  * WHY "SKIPPED" IS DERIVED AND NOT TRUSTED FROM THE WIRE
  * ─────────────────────────────────────────────────────
- * `dnsprobe.Attribute` evaluates EVERY rule, including the ones below the match
- * (match.go:94-115 — it keeps walking after `decided`, it just stops acting on
- * the result). Those verdicts are real, but sing-box never consulted those rules
+ * `dnsprobe.AttributeRaw` evaluates EVERY rule, including the ones below the
+ * match — it keeps walking after `decided`, it just stops acting on the
+ * result. Those verdicts are real, but sing-box never consulted those rules
  * for this query, so presenting one as "no match" states a fact about a
  * comparison that did not happen. Anything past the deciding rung is therefore
  * re-labelled `skipped` here regardless of what the backend computed for it.

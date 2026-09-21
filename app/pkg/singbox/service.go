@@ -44,6 +44,14 @@ type Controller struct {
 }
 
 // NewController creates a new service controller.
+// BinaryPath is the sing-box executable this controller drives.
+//
+// Exposed because the rule-set matcher shells out to it: the binary that WROTE
+// the .srs cache is the only one guaranteed to be able to read it back, so a
+// diagnostic that decodes with the pinned library needs a way to ask the real
+// one when the versions have drifted apart.
+func (c *Controller) BinaryPath() string { return c.singBoxPath }
+
 func NewController(configManager *config.Manager, singBoxPath string) *Controller {
 	if singBoxPath == "" {
 		singBoxPath = "sing-box"

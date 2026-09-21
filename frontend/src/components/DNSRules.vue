@@ -9,7 +9,8 @@ import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
-import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
+import DNSParallelGroupDialog from './DNSParallelGroupDialog.vue'
+import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowsUpDownIcon, BoltIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { configService, dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDragReorder } from '../composables/useDragReorder'
@@ -18,6 +19,7 @@ import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
 import { isFieldFilled } from '../schemas/optionSchema'
 import { humanizeFieldName } from '../utils/fieldLabels'
+import { findOrphanRespondRules } from '../utils/parallelResolve'
 import {
   actionOf,
   applyActionDefaults,
@@ -484,6 +486,67 @@ const getRuleConditionsSummary = (rule: unknown) => {
   return isFieldFilled(record.invert) ? `${t('rule.flow.invertPrefix')} ${body}` : body
 }
 
+/* ── Parallel resolution group ───────────────────────────────────────────────
+ *
+ * A separate flow because it writes SEVERAL rules that only work as a set. See
+ * DNSParallelGroupDialog and utils/parallelResolve for why this is generated
+ * rather than typed: sing-box fails a query outright when a `respond` is
+ * reached with no preceding `evaluate` for its tag, so a group entered by hand
+ * in the wrong order breaks resolution instead of degrading it.
+ */
+const showParallelModal = ref(false)
+
+/**
+ * Offered only when the running core has both actions.
+ *
+ * `evaluate` and `respond` arrived in sing-box 1.14. On an older core the
+ * button would build a config that fails `sing-box check`, so it is absent
+ * rather than disabled — there is nothing the operator could do about it here.
+ */
+const canBuildParallelGroup = computed(
+  () => coreCapabilities.value.dns_evaluate && coreCapabilities.value.dns_respond,
+)
+
+/**
+ * Written in ONE request. Repeated single POSTs would pass through states that
+ * are not partial versions of the target but broken configs.
+ */
+async function handleCreateParallelGroup(rules: Record<string, any>[]) {
+  loading.value = true
+  try {
+    const { data } = await dnsService.addDNSRulesBatch(rules)
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('dns.rules.parallel.toast.created', { count: data.added }),
+      life: 3000,
+    })
+    await fetchDNSRules()
+    showParallelModal.value = false
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('dns.rules.toast.saveFailed'),
+      life: 4000,
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * Rules whose `respond` has no preceding `evaluate` to answer from.
+ *
+ * Shown DURING reorder, which is when it can actually help. sing-box rejects
+ * this arrangement at `check` time, so a save cannot land one — but reorder is
+ * a batch edit that sorts live and writes only on Save, so without this the
+ * operator drags rules into a broken order, presses Save, and meets
+ * "dns rule[31]: undefined evaluate tag: …" naming an index that has moved
+ * since. The marker appears on the row the moment a drag separates a group.
+ */
+const orphanRespondIndices = computed(() => new Set(findOrphanRespondRules(dnsRules.value as any)))
+
 /* ── Reorder ────────────────────────────────────────────────────────────────
  *
  * DNS rules match top-down exactly as route rules do, so their order is policy
@@ -553,6 +616,17 @@ onMounted(() => {
         {{ $t('dns.rules.reorder.start') }}
       </Button>
 
+      <!-- Only with a core that has evaluate/respond: on an older one this
+           would build a config that fails `sing-box check`. -->
+      <Button
+        v-if="canBuildParallelGroup && !reorder.enabled.value"
+        @click="showParallelModal = true"
+        variant="secondary"
+      >
+        <BoltIcon class="h-5 w-5 mr-2" />
+        {{ $t('dns.rules.parallel.add') }}
+      </Button>
+
       <Button @click="openAddRuleModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
         {{ $t('dns.rules.add') }}
@@ -617,9 +691,22 @@ onMounted(() => {
             </div>
           </td>
           <td>
-            <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
-              {{ (rule as any).action || 'route' }}
-            </Badge>
+            <div class="flex items-center gap-1.5">
+              <Badge :variant="(rule as any).action === 'reject' ? 'warning' : 'primary'">
+                {{ (rule as any).action || 'route' }}
+              </Badge>
+              <!-- A respond with nothing to answer from does not fall through:
+                   sing-box fails the query. Worth a loud marker, because the
+                   symptom appears nowhere near this list. -->
+              <span
+                v-if="orphanRespondIndices.has(index)"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-pill bg-red-100 dark:bg-red-900/40 text-[10px] font-medium text-red-700 dark:text-red-300"
+                :title="$t('dns.rules.parallel.orphanHint')"
+              >
+                <ExclamationTriangleIcon class="h-3 w-3" />
+                {{ $t('dns.rules.parallel.orphan') }}
+              </span>
+            </div>
           </td>
           <td>
             <!-- A predefined rule has no server; showing "-" hid the one
@@ -753,6 +840,14 @@ onMounted(() => {
         </Button>
       </template>
     </Dialog>
+
+    <DNSParallelGroupDialog
+      v-model:visible="showParallelModal"
+      :existing-rules="dnsRules as any"
+      :rule-set-options="ruleSetOptions"
+      :saving="loading"
+      @create="handleCreateParallelGroup"
+    />
 
     <!-- Delete Confirmation Modal -->
     <Dialog

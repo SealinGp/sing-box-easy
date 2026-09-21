@@ -5,7 +5,6 @@ export default {
     rules: 'Routing Rules',
     ruleSets: 'Rule Sets',
     finalPolicy: 'Final Policy',
-    diagnostics: 'Simulator',
   },
   rules: {
     title: 'Routing Rules',
