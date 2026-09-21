@@ -26,6 +26,7 @@ declare module 'vue' {
     DashboardDownloader: typeof import('./src/components/DashboardDownloader.vue')['default']
     DashboardUrlSelect: typeof import('./src/components/DashboardUrlSelect.vue')['default']
     DialerOptions: typeof import('./src/components/DialerOptions.vue')['default']
+    DNSParallelGroupDialog: typeof import('./src/components/DNSParallelGroupDialog.vue')['default']
     DnsProbeCard: typeof import('./src/components/DnsProbeCard.vue')['default']
     DnsProbePanel: typeof import('./src/components/DnsProbePanel.vue')['default']
     DnsProbeTimeline: typeof import('./src/components/DnsProbeTimeline.vue')['default']

@@ -6,6 +6,7 @@ import {
   pruneForeignFields,
   resolveDNSRuleActionFields,
   validateDNSRuleAction,
+  ALL_ACTION_KEYS,
 } from './dnsRuleActionFields'
 
 /**
@@ -277,5 +278,31 @@ describe('validateDNSRuleAction', () => {
     expect(validateDNSRuleAction({ domain: ['a.example'] })).toBe(
       'dns.rules.form.errors.serverRequired',
     )
+  })
+})
+
+describe('response match fields are conditions, not action options', () => {
+  test('keeps match_response out of ALL_ACTION_KEYS', () => {
+    // sing-box puts match_response on RawDefaultDNSRule; DNSRuleAction carries
+    // only `action` and `race`. Counting it as an action field made the rules
+    // table subtract it and report a gated respond rule as unconditional —
+    // "answers every query" — which is the opposite of the truth.
+    expect(ALL_ACTION_KEYS).not.toContain('match_response')
+    expect(ALL_ACTION_KEYS).not.toContain('response_rcode')
+  })
+
+  test('still keeps genuine action options in ALL_ACTION_KEYS', () => {
+    // The counterweight: race IS an action option, and dropping it would make
+    // the table print `race: true` as though it were a match condition.
+    expect(ALL_ACTION_KEYS).toContain('race')
+    expect(ALL_ACTION_KEYS).toContain('server')
+    expect(ALL_ACTION_KEYS).toContain('method')
+  })
+
+  test('still offers match_response on the respond form', () => {
+    // Excluding it from ALL_ACTION_KEYS must not remove it from the form: it
+    // is the one field a respond rule cannot be saved without.
+    const fields = resolveDNSRuleActionFields('respond')
+    expect(fields.map((field) => field.key)).toContain('match_response')
   })
 })

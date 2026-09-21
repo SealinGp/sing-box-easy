@@ -65,6 +65,23 @@ export class DNSService {
     return response.data
   }
 
+  /**
+   * Appends several rules in ONE config write.
+   *
+   * Used for the parallel-resolution group, whose evaluate/respond rules only
+   * work as a complete ordered set — sing-box fails a query outright when a
+   * `respond` is reached with no preceding `evaluate` for its tag. Adding them
+   * with repeated single POSTs would pass through states that are not slower
+   * versions of the target but broken ones.
+   */
+  async addDNSRulesBatch(rules: Record<string, unknown>[]): Promise<BasicResponse<{ message: string; added: number }>> {
+    const response = await this.api.post<BasicResponse<{ message: string; added: number }>>(
+      '/dns/rules/batch',
+      { rules },
+    )
+    return response.data
+  }
+
   // `order` is a permutation of the CURRENT indices, in the order the rules
   // should end up in. The rule bodies never leave the server — which matters
   // here because a DNS rule is polymorphic, and re-uploading one would mean

@@ -93,6 +93,17 @@ func (h *Handler) AddDNSRule(ctx context.Context, c *app.RequestContext) {
 	}
 	respOK(ctx, c, result)
 }
+// AddDNSRulesBatch appends several rules atomically. See the service method
+// for why a group of rules must not be written one at a time.
+func (h *Handler) AddDNSRulesBatch(ctx context.Context, c *app.RequestContext) {
+	result, err := h.configuration().AddDNSRulesBatch(ctx, c.Request.Body())
+	if err != nil {
+		respondOperationError(ctx, c, err)
+		return
+	}
+	respOK(ctx, c, result)
+}
+
 func (h *Handler) ReorderDNSRules(ctx context.Context, c *app.RequestContext) {
 	result, err := h.configuration().ReorderDNSRules(ctx, c.Request.Body())
 	if err != nil {

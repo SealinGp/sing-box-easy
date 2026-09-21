@@ -91,6 +91,10 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	auth.GET("/dns/rules", handler.GetDNSRules)
 	auth.POST("/dns/rules", handler.AddDNSRule)
+	// Several rules in ONE config write. The evaluate/respond group behind a
+	// parallel-resolution race only works as a complete ordered set, and a
+	// partially applied one breaks resolution rather than slowing it.
+	auth.POST("/dns/rules/batch", handler.AddDNSRulesBatch)
 	// Collection-level PUT = reorder, as for /route/rules.
 	auth.PUT("/dns/rules", handler.ReorderDNSRules)
 	auth.PUT("/dns/rules/:index", handler.UpdateDNSRule)

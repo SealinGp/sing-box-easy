@@ -267,6 +267,38 @@ export default {
       reordered: '规则顺序已保存',
       reorderFailed: '保存规则顺序失败',
     },
+    parallel: {
+      add: '并行解析',
+      title: '并行解析规则组',
+      desc:
+        '将同一次查询同时发往多个 DNS 服务器，并采用最先成功返回的结果。sing-box 用「每个服务器一条 evaluate + 每条 evaluate 对应一条竞速 respond」来表达这一模式；这里自动生成，因为两半必须成对且有序才能工作。',
+      whenHeading: '匹配哪些查询',
+      whenHint: '留空表示对所有查询竞速 —— 适合作为兜底。',
+      serversHeading: '参与竞速的服务器',
+      serversPlaceholder: '选择两个或更多 DNS 服务器',
+      groupName: '组名',
+      groupNameHint: '用于命名保存的响应：<组名>_<服务器>，该名称会写入 config.json。',
+      timeout: '单个服务器超时',
+      timeoutHint: '应用于组内每一次查询。留空则使用服务器默认值。',
+      previewHeading: '将要添加的规则',
+      previewCount: '{servers} 个服务器，共 {count} 条规则',
+      previewEvaluate: 'evaluate → {server}，保存为「{tag}」',
+      previewRespond: '若「{tag}」返回 NOERROR 则采用（竞速）',
+      appendNote:
+        '按此顺序追加到列表末尾。每条 evaluate 必须始终位于其 respond 之上 —— 如需移动，请用「排序」整块移动。',
+      create: '创建规则组',
+      orphan: '缺少 evaluate',
+      orphanHint:
+        '该 respond 规则的标签在其之前没有对应的 evaluate。sing-box 会直接让查询失败，而不是继续匹配后续规则，因此命中它的域名将无法解析。',
+      errors: {
+        needGroup: '请填写组名 —— 它用于命名保存的响应。',
+        needTwoServers: '请至少选择两个服务器。只有一个服务器时用普通的 route 规则即可。',
+        tagExists: '已有规则占用了其中一个响应标签，请换一个组名。',
+      },
+      toast: {
+        created: '已添加 {count} 条规则',
+      },
+    },
     reorder: {
       start: '调整顺序',
       done: '完成',

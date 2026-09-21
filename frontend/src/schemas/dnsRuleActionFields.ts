@@ -195,10 +195,35 @@ export function isTerminalAction(action: string): boolean {
   return TERMINAL_ACTIONS.includes(action)
 }
 
+/**
+ * Rule CONDITIONS that an action's form surfaces anyway.
+ *
+ * sing-box puts these on RawDefaultDNSRule, not on DNSRuleAction — the action
+ * object carries only `action` and `race`. They are curated into the `respond`
+ * form because that is where an operator needs to fill them in, but they
+ * remain conditions, and treating them as action fields had a visible cost:
+ * `conditionKeysOf` subtracts action fields, so a respond rule gated on
+ * `match_response: primary_result` rendered in the rules table as "No
+ * conditions" — i.e. as a catch-all that answers every query, which is the
+ * opposite of what it does and the single most alarming thing a DNS rule can
+ * look like.
+ *
+ * Excluding them here also means they survive an action change, exactly as
+ * `domain_suffix` does. That is correct rather than incidental: `match_response`
+ * is legal on a `route` rule too, since `race` requires it.
+ */
+export const RESPONSE_CONDITION_KEYS: readonly string[] = [
+  'match_response',
+  'response_rcode',
+  'response_answer',
+  'response_ns',
+  'response_extra',
+]
+
 /** Every key some DNS action owns — i.e. everything that is NOT a condition. */
 export const ALL_ACTION_KEYS: readonly string[] = Array.from(
   new Set(Object.values(DNS_RULE_ACTION_INVENTORY).flatMap((fields) => Object.keys(fields))),
-)
+).filter((key) => !RESPONSE_CONDITION_KEYS.includes(key))
 
 /**
  * The action of a rule as loaded from config.json.
