@@ -67,6 +67,7 @@ declare module 'vue' {
     RoutingRules: typeof import('./src/components/RoutingRules.vue')['default']
     RuleFlowPreview: typeof import('./src/components/RuleFlowPreview.vue')['default']
     RuleLadder: typeof import('./src/components/RuleLadder.vue')['default']
+    RuleSetIssues: typeof import('./src/components/RuleSetIssues.vue')['default']
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     SchemaFieldControl: typeof import('./src/components/SchemaFieldControl.vue')['default']
     SchemaFieldsEditor: typeof import('./src/components/SchemaFieldsEditor.vue')['default']

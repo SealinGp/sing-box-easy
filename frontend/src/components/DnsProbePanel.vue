@@ -19,6 +19,7 @@ import {
 import Button from './Button.vue'
 import Table from './Table.vue'
 import DnsProbeTimeline from './DnsProbeTimeline.vue'
+import RuleSetIssues from './RuleSetIssues.vue'
 import { Select } from '../volt'
 import { dnsService } from '../services'
 import { useNotify } from '../composables/useNotify'
@@ -195,6 +196,9 @@ const brokenRuleSets = computed(() => {
   return [...seen.values()]
 })
 
+// <RuleSetIssues> groups these by cause, so a config with fourteen remote sets
+// and no cache file shows one explanation rather than fourteen.
+
 /**
  * The backend reports the log situation as a code so it can be translated
  * here; sending prose would pin it to one language.
@@ -281,18 +285,8 @@ const logStatusMessage = computed(() => {
         </p>
       </section>
 
-      <!-- Rule sets that could not be consulted, with the fix. -->
-      <section
-        v-if="brokenRuleSets.length"
-        class="rounded-surface border border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3 space-y-1"
-      >
-        <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">
-          {{ $t('dnsProbe.ruleSetsUnavailable') }}
-        </p>
-        <p v-for="set in brokenRuleSets" :key="set.tag" class="text-xs text-amber-700 dark:text-amber-300">
-          <code>{{ set.tag }}</code> — {{ $t(`dnsProbe.ruleSetReason.${set.reason}`) }}
-        </p>
-      </section>
+      <!-- Rule sets that could not be consulted, grouped by cause. -->
+      <RuleSetIssues :sets="brokenRuleSets" />
 
       <!-- Rule ladder -->
       <section

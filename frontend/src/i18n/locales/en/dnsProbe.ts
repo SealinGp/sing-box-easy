@@ -35,16 +35,6 @@ export default {
     readError: 'Could not read the sing-box log: {error}',
   },
   continued: 'matched, then continued',
-  ruleSetsUnavailable: 'Some rule sets could not be read, so those rules could not be decided:',
-  ruleSetReason: {
-    unknown_tag: 'no rule set with this tag exists in the config',
-    not_cached: 'never downloaded — update it on the Rule Sets tab',
-    cache_unavailable: 'the sing-box cache file could not be read',
-    cache_disabled: 'experimental.cache_file is off, so remote sets are only in memory',
-    file_missing: 'the local file is missing',
-    unsupported_srs_version: 'built by a newer sing-box than this panel understands',
-    parse_error: 'the content could not be decoded',
-  },
   ruleSetTier: {
     'sing-box': 'answered by the installed sing-box',
   },

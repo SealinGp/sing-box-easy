@@ -22,6 +22,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
 import RuleLadder from './RuleLadder.vue'
+import RuleSetIssues from './RuleSetIssues.vue'
 import { Select } from '../volt'
 import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { routeService, inboundService } from '../services'
@@ -287,18 +288,8 @@ const outboundSourceLabel = computed(() => {
         </div>
       </div>
 
-      <!-- Rule sets that could not be consulted, with the fix. -->
-      <div
-        v-if="brokenRuleSets.length"
-        class="rounded-surface border border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3 space-y-1"
-      >
-        <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">
-          {{ $t('routeProbe.ruleSetsUnavailable') }}
-        </p>
-        <p v-for="set in brokenRuleSets" :key="set.tag" class="text-xs text-amber-700 dark:text-amber-300">
-          <code>{{ set.tag }}</code> — {{ $t(`routeProbe.ruleSetReason.${set.reason}`) }}
-        </p>
-      </div>
+      <!-- Rule sets that could not be consulted, grouped by cause. -->
+      <RuleSetIssues :sets="brokenRuleSets" />
 
       <!-- The ladder. Lamps, states and the top-to-bottom walk all live in
            <RuleLadder>; the DNS diagram renders the same component. -->
