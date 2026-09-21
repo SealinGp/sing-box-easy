@@ -400,6 +400,11 @@ func summarizeRule(rule option.DefaultDNSRule) string {
 	appendList("domain_keyword", rule.DomainKeyword)
 	appendList("domain_regex", rule.DomainRegex)
 	appendList("rule_set", rule.RuleSet)
+	// query_type renders as names, not the numbers the option type stores.
+	// Without this a rule decided ENTIRELY by its query_type showed as
+	// "(no conditions)" — a matched rung with no visible reason for matching,
+	// which is worse than not highlighting it at all.
+	appendList("query_type", queryTypeNames(rule.QueryType))
 	appendList("geosite", rule.Geosite)
 	appendList("geoip", rule.GeoIP)
 	appendList("ip_cidr", rule.IPCIDR)

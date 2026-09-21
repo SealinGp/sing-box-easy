@@ -16,6 +16,7 @@ export default {
   profile: 'Profile',
   skipContent: 'Skip to content',
 
+  diagnostics: 'Diagnostics',
   settings: 'Settings',
   general: 'General',
   users: 'Users',

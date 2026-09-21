@@ -34,6 +34,8 @@ declare module 'vue' {
     DNSRules: typeof import('./src/components/DNSRules.vue')['default']
     DNSServers: typeof import('./src/components/DNSServers.vue')['default']
     DNSSettings: typeof import('./src/components/DNSSettings.vue')['default']
+    DualStackFamilyRow: typeof import('./src/components/DualStackFamilyRow.vue')['default']
+    DualStackPanel: typeof import('./src/components/DualStackPanel.vue')['default']
     FinalPolicy: typeof import('./src/components/FinalPolicy.vue')['default']
     GitHubAuthCard: typeof import('./src/components/GitHubAuthCard.vue')['default']
     HostsEditor: typeof import('./src/components/HostsEditor.vue')['default']

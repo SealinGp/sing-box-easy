@@ -10,9 +10,12 @@ package dnsprobe
 // "cannot tell" for most rules is not an attribution.
 
 import (
+	"strconv"
+
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 	mkdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json/badoption"
 )
 
 // matchQueryType decides a rule's `query_type` against the record type asked
@@ -127,4 +130,23 @@ func verdictState(verdict ruleset.Verdict) MatchState {
 	default:
 		return MatchStateUnevaluated
 	}
+}
+
+// queryTypeNames renders configured query types as their text form.
+//
+// option.DNSQueryType is a uint16 with a custom unmarshaller that accepts both
+// "AAAA" and 28, so the decoded value is always numeric — and a summary
+// reading "query_type=28" is a lookup task, not a label.
+func queryTypeNames(types badoption.Listable[option.DNSQueryType]) []string {
+	names := make([]string, 0, len(types))
+	for _, qType := range types {
+		if name, ok := mkdns.TypeToString[uint16(qType)]; ok {
+			names = append(names, name)
+			continue
+		}
+		// A type this build has no name for still has to appear: omitting it
+		// would render a two-type rule as a one-type rule.
+		names = append(names, "TYPE"+strconv.Itoa(int(qType)))
+	}
+	return names
 }
