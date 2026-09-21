@@ -5,7 +5,6 @@ export default {
     rules: '路由规则',
     ruleSets: '规则集',
     finalPolicy: '默认策略',
-    diagnostics: '模拟',
   },
   rules: {
     title: '路由规则',

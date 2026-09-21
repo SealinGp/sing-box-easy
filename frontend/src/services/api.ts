@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, AxiosError } from 'axios'
+import { API_BASE_URL } from './apiBase'
 import { ApiError, Code, type BasicResponse } from '../types/api'
 
 /**
@@ -26,7 +27,7 @@ export class ApiService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: '/api/1.12.12',
+      baseURL: API_BASE_URL,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',

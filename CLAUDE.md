@@ -104,9 +104,10 @@ bunx <tool>
 
 **HTTP Layer**:
 - Framework: CloudWeGo Hertz (high-performance HTTP framework)
-- Routes: `app/routes/v1_12_12/` - All API handlers for v1.12.12
-- API prefix: `/api/1.12.12/`
-- Route registration: `routes.go` in v1_12_12 package
+- Routes: `app/routes/apiv1/` - All API handlers
+- API prefix: `/api/v1/` (with `/api/1.12.12/` retained as a permanent alias)
+- Route registration: `routes.go`; every route is declared ONCE and mirrored
+  onto each prefix in `apiPrefixes` (`api_prefix.go`)
 
 ### Configuration Safety Mechanism
 
@@ -121,8 +122,8 @@ All config modifications follow a safe workflow (implemented in `config.Manager`
      (see "Config version history" — there is no more `config.old.json` file)
    - Atomically rename the staging file over `config.json`
 4. On failure: Keep original config, remove the staging file
-5. Rollback available via `/api/1.12.12/config/rollback` (or to a specific
-   version via `/api/1.12.12/config/versions/:id/rollback`)
+5. Rollback available via `/api/v1/config/rollback` (or to a specific
+   version via `/api/v1/config/versions/:id/rollback`)
 
 ### Service Control Architecture
 
@@ -267,7 +268,7 @@ refresh, which would otherwise churn the outbound list.
 - **State**: Pinia stores in `src/stores/` (currently `dns`, `outbounds`, `route`)
 - **i18n**: `vue-i18n` setup in `src/i18n/`; reusable logic in `src/composables/`; app-wide plugins registered in `src/plugins/`; PrimeVue "Volt" theme components in `src/volt/`
 - **Styling**: Tailwind CSS v4 + DaisyUI utility classes; PrimeVue + HeadlessUI for components; Heroicons for icons
-- **API Client**: Axios wrapper in `src/services/api.ts` (`baseURL: /api/1.12.12`), with one service module per domain (`config.ts`, `dns.ts`, `outbound.ts`, …)
+- **API Client**: Axios wrapper in `src/services/api.ts` (`baseURL: /api/v1`, from `services/apiBase.ts`), with one service module per domain (`config.ts`, `dns.ts`, `outbound.ts`, …)
 - **Editor**: Monaco (via `monaco-editor-vue3`) — kept in its own chunk by `vite.config.ts`
 - **Dev proxy**: `vite.config.ts` proxies `/api/*` to `http://localhost:5100` — match this with `server.port` in `bin/app.yml` when changing dev ports
 - **Components**: Reusable UI components in `src/components/`
@@ -315,7 +316,7 @@ Things that are easy to get wrong:
 - Tiers are **core / typical / advanced**, not required/optional. sing-box marks
   almost nothing Required — for `mixed` only `listen` — so tiering follows what
   each doc page's *example* shows. Genuine required-ness lives in
-  `utils/inboundRequiredFields.ts` and `routes/v1_12_12/dns_validation.go`, and
+  `utils/inboundRequiredFields.ts` and `routes/apiv1/dns_validation.go`, and
   runs on save.
 - Anything **uncurated resolves to `advanced`** rather than being dropped, so a
   field added by a future sing-box is reachable immediately. Field labels fall
@@ -375,8 +376,8 @@ Schema logic is tested with `bun test` (`frontend/src/schemas/*.test.ts`).
 
 ### Adding a New API Endpoint
 
-1. Add handler method in the appropriate `app/routes/v1_12_12/<domain>_handler.go`
-2. Register the route in `app/routes/v1_12_12/routes.go`
+1. Add handler method in the appropriate `app/routes/apiv1/<domain>_handler.go`
+2. Register the route in `app/routes/apiv1/routes.go`
 3. Parse the request with `c.Bind(&body)`; on parse error call `respErr(ctx, c, CodeBadRequest, msg)`
 4. Use the response helpers from `handler.go` — `respOK(ctx, c, data)` for success and `respErr(ctx, c, code, msg)` for errors. **All responses leave with HTTP 200**; failure semantics live in the business `Code` enum inside the `BasicResponse[T] { code, data, msg }` envelope (see `Code` constants in `handler.go`).
 5. Do **not** call raw `c.JSON()` for new endpoints — it bypasses the envelope and the sing-box-aware JSON marshaller.
@@ -410,10 +411,40 @@ This ensures validation and backup happen automatically.
 
 ## API Versioning
 
-Current version: v1.12.12 (corresponds to sing-box 1.12.12)
-- All routes prefixed with `/api/1.12.12/`
-- Version-specific handlers in `app/routes/v1_12_12/`
-- For new sing-box versions, create new versioned route group
+**The API path version is NOT the sing-box version, and must not be made to
+track it.** It used to try: the prefix was `/api/1.12.12`, which produced three
+different answers to one question (directory `v1_12_12`, package `v1_13_0`,
+path `1.12.12`).
+
+They version different things and cannot move together:
+
+- The path is an HTTP **contract** version. It changes when this API changes
+  shape, and clients must be updated when it does.
+- The core version is a **host runtime** fact. It changes when the operator
+  upgrades sing-box, with no API change at all.
+
+Routing on the core version is also not implementable — a client would need
+the host's version before its first call, but the endpoint reporting it sits
+behind the prefix in question — and there is nothing for it to select anyway:
+the config CRUD in `app/pkg/configuration/` is raw JSON throughout and
+delegates validation to the host's own `sing-box check`, so it already works
+unchanged across 1.12, 1.13 and 1.14.
+
+Version-sensitive logic is instead confined to the few places that decode
+through the pinned `option` schema, and each degrades on its own:
+
+- `app/pkg/diagnostics/dns` walks DNS rules from **raw JSON** (see
+  `AttributeRaw`) precisely so a newer core still produces a full ladder.
+- `app/pkg/diagnostics/ruleset` falls back to the **installed binary**
+  (`sing-box rule-set match`) for a `.srs` this build cannot decode.
+- The frontend gates generated field inventories against `/system/info`
+  (`useSingBoxVersion` + `isRetired`).
+
+Current prefixes (`app/routes/apiv1/api_prefix.go`):
+- `/api/v1` — the contract. New clients use this.
+- `/api/1.12.12` — permanent alias, so existing bookmarks, scripts and LuCI
+  integrations keep working. Every route is registered on both by construction,
+  not by hand: `RegisterRoutes` declares each route once through a `mirror`.
 
 API surface groups (registered in `routes.go`):
 - `/config` — get/update/validate, backup, rollback
@@ -458,9 +489,9 @@ API surface groups (registered in `routes.go`):
 
 ## Response Envelope Reference
 
-Defined in `app/routes/v1_12_12/handler.go`. All new v1.12.12 endpoints must use these helpers; HTTP status is always 200 and clients branch on `code`.
+Defined in `app/routes/apiv1/handler.go`. All new endpoints must use these helpers; HTTP status is always 200 and clients branch on `code`.
 
-**Streaming endpoints are the one exception to "one envelope per response"** — and only to the *shape*, not to the rule. An SSE response cannot carry a single envelope, so **each event carries its own**: `data: {"code":0,"data":{…},"msg":""}`. Clients branch on `code` exactly as they do for a unary call, which is what makes a mid-stream failure reportable instead of an unexplained disconnect. Framing lives in `app/routes/v1_12_12/sse.go`; note `formatSSEFrame` emits one `data:` line per line of payload, because a raw newline inside the JSON (sing-box logs multi-line messages) would otherwise end the frame early and the client would silently drop the event.
+**Streaming endpoints are the one exception to "one envelope per response"** — and only to the *shape*, not to the rule. An SSE response cannot carry a single envelope, so **each event carries its own**: `data: {"code":0,"data":{…},"msg":""}`. Clients branch on `code` exactly as they do for a unary call, which is what makes a mid-stream failure reportable instead of an unexplained disconnect. Framing lives in `app/routes/apiv1/sse.go`; note `formatSSEFrame` emits one `data:` line per line of payload, because a raw newline inside the JSON (sing-box logs multi-line messages) would otherwise end the frame early and the client would silently drop the event.
 
 Clients read these with `fetch()` + `ReadableStream` (`frontend/src/services/stream.ts`), **never `EventSource`**: it cannot set headers, and auth here is `Authorization: Bearer` from localStorage. Passing the token as a query parameter instead would write a live session credential into every access log and `Referer` on the path.
 
@@ -491,17 +522,17 @@ respOK(ctx, c, data)                 // code=0, msg="success"
 respErr(ctx, c, CodeBadRequest, msg) // data=nil
 ```
 
-Note: `app/routes/handler.go` (the older non-versioned `ListNodes`) still uses raw `c.JSON()` with HTTP 400/500. Treat that as legacy — new code goes under `v1_12_12/` with the envelope.
+Note: `app/routes/handler.go` (the older non-versioned `ListNodes`) still uses raw `c.JSON()` with HTTP 400/500. Treat that as legacy — new code goes under `apiv1/` with the envelope.
 
 ## Important File Paths
 
 - `main.go` - Entry point, loads config and starts server
 - `app/svr.go` - Application initialization, database setup
 - `app/pkg/database/` - Database initialization, migrations, and JSON import
-- `app/routes/v1_12_12/routes.go` - API route definitions
+- `app/routes/apiv1/routes.go` - API route definitions
 - `app/pkg/config/types.go` - sing-box config struct definitions
 - `frontend/src/router/index.ts` - Frontend routing configuration
-- `frontend/src/services/api.ts` - Shared axios client (`baseURL: /api/1.12.12`)
+- `frontend/src/services/api.ts` - Shared axios client (`baseURL: /api/v1`, from `services/apiBase.ts`)
 - `frontend/vite.config.ts` - Dev server proxies `/api` → `http://localhost:5100`
 - `bin/app.yml` - Local dev config used by `./dev.sh` (port `5100`, db in `./bin/`)
 - `doc/API_v1.13.0.md` - Complete API documentation (Chinese)

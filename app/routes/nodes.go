@@ -12,7 +12,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/bootstrap"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	v1_12_12 "github.com/SealinGp/sing-box-easy/app/routes/v1_12_12"
+	"github.com/SealinGp/sing-box-easy/app/routes/apiv1"
 	"github.com/SealinGp/sing-box-easy/app/webui"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery"
@@ -69,10 +69,10 @@ func (r *Route) initEndpoints() error {
 		return nil
 	})
 
-	// Register v1.12.12 API routes with configuration
-	v1Handler := v1_12_12.NewHandler(r.modules)
+	// Register the API routes (served on every prefix in apiv1.apiPrefixes)
+	v1Handler := apiv1.NewHandler(r.modules)
 
-	v1_12_12.RegisterRoutes(r.hz, v1Handler)
+	apiv1.RegisterRoutes(r.hz, v1Handler)
 
 	// PWA/SPA fallback handler: serve static files if they exist, otherwise
 	// index.html so client-side routing works.
