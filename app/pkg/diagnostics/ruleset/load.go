@@ -93,9 +93,17 @@ func (l *Loader) decodeInto(set *Set, format string, content []byte) {
 			set.Reason = ReasonParseError
 		}
 		set.Detail = err.Error()
+		// Retained only on the failing path, for the binary fallback. A set
+		// that decoded needs nothing kept; see Set.content.
+		set.content = content
 		return
 	}
 	l.buildRules(set, rules)
+	if !set.Available {
+		// buildRules rejected a rule this build cannot represent. The binary
+		// that wrote the set can, so keep the bytes for it.
+		set.content = content
+	}
 }
 
 // buildRules compiles option rules into matchers.

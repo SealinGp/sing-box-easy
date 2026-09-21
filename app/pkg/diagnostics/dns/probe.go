@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -99,6 +100,10 @@ type Options struct {
 	// newer DNS action (for example evaluate/respond) cannot be represented
 	// by the compiled schema without producing a misleading prediction.
 	AttributionError string
+	// Sets resolves `rule_set` tags so rules carrying one can be decided
+	// rather than reported as undecidable. Optional, and owned by the caller:
+	// it holds a handle on sing-box's cache file and must be Closed.
+	Sets *ruleset.Loader
 }
 
 // Stage names the phases a probe passes through, in order. A caller that wants
@@ -180,7 +185,14 @@ func RunStaged(cfg *option.Options, opts Options, onStage StageFunc) (*Result, e
 		dns = cfg.DNS
 	}
 	if opts.AttributionError == "" {
-		result.Attribution = Attribute(dns, domain)
+		// The query type is passed through rather than dropped: it decides
+		// `query_type` rules, which is the whole mechanism behind an IPv6
+		// split and used to leave every such rule undecidable.
+		result.Attribution = AttributeQuery(dns, Query{
+			Domain: domain,
+			Type:   queryType,
+			Sets:   opts.Sets,
+		})
 	} else {
 		result.Attribution = Attribution{Rules: []RuleEvaluation{}, MatchedIndex: -1, Exact: false}
 		result.AttributionError = opts.AttributionError

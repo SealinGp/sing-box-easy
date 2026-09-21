@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/domain"
 )
@@ -47,6 +48,48 @@ type RuleEvaluation struct {
 	Action   string `json:"action"`
 	Server   string `json:"server,omitempty"`
 	Strategy string `json:"strategy,omitempty"`
+	// RuleSets carries per-set detail when the rule references any, so a rule
+	// that could not be decided names the set responsible rather than saying
+	// only "rule_set". Same shape the route probe reports.
+	RuleSets []RuleSetStatus `json:"rule_sets,omitempty"`
+}
+
+// RuleSetStatus reports one rule set referenced by a DNS rule.
+//
+// Deliberately the same shape routeprobe.RuleSetStatus uses: the two probes
+// answer the same kind of question and the UI renders them with one component,
+// so two near-identical payloads would only invite them to drift.
+type RuleSetStatus struct {
+	Tag string `json:"tag"`
+	// State is the set's own verdict: matched, not_matched or unevaluated.
+	State MatchState `json:"state"`
+	// Reason is populated when the set could not be read at all.
+	Reason ruleset.Reason `json:"reason,omitempty"`
+	Detail string         `json:"detail,omitempty"`
+	// UpdatedAtUnix is when sing-box last downloaded the set, 0 when unknown.
+	UpdatedAtUnix int64 `json:"updated_at_unix,omitempty"`
+	// Tier says which layer decided it: decoded here, or answered by the
+	// installed sing-box binary.
+	Tier ruleset.Tier `json:"tier,omitempty"`
+}
+
+// Query is everything known about the lookup being attributed.
+//
+// It replaces the bare domain string because two of the most decisive
+// conditions in a real config were being discarded: the record type (an
+// AAAA-suppression rule is the basis of every IPv6 split) and the rule sets
+// (on the config this was built against, most rules carry nothing else).
+// Both were already available at the call site and simply never passed down.
+type Query struct {
+	// Domain is the name being looked up; it is normalized here.
+	Domain string
+	// Type is the record type asked for ("A", "AAAA", …). Empty means the
+	// caller did not say, which leaves query_type rules undecidable rather
+	// than assuming one.
+	Type string
+	// Sets resolves rule_set tags. Optional: without it, every rule carrying
+	// a rule_set stays undecidable, which is what this probe did before.
+	Sets *ruleset.Loader
 }
 
 // Attribution is the reconstructed routing decision for a domain.
@@ -79,6 +122,12 @@ type Attribution struct {
 // Attribute walks the DNS rules in order and reports what would happen to
 // `domain`, mirroring sing-box's first-match-wins evaluation.
 func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
+	return AttributeQuery(dns, Query{Domain: queryDomain})
+}
+
+// AttributeQuery is Attribute with everything the walk can actually use.
+func AttributeQuery(dns *option.DNSOptions, query Query) Attribution {
+	queryDomain := query.Domain
 	result := Attribution{
 		Rules:        []RuleEvaluation{},
 		MatchedIndex: -1,
@@ -92,7 +141,7 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 	decided := false
 
 	for i, rule := range dns.Rules {
-		evaluation := evaluateRule(i, rule, normalized)
+		evaluation := evaluateRule(i, rule, normalized, query)
 		result.Rules = append(result.Rules, evaluation)
 
 		if decided {
@@ -130,10 +179,10 @@ func Attribute(dns *option.DNSOptions, queryDomain string) Attribution {
 
 // evaluateRule decides one rule. Logical rules are not decomposed — they are
 // reported as unevaluated rather than guessed at.
-func evaluateRule(index int, rule option.DNSRule, queryDomain string) RuleEvaluation {
+func evaluateRule(index int, rule option.DNSRule, queryDomain string, query Query) RuleEvaluation {
 	switch rule.Type {
 	case "", "default":
-		return evaluateDefaultRule(index, rule.DefaultOptions, queryDomain)
+		return evaluateDefaultRule(index, rule.DefaultOptions, queryDomain, query)
 	default:
 		return RuleEvaluation{
 			Index:       index,
@@ -148,7 +197,7 @@ func evaluateRule(index int, rule option.DNSRule, queryDomain string) RuleEvalua
 	}
 }
 
-func evaluateDefaultRule(index int, rule option.DefaultDNSRule, queryDomain string) RuleEvaluation {
+func evaluateDefaultRule(index int, rule option.DefaultDNSRule, queryDomain string, query Query) RuleEvaluation {
 	evaluation := RuleEvaluation{
 		Index:    index,
 		Type:     "default",
@@ -158,18 +207,50 @@ func evaluateDefaultRule(index int, rule option.DefaultDNSRule, queryDomain stri
 		Strategy: rule.RouteOptions.Strategy.String(),
 	}
 
-	// Conditions we cannot decide without sing-box's runtime state. rule_set
-	// is by far the most common: the sets are usually remote and live inside
-	// sing-box's cache, so their contents are not available here.
+	// Conditions that still need sing-box's runtime state — a client address,
+	// a process name, the WiFi SSID. rule_set and query_type used to be on
+	// this list and are now decided below.
 	evaluation.Unevaluated = unevaluableConditions(rule)
 
+	// Every condition below is an AND item (route/rule/rule_dns.go puts
+	// query_type and rule_set in `items`, and domain* in the destination
+	// address group), so a single decided miss rules the rule out even when
+	// something else could not be evaluated. That asymmetry is why each is
+	// checked for a definite NO before the unevaluated list is consulted.
+
 	// Domain conditions are decidable, and they are the ones that matter for a
-	// domain probe. A failure here rules the rule out outright, even when
-	// other conditions are unevaluable — sing-box requires all to match.
+	// domain probe.
 	domainDecided, domainMatched := matchDomainConditions(rule, queryDomain)
 	if domainDecided && !domainMatched {
 		evaluation.State = MatchStateNotMatched
 		return evaluation
+	}
+
+	typePresent, typeVerdict := matchQueryType(rule, query.Type)
+	if typePresent && typeVerdict == ruleset.VerdictNo {
+		evaluation.State = MatchStateNotMatched
+		return evaluation
+	}
+	if typePresent && typeVerdict == ruleset.VerdictUnknown {
+		evaluation.Unevaluated = append(evaluation.Unevaluated, "query_type")
+	}
+
+	setsPresent, setVerdict, statuses := matchRuleSets(rule.RuleSet, query)
+	evaluation.RuleSets = statuses
+	if setsPresent && setVerdict == ruleset.VerdictNo {
+		evaluation.State = MatchStateNotMatched
+		return evaluation
+	}
+	if setsPresent && setVerdict == ruleset.VerdictUnknown {
+		evaluation.Unevaluated = append(evaluation.Unevaluated, "rule_set")
+	}
+
+	// A rule decided purely by a condition handled here still HAS conditions,
+	// so a bare `rule_set` or `query_type` hit must not fall through to the
+	// "no conditions at all" branch below, which exists for a rule that
+	// carries nothing to test.
+	if setVerdict == ruleset.VerdictYes || typeVerdict == ruleset.VerdictYes {
+		domainDecided = true
 	}
 
 	if len(evaluation.Unevaluated) > 0 {
@@ -261,7 +342,6 @@ func unevaluableConditions(rule option.DefaultDNSRule) []string {
 		}
 	}
 
-	add(len(rule.RuleSet) > 0, "rule_set")
 	add(len(rule.Geosite) > 0, "geosite")
 	add(len(rule.GeoIP) > 0, "geoip")
 	add(len(rule.SourceGeoIP) > 0, "source_geoip")
@@ -292,7 +372,6 @@ func unevaluableConditions(rule option.DefaultDNSRule) []string {
 	add(len(rule.SourcePort) > 0, "source_port")
 	add(len(rule.SourcePortRange) > 0, "source_port_range")
 	add(rule.IPVersion != 0, "ip_version")
-	add(len(rule.QueryType) > 0, "query_type")
 
 	return fields
 }

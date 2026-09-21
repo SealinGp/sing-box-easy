@@ -390,10 +390,20 @@ func (e *evaluator) matchRuleSets(tags []string) (ruleset.Verdict, []RuleSetStat
 	matched := false
 
 	for _, tag := range tags {
-		set := e.loader.Get(tag)
-		verdict := set.Match(e.target)
+		// MatchTarget rather than Get+Match: it adds the binary fallback for a
+		// set this build cannot decode, which on a host running a newer
+		// sing-box than the pinned library is most of them.
+		result := e.loader.MatchTarget(tag, e.target)
+		set, verdict := result.Set, result.Verdict
 
-		status := RuleSetStatus{Tag: tag, State: toState(verdict), Reason: set.Reason, Detail: set.Detail}
+		detail := set.Detail
+		if result.Detail != "" {
+			detail = result.Detail
+		}
+		status := RuleSetStatus{
+			Tag: tag, State: toState(verdict), Reason: set.Reason,
+			Detail: detail, Tier: result.Tier,
+		}
 		if !set.UpdatedAt.IsZero() {
 			status.UpdatedAtUnix = set.UpdatedAt.Unix()
 		}

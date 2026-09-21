@@ -20,6 +20,9 @@ func (h *Handler) ProbeDNS(ctx context.Context, c *app.RequestContext) {
 		respondOperationError(ctx, c, err)
 		return
 	}
+	// The run holds a handle on sing-box's cache file (or a copy of it) for
+	// rule-set evaluation, so it is released on every return path.
+	defer run.Close()
 	result, err := run.Run()
 	if err != nil {
 		respErr(ctx, c, CodeValidationError, err.Error())
@@ -38,6 +41,7 @@ func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
 		respondOperationError(ctx, c, err)
 		return
 	}
+	defer run.Close()
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream := NewSSEStream(c)

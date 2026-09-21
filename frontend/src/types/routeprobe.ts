@@ -17,24 +17,12 @@
 /** Verdict for one rule against the probed destination. */
 export type RouteMatchState = 'matched' | 'not_matched' | 'unevaluated' | 'skipped'
 
-/** Why a rule set could not be consulted. Keys, translated by the UI. */
-export type RuleSetReason =
-  | 'unknown_tag'
-  | 'not_cached'
-  | 'cache_unavailable'
-  | 'cache_disabled'
-  | 'file_missing'
-  | 'unsupported_srs_version'
-  | 'parse_error'
+// The rule-set shape now lives in ./ruleSet, shared with the DNS probe: the
+// backend emits one payload for both and two copies here would drift.
+export type { RuleSetReason, RuleSetTier } from './ruleSet'
+import type { RuleSetStatus } from './ruleSet'
 
-export interface RouteRuleSetStatus {
-  tag: string
-  state: RouteMatchState
-  reason?: RuleSetReason
-  detail?: string
-  /** When sing-box last downloaded the set. A surprise is often a stale set. */
-  updated_at_unix?: number
-}
+export type RouteRuleSetStatus = RuleSetStatus
 
 export interface RouteRuleEvaluation {
   index: number

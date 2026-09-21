@@ -7,6 +7,7 @@ import (
 
 	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/dns"
+	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 	"github.com/sagernet/sing-box/option"
 	singjson "github.com/sagernet/sing/common/json"
 )
@@ -80,9 +81,16 @@ func (h *Service) loadDNSProbeConfig() (*configpkg.SingBoxConfig, string, error)
 }
 
 // DNSRun captures a consistent configuration projection before streaming starts.
+//
+// It owns a rule-set loader, which may hold an open handle on sing-box's cache
+// file (or a temporary copy of it), so every caller MUST Close the run. The
+// loader is built once per run rather than per rule: a real config reaches the
+// same sets from many rules, and its memo is what keeps the binary fallback
+// affordable.
 type DNSRun struct {
 	cfg     *configpkg.SingBoxConfig
 	options dnsprobe.Options
+	sets    *ruleset.Loader
 }
 
 func (h *Service) PrepareDNS(req DNSProbeRequest) (*DNSRun, error) {
@@ -90,8 +98,30 @@ func (h *Service) PrepareDNS(req DNSProbeRequest) (*DNSRun, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DNSRun{cfg: cfg, options: dnsprobe.Options{Domain: req.Domain, QueryType: req.Type, CompareServers: req.CompareServers, Tailer: h.logTailer(), AttributionError: attribution}}, nil
+	sets := h.ruleSetLoader()
+	return &DNSRun{
+		cfg:  cfg,
+		sets: sets,
+		options: dnsprobe.Options{
+			Domain:           req.Domain,
+			QueryType:        req.Type,
+			CompareServers:   req.CompareServers,
+			Tailer:           h.logTailer(),
+			AttributionError: attribution,
+			Sets:             sets,
+		},
+	}, nil
 }
+
+// Close releases the cache-file handle the loader may hold. Safe to call more
+// than once.
+func (r *DNSRun) Close() {
+	if r != nil && r.sets != nil {
+		r.sets.Close()
+		r.sets = nil
+	}
+}
+
 func (r *DNSRun) Run() (*dnsprobe.Result, error) { return dnsprobe.Run(&r.cfg.Options, r.options) }
 func (r *DNSRun) Stream(emit func(dnsprobe.Stage, *dnsprobe.Result) error) (*dnsprobe.Result, error) {
 	return dnsprobe.RunStaged(&r.cfg.Options, r.options, emit)

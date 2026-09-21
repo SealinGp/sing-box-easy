@@ -33,6 +33,19 @@ export default {
     ambiguous: '同一时刻还有其他 DNS 活动被记录，下方的判定未必都属于本次查询。',
     readError: '无法读取 sing-box 日志：{error}',
   },
+  ruleSetsUnavailable: '部分规则集无法读取，相关规则因此无法判定：',
+  ruleSetReason: {
+    unknown_tag: '配置中不存在该标签的规则集',
+    not_cached: '尚未下载 —— 请在「规则集」标签页更新',
+    cache_unavailable: '无法读取 sing-box 缓存文件',
+    cache_disabled: 'experimental.cache_file 未开启，远程规则集仅存在于内存中',
+    file_missing: '本地文件不存在',
+    unsupported_srs_version: '由更新版本的 sing-box 生成，本面板无法解析',
+    parse_error: '内容无法解码',
+  },
+  ruleSetTier: {
+    'sing-box': '由已安装的 sing-box 判定',
+  },
   state: {
     matched: '命中',
     not_matched: '未命中',
