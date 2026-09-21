@@ -119,6 +119,16 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// wildcard collision — nothing owns `/route/:x`.
 	auth.POST("/route/probe", handler.ProbeRoute)
 
+	// Dual-stack diagnostics: does this domain work over IPv4 AND IPv6, and
+	// does each family go where the config says it should?
+	//
+	// Its own /diagnostics prefix because the feature spans DNS and route,
+	// and because /dns/:x and /route/:x already own wildcards at that path
+	// position — a static sibling there collides in the Hertz router, the
+	// same reason /settings/subscription-info-keywords lives where it does.
+	auth.POST("/diagnostics/dual-stack", handler.ProbeDualStack)
+	auth.POST("/diagnostics/dual-stack/stream", handler.StreamProbeDualStack)
+
 	// Live traffic for the Overview diagram (SSE). Proxied through the panel so
 	// the Clash API secret stays server-side — see traffic_handler.go.
 	auth.GET("/traffic/flow/stream", handler.StreamTrafficFlow)
