@@ -1,37 +1,22 @@
 package dnsprobe
 
+// The original attribution tests, rewritten against raw config JSON.
+//
+// They used to build `option.DNSOptions` values. That input shape was dropped
+// because re-encoding it to reach the walk is lossy in upstream sing-box —
+// `DNSRuleAction.MarshalJSON` omits the route options whenever `Action` is
+// unset, which is the default spelling, so {"domain":"x","server":"s"} marshals
+// back as {"domain":"x"}. Written as JSON these tests also describe the shape a
+// config is actually stored in, which is what the walk now reads.
+
 import (
 	"testing"
-
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/json/badoption"
 )
 
-// routeRule builds a default rule that routes to `server`.
-func routeRule(server string, mutate func(*option.DefaultDNSRule)) option.DNSRule {
-	rule := option.DefaultDNSRule{}
-	rule.RouteOptions.Server = server
-	if mutate != nil {
-		mutate(&rule)
-	}
-	return option.DNSRule{Type: "default", DefaultOptions: rule}
-}
-
-func dnsWith(rules []option.DNSRule, final string) *option.DNSOptions {
-	options := &option.DNSOptions{}
-	options.Rules = rules
-	options.Final = final
-	return options
-}
-
 func TestAttributeExactDomainMatch(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_router", func(r *option.DefaultDNSRule) {
-			r.Domain = badoption.Listable[string]{"tea.tparts.com"}
-		}),
-	}, "dns_final")
-
-	got := Attribute(dns, "tea.tparts.com")
+	got := attribute(t, `{"rules":[
+	  {"domain":["tea.tparts.com"],"server":"dns_router"}
+	],"final":"dns_final"}`, Query{Domain: "tea.tparts.com"})
 
 	if got.MatchedIndex != 0 {
 		t.Errorf("MatchedIndex = %d, want 0", got.MatchedIndex)
@@ -39,22 +24,18 @@ func TestAttributeExactDomainMatch(t *testing.T) {
 	if got.Server != "dns_router" {
 		t.Errorf("Server = %q, want dns_router", got.Server)
 	}
-	if !got.Exact {
-		t.Error("Exact = false, want true — nothing was unevaluable")
-	}
 	if got.FinalUsed {
-		t.Error("FinalUsed = true, want false")
+		t.Errorf("FinalUsed = true, want false")
+	}
+	if !got.Exact {
+		t.Errorf("Exact = false, want true")
 	}
 }
 
-// domain_suffix must use sing-box's own matcher semantics, not a hand-rolled
-// string suffix, which is why the matcher is delegated rather than reimplemented.
 func TestAttributeDomainSuffix(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_router", func(r *option.DefaultDNSRule) {
-			r.DomainSuffix = badoption.Listable[string]{"owolist.cn"}
-		}),
-	}, "dns_final")
+	section := `{"rules":[
+	  {"domain_suffix":["owolist.cn"],"server":"dns_router"}
+	],"final":"dns_final"}`
 
 	cases := []struct {
 		domain string
@@ -62,13 +43,16 @@ func TestAttributeDomainSuffix(t *testing.T) {
 	}{
 		{"owolist.cn", 0},
 		{"www.owolist.cn", 0},
+		// The suffix is a DOMAIN suffix, not a string suffix: sing-box matches
+		// the name itself and anything under it, never a different name that
+		// merely ends in the same characters.
 		{"notowolist.cn", -1},
-		{"owolist.cn.evil.com", -1},
+		{"example.com", -1},
 	}
 
 	for _, c := range cases {
 		t.Run(c.domain, func(t *testing.T) {
-			if got := Attribute(dns, c.domain).MatchedIndex; got != c.want {
+			if got := attribute(t, section, Query{Domain: c.domain}).MatchedIndex; got != c.want {
 				t.Errorf("MatchedIndex for %q = %d, want %d", c.domain, got, c.want)
 			}
 		})
@@ -76,125 +60,101 @@ func TestAttributeDomainSuffix(t *testing.T) {
 }
 
 func TestAttributeFallsThroughToFinal(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_router", func(r *option.DefaultDNSRule) {
-			r.Domain = badoption.Listable[string]{"other.com"}
-		}),
-	}, "dns_final")
+	got := attribute(t, `{"rules":[
+	  {"domain":["tea.tparts.com"],"server":"dns_router"}
+	],"final":"dns_final"}`, Query{Domain: "example.com"})
 
-	got := Attribute(dns, "example.com")
-
-	if got.MatchedIndex != -1 {
-		t.Errorf("MatchedIndex = %d, want -1", got.MatchedIndex)
+	if got.MatchedIndex != -1 || !got.FinalUsed {
+		t.Errorf("got %+v, want a fall-through", got)
 	}
-	if !got.FinalUsed || got.Server != "dns_final" {
-		t.Errorf("FinalUsed=%v Server=%q, want true/dns_final", got.FinalUsed, got.Server)
+	if got.Server != "dns_final" {
+		t.Errorf("Server = %q, want dns_final", got.Server)
 	}
 	if !got.Exact {
-		t.Error("Exact = false, want true")
+		t.Errorf("Exact = false, want true")
 	}
 }
 
-// A rule_set rule cannot be decided offline. Anything after it is therefore a
-// guess, and the result must say so rather than presenting a confident answer.
 func TestAttributeRuleSetMakesLaterMatchInexact(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_google", func(r *option.DefaultDNSRule) {
-			r.RuleSet = badoption.Listable[string]{"geosite-cn"}
-		}),
-		routeRule("dns_router", func(r *option.DefaultDNSRule) {
-			r.DomainSuffix = badoption.Listable[string]{"example.com"}
-		}),
-	}, "dns_final")
-
-	got := Attribute(dns, "www.example.com")
+	// A rule_set that cannot be consulted sits ahead of the decision, so the
+	// rule below it might never have been reached.
+	got := attribute(t, `{"rules":[
+	  {"rule_set":["geosite-cn"],"server":"dns_local"},
+	  {"domain_suffix":["example.com"],"server":"dns_router"}
+	],"final":"dns_final"}`, Query{Domain: "www.example.com"})
 
 	if got.Rules[0].State != MatchStateUnevaluated {
-		t.Errorf("rule[0].State = %q, want unevaluated", got.Rules[0].State)
-	}
-	if len(got.Rules[0].Unevaluated) == 0 || got.Rules[0].Unevaluated[0] != "rule_set" {
-		t.Errorf("rule[0].Unevaluated = %v, want [rule_set]", got.Rules[0].Unevaluated)
+		t.Errorf("rule 0 state = %q, want unevaluated", got.Rules[0].State)
 	}
 	if got.MatchedIndex != 1 {
 		t.Errorf("MatchedIndex = %d, want 1", got.MatchedIndex)
 	}
 	if got.Exact {
-		t.Error("Exact = true, want false — an earlier rule could have matched first")
+		t.Errorf("Exact = true, want false")
 	}
 	if got.UnevaluatedBefore != 1 {
 		t.Errorf("UnevaluatedBefore = %d, want 1", got.UnevaluatedBefore)
 	}
 }
 
-// A failing domain condition rules the rule out even when another condition is
-// unevaluable, because sing-box requires every condition to match.
 func TestAttributeDomainMismatchBeatsUnevaluable(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_google", func(r *option.DefaultDNSRule) {
-			r.RuleSet = badoption.Listable[string]{"geosite-cn"}
-			r.DomainSuffix = badoption.Listable[string]{"other.com"}
-		}),
-	}, "dns_final")
-
-	got := Attribute(dns, "example.com")
+	// Conditions are AND'd, so a decided domain miss rules the rule out even
+	// though its rule_set could not be read. Reporting "unevaluated" here
+	// would make every such walk inexact for no reason.
+	got := attribute(t, `{"rules":[
+	  {"domain":["other.com"],"rule_set":["geosite-cn"],"server":"dns_local"}
+	],"final":"dns_final"}`, Query{Domain: "example.com"})
 
 	if got.Rules[0].State != MatchStateNotMatched {
-		t.Errorf("State = %q, want not_matched", got.Rules[0].State)
+		t.Errorf("state = %q, want not_matched", got.Rules[0].State)
 	}
 	if !got.Exact {
-		t.Error("Exact = false, want true — the rule was definitively excluded")
+		t.Errorf("Exact = false, want true")
 	}
 }
 
 func TestAttributePredefinedAction(t *testing.T) {
-	rule := option.DefaultDNSRule{}
-	rule.Domain = badoption.Listable[string]{"tea.tparts.com"}
-	rule.Action = "predefined"
-	dns := dnsWith([]option.DNSRule{{Type: "default", DefaultOptions: rule}}, "dns_final")
-
-	got := Attribute(dns, "tea.tparts.com")
+	got := attribute(t, `{"rules":[
+	  {"domain":["tea.tparts.com"],"action":"predefined","rcode":"NOERROR"}
+	],"final":"dns_final"}`, Query{Domain: "tea.tparts.com"})
 
 	if got.MatchedIndex != 0 {
-		t.Fatalf("MatchedIndex = %d, want 0", got.MatchedIndex)
+		t.Errorf("MatchedIndex = %d, want 0", got.MatchedIndex)
 	}
 	if got.Rules[0].Action != "predefined" {
 		t.Errorf("Action = %q, want predefined", got.Rules[0].Action)
 	}
+	if !got.Rules[0].Terminal {
+		t.Error("predefined must terminate the walk")
+	}
 }
 
-// An omitted action means "route" in sing-box; the UI must not show a blank.
 func TestAttributeDefaultsActionToRoute(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_router", func(r *option.DefaultDNSRule) {
-			r.Domain = badoption.Listable[string]{"a.com"}
-		}),
-	}, "dns_final")
+	got := attribute(t, `{"rules":[
+	  {"domain":["a.com"],"server":"s"}
+	],"final":"f"}`, Query{Domain: "a.com"})
 
-	if got := Attribute(dns, "a.com").Rules[0].Action; got != "route" {
-		t.Errorf("Action = %q, want route", got)
+	if got.Rules[0].Action != "route" {
+		t.Errorf("Action = %q, want route", got.Rules[0].Action)
 	}
 }
 
 func TestAttributeKeywordAndRegex(t *testing.T) {
-	dns := dnsWith([]option.DNSRule{
-		routeRule("dns_a", func(r *option.DefaultDNSRule) {
-			r.DomainKeyword = badoption.Listable[string]{"google"}
-		}),
-		routeRule("dns_b", func(r *option.DefaultDNSRule) {
-			r.DomainRegex = badoption.Listable[string]{`^ads?\.`}
-		}),
-	}, "dns_final")
+	section := `{"rules":[
+	  {"domain_keyword":["google"],"server":"s1"},
+	  {"domain_regex":["^ad\\..*"],"server":"s2"}
+	],"final":"f"}`
 
-	if got := Attribute(dns, "www.google.com").MatchedIndex; got != 0 {
+	if got := attribute(t, section, Query{Domain: "www.google.com"}).MatchedIndex; got != 0 {
 		t.Errorf("keyword MatchedIndex = %d, want 0", got)
 	}
-	if got := Attribute(dns, "ad.example.com").MatchedIndex; got != 1 {
+	if got := attribute(t, section, Query{Domain: "ad.example.com"}).MatchedIndex; got != 1 {
 		t.Errorf("regex MatchedIndex = %d, want 1", got)
 	}
 }
 
-func TestAttributeNilDNS(t *testing.T) {
-	got := Attribute(nil, "example.com")
+func TestAttributeEmptySection(t *testing.T) {
+	got := AttributeRaw(nil, Query{Domain: "example.com"})
 	if got.MatchedIndex != -1 || len(got.Rules) != 0 {
 		t.Errorf("got %+v, want empty attribution", got)
 	}

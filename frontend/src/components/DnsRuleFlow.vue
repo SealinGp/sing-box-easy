@@ -45,6 +45,30 @@ const props = defineProps<{
 const { t } = useI18n()
 
 /**
+ * Keys that are NOT conditions: the rule's shape and its action's options,
+ * which sing-box flattens alongside the conditions in the same object.
+ *
+ * A blacklist, not a whitelist, and that direction is the whole point. This
+ * used to list the condition keys it knew and call everything else nothing —
+ * so a 1.14 rule gated on `match_response` rendered as "(no conditions)",
+ * which reads as a catch-all and is the exact opposite of what it is.
+ *
+ * The two ways to be wrong are not symmetric. Mistaking a condition for an
+ * action option hides it and makes the rule look unconditional; mistaking an
+ * action option for a condition merely shows one extra token. So anything
+ * unrecognised is shown. Mirrors `actionKeys` in the backend's rawrule.go.
+ */
+const NON_CONDITION_KEYS = new Set([
+  'type', 'mode', 'rules', 'action',
+  'server', 'strategy', 'disable_cache', 'disable_optimistic_cache',
+  'rewrite_ttl', 'client_subnet', 'remove_client_subnet', 'timeout',
+  'speculative', 'race', 'tag',
+  'method', 'no_drop',
+  'rcode', 'answer', 'ns', 'extra',
+  'disable_expire',
+])
+
+/**
  * Renders a rule's conditions compactly.
  *
  * Used ONLY when there is no probe. Once one arrives the backend's own summary
@@ -53,9 +77,12 @@ const { t } = useI18n()
  */
 const summarize = (rule: Record<string, any>): string => {
   const parts: string[] = []
-  const list = (key: string) => {
-    const value = rule[key]
-    if (value === undefined || value === null) return
+  const render = (key: string, value: any) => {
+    if (value === undefined || value === null || value === false) return
+    if (value === true) {
+      parts.push(`${key}=true`)
+      return
+    }
     const values = Array.isArray(value) ? value : [value]
     if (values.length === 0) return
     parts.push(values.length > 3
@@ -63,24 +90,30 @@ const summarize = (rule: Record<string, any>): string => {
       : `${key}=${values.length === 1 ? values[0] : `[${values.join(' ')}]`}`)
   }
 
-  for (const key of ['domain', 'domain_suffix', 'domain_keyword', 'domain_regex', 'rule_set', 'geosite', 'geoip', 'ip_cidr', 'outbound']) {
-    list(key)
+  // Logical rules carry their conditions in nested children.
+  if (rule.type === 'logical') {
+    const mode = rule.mode || 'and'
+    const children = (rule.rules ?? []).map((child: Record<string, any>) => summarize(child))
+    return children.length ? `${mode}(${children.join(', ')})` : `${mode}()`
   }
-  for (const flag of ['ip_accept_any', 'ip_is_private', 'invert']) {
-    if (rule[flag]) parts.push(`${flag}=true`)
+
+  for (const key of Object.keys(rule)) {
+    if (NON_CONDITION_KEYS.has(key)) continue
+    render(key, rule[key])
   }
-  if (rule.clash_mode) parts.push(`clash_mode=${rule.clash_mode}`)
 
   return parts.length ? parts.join(' ') : t('dnsFlow.noConditions')
 }
 
-/** Condition keys the panel cannot evaluate without sing-box's runtime state. */
-const RUNTIME_ONLY = [
-  'rule_set', 'geosite', 'geoip', 'source_geoip', 'ip_cidr', 'ip_is_private',
-  'ip_accept_any', 'source_ip_cidr', 'inbound', 'outbound', 'clash_mode',
-  'process_name', 'process_path', 'package_name', 'user', 'auth_user',
-  'protocol', 'network', 'port', 'port_range', 'query_type',
-]
+/**
+ * Conditions this panel can decide from the config alone, without a probe.
+ *
+ * Deliberately tiny: with no query there is nothing to compare a domain
+ * against, so only `invert` is meaningful here. Everything else needs either a
+ * query (domain, query_type) or sing-box's runtime state (rule_set, geoip, …)
+ * and is reported as such.
+ */
+const DECIDABLE_KEYS = new Set(['invert'])
 
 const servers = computed<Record<string, any>[]>(() => props.dns?.servers ?? [])
 const finalServer = computed<string>(() => props.dns?.final ?? '')
@@ -146,10 +179,15 @@ const rungs = computed<LadderRung[]>(() => {
       summary: summarize(rule),
       outcome: outcomeOf(rule.action || 'route', rule.server ?? '', rule.strategy ?? ''),
       deciding: false,
-      unevaluated: RUNTIME_ONLY.filter((key) => {
-        const value = rule[key]
-        return Array.isArray(value) ? value.length > 0 : Boolean(value)
-      }),
+      // Same inversion: anything that is neither a condition this panel can
+      // decide nor an action option is reported as needing runtime state,
+      // rather than silently dropped.
+      unevaluated: Object.keys(rule).filter(
+        (key) =>
+          !NON_CONDITION_KEYS.has(key) &&
+          !DECIDABLE_KEYS.has(key) &&
+          (Array.isArray(rule[key]) ? rule[key].length > 0 : Boolean(rule[key])),
+      ),
     }))
   }
 
@@ -159,6 +197,10 @@ const rungs = computed<LadderRung[]>(() => {
     summary: rule.summary,
     outcome: outcomeOf(rule.action, rule.server ?? '', rule.strategy ?? ''),
     deciding: rule.index === matchedIndex.value,
+    // A matched rule that does not decide is the confusing case, and on a 1.14
+    // config it is the COMMON one: `evaluate` and `route-options` match and
+    // hand over. Without this they render identically to the deciding rung.
+    continues: rule.state === 'matched' && rule.terminal === false,
     unevaluated: rule.unevaluated,
   }))
 

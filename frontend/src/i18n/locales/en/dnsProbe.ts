@@ -34,6 +34,7 @@ export default {
       'Other DNS activity was logged at the same moment, so the decisions below may not all belong to this query.',
     readError: 'Could not read the sing-box log: {error}',
   },
+  continued: 'matched, then continued',
   ruleSetsUnavailable: 'Some rule sets could not be read, so those rules could not be decided:',
   ruleSetReason: {
     unknown_tag: 'no rule set with this tag exists in the config',

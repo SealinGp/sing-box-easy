@@ -320,6 +320,17 @@ const logStatusMessage = computed(() => {
             </div>
             <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               {{ rule.action }}<template v-if="rule.server">({{ rule.server }})</template>
+              <!--
+                A matched rule that handed over rather than deciding. Stated in
+                words because the distinction is invisible otherwise, and on a
+                1.14 config most matches are of this kind.
+              -->
+              <span
+                v-if="rule.state === 'matched' && rule.terminal === false"
+                class="ml-2 text-gray-400"
+              >
+                · {{ rule.effect || $t('dnsProbe.continued') }}
+              </span>
               <span v-if="rule.unevaluated?.length" class="ml-2 text-amber-600 dark:text-amber-400">
                 {{ $t('dnsProbe.cannotEvaluate', { fields: rule.unevaluated.join(', ') }) }}
               </span>

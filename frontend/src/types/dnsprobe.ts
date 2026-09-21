@@ -50,6 +50,19 @@ export interface DnsRuleEvaluation {
   strategy?: string
   /** Per-set detail when the rule references any. Same shape route reports. */
   rule_sets?: RuleSetStatus[]
+  /**
+   * Whether a match on this rule ENDS the walk.
+   *
+   * Not derivable from the action name. sing-box's matchDNS switch returns
+   * only for route, reject and predefined — so `evaluate` and `route-options`
+   * match, change what the rules below them see, and hand over. A config that
+   * races three `evaluate` resolvers has three matched rules and no decision,
+   * and a ladder that treated the first match as the answer would name the
+   * wrong server with full confidence.
+   */
+  terminal?: boolean
+  /** What a non-terminal match changed for the rules below it. */
+  effect?: string
 }
 
 export interface DnsAttribution {

@@ -1,6 +1,7 @@
 package dnsprobe
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -39,10 +40,6 @@ type Result struct {
 
 	// Attribution is the offline reconstruction of the routing decision.
 	Attribution Attribution `json:"attribution"`
-	// AttributionError explains why the compiled offline evaluator could not
-	// represent rules accepted by the installed core. Live and log-backed
-	// evidence remain available in that case.
-	AttributionError string `json:"attribution_error,omitempty"`
 
 	// LoggedMatches is sing-box's own record of the decision, present only
 	// when debug logging was enabled at probe time.
@@ -96,10 +93,10 @@ type Options struct {
 	CompareServers bool
 	// Tailer enables exact attribution from sing-box's debug log. Optional.
 	Tailer LogTailer
-	// AttributionError disables the legacy offline walk. It is set when a
-	// newer DNS action (for example evaluate/respond) cannot be represented
-	// by the compiled schema without producing a misleading prediction.
-	AttributionError string
+	// RawDNS is the `dns` section exactly as it appears in the config file.
+	// The rule walk reads this rather than the decoded options, because the
+	// pinned schema rejects a section from a newer sing-box outright.
+	RawDNS json.RawMessage
 	// Sets resolves `rule_set` tags so rules carrying one can be decided
 	// rather than reported as undecidable. Optional, and owned by the caller:
 	// it holds a handle on sing-box's cache file and must be Closed.
@@ -184,19 +181,16 @@ func RunStaged(cfg *option.Options, opts Options, onStage StageFunc) (*Result, e
 	if cfg != nil {
 		dns = cfg.DNS
 	}
-	if opts.AttributionError == "" {
-		// The query type is passed through rather than dropped: it decides
-		// `query_type` rules, which is the whole mechanism behind an IPv6
-		// split and used to leave every such rule undecidable.
-		result.Attribution = AttributeQuery(dns, Query{
-			Domain: domain,
-			Type:   queryType,
-			Sets:   opts.Sets,
-		})
-	} else {
-		result.Attribution = Attribution{Rules: []RuleEvaluation{}, MatchedIndex: -1, Exact: false}
-		result.AttributionError = opts.AttributionError
-	}
+
+	// Attribution runs on the RAW dns section, so a host running a newer
+	// sing-box than this build still gets a full ladder. There is no longer an
+	// "attribution unavailable" state: the walk cannot fail to read a section,
+	// only fail to DECIDE individual rules, which it reports per rule.
+	result.Attribution = AttributeRaw(opts.RawDNS, Query{
+		Domain: domain,
+		Type:   queryType,
+		Sets:   opts.Sets,
+	})
 
 	// Emitted first and on its own because it is the only stage that is
 	// instant: the ladder can be on screen before the live query has returned.

@@ -33,6 +33,7 @@ export default {
     ambiguous: '同一时刻还有其他 DNS 活动被记录，下方的判定未必都属于本次查询。',
     readError: '无法读取 sing-box 日志：{error}',
   },
+  continued: '命中后继续匹配',
   ruleSetsUnavailable: '部分规则集无法读取，相关规则因此无法判定：',
   ruleSetReason: {
     unknown_tag: '配置中不存在该标签的规则集',

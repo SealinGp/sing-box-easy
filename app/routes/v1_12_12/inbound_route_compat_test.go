@@ -1,6 +1,7 @@
 package v1_13_0
 
 import (
+	dnsprobe "github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/dns"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -106,12 +107,22 @@ func TestProbeConfigLoadersDoNotDecodeUnrelatedNewerDNSRules(t *testing.T) {
 		t.Fatalf("route subset failed: cfg=%+v err=%v", routeConfig, err)
 	}
 
-	dnsConfig, attributionError, err := handler.diagnostics().DNSConfig()
+	dnsConfig, rawDNS, err := handler.diagnostics().DNSConfig()
 	if err != nil {
 		t.Fatalf("DNS probe config failed: %v", err)
 	}
-	if attributionError == "" || dnsConfig.DNS == nil || len(dnsConfig.DNS.Servers) != 1 {
-		t.Fatalf("expected transparent degraded attribution with retained servers: cfg=%+v error=%q", dnsConfig, attributionError)
+	// The rule walk reads this section raw, so a DNS block the pinned schema
+	// cannot decode no longer costs the attribution. This used to assert the
+	// opposite — that a non-empty attributionError was returned — which pinned
+	// the degraded behaviour rather than the desired one.
+	if len(rawDNS) == 0 {
+		t.Fatal("expected the raw dns section to be returned for the rule walk")
+	}
+	if attribution := dnsprobe.AttributeRaw(rawDNS, dnsprobe.Query{Domain: "example.com"}); len(attribution.Rules) == 0 {
+		t.Fatal("expected a populated rule ladder from the raw section")
+	}
+	if dnsConfig.DNS == nil || len(dnsConfig.DNS.Servers) != 1 {
+		t.Fatalf("servers must still decode for the live query: cfg=%+v", dnsConfig)
 	}
 	if dnsConfig.DNS.Final != "router" || dnsConfig.DNS.Strategy.String() != "prefer_ipv4" {
 		t.Fatalf("DNS probe settings were lost: %+v", dnsConfig.DNS)

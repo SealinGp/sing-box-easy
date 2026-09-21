@@ -6,6 +6,7 @@ export default {
   someUnevaluated: '{count} of them need runtime state and could not be evaluated here',
   matchedRule: 'Matched rule #{index}',
   matchedRuleUnknownIndex: 'A rule matched',
+  noRuleDecided: 'No rule decided ({count} matched and handed over)',
   noRuleMatched: 'No rule matched',
   usesFinal: 'The query falls through to dns.final',
   confirmed: 'From sing-box’s own decision log',

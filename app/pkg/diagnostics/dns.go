@@ -31,53 +31,71 @@ func (h *Service) logTailer() dnsprobe.LogTailer {
 		return chunk.Lines, chunk.Cursor, nil
 	}
 }
-func (h *Service) loadDNSProbeConfig() (*configpkg.SingBoxConfig, string, error) {
-	cfg, typedErr := h.configManager.GetConfigSubset("dns")
-	attributionError := ""
-	if typedErr != nil {
-		raw, ok, err := h.configManager.GetConfigSection("dns")
-		if err != nil {
-			return nil, "", err
-		}
-		if !ok {
-			cfg = &configpkg.SingBoxConfig{}
-		} else {
-			var dnsObject map[string]json.RawMessage
-			if err := json.Unmarshal(raw, &dnsObject); err != nil {
-				return nil, "", fmt.Errorf("failed to parse dns section: %w", err)
-			}
-			// Project only the settings consumed by live/comparison probes.
-			// Removing rules alone still feeds newer fields (e.g. optimistic)
-			// into the compiled core's strict decoder.
-			probeSettings := make(map[string]json.RawMessage)
-			for _, field := range []string{"servers", "final", "strategy"} {
-				if value, exists := dnsObject[field]; exists {
-					probeSettings[field] = value
-				}
-			}
-			sanitized, err := json.Marshal(probeSettings)
-			if err != nil {
-				return nil, "", err
-			}
-			var dnsOptions option.DNSOptions
-			if err := singjson.UnmarshalContext(configpkg.CreateContext(context.Background()), sanitized, &dnsOptions); err != nil {
-				return nil, "", fmt.Errorf("failed to parse DNS probe settings: %w", err)
-			}
-			cfg = &configpkg.SingBoxConfig{}
-			cfg.DNS = &dnsOptions
-		}
-		attributionError = "offline attribution unavailable: DNS configuration is incompatible with the compiled schema; live and log evidence are still authoritative"
+// loadDNSProbeConfig projects the dns section twice, for two consumers with
+// opposite needs.
+//
+// The RULE WALK takes the section raw, so a host running a newer sing-box than
+// this build still produces a full ladder. The SERVER list has to be typed —
+// the live query and the upstream comparison dial those servers — so it is
+// narrowed to servers/final/strategy before decoding, keeping a newer
+// section-level key (1.14's `optimistic`) away from the strict decoder.
+func (h *Service) loadDNSProbeConfig() (*configpkg.SingBoxConfig, json.RawMessage, error) {
+	rawDNS, ok, err := h.configManager.GetConfigSection("dns")
+	if err != nil {
+		return nil, nil, err
 	}
+	if !ok {
+		rawDNS = json.RawMessage("{}")
+	}
+
+	cfg := &configpkg.SingBoxConfig{}
+	if servers, serversErr := decodeProbeServers(rawDNS); serversErr == nil {
+		cfg.DNS = servers
+	}
+	// A server list that will not decode costs the live query and the upstream
+	// comparison, and nothing else. The ladder is unaffected, which is the
+	// whole point of reading it raw.
 
 	clash, err := h.readClashAPISettings()
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	cfg.Experimental = &option.ExperimentalOptions{ClashAPI: &option.ClashAPIOptions{
 		ExternalController: clash.ExternalController,
 		Secret:             clash.Secret,
 	}}
-	return cfg, attributionError, nil
+	return cfg, rawDNS, nil
+}
+
+// decodeProbeServers narrows the dns section to the keys the live query and
+// the server comparison need, then decodes those through the pinned schema.
+//
+// Narrowing first is not belt-and-braces: sing-box's decoder is strict, so one
+// unrecognised SIBLING key — `optimistic`, or a rule using a 1.14 action —
+// rejects the whole section and takes the server list with it.
+func decodeProbeServers(rawDNS json.RawMessage) (*option.DNSOptions, error) {
+	var section map[string]json.RawMessage
+	if err := json.Unmarshal(rawDNS, &section); err != nil {
+		return nil, fmt.Errorf("failed to parse dns section: %w", err)
+	}
+
+	narrowed := make(map[string]json.RawMessage, 3)
+	for _, field := range []string{"servers", "final", "strategy"} {
+		if value, exists := section[field]; exists {
+			narrowed[field] = value
+		}
+	}
+	encoded, err := json.Marshal(narrowed)
+	if err != nil {
+		return nil, err
+	}
+
+	var options option.DNSOptions
+	if err := singjson.UnmarshalContext(
+		configpkg.CreateContext(context.Background()), encoded, &options); err != nil {
+		return nil, fmt.Errorf("failed to parse DNS probe settings: %w", err)
+	}
+	return &options, nil
 }
 
 // DNSRun captures a consistent configuration projection before streaming starts.
@@ -94,7 +112,7 @@ type DNSRun struct {
 }
 
 func (h *Service) PrepareDNS(req DNSProbeRequest) (*DNSRun, error) {
-	cfg, attribution, err := h.loadDNSProbeConfig()
+	cfg, rawDNS, err := h.loadDNSProbeConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +121,12 @@ func (h *Service) PrepareDNS(req DNSProbeRequest) (*DNSRun, error) {
 		cfg:  cfg,
 		sets: sets,
 		options: dnsprobe.Options{
-			Domain:           req.Domain,
-			QueryType:        req.Type,
-			CompareServers:   req.CompareServers,
-			Tailer:           h.logTailer(),
-			AttributionError: attribution,
-			Sets:             sets,
+			Domain:         req.Domain,
+			QueryType:      req.Type,
+			CompareServers: req.CompareServers,
+			Tailer:         h.logTailer(),
+			RawDNS:         rawDNS,
+			Sets:           sets,
 		},
 	}, nil
 }

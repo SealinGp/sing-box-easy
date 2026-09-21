@@ -6,6 +6,7 @@ export default {
   someUnevaluated: '其中 {count} 条需要运行时状态，无法在此判断',
   matchedRule: '命中规则 #{index}',
   matchedRuleUnknownIndex: '有规则命中',
+  noRuleDecided: '没有规则做出判定（{count} 条命中后继续匹配）',
   noRuleMatched: '没有规则命中',
   usesFinal: '查询落到 dns.final',
   confirmed: '来自 sing-box 自身的判定日志',
