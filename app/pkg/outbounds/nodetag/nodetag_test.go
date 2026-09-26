@@ -1,8 +1,9 @@
-package config
+package nodetag
 
 import (
 	"testing"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -16,13 +17,13 @@ import (
 func TestGetOutboundServerKey_TypedOptions(t *testing.T) {
 	tests := []struct {
 		name       string
-		outbound   Outbound
+		outbound   config.Outbound
 		wantKey    string
 		wantServer string
 	}{
 		{
 			name: "vmess typed struct (parser output)",
-			outbound: Outbound{
+			outbound: config.Outbound{
 				Type: "vmess",
 				Tag:  "test-vmess",
 				Options: option.VMessOutboundOptions{
@@ -38,7 +39,7 @@ func TestGetOutboundServerKey_TypedOptions(t *testing.T) {
 		},
 		{
 			name: "shadowsocks typed struct",
-			outbound: Outbound{
+			outbound: config.Outbound{
 				Type: "shadowsocks",
 				Tag:  "test-ss",
 				Options: option.ShadowsocksOutboundOptions{
@@ -55,7 +56,7 @@ func TestGetOutboundServerKey_TypedOptions(t *testing.T) {
 		},
 		{
 			name: "generic map (legacy callers)",
-			outbound: Outbound{
+			outbound: config.Outbound{
 				Type: "vmess",
 				Options: map[string]interface{}{
 					"server":      "10.0.0.1",
@@ -67,7 +68,7 @@ func TestGetOutboundServerKey_TypedOptions(t *testing.T) {
 		},
 		{
 			name: "nil options",
-			outbound: Outbound{
+			outbound: config.Outbound{
 				Type:    "direct",
 				Options: nil,
 			},
@@ -115,7 +116,7 @@ func TestFingerprintEndpointKey(t *testing.T) {
 }
 
 func TestGenerateFingerprintedTag(t *testing.T) {
-	ob := Outbound{
+	ob := config.Outbound{
 		Tag:     "香港 09",
 		Type:    "trojan",
 		Options: map[string]any{"server": "s4.example.com", "server_port": 37219},
@@ -132,14 +133,14 @@ func TestGenerateFingerprintedTag(t *testing.T) {
 	}
 
 	// No endpoint (a group or a pseudo-outbound): the name passes through.
-	bare := Outbound{Tag: "block", Type: "block"}
+	bare := config.Outbound{Tag: "block", Type: "block"}
 	if got := GenerateFingerprintedTag("block", bare); got != "block" {
 		t.Errorf("GenerateFingerprintedTag(no endpoint) = %q, want %q", got, "block")
 	}
 }
 
 func TestOutboundTagCandidates(t *testing.T) {
-	ob := Outbound{
+	ob := config.Outbound{
 		Tag:     "香港 09",
 		Type:    "trojan",
 		Options: map[string]any{"server": "s4.example.com", "server_port": 37219},
@@ -161,35 +162,8 @@ func TestOutboundTagCandidates(t *testing.T) {
 
 	// No endpoint: there is only one possible shape, and offering the name
 	// twice would just be noise.
-	bare := Outbound{Tag: "block", Type: "block"}
+	bare := config.Outbound{Tag: "block", Type: "block"}
 	if got := OutboundTagCandidates("block", bare); len(got) != 1 || got[0] != "block" {
 		t.Errorf("candidates for an endpoint-less outbound = %v, want [block]", got)
-	}
-}
-
-func TestFirstExistingTag(t *testing.T) {
-	ob := Outbound{
-		Tag:     "香港 09",
-		Type:    "trojan",
-		Options: map[string]any{"server": "s4.example.com", "server_port": 37219},
-	}
-	candidates := OutboundTagCandidates("香港 09", ob)
-
-	// Nothing stored yet → add it.
-	if _, found := firstExistingTag(map[string]bool{}, candidates); found {
-		t.Error("an empty config must not report the node as existing")
-	}
-	// Stored under the current shape → skip.
-	if got, found := firstExistingTag(map[string]bool{candidates[0]: true}, candidates); !found || got != candidates[0] {
-		t.Errorf("firstExistingTag = (%q, %v), want (%q, true)", got, found, candidates[0])
-	}
-	// Stored under the pre-fingerprint shape → still a skip, reported under the
-	// name it is actually stored as so the response is not a fiction.
-	if got, found := firstExistingTag(map[string]bool{candidates[1]: true}, candidates); !found || got != candidates[1] {
-		t.Errorf("firstExistingTag = (%q, %v), want (%q, true)", got, found, candidates[1])
-	}
-	// A different node that merely shares the display name is NOT a duplicate.
-	if _, found := firstExistingTag(map[string]bool{"香港 09": true}, candidates); found {
-		t.Error("a bare display name must not count as the same node")
 	}
 }

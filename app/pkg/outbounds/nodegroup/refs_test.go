@@ -1,14 +1,15 @@
-package config
+package nodegroup
 
 import (
 	"slices"
 	"testing"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/sagernet/sing-box/option"
 )
 
-func makeSelector(tag string, members []string, def string) Outbound {
-	return Outbound{
+func makeSelector(tag string, members []string, def string) config.Outbound {
+	return config.Outbound{
 		Tag:  tag,
 		Type: "selector",
 		Options: &option.SelectorOutboundOptions{
@@ -18,8 +19,8 @@ func makeSelector(tag string, members []string, def string) Outbound {
 	}
 }
 
-func makeURLTest(tag string, members []string) Outbound {
-	return Outbound{
+func makeURLTest(tag string, members []string) config.Outbound {
+	return config.Outbound{
 		Tag:  tag,
 		Type: "urltest",
 		Options: &option.URLTestOutboundOptions{
@@ -28,7 +29,7 @@ func makeURLTest(tag string, members []string) Outbound {
 	}
 }
 
-func selectorMembers(t *testing.T, ob Outbound) []string {
+func selectorMembers(t *testing.T, ob config.Outbound) []string {
 	t.Helper()
 	opts, ok := ob.Options.(*option.SelectorOutboundOptions)
 	if !ok {
@@ -37,7 +38,7 @@ func selectorMembers(t *testing.T, ob Outbound) []string {
 	return opts.Outbounds
 }
 
-func selectorDefault(t *testing.T, ob Outbound) string {
+func selectorDefault(t *testing.T, ob config.Outbound) string {
 	t.Helper()
 	opts, ok := ob.Options.(*option.SelectorOutboundOptions)
 	if !ok {
@@ -46,7 +47,7 @@ func selectorDefault(t *testing.T, ob Outbound) string {
 	return opts.Default
 }
 
-func urlTestMembers(t *testing.T, ob Outbound) []string {
+func urlTestMembers(t *testing.T, ob config.Outbound) []string {
 	t.Helper()
 	opts, ok := ob.Options.(*option.URLTestOutboundOptions)
 	if !ok {
@@ -59,7 +60,7 @@ func urlTestMembers(t *testing.T, ob Outbound) []string {
 // were tracking: a subscription delete left the deleted node tag inside
 // selector/urltest "outbounds" lists, even though `sing-box check` passed.
 func TestPruneGroupReferences_RemovesDeletedTagsFromSelector(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		makeSelector("manual", []string{"node-a", "node-b", "node-c"}, "node-b"),
 		makeURLTest("auto", []string{"node-a", "node-b"}),
 	}
@@ -87,7 +88,7 @@ func TestPruneGroupReferences_RemovesDeletedTagsFromSelector(t *testing.T) {
 // option structs after the helper returns.
 func TestPruneGroupReferences_DoesNotMutateInput(t *testing.T) {
 	original := makeSelector("manual", []string{"node-a", "node-b"}, "node-b")
-	outbounds := []Outbound{original}
+	outbounds := []config.Outbound{original}
 
 	_ = PruneGroupReferences(outbounds, map[string]struct{}{"node-b": {}}, nil, nil)
 
@@ -104,7 +105,7 @@ func TestPruneGroupReferences_DoesNotMutateInput(t *testing.T) {
 // where a node's server endpoint is unchanged but the human-facing tag was
 // changed by the upstream provider.
 func TestPruneGroupReferences_RenameRewrites(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		makeSelector("manual", []string{"old-tag", "node-other"}, "old-tag"),
 		makeURLTest("auto", []string{"old-tag"}),
 	}
@@ -128,7 +129,7 @@ func TestPruneGroupReferences_RenameRewrites(t *testing.T) {
 // is applied first, then delete. If `old` is renamed to `new` and `new` is
 // deleted, the reference is removed.
 func TestPruneGroupReferences_RenameThenDelete(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		makeSelector("manual", []string{"old", "keep"}, "old"),
 	}
 
@@ -149,7 +150,7 @@ func TestPruneGroupReferences_RenameThenDelete(t *testing.T) {
 // TestPruneGroupReferences_NoopWhenEmpty preserves the original slice when
 // there's nothing to do — keeps callers cheap on the happy path.
 func TestPruneGroupReferences_NoopWhenEmpty(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		makeSelector("manual", []string{"a", "b"}, "a"),
 	}
 	got := PruneGroupReferences(outbounds, nil, nil, nil)
@@ -165,7 +166,7 @@ func TestPruneGroupReferences_NoopWhenEmpty(t *testing.T) {
 // TestPruneGroupReferences_DropsDuplicatesAfterRename guards against a rename
 // collision producing a duplicate tag in the group members list.
 func TestPruneGroupReferences_DropsDuplicatesAfterRename(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		makeSelector("manual", []string{"old", "new"}, "new"),
 	}
 	got := PruneGroupReferences(outbounds, nil, map[string]string{"old": "new"}, nil)
@@ -178,12 +179,12 @@ func TestPruneGroupReferences_DropsDuplicatesAfterRename(t *testing.T) {
 // TestPruneGroupReferences_LeavesNonGroupOutboundsAlone is a sanity check that
 // the helper doesn't touch protocol outbounds (vmess, trojan, etc.).
 func TestPruneGroupReferences_LeavesNonGroupOutboundsAlone(t *testing.T) {
-	other := Outbound{
+	other := config.Outbound{
 		Tag:     "node-a",
 		Type:    "vmess",
 		Options: &option.VMessOutboundOptions{},
 	}
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		other,
 		makeSelector("manual", []string{"node-a", "gone"}, ""),
 	}
@@ -200,7 +201,7 @@ func TestPruneGroupReferences_LeavesNonGroupOutboundsAlone(t *testing.T) {
 // of final exit nodes) but NOT to node *groups* (curated lists of other
 // selectors, identified by the "分组"/"group" name marker).
 func TestPruneGroupReferences_AddsNewNodesToCollectionsOnly(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		// Collection: flat list of nodes → should receive the new nodes.
 		makeURLTest("♻️ 自动选择", []string{"node-a"}),
 		// Collection: another flat list → should also receive them.

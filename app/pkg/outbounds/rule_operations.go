@@ -2,9 +2,11 @@ package outbounds
 
 import (
 	"context"
+
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodegroup"
 	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 )
 
@@ -212,8 +214,8 @@ func (h *Service) PreviewNodeRules(ctx context.Context) (any, error) {
 		return nil, fault.New(fault.Configuration, err.Error())
 	}
 	pool := rules.NodePool{
-		Endpoints: config.EndpointTags(cfg.Outbounds),
-		OptIn:     config.OptInTags(cfg.Outbounds),
+		Endpoints: nodegroup.EndpointTags(cfg.Outbounds),
+		OptIn:     nodegroup.OptInTags(cfg.Outbounds),
 	}
 	preview, others, err := h.buildPreview(pool)
 	if err != nil {
@@ -250,11 +252,11 @@ func (h *Service) ApplyNodeRules(ctx context.Context) (any, error) {
 	)
 	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
 		pool := rules.NodePool{
-			Endpoints: config.EndpointTags(cfg.Outbounds),
-			OptIn:     config.OptInTags(cfg.Outbounds),
+			Endpoints: nodegroup.EndpointTags(cfg.Outbounds),
+			OptIn:     nodegroup.OptInTags(cfg.Outbounds),
 		}
 		filterSpecs, groupSpecs, _, others := rules.BuildSpecs(filters, groups, pool)
-		cfg.Outbounds = config.BuildGroupOutbounds(cfg.Outbounds, filterSpecs, groupSpecs)
+		cfg.Outbounds = nodegroup.BuildGroupOutbounds(cfg.Outbounds, filterSpecs, groupSpecs)
 		endpoints = len(pool.Endpoints)
 		unmatched = len(others)
 		emittedFilters = len(filterSpecs)

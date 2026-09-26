@@ -1,9 +1,10 @@
-package config
+package nodegroup
 
 import (
 	"sort"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json/badoption"
 )
@@ -11,7 +12,7 @@ import (
 // EndpointTags returns the tags of every real exit-node outbound (skipping
 // selector/urltest groups and pseudo-outbounds). This is the input set the
 // node-rules matcher is allowed to collect into Filters.
-func EndpointTags(outbounds []Outbound) []string {
+func EndpointTags(outbounds []config.Outbound) []string {
 	out := make([]string, 0, len(outbounds))
 	for _, ob := range outbounds {
 		if IsEndpointType(ob.Type) {
@@ -24,7 +25,7 @@ func EndpointTags(outbounds []Outbound) []string {
 // OptInTags returns the tags of every outbound that may be a Filter member only
 // on explicit request (today: `direct`). They are offered to the matcher
 // alongside EndpointTags but are never assigned to the fallback Filter.
-func OptInTags(outbounds []Outbound) []string {
+func OptInTags(outbounds []config.Outbound) []string {
 	out := make([]string, 0, 2)
 	for _, ob := range outbounds {
 		if IsOptInMemberType(ob.Type) {
@@ -84,12 +85,12 @@ type GroupSpec struct {
 //
 // Immutability: the input slice and its option structs are never mutated; every
 // generated outbound gets a fresh options pointer.
-func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []GroupSpec) []Outbound {
+func BuildGroupOutbounds(existing []config.Outbound, filters []FilterSpec, groups []GroupSpec) []config.Outbound {
 	// 1. Build the emitted Filter outbounds (skip empties) and remember which
 	//    Filter names actually produced an outbound, so Groups can reference only
 	//    live ones.
 	emittedFilter := make(map[string]bool, len(filters))
-	managed := make(map[string]Outbound, len(filters)+len(groups))
+	managed := make(map[string]config.Outbound, len(filters)+len(groups))
 	// order preserves a stable append order for brand-new managed outbounds.
 	order := make([]string, 0, len(filters)+len(groups))
 
@@ -98,7 +99,7 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 			continue
 		}
 		members := dedupeSorted(f.MemberTags)
-		ob := Outbound{Tag: f.Name, Type: normalizeFilterType(f.OutboundType)}
+		ob := config.Outbound{Tag: f.Name, Type: normalizeFilterType(f.OutboundType)}
 		switch ob.Type {
 		case "selector":
 			ob.Options = &option.SelectorOutboundOptions{Outbounds: members}
@@ -157,7 +158,7 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 		if len(members) == 0 {
 			continue
 		}
-		managed[g.Name] = Outbound{
+		managed[g.Name] = config.Outbound{
 			Tag:     g.Name,
 			Type:    "selector",
 			Options: &option.SelectorOutboundOptions{Outbounds: members},
@@ -167,7 +168,7 @@ func BuildGroupOutbounds(existing []Outbound, filters []FilterSpec, groups []Gro
 
 	// 3. Rebuild the outbound list: replace previously-generated managed
 	//    outbounds in place, drop now-empty ones, keep everything else verbatim.
-	result := make([]Outbound, 0, len(existing)+len(managed))
+	result := make([]config.Outbound, 0, len(existing)+len(managed))
 	placed := make(map[string]bool, len(managed))
 	managedNames := managedNameSet(filters, groups)
 

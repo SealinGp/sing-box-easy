@@ -120,7 +120,7 @@ type Group struct {
 	FilterIDs []string `json:"filter_ids"`
 	// ExtraTags are outbound tags the Group names directly, in addition to its
 	// Filters. A Filter's matchers never collect a `direct` outbound on their
-	// own (see config.IsOptInMemberType), so this is the only way a bypass entry
+	// own (see nodegroup.IsOptInMemberType), so this is the only way a bypass entry
 	// joins a group selector.
 	ExtraTags []string  `json:"extra_tags"`
 	Priority  int       `json:"priority"`

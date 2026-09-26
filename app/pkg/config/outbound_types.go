@@ -60,8 +60,8 @@ var OutboundTypes = []string{
 // other outbound tags instead of a server to dial.
 //
 // The frontend has needed this three separate times (a form predicate, a badge
-// colour, and a table filter) and the backend a fourth (IsEndpointType in
-// group_classify.go). Exported here so the schema generator and the group
+// colour, and a table filter) and the backend a fourth (nodegroup.IsEndpointType in
+// outbounds/nodegroup/classify.go). Exported here so the schema generator and the group
 // handlers can share one definition.
 var OutboundGroupTypes = []string{C.TypeSelector, C.TypeURLTest}
 

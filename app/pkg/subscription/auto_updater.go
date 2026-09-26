@@ -12,6 +12,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodetag"
 	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/autoupdate"
@@ -427,7 +428,7 @@ func fingerprintLegacyTag(tag, subID string) string {
 	if !strings.Contains(endpoint, ":") && !strings.Contains(endpoint, ".") {
 		return ""
 	}
-	fp := config.FingerprintEndpointKey(endpoint)
+	fp := nodetag.FingerprintEndpointKey(endpoint)
 	if fp == "" || fp == endpoint {
 		return ""
 	}
@@ -471,14 +472,14 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 			Type:    n.Type,
 			Options: n.Options,
 		}
-		if svr := config.GetOutboundServer(outbound); svr != "" {
+		if svr := nodetag.GetOutboundServer(outbound); svr != "" {
 			subServers[svr] = struct{}{}
 		}
-		if config.GetOutboundServerKey(outbound) == "" {
+		if nodetag.GetOutboundServerKey(outbound) == "" {
 			continue
 		}
 		// Final tag = "<name> <endpoint-fingerprint> | <subID>".
-		taggedTag := config.GenerateFingerprintedTag(n.Tag, outbound) + suffix
+		taggedTag := nodetag.GenerateFingerprintedTag(n.Tag, outbound) + suffix
 		outbound.Tag = taggedTag
 		// Two feed nodes with the same name AND endpoint are genuinely
 		// indistinguishable; collapsing them here is correct (one survives).
@@ -533,7 +534,7 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 		}
 		// Only outbounds whose server is present in this feed are candidates,
 		// matching the historical host-based ownership heuristic.
-		if _, ok := subServers[config.GetOutboundServer(outbound)]; !ok {
+		if _, ok := subServers[nodetag.GetOutboundServer(outbound)]; !ok {
 			continue
 		}
 
@@ -543,7 +544,7 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 		// form: the bare tag, the tag plus this outbound's own fingerprint, and
 		// the tag with an endpoint it already spells out converted.
 		candidates := []string{outbound.Tag + suffix}
-		if fp := config.FingerprintEndpointKey(config.GetOutboundServerKey(outbound)); fp != "" {
+		if fp := nodetag.FingerprintEndpointKey(nodetag.GetOutboundServerKey(outbound)); fp != "" {
 			candidates = append(candidates, outbound.Tag+" "+fp+suffix)
 		}
 		if migrated := fingerprintLegacyTag(outbound.Tag+suffix, sub.ID); migrated != "" {

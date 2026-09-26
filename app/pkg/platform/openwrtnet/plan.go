@@ -100,7 +100,7 @@ func (p Plan) DNSUpstream() string {
 // option structs. Inbound.Options is an `any` populated by a type registry, so
 // typed access would mean enumerating every inbound type and would silently
 // yield nothing for configs decoded by a plain json.Unmarshal. This mirrors
-// config.outboundOptionsAsMap, which exists for the same reason.
+// nodetag.outboundOptionsAsMap, which exists for the same reason.
 func DerivePlan(cfg *config.SingBoxConfig) Plan {
 	var plan Plan
 	if cfg == nil {

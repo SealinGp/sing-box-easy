@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodegroup"
 	noderules "github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"go.uber.org/zap"
 )
@@ -119,7 +121,7 @@ func (au *Reconciler) Apply(ctx context.Context, subID string, build func(*confi
 		if au.nodeRules == nil {
 			addTags = collectTags(toAdd)
 		}
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, renameMap, addTags)
+		newOutbounds = nodegroup.PruneGroupReferences(newOutbounds, deletedTags, renameMap, addTags)
 
 		// Rules-driven rebuild: reassign every endpoint to its matching Filters
 		// and regenerate Filter/Group outbounds from the current rule set. This
@@ -170,11 +172,11 @@ func (au *Reconciler) Rebuild(outbounds []config.Outbound, subID string) ([]conf
 	}
 
 	pool := noderules.NodePool{
-		Endpoints: config.EndpointTags(outbounds),
-		OptIn:     config.OptInTags(outbounds),
+		Endpoints: nodegroup.EndpointTags(outbounds),
+		OptIn:     nodegroup.OptInTags(outbounds),
 	}
 	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
-	rebuilt := config.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
+	rebuilt := nodegroup.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
 
 	logger.Info("Rebuilt node-rules groups",
 		zap.String("subscription", subID),

@@ -3,7 +3,7 @@ package rules
 import (
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodetag"
 )
 
 // A subscription-minted outbound tag is "<name> <endpoint> | <subID>": the
@@ -171,7 +171,7 @@ func legacyTagValue(value string) string {
 	if !isEndpointToken(endpoint) || isFingerprint(endpoint) {
 		return ""
 	}
-	fp := config.FingerprintEndpointKey(endpoint)
+	fp := nodetag.FingerprintEndpointKey(endpoint)
 	if fp == "" {
 		return ""
 	}

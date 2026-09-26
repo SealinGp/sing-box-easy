@@ -1,18 +1,19 @@
-package config
+package nodegroup
 
 import (
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/sagernet/sing-box/option"
 )
 
-func endpoint(tag string) Outbound {
-	return Outbound{Tag: tag, Type: "trojan", Options: &option.TrojanOutboundOptions{}}
+func endpoint(tag string) config.Outbound {
+	return config.Outbound{Tag: tag, Type: "trojan", Options: &option.TrojanOutboundOptions{}}
 }
 
-func membersOf(t *testing.T, ob Outbound) []string {
+func membersOf(t *testing.T, ob config.Outbound) []string {
 	t.Helper()
 	switch o := ob.Options.(type) {
 	case *option.SelectorOutboundOptions:
@@ -25,19 +26,19 @@ func membersOf(t *testing.T, ob Outbound) []string {
 	}
 }
 
-func findOB(obs []Outbound, tag string) (Outbound, bool) {
+func findOB(obs []config.Outbound, tag string) (config.Outbound, bool) {
 	for _, o := range obs {
 		if o.Tag == tag {
 			return o, true
 		}
 	}
-	return Outbound{}, false
+	return config.Outbound{}, false
 }
 
 // TestBuildGroupOutbounds_FreshBuild builds Filters + a Group from scratch and
 // checks types, sorted members, and that endpoints are preserved.
 func TestBuildGroupOutbounds_FreshBuild(t *testing.T) {
-	existing := []Outbound{endpoint("HK-2"), endpoint("HK-1"), endpoint("JP-1")}
+	existing := []config.Outbound{endpoint("HK-2"), endpoint("HK-1"), endpoint("JP-1")}
 
 	filters := []FilterSpec{
 		{Name: "Asia", OutboundType: "urltest", MemberTags: []string{"HK-2", "HK-1", "JP-1"}},
@@ -80,7 +81,7 @@ func TestBuildGroupOutbounds_FreshBuild(t *testing.T) {
 // TestBuildGroupOutbounds_RebuildInPlace verifies a previously-generated group
 // is rebuilt at its original position and empty ones are removed.
 func TestBuildGroupOutbounds_RebuildInPlace(t *testing.T) {
-	existing := []Outbound{
+	existing := []config.Outbound{
 		{Tag: "Asia", Type: "urltest", Options: &option.URLTestOutboundOptions{Outbounds: []string{"OLD"}}},
 		endpoint("HK-1"),
 		{Tag: "Empty", Type: "urltest", Options: &option.URLTestOutboundOptions{Outbounds: []string{"GONE"}}},
@@ -109,7 +110,7 @@ func TestBuildGroupOutbounds_RebuildInPlace(t *testing.T) {
 // TestBuildGroupOutbounds_URLTestSettings verifies urltest health-check fields
 // (url/interval/tolerance) are attached to the generated urltest outbound.
 func TestBuildGroupOutbounds_URLTestSettings(t *testing.T) {
-	existing := []Outbound{endpoint("HK-1")}
+	existing := []config.Outbound{endpoint("HK-1")}
 	got := BuildGroupOutbounds(existing, []FilterSpec{
 		{
 			Name:          "Asia",
@@ -143,7 +144,7 @@ func TestBuildGroupOutbounds_URLTestSettings(t *testing.T) {
 // TestBuildGroupOutbounds_Immutability ensures inputs are not mutated.
 func TestBuildGroupOutbounds_Immutability(t *testing.T) {
 	origMembers := []string{"OLD"}
-	existing := []Outbound{
+	existing := []config.Outbound{
 		{Tag: "Asia", Type: "urltest", Options: &option.URLTestOutboundOptions{Outbounds: origMembers}},
 		endpoint("HK-1"),
 	}
@@ -161,7 +162,7 @@ func TestBuildGroupOutbounds_Immutability(t *testing.T) {
 // while the other pseudo-outbounds and groups are not, and that they stay out
 // of the auto-collected endpoint pool.
 func TestOptInTags(t *testing.T) {
-	outbounds := []Outbound{
+	outbounds := []config.Outbound{
 		{Tag: "jp-01", Type: "vmess"},
 		{Tag: "direct", Type: "direct"},
 		{Tag: "bypass-cn", Type: "direct"},
@@ -188,7 +189,7 @@ func TestOptInTags(t *testing.T) {
 // START on an unknown member), and a self-reference is dropped too (a selector
 // listing itself hangs at start).
 func TestBuildGroupOutbounds_GroupExtraTags(t *testing.T) {
-	existing := []Outbound{
+	existing := []config.Outbound{
 		endpoint("HK-1"),
 		{Tag: "direct", Type: "direct", Options: &option.DirectOutboundOptions{}},
 	}
@@ -215,7 +216,7 @@ func TestBuildGroupOutbounds_GroupExtraTags(t *testing.T) {
 // are extras is still emitted — "everything through direct" is a legitimate
 // group, and skipping it would silently drop a group the operator built.
 func TestBuildGroupOutbounds_GroupExtraTagsOnly(t *testing.T) {
-	existing := []Outbound{{Tag: "direct", Type: "direct", Options: &option.DirectOutboundOptions{}}}
+	existing := []config.Outbound{{Tag: "direct", Type: "direct", Options: &option.DirectOutboundOptions{}}}
 
 	got := BuildGroupOutbounds(existing, nil, []GroupSpec{
 		{Name: "Bypass", ExtraTags: []string{"direct"}},

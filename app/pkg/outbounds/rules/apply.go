@@ -1,6 +1,6 @@
 package rules
 
-import "github.com/SealinGp/sing-box-easy/app/pkg/config"
+import "github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodegroup"
 
 // BuildSpecs runs the matcher over the current node pool and translates the
 // rules into config build specs, returning the raw membership/others for
@@ -11,10 +11,10 @@ import "github.com/SealinGp/sing-box-easy/app/pkg/config"
 //   - membership is keyed by Filter ID; others lists endpoints that matched no
 //     non-fallback Filter (already folded into the fallback Filter's members).
 //
-// This function is pure (no I/O). Callers wrap config.BuildGroupOutbounds with
+// This function is pure (no I/O). Callers wrap nodegroup.BuildGroupOutbounds with
 // the returned specs inside a config.Manager.UpdateConfig closure to apply, or
 // just read membership for a dry-run preview.
-func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs []config.FilterSpec, groupSpecs []config.GroupSpec, membership map[string][]string, others []string) {
+func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs []nodegroup.FilterSpec, groupSpecs []nodegroup.GroupSpec, membership map[string][]string, others []string) {
 	membership, others = AssignFilters(pool, filters)
 
 	byID := make(map[string]*Filter, len(filters))
@@ -24,12 +24,12 @@ func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs 
 		}
 	}
 
-	filterSpecs = make([]config.FilterSpec, 0, len(filters))
+	filterSpecs = make([]nodegroup.FilterSpec, 0, len(filters))
 	for _, f := range filters {
 		if f == nil {
 			continue
 		}
-		spec := config.FilterSpec{
+		spec := nodegroup.FilterSpec{
 			Name:         f.Name,
 			OutboundType: f.OutboundType,
 			MemberTags:   membership[f.ID],
@@ -41,7 +41,7 @@ func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs 
 		filterSpecs = append(filterSpecs, spec)
 	}
 
-	groupSpecs = make([]config.GroupSpec, 0, len(groups))
+	groupSpecs = make([]nodegroup.GroupSpec, 0, len(groups))
 	for _, g := range groups {
 		if g == nil {
 			continue
@@ -52,7 +52,7 @@ func BuildSpecs(filters []*Filter, groups []*Group, pool NodePool) (filterSpecs 
 				names = append(names, f.Name)
 			}
 		}
-		groupSpecs = append(groupSpecs, config.GroupSpec{
+		groupSpecs = append(groupSpecs, nodegroup.GroupSpec{
 			Name:        g.Name,
 			FilterNames: names,
 			ExtraTags:   g.ExtraTags,

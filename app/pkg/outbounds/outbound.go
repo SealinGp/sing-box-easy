@@ -4,11 +4,14 @@ import (
 	"context"
 	wirejson "encoding/json"
 	"fmt"
-	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
 	"strconv"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodegroup"
+	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodetag"
 	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
@@ -48,7 +51,7 @@ func (h *Service) managedOutboundTags() []string {
 	// Names alone decide ownership, so the endpoint tags the matcher would
 	// assign are irrelevant here — passing none keeps this cheap.
 	filterSpecs, groupSpecs, _, _ := rules.BuildSpecs(filters, groups, rules.NodePool{})
-	return config.ManagedOutboundTags(filterSpecs, groupSpecs)
+	return nodegroup.ManagedOutboundTags(filterSpecs, groupSpecs)
 }
 
 func (h *Service) GetOutboundByTag(ctx context.Context, pathTag string) (any, error) {
@@ -87,7 +90,7 @@ func (h *Service) AddOutbound(ctx context.Context, body []byte) (any, error) {
 	// fingerprint of the endpoint. The remaining candidates are the shapes an
 	// older build produced, so "already exists" still recognizes a node added
 	// before the format changed.
-	candidates := config.OutboundTagCandidates(outbound.Tag, outbound)
+	candidates := nodetag.OutboundTagCandidates(outbound.Tag, outbound)
 	outbound.Tag = candidates[0]
 
 	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
@@ -144,7 +147,7 @@ func (h *Service) AddOutboundsBatch(ctx context.Context, body []byte) (any, erro
 		tagMap[outbound.Tag] = true
 	}
 
-	addedTags, skippedTags, err := h.configManager.UpdateOutbounds(req.Outbounds)
+	addedTags, skippedTags, err := addOutbounds(ctx, h.configManager, req.Outbounds)
 	if err != nil {
 		return nil, fault.New(fault.Internal, err.Error())
 	}
@@ -239,7 +242,7 @@ func (h *Service) DeleteOutbound(ctx context.Context, pathTag string) (any, erro
 
 		// Strip the deleted tag from selector/urltest group references so the
 		// config doesn't silently keep dangling pointers.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedTags, nil, nil)
+		newOutbounds = nodegroup.PruneGroupReferences(newOutbounds, deletedTags, nil, nil)
 
 		cfg.Outbounds = newOutbounds
 		return nil
@@ -307,7 +310,7 @@ func (h *Service) DeleteOutboundsBatch(ctx context.Context, body []byte) (any, e
 
 		// Strip every deleted tag from selector/urltest group references so the
 		// resulting config doesn't silently keep dangling pointers.
-		newOutbounds = config.PruneGroupReferences(newOutbounds, deletedSet, nil, nil)
+		newOutbounds = nodegroup.PruneGroupReferences(newOutbounds, deletedSet, nil, nil)
 
 		cfg.Outbounds = newOutbounds
 		logger.Info(fmt.Sprintf("deleted %d outbounds: %v", len(deletedTags), deletedTags))

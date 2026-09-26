@@ -1,6 +1,9 @@
-package config
+package nodegroup
 
-import "github.com/sagernet/sing-box/option"
+import (
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/sagernet/sing-box/option"
+)
 
 // PruneGroupReferences rewrites all selector/urltest outbound groups so they no
 // longer reference deleted tags, pick up any renames produced by the same edit
@@ -35,7 +38,7 @@ import "github.com/sagernet/sing-box/option"
 // `sing-box check` validates protocol-level fields, not whether group outbounds
 // reference live tags, so leaving stale references in place silently breaks
 // selectors at runtime even though the config "validates".
-func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{}, renameMap map[string]string, addTags []string) []Outbound {
+func PruneGroupReferences(outbounds []config.Outbound, deletedTags map[string]struct{}, renameMap map[string]string, addTags []string) []config.Outbound {
 	if len(outbounds) == 0 {
 		return outbounds
 	}
@@ -102,7 +105,7 @@ func PruneGroupReferences(outbounds []Outbound, deletedTags map[string]struct{},
 		return out
 	}
 
-	result := make([]Outbound, len(outbounds))
+	result := make([]config.Outbound, len(outbounds))
 	for i, ob := range outbounds {
 		switch ob.Type {
 		case "selector":
