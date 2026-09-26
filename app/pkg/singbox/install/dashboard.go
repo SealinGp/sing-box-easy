@@ -1,4 +1,4 @@
-package installation
+package install
 
 import (
 	"archive/zip"
@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install/state"
 	"go.uber.org/zap"
 )
 

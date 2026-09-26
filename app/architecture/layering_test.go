@@ -27,6 +27,7 @@ type layerRule struct {
 //	singbox/clashapi             the running process: its Clash-compatible API
 //	singbox/config               the config document store (Manager)
 //	singbox/config/{sections,outbounds}   editors, siblings of each other
+//	singbox/install              binary, dashboard and first-config installation
 //	singbox                      the process controller, which consumes config
 //
 // Nothing points upward, and the two editor families never reach into each
@@ -47,6 +48,11 @@ var singBoxLayers = []layerRule{
 		dir:       "singbox/config/...",
 		forbidden: []string{"singbox/clashapi/..."},
 		why:       "editing the config must not depend on a running sing-box",
+	},
+	{
+		dir:       "singbox/install/...",
+		forbidden: []string{"singbox", "singbox/clashapi/..."},
+		why:       "installing sing-box needs its config and binary, never the running process or its controller",
 	},
 	{
 		dir:       "singbox/config",

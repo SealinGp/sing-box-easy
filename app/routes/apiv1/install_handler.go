@@ -2,12 +2,12 @@ package apiv1
 
 import (
 	"context"
-	installer "github.com/SealinGp/sing-box-easy/app/pkg/installation"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
 func (h *Handler) InstallSingBox(ctx context.Context, c *app.RequestContext) {
-	var req installer.InstallSingBoxCommand
+	var req install.InstallSingBoxCommand
 	if err := c.Bind(&req); err != nil {
 		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
@@ -36,7 +36,7 @@ func (h *Handler) GetInstallStatus(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, result)
 }
 func (h *Handler) UpdateSingBox(ctx context.Context, c *app.RequestContext) {
-	var req installer.UpdateSingBoxCommand
+	var req install.UpdateSingBoxCommand
 	if err := c.Bind(&req); err != nil {
 		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
@@ -49,7 +49,7 @@ func (h *Handler) UpdateSingBox(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, result)
 }
 func (h *Handler) DownloadDashboard(ctx context.Context, c *app.RequestContext) {
-	var req installer.DownloadDashboardCommand
+	var req install.DownloadDashboardCommand
 	if err := c.Bind(&req); err != nil {
 		respErr(ctx, c, CodeBadRequest, err.Error())
 		return

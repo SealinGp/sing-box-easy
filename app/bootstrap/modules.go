@@ -16,21 +16,21 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/history"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 )
 
 // Modules contains application-owned dependencies and background lifecycles.
 type Modules struct {
 	System              *system.Service
-	Installation        *installation.Service
+	Installation        *install.Service
 	TrafficService      *traffic.Service
 	SettingsService     *settings.Service
 	Diagnostics         *diagnostics.Service
@@ -40,8 +40,8 @@ type Modules struct {
 	ConfigManager       *config.Manager
 	ServiceController   *singbox.Controller
 	SubscriptionManager *subscription.Service
-	Installer           *installation.Manager
-	DashboardManager    *installation.DashboardManager
+	Installer           *install.Manager
+	DashboardManager    *install.DashboardManager
 	InitStateManager    state.InitStateManager
 	VersionStore        *history.StoreXORM
 	VersionCleaner      *history.Cleaner
@@ -82,8 +82,8 @@ func New(
 	configManager.SetVersionStore(versionStore)
 
 	// Pass initStateManager and configManager to installer
-	installerManager := installation.NewManager(initStateManager, configManager)
-	dashboardManager := installation.NewDashboardManager(initStateManager, configManager)
+	installerManager := install.NewManager(initStateManager, configManager)
+	dashboardManager := install.NewDashboardManager(initStateManager, configManager)
 
 	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
 	// subscription nodes.
@@ -135,7 +135,7 @@ func New(
 
 	return &Modules{
 		System:              system.New(configManager.GetConfigPath(), database.Path(), serviceController),
-		Installation:        installation.NewService(installerManager, dashboardManager, configManager, initStateManager),
+		Installation:        install.NewService(installerManager, dashboardManager, configManager, initStateManager),
 		TrafficService:      traffic.NewService(configManager),
 		SettingsService:     settings.NewService(settingsManager, configManager, githubAuth.Configured),
 		Diagnostics:         diagnostics.New(configManager, serviceController),

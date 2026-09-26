@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state/repo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install/state/repo"
 	"go.uber.org/zap"
 	"xorm.io/xorm"
 )

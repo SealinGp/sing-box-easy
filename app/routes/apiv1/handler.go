@@ -13,10 +13,10 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
@@ -27,7 +27,7 @@ import (
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
 	system                *system.Service
-	installationModule    *installation.Service
+	installationModule    *install.Service
 	trafficServiceModule  *traffic.Service
 	settingsServiceModule *settings.Service
 	diagnosticsModule     *diagnostics.Service
