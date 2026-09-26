@@ -291,7 +291,7 @@ func (m *Manager) GetInstallStatus() (bool, string, error) {
 	}
 
 	// Parse version from output
-	version := parseVersion(string(output))
+	version := config.DisplayCoreVersion(string(output))
 	return true, version, nil
 }
 
@@ -299,20 +299,6 @@ func (m *Manager) GetInstallStatus() (bool, string, error) {
 func (m *Manager) UpdateSingBox(version string, beta bool) (*InstallTask, error) {
 	// Update is same as install
 	return m.InstallSingBox(version, beta)
-}
-
-// parseVersion parses version from sing-box version output
-func parseVersion(output string) string {
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "sing-box version") {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				return parts[2]
-			}
-		}
-	}
-	return "unknown"
 }
 
 // getCurrentTimestamp returns current unix timestamp

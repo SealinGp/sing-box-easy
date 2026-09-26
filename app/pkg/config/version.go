@@ -1,14 +1,12 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/sagernet/sing/common/json"
 	"go.uber.org/zap"
 )
 
@@ -91,23 +89,6 @@ func (m *Manager) ListVersions() ([]VersionInfo, error) {
 	return m.store.List()
 }
 
-// GetVersion returns a stored historical config parsed with the typed registry.
-func (m *Manager) GetVersion(id int64) (*SingBoxConfig, error) {
-	if m.store == nil {
-		return nil, fmt.Errorf("version store not configured")
-	}
-	content, err := m.store.Get(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read version %d: %w", id, err)
-	}
-	var cfg SingBoxConfig
-	jsonCtx := CreateContext(context.Background())
-	if err := json.UnmarshalContext(jsonCtx, content, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse version %d: %w", id, err)
-	}
-	return &cfg, nil
-}
-
 // GetVersionDocument returns a historical config without decoding it through
 // the panel's compiled sing-box schema.
 func (m *Manager) GetVersionDocument(id int64) (ConfigDocument, error) {
@@ -126,7 +107,7 @@ func (m *Manager) GetVersionDocument(id int64) (ConfigDocument, error) {
 }
 
 // GetBackupDocument returns the newest historical config as an opaque JSON
-// document. It is the version-tolerant counterpart of GetBackupConfig.
+// document. It backs GET /config/backup.
 func (m *Manager) GetBackupDocument() (ConfigDocument, error) {
 	if m.store == nil {
 		return ConfigDocument{}, fmt.Errorf("no backup available")

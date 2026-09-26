@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
 // ServiceInfo is a richer status snapshot than the bare running bool returned by
@@ -35,20 +37,7 @@ func (c *Controller) Version() string {
 	if err != nil {
 		return "unknown"
 	}
-	return parseVersion(string(output))
-}
-
-func parseVersion(output string) string {
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "sing-box version") {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				return parts[2]
-			}
-		}
-	}
-	return "unknown"
+	return config.DisplayCoreVersion(string(output))
 }
 
 // Info returns an enriched status snapshot. It never fails just because the

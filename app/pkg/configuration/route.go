@@ -8,8 +8,6 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
 	"strconv"
 	"strings"
-
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
 func applyOrder[T any](items []T, order []int) ([]T, error) {
@@ -180,7 +178,7 @@ func (h *Service) GetRuleSetReferences(ctx context.Context, pathTag string) (any
 	}
 	routeCount, dnsCount := 0, 0
 	for _, ref := range refs {
-		if ref.Scope == config.RefScopeRoute {
+		if ref.Scope == RefScopeRoute {
 			routeCount++
 		} else {
 			dnsCount++

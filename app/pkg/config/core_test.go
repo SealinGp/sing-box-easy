@@ -61,3 +61,17 @@ func TestCapabilitiesForCoreVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestDisplayCoreVersion(t *testing.T) {
+	tests := map[string]string{
+		"sing-box version 1.12.12\n\nEnvironment: go1.25.3 linux/amd64\n": "1.12.12",
+		"sing-box version 1.14.0-beta.3\n":                                "1.14.0-beta.3",
+		"":                                                                "unknown",
+		"command not found":                                               "unknown",
+	}
+	for output, want := range tests {
+		if got := DisplayCoreVersion(output); got != want {
+			t.Errorf("DisplayCoreVersion(%q) = %q, want %q", output, got, want)
+		}
+	}
+}

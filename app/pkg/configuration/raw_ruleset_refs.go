@@ -3,11 +3,44 @@ package configuration
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 )
 
-func (h *Service) rawRuleSetReferences(tag string) ([]config.RuleSetRef, bool, error) {
+// Rule-set reference reconciliation.
+//
+// A rule_set tag is referenced from three places in config.json: its definition
+// in route.rule_set[], and as a matcher inside route.rules[] and dns.rules[]
+// (including nested inside logical rules). Deleting only the definition leaves
+// dangling matcher references, which sing-box rejects on validation — so the
+// delete scrubs those references in the same write. The walk is over raw JSON,
+// not the pinned option structs, so rules written for a newer core (1.14's
+// evaluate/respond) survive the cascade intact.
+
+const (
+	// RefScopeRoute marks a reference found in route.rules[].
+	RefScopeRoute = "route"
+	// RefScopeDNS marks a reference found in dns.rules[].
+	RefScopeDNS = "dns"
+
+	// RefActionStrip removes just the tag from the rule's rule_set (the rule
+	// keeps other matchers).
+	RefActionStrip = "strip"
+	// RefActionDelete removes the whole rule because the deleted tag was its
+	// only matcher — leaving it would match everything.
+	RefActionDelete = "delete"
+)
+
+// RuleSetRef describes one top-level rule that references a tag and how it will
+// change. Index is the position in the ORIGINAL route.rules / dns.rules slice
+// (a display hint for the preview; it is not valid after a cascade mutates the
+// slice). For logical rules RuleSet is empty (the tag lives in a nested rule).
+type RuleSetRef struct {
+	Scope   string   `json:"scope"`    // route | dns
+	Index   int      `json:"index"`    // pre-mutation position within the rule slice
+	Action  string   `json:"action"`   // strip | delete
+	RuleSet []string `json:"rule_set"` // the rule_set list before scrubbing
+}
+
+func (h *Service) rawRuleSetReferences(tag string) ([]RuleSetRef, bool, error) {
 	route, err := h.readRouteDocument()
 	if err != nil {
 		return nil, false, err
@@ -22,7 +55,7 @@ func (h *Service) rawRuleSetReferences(tag string) ([]config.RuleSetRef, bool, e
 	if !exists {
 		return nil, false, nil
 	}
-	refs := rawReferences(rawList(route, "rules"), tag, config.RefScopeRoute, false)
+	refs := rawReferences(rawList(route, "rules"), tag, RefScopeRoute, false)
 	dns, _, err := h.configManager.GetConfigSection("dns")
 	if err != nil {
 		return nil, false, err
@@ -31,22 +64,22 @@ func (h *Service) rawRuleSetReferences(tag string) ([]config.RuleSetRef, bool, e
 	if err != nil {
 		return nil, false, err
 	}
-	refs = append(refs, rawReferences(rawList(dnsObject, "rules"), tag, config.RefScopeDNS, true)...)
+	refs = append(refs, rawReferences(rawList(dnsObject, "rules"), tag, RefScopeDNS, true)...)
 	return refs, true, nil
 }
 
-func rawReferences(rules []json.RawMessage, tag, scope string, dns bool) []config.RuleSetRef {
-	refs := make([]config.RuleSetRef, 0)
+func rawReferences(rules []json.RawMessage, tag, scope string, dns bool) []RuleSetRef {
+	refs := make([]RuleSetRef, 0)
 	for index, rule := range rules {
 		_, keep, changed, topRuleSets, err := scrubRawRule(rule, tag, dns)
 		if err != nil || !changed {
 			continue
 		}
-		action := config.RefActionStrip
+		action := RefActionStrip
 		if !keep {
-			action = config.RefActionDelete
+			action = RefActionDelete
 		}
-		refs = append(refs, config.RuleSetRef{Scope: scope, Index: index, Action: action, RuleSet: topRuleSets})
+		refs = append(refs, RuleSetRef{Scope: scope, Index: index, Action: action, RuleSet: topRuleSets})
 	}
 	return refs
 }

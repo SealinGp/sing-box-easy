@@ -285,7 +285,7 @@ func TestVersionFeaturesNoStore(t *testing.T) {
 	if err := m.Rollback(); err == nil {
 		t.Error("Rollback without store should error")
 	}
-	if _, err := m.GetVersion(1); err == nil {
-		t.Error("GetVersion without store should error")
+	if _, err := m.GetVersionDocument(1); err == nil {
+		t.Error("GetVersionDocument without store should error")
 	}
 }

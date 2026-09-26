@@ -27,6 +27,18 @@ type CoreVersion struct {
 	Raw   string `json:"raw"`
 }
 
+// DisplayCoreVersion is ParseCoreVersion for display: the raw version string,
+// or "unknown" when the output is not a recognisable version line. It is the
+// one parser the status and install views share, so a version the capability
+// gates cannot read is never shown as a version.
+func DisplayCoreVersion(output string) string {
+	version, err := ParseCoreVersion(output)
+	if err != nil {
+		return "unknown"
+	}
+	return version.Raw
+}
+
 // ParseCoreVersion parses the stable first line emitted by `sing-box version`.
 func ParseCoreVersion(output string) (CoreVersion, error) {
 	match := coreVersionPattern.FindStringSubmatch(output)
