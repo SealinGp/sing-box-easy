@@ -4,12 +4,14 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
 	installer "github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 )
 
 func (h *Handler) configuration() *sections.Service   { return h.configurationModule }
+func (h *Handler) configDocument() *config.Service    { return h.configServiceModule }
 func (h *Handler) outbounds() *outbounds.Service      { return h.outboundsModule }
 func (h *Handler) diagnostics() *diagnostics.Service  { return h.diagnosticsModule }
 func (h *Handler) settingsService() *settings.Service { return h.settingsServiceModule }

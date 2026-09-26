@@ -2,6 +2,7 @@ package apiv1
 
 import (
 	"context"
+
 	"github.com/SealinGp/sing-box-easy/app/bootstrap"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
@@ -32,6 +33,7 @@ type Handler struct {
 	diagnosticsModule     *diagnostics.Service
 	outboundsModule       *outbounds.Service
 	configurationModule   *sections.Service
+	configServiceModule   *config.Service
 	subscriptions         *subscription.Service
 	configManager         *config.Manager
 	serviceController     *singbox.Controller
@@ -56,6 +58,7 @@ func NewHandler(m *bootstrap.Modules) *Handler {
 		diagnosticsModule:     m.Diagnostics,
 		outboundsModule:       m.Outbounds,
 		configurationModule:   m.Configuration,
+		configServiceModule:   m.ConfigService,
 		subscriptions:         m.SubscriptionManager,
 		configManager:         m.ConfigManager,
 		serviceController:     m.ServiceController,

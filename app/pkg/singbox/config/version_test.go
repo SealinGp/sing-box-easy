@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -49,7 +50,8 @@ func (s *fakeStore) Get(id int64) ([]byte, error) {
 	defer s.mu.Unlock()
 	c, ok := s.rows[id]
 	if !ok {
-		return nil, os.ErrNotExist
+		// Same contract as history.StoreXORM: a missing id wraps ErrVersionNotFound.
+		return nil, fmt.Errorf("config version %d: %w", id, ErrVersionNotFound)
 	}
 	return c, nil
 }

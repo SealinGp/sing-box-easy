@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"strings"
+
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
@@ -8,7 +10,6 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
-	"strings"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
@@ -34,6 +35,7 @@ type Modules struct {
 	Diagnostics         *diagnostics.Service
 	Outbounds           *outbounds.Service
 	Configuration       *sections.Service
+	ConfigService       *config.Service
 	ConfigManager       *config.Manager
 	ServiceController   *singbox.Controller
 	SubscriptionManager *subscription.Service
@@ -138,6 +140,7 @@ func New(
 		Diagnostics:         diagnostics.New(configManager, serviceController),
 		Outbounds:           outbounds.New(configManager, nodeRulesManager),
 		Configuration:       sections.New(configManager),
+		ConfigService:       config.NewService(configManager),
 		ConfigManager:       configManager,
 		ServiceController:   serviceController,
 		SubscriptionManager: subscriptionManager,
