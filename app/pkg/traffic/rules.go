@@ -1,4 +1,4 @@
-package trafficflow
+package traffic
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
 

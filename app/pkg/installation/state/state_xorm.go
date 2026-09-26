@@ -1,4 +1,4 @@
-package initstate
+package state
 
 import (
 	"fmt"

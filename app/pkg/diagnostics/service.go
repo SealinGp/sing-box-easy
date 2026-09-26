@@ -10,15 +10,16 @@ import (
 
 type Service struct {
 	configManager     *config.Manager
-	serviceController *service.Controller
+	serviceController *singbox.Controller
 }
 
-func New(cm *config.Manager, controller *service.Controller) *Service {
+func New(cm *config.Manager, controller *singbox.Controller) *Service {
 	return &Service{cm, controller}
 }
 func (s *Service) readClashAPISettings() (config.ClashAPISettings, error) {
 	return s.configManager.GetClashAPISettings()
 }
+
 // DNSConfig exposes the probe's two projections of the dns section: the typed
 // servers (for live queries) and the raw section (for the rule walk).
 func (s *Service) DNSConfig() (*config.SingBoxConfig, json.RawMessage, error) {

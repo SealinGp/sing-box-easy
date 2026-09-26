@@ -1,4 +1,4 @@
-package noderules
+package rules
 
 // FilterTemplate is a ready-made Filter the UI can offer as a one-click starting
 // point, so users do not have to hand-build common buckets. Templates are pure

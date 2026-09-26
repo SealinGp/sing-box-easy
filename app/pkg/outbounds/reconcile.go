@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	noderules "github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"go.uber.org/zap"
 )
 

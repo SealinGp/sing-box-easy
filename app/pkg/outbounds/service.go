@@ -3,7 +3,7 @@ package outbounds
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	noderules "github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 )
 
 type Service struct {

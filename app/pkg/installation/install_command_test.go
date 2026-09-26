@@ -1,4 +1,4 @@
-package installer
+package installation
 
 import (
 	"strings"
@@ -21,7 +21,7 @@ func TestBuildInstallCommandLinux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildInstallCommand(service.SystemDebian, tt.version, tt.beta)
+			got, err := buildInstallCommand(singbox.SystemDebian, tt.version, tt.beta)
 			if err != nil {
 				t.Fatalf("buildInstallCommand() error = %v", err)
 			}
@@ -37,7 +37,7 @@ func TestBuildInstallCommandLinux(t *testing.T) {
 
 func TestBuildInstallCommandOpenwrt(t *testing.T) {
 	t.Run("latest uses opkg", func(t *testing.T) {
-		got, err := buildInstallCommand(service.SystemOpenWRT, "", false)
+		got, err := buildInstallCommand(singbox.SystemOpenWRT, "", false)
 		if err != nil {
 			t.Fatalf("buildInstallCommand() error = %v", err)
 		}
@@ -47,7 +47,7 @@ func TestBuildInstallCommandOpenwrt(t *testing.T) {
 	})
 
 	t.Run("pinned version downloads release tarball via wget", func(t *testing.T) {
-		got, err := buildInstallCommand(service.SystemOpenWRT, "1.12.12", false)
+		got, err := buildInstallCommand(singbox.SystemOpenWRT, "1.12.12", false)
 		if err != nil {
 			t.Fatalf("buildInstallCommand() error = %v", err)
 		}
@@ -67,7 +67,7 @@ func TestBuildInstallCommandOpenwrt(t *testing.T) {
 	})
 
 	t.Run("beta is rejected", func(t *testing.T) {
-		if _, err := buildInstallCommand(service.SystemOpenWRT, "", true); err == nil {
+		if _, err := buildInstallCommand(singbox.SystemOpenWRT, "", true); err == nil {
 			t.Error("buildInstallCommand() with beta on OpenWrt should error")
 		}
 	})

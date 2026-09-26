@@ -1,9 +1,9 @@
-package installer
+package installation
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
+	initstate "github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"io"
 	"os"
 )

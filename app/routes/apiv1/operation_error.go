@@ -17,11 +17,11 @@ func respondOperationError(ctx context.Context, c *app.RequestContext, err error
 	}
 	code := CodeInternalError
 	switch {
-	case errors.Is(err, noderules.ErrNotFound):
+	case errors.Is(err, rules.ErrNotFound):
 		code = CodeNotFound
-	case errors.Is(err, noderules.ErrInvalidInput):
+	case errors.Is(err, rules.ErrInvalidInput):
 		code = CodeValidationError
-	case errors.Is(err, noderules.ErrDuplicateName), errors.Is(err, noderules.ErrFallbackProtected):
+	case errors.Is(err, rules.ErrDuplicateName), errors.Is(err, rules.ErrFallbackProtected):
 		code = CodeConflict
 	}
 	var e *fault.Error

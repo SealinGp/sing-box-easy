@@ -1,4 +1,4 @@
-package subprobe
+package probe
 
 // The measurement half of the prober: what a single sweep of one
 // subscription's nodes actually does. The scheduling half — when sweeps

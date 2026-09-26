@@ -9,7 +9,7 @@ import (
 
 // ImportPreview resolves pasted feed inputs without persisting a subscription.
 func (s *Service) ImportPreview(ctx context.Context, input string) ([]option.Outbound, error) {
-	nodes, _, err := s.sublinkManager.Resolve(ctx, strings.Split(input, "\n"), sublink.FetchOptions{})
+	nodes, _, err := s.sublinkManager.Resolve(ctx, strings.Split(input, "\n"), feed.FetchOptions{})
 	if err != nil {
 		return nil, err
 	}

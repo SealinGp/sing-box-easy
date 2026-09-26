@@ -1,4 +1,4 @@
-package initstate
+package state
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"

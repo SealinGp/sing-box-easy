@@ -1,4 +1,4 @@
-package sublink
+package feed
 
 import (
 	"encoding/json"

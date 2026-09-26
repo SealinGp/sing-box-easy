@@ -1,4 +1,4 @@
-package trafficflow
+package traffic
 
 import (
 	"time"

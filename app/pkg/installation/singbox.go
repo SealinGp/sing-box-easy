@@ -1,4 +1,4 @@
-package installer
+package installation
 
 import (
 	"fmt"
@@ -34,12 +34,12 @@ type InstallTask struct {
 type Manager struct {
 	tasks            map[string]*InstallTask
 	mu               sync.RWMutex
-	initStateManager initstate.InitStateManager
+	initStateManager state.InitStateManager
 	configManager    *config.Manager
 }
 
 // NewManager creates a new installer manager
-func NewManager(initStateManager initstate.InitStateManager, configManager *config.Manager) *Manager {
+func NewManager(initStateManager state.InitStateManager, configManager *config.Manager) *Manager {
 	return &Manager{
 		tasks:            make(map[string]*InstallTask),
 		initStateManager: initStateManager,
@@ -148,7 +148,7 @@ func (m *Manager) GetTask(taskID string) (*InstallTask, error) {
 // runInstallScript runs the platform-appropriate sing-box installation
 // command with real-time output.
 func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool) error {
-	systemType := service.DetectSystemType()
+	systemType := singbox.DetectSystemType()
 	cmdStr, err := buildInstallCommand(systemType, version, beta)
 	if err != nil {
 		return err

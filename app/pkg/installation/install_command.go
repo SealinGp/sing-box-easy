@@ -1,4 +1,4 @@
-package installer
+package installation
 
 import (
 	"fmt"
@@ -21,8 +21,8 @@ const curlOpts = "curl --retry 3 --retry-delay 2 --connect-timeout 30 --max-time
 //     install script does not support opkg, and curl may be absent. A pinned
 //     version instead downloads the static release tarball for this
 //     architecture with BusyBox wget.
-func buildInstallCommand(systemType service.SystemType, version string, beta bool) (string, error) {
-	if systemType == service.SystemOpenWRT {
+func buildInstallCommand(systemType singbox.SystemType, version string, beta bool) (string, error) {
+	if systemType == singbox.SystemOpenWRT {
 		return buildOpenwrtInstallCommand(version, beta)
 	}
 

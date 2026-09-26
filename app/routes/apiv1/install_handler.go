@@ -2,7 +2,7 @@ package apiv1
 
 import (
 	"context"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
+	installer "github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

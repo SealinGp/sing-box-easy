@@ -1,4 +1,4 @@
-package noderules
+package rules
 
 import (
 	"slices"

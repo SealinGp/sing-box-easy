@@ -1,4 +1,4 @@
-package configversion
+package history
 
 import (
 	"fmt"

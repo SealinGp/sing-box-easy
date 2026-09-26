@@ -1,4 +1,4 @@
-package installer
+package installation
 
 import (
 	"archive/zip"
@@ -39,14 +39,14 @@ type DashboardTask struct {
 type DashboardManager struct {
 	tasks            map[string]*DashboardTask
 	mu               sync.RWMutex
-	initStateManager initstate.InitStateManager
+	initStateManager state.InitStateManager
 	// Optional. When set, a successful install writes the directory it landed
 	// in back to `experimental.clash_api.external_ui` — see persistExternalUI.
 	configManager *config.Manager
 }
 
 // NewDashboardManager creates a new dashboard manager
-func NewDashboardManager(initStateManager initstate.InitStateManager, configManager *config.Manager) *DashboardManager {
+func NewDashboardManager(initStateManager state.InitStateManager, configManager *config.Manager) *DashboardManager {
 	return &DashboardManager{
 		tasks:            make(map[string]*DashboardTask),
 		initStateManager: initStateManager,

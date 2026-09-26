@@ -47,7 +47,7 @@ func (h *Service) managedOutboundTags() []string {
 
 	// Names alone decide ownership, so the endpoint tags the matcher would
 	// assign are irrelevant here — passing none keeps this cheap.
-	filterSpecs, groupSpecs, _, _ := noderules.BuildSpecs(filters, groups, noderules.NodePool{})
+	filterSpecs, groupSpecs, _, _ := rules.BuildSpecs(filters, groups, rules.NodePool{})
 	return config.ManagedOutboundTags(filterSpecs, groupSpecs)
 }
 

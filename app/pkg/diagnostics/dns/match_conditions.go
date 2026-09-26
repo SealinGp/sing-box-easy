@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 // The per-condition matchers, all operating on a raw rule.
 //

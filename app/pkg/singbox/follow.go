@@ -1,4 +1,4 @@
-package service
+package singbox
 
 // Following the log, rather than asking for it every 1.5 seconds.
 //

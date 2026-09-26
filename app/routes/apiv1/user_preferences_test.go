@@ -11,15 +11,15 @@ import (
 )
 
 type preferenceManager struct {
-	user.UserManager
+	identity.UserManager
 	calledID int64
 }
 
-func (m *preferenceManager) GetPreferences(id int64) (*user.Preferences, error) {
+func (m *preferenceManager) GetPreferences(id int64) (*identity.Preferences, error) {
 	m.calledID = id
-	return &user.Preferences{OverviewOrder: []string{"dns-probe"}}, nil
+	return &identity.Preferences{OverviewOrder: []string{"dns-probe"}}, nil
 }
-func (m *preferenceManager) UpdatePreferences(id int64, p user.Preferences) (*user.Preferences, error) {
+func (m *preferenceManager) UpdatePreferences(id int64, p identity.Preferences) (*identity.Preferences, error) {
 	m.calledID = id
 	return &p, nil
 }
@@ -31,7 +31,7 @@ func TestPreferenceHandlersAccountBoundary(t *testing.T) {
 			h := testHandler(&Handler{userManager: m})
 			c := app.NewContext(0)
 			if id >= 0 {
-				c.Set(UserContextKey, &user.User{ID: id, Role: "viewer"})
+				c.Set(UserContextKey, &identity.User{ID: id, Role: "viewer"})
 			}
 			c.Request.Header.Set("Content-Type", "application/json")
 			// Client-provided identity must never override the authenticated viewer.
@@ -61,7 +61,7 @@ func TestPreferenceHandlerRejectsMalformedOrder(t *testing.T) {
 		m := &preferenceManager{}
 		h := testHandler(&Handler{userManager: m})
 		c := app.NewContext(0)
-		c.Set(UserContextKey, &user.User{ID: 42, Role: "viewer"})
+		c.Set(UserContextKey, &identity.User{ID: 42, Role: "viewer"})
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Request.SetBody([]byte(body))
 		h.UpdatePreferences(context.Background(), c)

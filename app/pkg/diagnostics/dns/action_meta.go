@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 // What a DNS rule action does to the walk.
 //

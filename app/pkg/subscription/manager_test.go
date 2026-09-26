@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
-	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed"
+	sublink "github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"

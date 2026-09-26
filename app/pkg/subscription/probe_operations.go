@@ -184,9 +184,9 @@ func probeErrorMessage(err error) string {
 		return "node probing needs experimental.clash_api.external_controller to be set, and sing-box to be running"
 	case errors.Is(err, clashapi.ErrUnauthorized):
 		return "sing-box rejected the request: check experimental.clash_api.secret"
-	case errors.Is(err, subprobe.ErrNoOwnedNodes):
+	case errors.Is(err, probe.ErrNoOwnedNodes):
 		return "this subscription has no nodes in the config yet — refresh it first"
-	case errors.Is(err, subprobe.ErrNoNodesTestable):
+	case errors.Is(err, probe.ErrNoNodesTestable):
 		// Names the fix, because the two empty-result cases are otherwise
 		// indistinguishable and lead to opposite actions.
 		return "this subscription's nodes are in the config but not in the running sing-box — restart it to apply the config"
@@ -292,9 +292,9 @@ func (h *Service) trimAllProbeHistory() {
 func probeFailure(err error) error {
 	kind := fault.Failed
 	switch {
-	case errors.Is(err, subprobe.ErrNoSuchTarget), errors.Is(err, subprobe.ErrNoOwnedNodes):
+	case errors.Is(err, probe.ErrNoSuchTarget), errors.Is(err, probe.ErrNoOwnedNodes):
 		kind = fault.Missing
-	case errors.Is(err, subprobe.ErrNoNodesTestable), errors.Is(err, clashapi.ErrDisabled), errors.Is(err, clashapi.ErrUnauthorized):
+	case errors.Is(err, probe.ErrNoNodesTestable), errors.Is(err, clashapi.ErrDisabled), errors.Is(err, clashapi.ErrUnauthorized):
 		kind = fault.Unavailable
 	}
 	return &fault.Error{Kind: kind, Message: probeErrorMessage(err), Cause: err}

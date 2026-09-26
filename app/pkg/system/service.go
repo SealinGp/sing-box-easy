@@ -9,11 +9,11 @@ import (
 
 type Service struct {
 	configPath, databasePath string
-	serviceController        *service.Controller
-	systemType               service.SystemType
+	serviceController        *singbox.Controller
+	systemType               singbox.SystemType
 }
 
-func New(configPath, databasePath string, controller *service.Controller) *Service {
+func New(configPath, databasePath string, controller *singbox.Controller) *Service {
 	return &Service{configPath, databasePath, controller, controller.SystemType()}
 }
 

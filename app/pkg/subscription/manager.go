@@ -13,7 +13,7 @@ import (
 // NewService creates the subscription business service. CRUD, manual refreshes,
 // and scheduled refreshes share the same repository and operation lock.
 func NewService(cm *config.Manager, store repo.Repository, rules NodeRulesProvider, keywords InfoKeywordsProvider, restarter ServiceRestarter) *Service {
-	return newService(cm, store, &sublink.SubLink{}, rules, keywords, restarter)
+	return newService(cm, store, &feed.SubLink{}, rules, keywords, restarter)
 }
 
 var _ SubscriptionManager = (*Service)(nil)

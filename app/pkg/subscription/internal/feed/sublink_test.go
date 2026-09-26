@@ -1,4 +1,4 @@
-package sublink
+package feed
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/fetch"

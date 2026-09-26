@@ -28,13 +28,13 @@ import (
 // an interface (not the concrete manager) so the updater stays testable and the
 // rules feature can be absent (nil) without breaking subscription updates.
 type NodeRulesProvider interface {
-	ListFilters() ([]*noderules.Filter, error)
-	ListGroups() ([]*noderules.Group, error)
+	ListFilters() ([]*rules.Filter, error)
+	ListGroups() ([]*rules.Group, error)
 }
 
 // Service handles automatic subscription updates
 type Service struct {
-	probeRunner      *subprobe.Runner
+	probeRunner      *probe.Runner
 	probeStore       *repo.ProbeStore
 	settingsManager  *settings.ManagerXORM
 	repository       repo.Repository
@@ -277,7 +277,7 @@ func (au *Service) updateSubscription(ctx context.Context, sub *Subscription) (r
 	// honoring the per-subscription fetch strategy (direct / clean-DNS / proxy)
 	// for censored networks.
 	lines := []string{sub.URL}
-	newNodes, meta, err := au.sublinkManager.Resolve(ctx, lines, sublink.FetchOptions{
+	newNodes, meta, err := au.sublinkManager.Resolve(ctx, lines, feed.FetchOptions{
 		Mode:     sub.FetchMode,
 		ProxyURL: sub.ProxyURL,
 	})
@@ -708,5 +708,5 @@ func (s *Service) lockSubscription(id string) func() {
 }
 
 type feedResolver interface {
-	Resolve(context.Context, []string, sublink.FetchOptions) ([]*node.SubNode, *sublink.FetchMeta, error)
+	Resolve(context.Context, []string, feed.FetchOptions) ([]*node.SubNode, *feed.FetchMeta, error)
 }

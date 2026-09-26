@@ -22,7 +22,7 @@ type DNSProbeRequest struct {
 	CompareServers bool `json:"compare_servers"`
 }
 
-func (h *Service) logTailer() dnsprobe.LogTailer {
+func (h *Service) logTailer() dns.LogTailer {
 	return func(lines int, afterCursor string) ([]string, string, error) {
 		chunk, err := h.serviceController.TailLogs(lines, afterCursor)
 		if err != nil {
@@ -31,6 +31,7 @@ func (h *Service) logTailer() dnsprobe.LogTailer {
 		return chunk.Lines, chunk.Cursor, nil
 	}
 }
+
 // loadDNSProbeConfig projects the dns section twice, for two consumers with
 // opposite needs.
 //
@@ -107,7 +108,7 @@ func decodeProbeServers(rawDNS json.RawMessage) (*option.DNSOptions, error) {
 // affordable.
 type DNSRun struct {
 	cfg     *configpkg.SingBoxConfig
-	options dnsprobe.Options
+	options dns.Options
 	sets    *ruleset.Loader
 }
 
@@ -120,7 +121,7 @@ func (h *Service) PrepareDNS(req DNSProbeRequest) (*DNSRun, error) {
 	return &DNSRun{
 		cfg:  cfg,
 		sets: sets,
-		options: dnsprobe.Options{
+		options: dns.Options{
 			Domain:         req.Domain,
 			QueryType:      req.Type,
 			CompareServers: req.CompareServers,
@@ -140,7 +141,7 @@ func (r *DNSRun) Close() {
 	}
 }
 
-func (r *DNSRun) Run() (*dnsprobe.Result, error) { return dnsprobe.Run(&r.cfg.Options, r.options) }
-func (r *DNSRun) Stream(emit func(dnsprobe.Stage, *dnsprobe.Result) error) (*dnsprobe.Result, error) {
-	return dnsprobe.RunStaged(&r.cfg.Options, r.options, emit)
+func (r *DNSRun) Run() (*dns.Result, error) { return dns.Run(&r.cfg.Options, r.options) }
+func (r *DNSRun) Stream(emit func(dns.Stage, *dns.Result) error) (*dns.Result, error) {
+	return dns.RunStaged(&r.cfg.Options, r.options, emit)
 }

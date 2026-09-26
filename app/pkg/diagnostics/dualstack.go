@@ -93,7 +93,7 @@ func (h *Service) PrepareDualStack(req DualStackRequest) (*DualStackRun, error) 
 		if client, clientErr := clashapi.NewFromValues(clash.ExternalController, clash.Secret); clientErr == nil {
 			run.options.Observe = client
 		}
-		if resolver, resolverErr := dnsprobe.NewClashClientFromValues(
+		if resolver, resolverErr := dns.NewClashClientFromValues(
 			clash.ExternalController, clash.Secret); resolverErr == nil {
 			run.options.Resolve = clashResolverAdapter{resolver}
 		}
@@ -144,7 +144,7 @@ func (h *Service) routeOptions() (*option.Options, error) {
 func (h *Service) predictor(options *option.Options, sets *ruleset.Loader) dualstack.Predictor {
 	clashMode := ""
 	if clash, err := h.readClashAPISettings(); err == nil {
-		if client, clientErr := dnsprobe.NewClashClientFromValues(
+		if client, clientErr := dns.NewClashClientFromValues(
 			clash.ExternalController, clash.Secret); clientErr == nil {
 			if mode, modeErr := client.Mode(); modeErr == nil {
 				clashMode = mode
@@ -153,10 +153,10 @@ func (h *Service) predictor(options *option.Options, sets *ruleset.Loader) duals
 	}
 
 	return func(address netip.Addr, port uint16) (*dualstack.Prediction, error) {
-		result, err := routeprobe.Run(options, routeprobe.Options{
+		result, err := route.Run(options, route.Options{
 			Destination: address.String(),
 			Port:        port,
-			Network:     routeprobe.DefaultNetwork,
+			Network:     route.DefaultNetwork,
 			ClashMode:   clashMode,
 			Sets:        sets,
 		})
@@ -176,7 +176,7 @@ func (h *Service) predictor(options *option.Options, sets *ruleset.Loader) duals
 // dual-stack probe needs, so that package depends on an interface it declares
 // rather than on the DNS probe's result type.
 type clashResolverAdapter struct {
-	client *dnsprobe.ClashClient
+	client *dns.ClashClient
 }
 
 func (a clashResolverAdapter) Query(name, qType string) ([]string, int64, error) {

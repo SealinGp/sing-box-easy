@@ -26,19 +26,19 @@ func (h *Service) GetNodeRules(ctx context.Context) (any, error) {
 // ---- Filters ----
 
 type FilterRequest struct {
-	Name          string              `json:"name"`
-	Matchers      []noderules.Matcher `json:"matchers"`
-	Excludes      []noderules.Matcher `json:"excludes"`
-	OutboundType  string              `json:"outbound_type"`
-	Priority      int                 `json:"priority"`
-	TestURL       string              `json:"test_url"`
-	TestInterval  string              `json:"test_interval"`
-	TestTolerance int                 `json:"test_tolerance"`
+	Name          string          `json:"name"`
+	Matchers      []rules.Matcher `json:"matchers"`
+	Excludes      []rules.Matcher `json:"excludes"`
+	OutboundType  string          `json:"outbound_type"`
+	Priority      int             `json:"priority"`
+	TestURL       string          `json:"test_url"`
+	TestInterval  string          `json:"test_interval"`
+	TestTolerance int             `json:"test_tolerance"`
 }
 
 // toFilter maps a request body to a domain Filter (id assigned separately).
-func (r FilterRequest) toFilter(id string) *noderules.Filter {
-	return &noderules.Filter{
+func (r FilterRequest) toFilter(id string) *rules.Filter {
+	return &rules.Filter{
 		ID:            id,
 		Name:          r.Name,
 		Matchers:      r.Matchers,
@@ -106,7 +106,7 @@ func (h *Service) GetGroups(ctx context.Context) (any, error) {
 
 func (h *Service) CreateGroup(ctx context.Context, req GroupRequest) (any, error) {
 
-	created, err := h.nodeRulesManager.CreateGroup(&noderules.Group{
+	created, err := h.nodeRulesManager.CreateGroup(&rules.Group{
 		Name:      req.Name,
 		FilterIDs: req.FilterIDs,
 		ExtraTags: req.ExtraTags,
@@ -120,7 +120,7 @@ func (h *Service) CreateGroup(ctx context.Context, req GroupRequest) (any, error
 
 func (h *Service) UpdateGroup(ctx context.Context, id string, req GroupRequest) (any, error) {
 
-	updated, err := h.nodeRulesManager.UpdateGroup(&noderules.Group{
+	updated, err := h.nodeRulesManager.UpdateGroup(&rules.Group{
 		ID:        id,
 		Name:      req.Name,
 		FilterIDs: req.FilterIDs,
@@ -144,21 +144,21 @@ func (h *Service) DeleteGroup(ctx context.Context, id string) (any, error) {
 // ---- Catalog / Templates ----
 
 func (h *Service) GetNodeRuleKeywords(ctx context.Context) (any, error) {
-	return map[string]any{"keywords": noderules.Catalog()}, nil
+	return map[string]any{"keywords": rules.Catalog()}, nil
 }
 
 func (h *Service) GetNodeRuleTemplates(ctx context.Context) (any, error) {
-	return map[string]any{"templates": noderules.Templates()}, nil
+	return map[string]any{"templates": rules.Templates()}, nil
 }
 
 // ApplyNodeRuleTemplate creates a Filter from a built-in template.
 func (h *Service) ApplyNodeRuleTemplate(ctx context.Context, id string) (any, error) {
 
-	tpl, ok := noderules.TemplateByID(id)
+	tpl, ok := rules.TemplateByID(id)
 	if !ok {
 		return nil, fault.New(fault.Missing, "template not found: "+id)
 	}
-	created, err := h.nodeRulesManager.CreateFilter(&noderules.Filter{
+	created, err := h.nodeRulesManager.CreateFilter(&rules.Filter{
 		Name:         tpl.Name,
 		Matchers:     tpl.Matchers,
 		OutboundType: tpl.OutboundType,
@@ -183,12 +183,12 @@ type previewFilter struct {
 
 // buildPreview runs the matcher over the given node pool and returns a
 // frontend-friendly per-Filter breakdown plus the unmatched tags.
-func (h *Service) buildPreview(pool noderules.NodePool) ([]previewFilter, []string, error) {
+func (h *Service) buildPreview(pool rules.NodePool) ([]previewFilter, []string, error) {
 	filters, err := h.nodeRulesManager.ListFilters()
 	if err != nil {
 		return nil, nil, err
 	}
-	membership, others := noderules.AssignFilters(pool, filters)
+	membership, others := rules.AssignFilters(pool, filters)
 	out := make([]previewFilter, 0, len(filters))
 	for _, f := range filters {
 		members := membership[f.ID]
@@ -211,7 +211,7 @@ func (h *Service) PreviewNodeRules(ctx context.Context) (any, error) {
 	if err != nil {
 		return nil, fault.New(fault.Configuration, err.Error())
 	}
-	pool := noderules.NodePool{
+	pool := rules.NodePool{
 		Endpoints: config.EndpointTags(cfg.Outbounds),
 		OptIn:     config.OptInTags(cfg.Outbounds),
 	}
@@ -249,11 +249,11 @@ func (h *Service) ApplyNodeRules(ctx context.Context) (any, error) {
 		unmatched      int
 	)
 	err = h.configManager.UpdateOutboundsConfig(ctx, func(cfg *config.SingBoxConfig) error {
-		pool := noderules.NodePool{
+		pool := rules.NodePool{
 			Endpoints: config.EndpointTags(cfg.Outbounds),
 			OptIn:     config.OptInTags(cfg.Outbounds),
 		}
-		filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
+		filterSpecs, groupSpecs, _, others := rules.BuildSpecs(filters, groups, pool)
 		cfg.Outbounds = config.BuildGroupOutbounds(cfg.Outbounds, filterSpecs, groupSpecs)
 		endpoints = len(pool.Endpoints)
 		unmatched = len(others)

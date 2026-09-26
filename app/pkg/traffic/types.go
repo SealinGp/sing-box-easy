@@ -1,4 +1,4 @@
-// Package trafficflow turns sing-box's connection snapshots into the frames
+// Package traffic turns sing-box's connection snapshots into the frames
 // the Overview's live traffic overlay draws.
 //
 // The expected-flow diagram (frontend `RouteFlowDiagram`) is a fixed picture
@@ -21,7 +21,7 @@
 // The exit: `chains` is reversed — the outbound the rule chose is the LAST
 // element, and the first is the leaf node the bytes actually used. The frame
 // reports both, as the exit and its `via`.
-package trafficflow
+package traffic
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
 

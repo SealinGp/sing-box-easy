@@ -1,4 +1,4 @@
-package routeprobe
+package route
 
 import (
 	"fmt"

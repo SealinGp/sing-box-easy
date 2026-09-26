@@ -1,4 +1,4 @@
-// Package subprobe measures how good a subscription actually is, over time.
+// Package probe measures how good a subscription actually is, over time.
 //
 // A subscription's page already says when it was last fetched and how much
 // quota is left. Neither answers the question an operator asks before renewing:
@@ -15,7 +15,7 @@
 // Storage is deliberately small: ONE aggregate row per subscription per run,
 // bounded by both an age and a count (see store_xorm.go). This runs on home
 // routers; a metrics feature that fills the overlay is worse than no metrics.
-package subprobe
+package probe
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
 

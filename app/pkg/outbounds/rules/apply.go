@@ -1,4 +1,4 @@
-package noderules
+package rules
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/config"
 

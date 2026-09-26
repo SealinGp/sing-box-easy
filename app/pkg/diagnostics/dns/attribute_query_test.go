@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 // rule_set and query_type attribution, against raw config JSON.
 
@@ -18,7 +18,7 @@ func inlineSetLoader(tag string, suffixes []string) *ruleset.Loader {
 			Type: C.RuleSetTypeInline,
 			Tag:  tag,
 			InlineOptions: option.PlainRuleSet{Rules: []option.HeadlessRule{{
-				Type: C.RuleTypeDefault,
+				Type:           C.RuleTypeDefault,
 				DefaultOptions: option.DefaultHeadlessRule{DomainSuffix: suffixes},
 			}}},
 		}}},

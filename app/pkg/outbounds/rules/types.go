@@ -1,4 +1,4 @@
-// Package noderules implements "Outbound Node Rules": a two-level grouping
+// Package rules implements "Outbound Node Rules": a two-level grouping
 // system that automatically organizes subscription-fetched endpoint outbounds
 // into Filters and Groups on every subscription update.
 //
@@ -14,7 +14,7 @@
 //
 // Membership is multi-match: an endpoint joins every Filter whose matchers it
 // satisfies; only endpoints matching no Filter fall through to "Other".
-package noderules
+package rules
 
 import "time"
 

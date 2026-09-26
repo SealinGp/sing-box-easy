@@ -1,4 +1,4 @@
-package configversion
+package history
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"

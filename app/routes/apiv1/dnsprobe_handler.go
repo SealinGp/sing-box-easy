@@ -45,7 +45,7 @@ func (h *Handler) StreamProbeDNS(ctx context.Context, c *app.RequestContext) {
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream := NewSSEStream(c)
-	result, err := run.Stream(func(stage dnsprobe.Stage, partial *dnsprobe.Result) error {
+	result, err := run.Stream(func(stage dns.Stage, partial *dns.Result) error {
 		if Done(streamCtx) {
 			return context.Canceled
 		}

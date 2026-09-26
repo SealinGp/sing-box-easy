@@ -28,23 +28,23 @@ import (
 // Modules contains application-owned dependencies and background lifecycles.
 type Modules struct {
 	System              *system.Service
-	Installation        *installer.Service
-	TrafficService      *trafficflow.Service
+	Installation        *installation.Service
+	TrafficService      *traffic.Service
 	SettingsService     *settings.Service
 	Diagnostics         *diagnostics.Service
 	Outbounds           *outbounds.Service
 	Configuration       *configuration.Service
 	ConfigManager       *config.Manager
-	ServiceController   *service.Controller
+	ServiceController   *singbox.Controller
 	SubscriptionManager *subscription.Service
-	Installer           *installer.Manager
-	DashboardManager    *installer.DashboardManager
-	InitStateManager    initstate.InitStateManager
-	VersionStore        *configversion.StoreXORM
-	VersionCleaner      *configversion.Cleaner
+	Installer           *installation.Manager
+	DashboardManager    *installation.DashboardManager
+	InitStateManager    state.InitStateManager
+	VersionStore        *history.StoreXORM
+	VersionCleaner      *history.Cleaner
 	SettingsManager     *settings.ManagerXORM
-	NodeRulesManager    *noderules.ManagerXORM
-	UserManager         user.UserManager
+	NodeRulesManager    *rules.ManagerXORM
+	UserManager         identity.UserManager
 	Updater             *appupdate.Updater
 	GithubAuth          *githubauth.Manager
 	// authEnabled is the resolved login requirement (server.auth × platform).
@@ -52,7 +52,7 @@ type Modules struct {
 	AuthEnabled bool
 	// systemType is the detected distribution family, probed once at startup.
 	// It drives both the auth default and the frontend's navigation layout.
-	SystemType service.SystemType
+	SystemType singbox.SystemType
 }
 
 // New constructs dependencies with one explicitly shared database engine.
@@ -68,23 +68,23 @@ func New(
 		return nil, err
 	}
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
-	serviceController := service.NewController(configManager, singBoxPath)
+	serviceController := singbox.NewController(configManager, singBoxPath)
 
-	initStateManager := initstate.NewManagerXORM(e)
+	initStateManager := state.NewManagerXORM(e)
 
 	// Config version history (DB-backed) + application settings.
-	versionStore := configversion.NewStoreXORM(e)
-	versionCleaner := configversion.NewCleaner(versionStore, configversion.DefaultMaxAge)
+	versionStore := history.NewStoreXORM(e)
+	versionCleaner := history.NewCleaner(versionStore, history.DefaultMaxAge)
 	settingsManager := settings.NewManagerXORM(e)
 	configManager.SetVersionStore(versionStore)
 
 	// Pass initStateManager and configManager to installer
-	installerManager := installer.NewManager(initStateManager, configManager)
-	dashboardManager := installer.NewDashboardManager(initStateManager, configManager)
+	installerManager := installation.NewManager(initStateManager, configManager)
+	dashboardManager := installation.NewDashboardManager(initStateManager, configManager)
 
 	// Outbound Node Rules manager (Filters + Groups) — drives auto-grouping of
 	// subscription nodes.
-	nodeRulesManager := noderules.NewManagerXORM(e)
+	nodeRulesManager := rules.NewManagerXORM(e)
 
 	subscriptionManager := subscription.NewService(configManager, repo.NewStore(e), nodeRulesManager, settingsManager, serviceController)
 	if err := subscriptionManager.Init(); err != nil {
@@ -95,7 +95,7 @@ func New(
 	}
 
 	// Initialize user manager
-	userManager := user.NewManagerXORM(e, adminUser, adminPass)
+	userManager := identity.NewManagerXORM(e, adminUser, adminPass)
 
 	// Self-update manager (GitHub releases -> binary + frontend swap + restart).
 	// The token is resolved per request from settings, so signing in through
@@ -120,7 +120,7 @@ func New(
 		settingsManager,
 	)
 
-	systemType := service.DetectSystemType()
+	systemType := singbox.DetectSystemType()
 	authEnabled := resolveAuthEnabled(authMode, systemType)
 	if !authEnabled {
 		logger.Warn("==================================================================")
@@ -132,8 +132,8 @@ func New(
 
 	return &Modules{
 		System:              system.New(configManager.GetConfigPath(), database.Path(), serviceController),
-		Installation:        installer.NewService(installerManager, dashboardManager, configManager, initStateManager),
-		TrafficService:      trafficflow.NewService(configManager),
+		Installation:        installation.NewService(installerManager, dashboardManager, configManager, initStateManager),
+		TrafficService:      traffic.NewService(configManager),
 		SettingsService:     settings.NewService(settingsManager, configManager, githubAuth.Configured),
 		Diagnostics:         diagnostics.New(configManager, serviceController),
 		Outbounds:           outbounds.New(configManager, nodeRulesManager),
@@ -196,7 +196,7 @@ func (h *Modules) Start() error {
 	if err := h.SubscriptionManager.StartBackground("*/5 * * * *"); err != nil {
 		return err
 	}
-	if err := h.VersionCleaner.Start(configversion.DefaultCleanupCron); err != nil {
+	if err := h.VersionCleaner.Start(history.DefaultCleanupCron); err != nil {
 		h.SubscriptionManager.StopBackground()
 		return err
 	}
@@ -205,12 +205,12 @@ func (h *Modules) Start() error {
 
 // Close drains workers before the caller closes the database.
 func (h *Modules) Close() { h.SubscriptionManager.StopBackground(); h.VersionCleaner.Stop() }
-func resolveAuthEnabled(mode string, systemType service.SystemType) bool {
+func resolveAuthEnabled(mode string, systemType singbox.SystemType) bool {
 	switch mode {
 	case appconfig.AuthDisabled:
 		return false
 	case appconfig.AuthAuto:
-		return systemType != service.SystemOpenWRT
+		return systemType != singbox.SystemOpenWRT
 	default: // appconfig.AuthEnabled and anything unexpected
 		return true
 	}

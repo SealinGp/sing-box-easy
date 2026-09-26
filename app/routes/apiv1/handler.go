@@ -26,17 +26,17 @@ import (
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
 	system                *system.Service
-	installationModule    *installer.Service
-	trafficServiceModule  *trafficflow.Service
+	installationModule    *installation.Service
+	trafficServiceModule  *traffic.Service
 	settingsServiceModule *settings.Service
 	diagnosticsModule     *diagnostics.Service
 	outboundsModule       *outbounds.Service
 	configurationModule   *configuration.Service
 	subscriptions         *subscription.Service
 	configManager         *config.Manager
-	serviceController     *service.Controller
+	serviceController     *singbox.Controller
 	schedulerHandler      *schedulerHandler
-	userManager           user.UserManager
+	userManager           identity.UserManager
 	updater               *appupdate.Updater
 	githubAuth            *githubauth.Manager
 	// authEnabled is the resolved login requirement (server.auth × platform).
@@ -44,7 +44,7 @@ type Handler struct {
 	authEnabled bool
 	// systemType is the detected distribution family, probed once at startup.
 	// It drives both the auth default and the frontend's navigation layout.
-	systemType service.SystemType
+	systemType singbox.SystemType
 }
 
 func NewHandler(m *bootstrap.Modules) *Handler {

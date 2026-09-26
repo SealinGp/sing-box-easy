@@ -11,15 +11,15 @@ func TestResolveAuthEnabled(t *testing.T) {
 	tests := []struct {
 		name       string
 		mode       string
-		systemType service.SystemType
+		systemType singbox.SystemType
 		want       bool
 	}{
-		{"auto on debian requires login", appconfig.AuthAuto, service.SystemDebian, true},
-		{"auto on unknown requires login", appconfig.AuthAuto, service.SystemUnknown, true},
-		{"auto on openwrt skips login", appconfig.AuthAuto, service.SystemOpenWRT, false},
-		{"enabled wins on openwrt", appconfig.AuthEnabled, service.SystemOpenWRT, true},
-		{"disabled wins on debian", appconfig.AuthDisabled, service.SystemDebian, false},
-		{"unexpected mode fails safe to enabled", "banana", service.SystemOpenWRT, true},
+		{"auto on debian requires login", appconfig.AuthAuto, singbox.SystemDebian, true},
+		{"auto on unknown requires login", appconfig.AuthAuto, singbox.SystemUnknown, true},
+		{"auto on openwrt skips login", appconfig.AuthAuto, singbox.SystemOpenWRT, false},
+		{"enabled wins on openwrt", appconfig.AuthEnabled, singbox.SystemOpenWRT, true},
+		{"disabled wins on debian", appconfig.AuthDisabled, singbox.SystemDebian, false},
+		{"unexpected mode fails safe to enabled", "banana", singbox.SystemOpenWRT, true},
 	}
 
 	for _, tt := range tests {

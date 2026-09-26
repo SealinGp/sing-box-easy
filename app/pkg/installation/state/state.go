@@ -1,4 +1,4 @@
-package initstate
+package state
 
 // InitStateManager defines the interface for managing initialization state
 type InitStateManager interface {

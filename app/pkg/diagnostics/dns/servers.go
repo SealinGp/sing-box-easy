@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 import (
 	"net"

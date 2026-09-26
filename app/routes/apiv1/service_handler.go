@@ -130,7 +130,7 @@ func (h *Handler) StreamServiceLogs(ctx context.Context, c *app.RequestContext) 
 	// `source: none` and render the existing explanation.
 	if events == nil {
 		logStreamEnd("logs", stream.Event("unsupported", map[string]any{
-			"source": service.LogSourceNone,
+			"source": singbox.LogSourceNone,
 		}))
 		return
 	}

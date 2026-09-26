@@ -1,4 +1,4 @@
-// Package routeprobe answers "where would this destination go?" against a
+// Package route answers "where would this destination go?" against a
 // sing-box config, without sending any traffic and without a running sing-box.
 //
 // It is deliberately a PRE-flight tool. sing-box's own Clash API already
@@ -11,7 +11,7 @@
 // not need: every rule ahead of the decision must be fully evaluated for the
 // answer to be exact, and when one is not, the result says so rather than
 // quietly reporting the first rule it happened to be able to decide.
-package routeprobe
+package route
 
 import (
 	"errors"
