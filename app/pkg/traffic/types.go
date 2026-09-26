@@ -23,7 +23,7 @@
 // reports both, as the exit and its `via`.
 package traffic
 
-import "github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+import "github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 
 // Filter narrows the connections a frame is built from.
 //

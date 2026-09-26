@@ -20,7 +20,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/route"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	"github.com/sagernet/sing-box/option"
 )
 

@@ -1,5 +1,11 @@
 # Backend module architecture and migration plan
 
+> **Superseded layout.** The package map below is the plan as first written.
+> Everything that serves the sing-box process has since moved under
+> `app/pkg/singbox/` (`core`, `clashapi`, `config` with `history`, `sections`
+> and `outbounds`); see the "Architecture" section of `CLAUDE.md`, and
+> `app/architecture/layering_test.go`, which enforces it.
+
 Status: implemented in the working tree, 2026-09-08. The implementation notes below describe the final structure; the original design and acceptance criteria follow for context.
 
 ## Implementation
@@ -10,7 +16,7 @@ Status: implemented in the working tree, 2026-09-08. The implementation notes be
 - `outbounds.Service` owns manual outbound edits and node-rule operations; its reconciler applies subscription changes and repairs group references under the config mutation lock. Rules live in `outbounds/rules`.
 - `configuration.Service` owns DNS, routing, inbound, experimental, and raw document editing policies. The existing `config.Manager` remains the lossless document/validation/save engine; version storage and cleanup live in `config/history`. This preserves the existing document abstraction instead of adding a second document package.
 - Runtime control moved from `pkg/service` to `pkg/singbox`. Diagnostic algorithms live under `diagnostics`; business operations resolve their dependencies. Traffic, installation, identity, settings, system information, and app-update operations own the policies extracted from their handlers.
-- Shared runtime HTTP transport lives in `integrations/clashapi`; host operations live under `platform`. Existing GitHub adapters remain with their features because their semantics differ.
+- Shared runtime HTTP transport lives in `singbox/clashapi`; host operations live under `platform`. Existing GitHub adapters remain with their features because their semantics differ.
 - HTTP handlers retain decoding, DTO mapping, authentication middleware, response/error encoding, uploads, and SSE framing. Architecture tests reject direct route dependencies on repositories, XORM, external adapters, platforms, and internal workers, and reject config mutation callbacks in routes.
 
 Existing Go package identifiers were retained for several moved packages to limit unrelated identifier churn. Small persistence adapters in other features retain their existing file organization; they are constructed with explicit engines and are not exposed directly to HTTP. The proposed layout below is an ownership map, not an exact file manifest.

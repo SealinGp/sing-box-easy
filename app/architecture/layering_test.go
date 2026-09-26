@@ -24,6 +24,7 @@ type layerRule struct {
 // The sing-box tree is layered bottom-up:
 //
 //	singbox/core                 the binary: version, check, capabilities
+//	singbox/clashapi             the running process: its Clash-compatible API
 //	singbox/config               the config document store (Manager)
 //	singbox/config/{sections,outbounds}   editors, siblings of each other
 //	singbox                      the process controller, which consumes config
@@ -36,6 +37,16 @@ var singBoxLayers = []layerRule{
 		dir:       "singbox/core/...",
 		forbidden: []string{"..."},
 		why:       "core is the leaf every layer builds on",
+	},
+	{
+		dir:       "singbox/clashapi/...",
+		forbidden: []string{"..."},
+		why:       "clashapi is the leaf boundary to the running process, as core is to the binary",
+	},
+	{
+		dir:       "singbox/config/...",
+		forbidden: []string{"singbox/clashapi/..."},
+		why:       "editing the config must not depend on a running sing-box",
 	},
 	{
 		dir:       "singbox/config",

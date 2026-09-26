@@ -32,7 +32,7 @@ func TestModuleDependencies(t *testing.T) {
 		for _, imp := range f.Imports {
 			value, _ := strconv.Unquote(imp.Path.Value)
 			if strings.HasPrefix(relative, "routes/") {
-				for _, forbidden := range []string{"/repo", "/integrations/", "/platform/", "/database", "/internal/", "xorm.io"} {
+				for _, forbidden := range []string{"/repo", "/singbox/clashapi", "/platform/", "/database", "/internal/", "xorm.io"} {
 					if strings.Contains(value, forbidden) {
 						t.Errorf("HTTP adapter %s imports implementation %s", relative, value)
 					}

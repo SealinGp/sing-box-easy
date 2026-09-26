@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	subscription "github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
 	"go.uber.org/zap"
 )

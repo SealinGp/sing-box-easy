@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 // Source is the slice of the Clash API this package reads. `*clashapi.Client`
