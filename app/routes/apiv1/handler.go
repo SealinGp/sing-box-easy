@@ -46,7 +46,7 @@ type Handler struct {
 	authEnabled bool
 	// systemType is the detected distribution family, probed once at startup.
 	// It drives both the auth default and the frontend's navigation layout.
-	systemType singbox.SystemType
+	systemType string
 }
 
 func NewHandler(m *bootstrap.Modules) *Handler {
@@ -66,7 +66,7 @@ func NewHandler(m *bootstrap.Modules) *Handler {
 		updater:               m.Updater,
 		githubAuth:            m.GithubAuth,
 		authEnabled:           m.AuthEnabled,
-		systemType:            m.SystemType,
+		systemType:            string(m.SystemType),
 		schedulerHandler:      newSchedulerHandler(m.SubscriptionManager),
 	}
 }

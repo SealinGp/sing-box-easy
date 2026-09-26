@@ -11,7 +11,7 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/core"
 	"go.uber.org/zap"
@@ -149,7 +149,7 @@ func (m *Manager) GetTask(taskID string) (*InstallTask, error) {
 // runInstallScript runs the platform-appropriate sing-box installation
 // command with real-time output.
 func (m *Manager) runInstallScript(task *InstallTask, version string, beta bool) error {
-	systemType := singbox.DetectSystemType()
+	systemType := sysinfo.DetectSystemType()
 	cmdStr, err := buildInstallCommand(systemType, version, beta)
 	if err != nil {
 		return err

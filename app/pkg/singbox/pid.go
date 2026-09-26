@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 // Signal flags passed to the `kill` command when terminating a sing-box
@@ -32,9 +34,9 @@ const (
 // lookupPID returns the PID of the sing-box process as a string, or "" if not
 // running. It prefers pidof (native BusyBox applet on OpenWrt) and falls back
 // to pgrep and a POSIX ps pipeline on other systems.
-func lookupPID(systemType SystemType) (string, error) {
+func lookupPID(systemType sysinfo.SystemType) (string, error) {
 	switch systemType {
-	case SystemOpenWRT:
+	case sysinfo.SystemOpenWRT:
 		// Use pidof for OpenWrt (a native BusyBox applet).
 		output, err := exec.Command("pidof", "sing-box").Output()
 		if err != nil {
@@ -73,7 +75,7 @@ func lookupPID(systemType SystemType) (string, error) {
 
 // lookupRunningPID resolves both the running state and the numeric PID in one
 // pass, shared by the non-systemd backends.
-func lookupRunningPID(systemType SystemType) (bool, int, error) {
+func lookupRunningPID(systemType sysinfo.SystemType) (bool, int, error) {
 	pidStr, err := lookupPID(systemType)
 	if err != nil {
 		return false, 0, fmt.Errorf("failed to check service status: %w", err)
@@ -89,7 +91,7 @@ func lookupRunningPID(systemType SystemType) (bool, int, error) {
 // signal via the `kill` command. It is used to control processes this
 // application does not own. A nil error is returned when no process is
 // running.
-func signalRunningPID(systemType SystemType, sig string) error {
+func signalRunningPID(systemType sysinfo.SystemType, sig string) error {
 	pid, err := lookupPID(systemType)
 	if err != nil {
 		return fmt.Errorf("failed to get service PID: %w", err)
@@ -138,7 +140,7 @@ func waitForServiceStart(check func() (bool, int, error), timeout, interval time
 
 // waitForPIDExit polls the process table until sing-box has exited or the
 // timeout elapses.
-func waitForPIDExit(systemType SystemType, timeout time.Duration) error {
+func waitForPIDExit(systemType sysinfo.SystemType, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for {
 		pid, err := lookupPID(systemType)

@@ -51,7 +51,7 @@ type AuthStatusResponse struct {
 func (h *Handler) GetAuthStatus(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, AuthStatusResponse{
 		AuthEnabled: h.authEnabled,
-		SystemType:  string(h.systemType),
+		SystemType:  h.systemType,
 	})
 }
 

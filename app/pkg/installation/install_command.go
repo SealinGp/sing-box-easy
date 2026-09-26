@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 // curlOpts are the robust download options used by the script-based install
@@ -21,8 +21,8 @@ const curlOpts = "curl --retry 3 --retry-delay 2 --connect-timeout 30 --max-time
 //     install script does not support opkg, and curl may be absent. A pinned
 //     version instead downloads the static release tarball for this
 //     architecture with BusyBox wget.
-func buildInstallCommand(systemType singbox.SystemType, version string, beta bool) (string, error) {
-	if systemType == singbox.SystemOpenWRT {
+func buildInstallCommand(systemType sysinfo.SystemType, version string, beta bool) (string, error) {
+	if systemType == sysinfo.SystemOpenWRT {
 		return buildOpenwrtInstallCommand(version, beta)
 	}
 

@@ -4,22 +4,22 @@ import (
 	"testing"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
-	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 func TestResolveAuthEnabled(t *testing.T) {
 	tests := []struct {
 		name       string
 		mode       string
-		systemType singbox.SystemType
+		systemType sysinfo.SystemType
 		want       bool
 	}{
-		{"auto on debian requires login", appconfig.AuthAuto, singbox.SystemDebian, true},
-		{"auto on unknown requires login", appconfig.AuthAuto, singbox.SystemUnknown, true},
-		{"auto on openwrt skips login", appconfig.AuthAuto, singbox.SystemOpenWRT, false},
-		{"enabled wins on openwrt", appconfig.AuthEnabled, singbox.SystemOpenWRT, true},
-		{"disabled wins on debian", appconfig.AuthDisabled, singbox.SystemDebian, false},
-		{"unexpected mode fails safe to enabled", "banana", singbox.SystemOpenWRT, true},
+		{"auto on debian requires login", appconfig.AuthAuto, sysinfo.SystemDebian, true},
+		{"auto on unknown requires login", appconfig.AuthAuto, sysinfo.SystemUnknown, true},
+		{"auto on openwrt skips login", appconfig.AuthAuto, sysinfo.SystemOpenWRT, false},
+		{"enabled wins on openwrt", appconfig.AuthEnabled, sysinfo.SystemOpenWRT, true},
+		{"disabled wins on debian", appconfig.AuthDisabled, sysinfo.SystemDebian, false},
+		{"unexpected mode fails safe to enabled", "banana", sysinfo.SystemOpenWRT, true},
 	}
 
 	for _, tt := range tests {

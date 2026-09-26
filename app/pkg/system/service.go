@@ -1,16 +1,17 @@
 package system
 
 import (
+	"path/filepath"
+
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
-	"path/filepath"
 )
 
 type Service struct {
 	configPath, databasePath string
 	serviceController        *singbox.Controller
-	systemType               singbox.SystemType
+	systemType               sysinfo.SystemType
 }
 
 func New(configPath, databasePath string, controller *singbox.Controller) *Service {

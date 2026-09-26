@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"go.uber.org/zap"
 )
 
@@ -45,7 +46,7 @@ func (b *procdBackend) status() (bool, int, error) {
 	if b.probe != nil {
 		return b.probe()
 	}
-	return lookupRunningPID(SystemOpenWRT)
+	return lookupRunningPID(sysinfo.SystemOpenWRT)
 }
 
 func (b *procdBackend) startWait() time.Duration {
@@ -101,12 +102,12 @@ func (b *procdBackend) Stop() error {
 	if err := b.initd("stop"); err != nil {
 		return err
 	}
-	if err := waitForPIDExit(SystemOpenWRT, stopGracePeriod); err != nil {
+	if err := waitForPIDExit(sysinfo.SystemOpenWRT, stopGracePeriod); err != nil {
 		logger.Warn("Service did not stop gracefully, sending SIGKILL", zap.Error(err))
-		if killErr := signalRunningPID(SystemOpenWRT, signalKill); killErr != nil {
+		if killErr := signalRunningPID(sysinfo.SystemOpenWRT, signalKill); killErr != nil {
 			return killErr
 		}
-		if err := waitForPIDExit(SystemOpenWRT, stopGracePeriod); err != nil {
+		if err := waitForPIDExit(sysinfo.SystemOpenWRT, stopGracePeriod); err != nil {
 			return err
 		}
 	}
@@ -120,7 +121,7 @@ func (b *procdBackend) ForceStop() error {
 	if err := b.initd("stop"); err != nil {
 		logger.Warn("procd stop failed during force stop", zap.Error(err))
 	}
-	if err := signalRunningPID(SystemOpenWRT, signalKill); err != nil {
+	if err := signalRunningPID(sysinfo.SystemOpenWRT, signalKill); err != nil {
 		return err
 	}
 	logger.Info("Service force stopped via procd")

@@ -5,6 +5,7 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
@@ -54,7 +55,7 @@ type Modules struct {
 	AuthEnabled bool
 	// systemType is the detected distribution family, probed once at startup.
 	// It drives both the auth default and the frontend's navigation layout.
-	SystemType singbox.SystemType
+	SystemType sysinfo.SystemType
 }
 
 // New constructs dependencies with one explicitly shared database engine.
@@ -122,7 +123,7 @@ func New(
 		settingsManager,
 	)
 
-	systemType := singbox.DetectSystemType()
+	systemType := sysinfo.DetectSystemType()
 	authEnabled := resolveAuthEnabled(authMode, systemType)
 	if !authEnabled {
 		logger.Warn("==================================================================")
@@ -208,12 +209,12 @@ func (h *Modules) Start() error {
 
 // Close drains workers before the caller closes the database.
 func (h *Modules) Close() { h.SubscriptionManager.StopBackground(); h.VersionCleaner.Stop() }
-func resolveAuthEnabled(mode string, systemType singbox.SystemType) bool {
+func resolveAuthEnabled(mode string, systemType sysinfo.SystemType) bool {
 	switch mode {
 	case appconfig.AuthDisabled:
 		return false
 	case appconfig.AuthAuto:
-		return systemType != singbox.SystemOpenWRT
+		return systemType != sysinfo.SystemOpenWRT
 	default: // appconfig.AuthEnabled and anything unexpected
 		return true
 	}
