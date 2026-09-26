@@ -1,4 +1,4 @@
-package subprobe
+package probe
 
 import "context"
 

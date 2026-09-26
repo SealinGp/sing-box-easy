@@ -8,7 +8,7 @@ import (
 )
 
 func (h *Handler) StreamTrafficFlow(ctx context.Context, c *app.RequestContext) {
-	run, err := h.trafficService().Prepare(trafficflow.Filter{SourceIP: string(c.Query("source_ip")), Host: string(c.Query("host"))})
+	run, err := h.trafficService().Prepare(traffic.Filter{SourceIP: string(c.Query("source_ip")), Host: string(c.Query("host"))})
 	if err != nil {
 		respondOperationError(ctx, c, err)
 		return
@@ -16,7 +16,7 @@ func (h *Handler) StreamTrafficFlow(ctx context.Context, c *app.RequestContext) 
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream := NewSSEStream(c)
-	err = run.Run(streamCtx, func(frame *trafficflow.Frame) error { return stream.Event("frame", frame) })
+	err = run.Run(streamCtx, func(frame *traffic.Frame) error { return stream.Event("frame", frame) })
 	if err != nil && !errors.Is(err, context.Canceled) {
 		logStreamEnd("traffic", stream.Error(CodeServiceError, err.Error()))
 	}

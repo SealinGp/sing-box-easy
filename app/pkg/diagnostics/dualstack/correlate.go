@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 // startSkew is how far BEFORE the dial a connection may be stamped and still

@@ -1,4 +1,4 @@
-package subprobe
+package probe
 
 // The measurement half of the prober: what a single sweep of one
 // subscription's nodes actually does. The scheduling half — when sweeps
@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	subscription "github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
 	"go.uber.org/zap"
 )

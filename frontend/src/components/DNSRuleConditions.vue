@@ -14,6 +14,7 @@ import ChipsField from './ChipsField.vue'
 import Alert from './Alert.vue'
 import { PlusCircleIcon } from '@heroicons/vue/24/outline'
 import { useExclusiveMatcherGroups, useOptionalFields } from '../composables/useMatcherFields'
+import { queryTypeOptions } from '../utils/dnsQueryType'
 
 /**
  * `rule_set` is a list on the wire — sing-box types it as
@@ -44,6 +45,16 @@ const domainKeyword = defineModel<string[]>('domainKeyword', { required: true })
  */
 const geosite = defineModel<string[]>('geosite', { required: true })
 void geosite
+
+/**
+ * `query_type` — optional model. It is its own AND item in sing-box
+ * (`rule_dns.go`), independent of the rule-set / domain either-or below, so it
+ * is rendered outside that group. Rendered only when the parent binds it: the
+ * parallel-group dialog builds its rules from a fixed condition set and does
+ * not carry it.
+ */
+const queryType = defineModel<string[] | undefined>('queryType')
+const queryTypeSelectOptions = computed(() => queryTypeOptions(queryType.value ?? []))
 
 const props = defineProps<{
   ruleSetOptions: { value: string; label: string }[]
@@ -116,6 +127,25 @@ const {
 
 <template>
   <div class="space-y-3">
+    <!-- Query type: ANDed with everything else, so it stands apart from the
+         rule-set / domain group whose either-or the warning below is about. -->
+    <div v-if="queryType !== undefined">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {{ $t('dns.rules.form.queryType') }}
+      </label>
+      <MultiSelect
+        class="w-full"
+        optionLabel="label"
+        optionValue="value"
+        v-model="queryType"
+        :options="queryTypeSelectOptions"
+        display="chip"
+        filter
+        :placeholder="$t('dns.rules.form.queryTypePlaceholder')"
+      />
+      <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.queryTypeHelp') }}</p>
+    </div>
+
     <Alert v-if="showMixWarning" type="warning" :title="$t('dns.rules.form.mixing.title')">
       {{ $t('dns.rules.form.mixing.warning') }}
     </Alert>

@@ -20,6 +20,7 @@ import { storeToRefs } from 'pinia'
 import { isFieldFilled } from '../schemas/optionSchema'
 import { humanizeFieldName } from '../utils/fieldLabels'
 import { findOrphanRespondRules } from '../utils/parallelResolve'
+import { readQueryTypes, writeQueryTypes } from '../utils/dnsQueryType'
 import {
   actionOf,
   applyActionDefaults,
@@ -287,6 +288,7 @@ function emptyRuleForm(): Record<string, any> {
       domain_suffix: [] as string[],
       domain_keyword: [] as string[],
       geosite: [] as string[],
+      query_type: [] as string[],
     },
     'route',
   )
@@ -323,6 +325,8 @@ const openEditRuleModal = (index: number, rule: DNSRule) => {
   for (const key of ACTION_LIST_FIELDS) {
     if (key in loaded) loaded[key] = toArrayField(loaded[key])
   }
+  // Numbers become strings for the select; handleSaveRule converts back.
+  loaded.query_type = readQueryTypes(loaded.query_type)
 
   currentRule.value = loaded
   conditionsKey.value++
@@ -349,6 +353,12 @@ const handleSaveRule = async () => {
     currentRule.value,
     currentAction.value,
   )
+
+  // A numeric type must go out as a JSON number — sing-box decodes a number or
+  // a known NAME, and rejects the string "32768". See utils/dnsQueryType.
+  if (Array.isArray(processedRule.query_type)) {
+    processedRule.query_type = writeQueryTypes(processedRule.query_type as string[])
+  }
 
   // An empty value is the absence of a setting, not a setting of "". Writing it
   // through would persist it into config.json as an explicit one — and for a
@@ -785,6 +795,7 @@ onMounted(() => {
             v-model:domain-suffix="currentRule.domain_suffix"
             v-model:domain-keyword="currentRule.domain_keyword"
             v-model:geosite="currentRule.geosite"
+            v-model:query-type="currentRule.query_type"
             :rule-set-options="ruleSetOptions"
           />
         </section>

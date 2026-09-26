@@ -44,7 +44,7 @@ func (h *Service) ProbeRoute(ctx context.Context, req RouteProbeRequest) (any, e
 	sets := h.ruleSetLoader()
 	defer sets.Close()
 
-	options := routeprobe.Options{
+	options := route.Options{
 		Destination: req.Destination,
 		Port:        req.Port,
 		Network:     req.Network,
@@ -58,14 +58,14 @@ func (h *Service) ProbeRoute(ctx context.Context, req RouteProbeRequest) (any, e
 	// stopped sing-box degrades the prediction rather than failing it, which
 	// is the case the offline walk exists for in the first place.
 	clash, clashErr := h.readClashAPISettings()
-	if client, clientErr := dnsprobe.NewClashClientFromValues(clash.ExternalController, clash.Secret); clashErr == nil && clientErr == nil {
+	if client, clientErr := dns.NewClashClientFromValues(clash.ExternalController, clash.Secret); clashErr == nil && clientErr == nil {
 		options.Resolve = clashResolver(client)
 		if mode, modeErr := client.Mode(); modeErr == nil {
 			options.ClashMode = mode
 		}
 	}
 
-	result, runErr := routeprobe.Run(&cfg.Options, options)
+	result, runErr := route.Run(&cfg.Options, options)
 	if runErr != nil {
 		// Only invalid input reaches here; everything else degrades into the
 		// result, where the user can see it.
@@ -83,7 +83,7 @@ func (h *Service) ProbeRoute(ctx context.Context, req RouteProbeRequest) (any, e
 // different rule purely because it got a different CDN address back. Asking
 // sing-box means a wrong prediction is at least wrong for the same reason the
 // real connection would be.
-func clashResolver(client *dnsprobe.ClashClient) routeprobe.Resolver {
+func clashResolver(client *dns.ClashClient) route.Resolver {
 	return func(domain string) (netip.Addr, error) {
 		live, err := client.Query(domain, "A")
 		if err != nil {

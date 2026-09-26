@@ -32,7 +32,7 @@ func TestModuleDependencies(t *testing.T) {
 		for _, imp := range f.Imports {
 			value, _ := strconv.Unquote(imp.Path.Value)
 			if strings.HasPrefix(relative, "routes/") {
-				for _, forbidden := range []string{"/repo", "/integrations/", "/platform/", "/database", "/internal/", "xorm.io"} {
+				for _, forbidden := range []string{"/repo", "/singbox/clashapi", "/platform/", "/database", "/internal/", "xorm.io"} {
 					if strings.Contains(value, forbidden) {
 						t.Errorf("HTTP adapter %s imports implementation %s", relative, value)
 					}
@@ -55,7 +55,7 @@ func TestModuleDependencies(t *testing.T) {
 				if !ok {
 					return true
 				}
-				for _, name := range []string{"UpdateOutboundsConfig", "UpdateConfigSection", "UpdateConfigSections", "Exec", "NewSession"} {
+				for _, name := range forbiddenInHandlers {
 					if selector.Sel.Name == name {
 						t.Errorf("HTTP adapter %s performs %s", relative, name)
 					}
@@ -68,4 +68,15 @@ func TestModuleDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// forbiddenInHandlers are calls an HTTP handler must reach through a module
+// service, never directly. The config.Manager entries are the whole-document
+// and history operations config.Service now owns; before it existed, the
+// config handlers were the one place that bypassed the service layer.
+var forbiddenInHandlers = []string{
+	"UpdateOutboundsConfig", "UpdateConfigSection", "UpdateConfigSections", "Exec", "NewSession",
+	"SaveRawConfig", "ValidateRawConfig", "SaveDocument", "GetConfigDocument", "GetBackupDocument",
+	"GetVersionDocument", "ListVersions", "DeleteVersion", "DeleteVersions", "Rollback",
+	"RollbackToVersion", "CoreCapabilities",
 }

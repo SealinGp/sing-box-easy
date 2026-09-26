@@ -4,7 +4,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/nodetag"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 
@@ -31,7 +32,7 @@ func p(uniqueTag string) string {
 // fp is the endpoint fingerprint the minted tags carry, resolved through the
 // same helper the updater uses so the tests never hard-code a hash.
 func fp(server string, port int) string {
-	return config.FingerprintEndpointKey(config.GetOutboundServerKey(ob("x", server, port)))
+	return nodetag.FingerprintEndpointKey(nodetag.GetOutboundServerKey(ob("x", server, port)))
 }
 
 // minted is the tag a feed node ends up with: "<name> <fingerprint> | <subID>".

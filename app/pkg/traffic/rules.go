@@ -1,6 +1,6 @@
-package trafficflow
+package traffic
 
-import "github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+import "github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 
 // RuleIndex maps the rule string a connection carries back to its position in
 // `route.rules`.

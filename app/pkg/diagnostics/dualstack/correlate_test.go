@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 func conn(id, ip, port string, start time.Time, rule string, chains []string) clashapi.Connection {

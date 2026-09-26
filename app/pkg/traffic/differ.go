@@ -1,9 +1,9 @@
-package trafficflow
+package traffic
 
 import (
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 // Differ derives per-connection rates between consecutive snapshots.

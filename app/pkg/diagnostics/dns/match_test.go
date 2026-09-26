@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 // The original attribution tests, rewritten against raw config JSON.
 //

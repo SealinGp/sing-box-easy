@@ -1,6 +1,7 @@
 <template>
     <Dialog
         unstyled
+        :draggable="draggable"
         :pt="theme"
         :ptOptions="{
             mergeProps: ptViewMerge
@@ -18,8 +19,14 @@ import { twMerge } from 'tailwind-merge';
 import Dialog, { type DialogPassThroughOptions, type DialogProps } from 'primevue/dialog';
 import { ptViewMerge } from './utils';
 
-interface Props extends /* @vue-ignore */ DialogProps {}
-defineProps<Props>();
+interface Props extends /* @vue-ignore */ DialogProps {
+    draggable?: boolean;
+}
+// Not draggable unless a caller asks. PrimeVue defaults `draggable` to true and
+// starts the drag on any mousedown in the header, so selecting the title (or
+// anything else up there) to copy it moved the whole dialog instead. Declared
+// here rather than passed through, so the default is ours, not PrimeVue's.
+withDefaults(defineProps<Props>(), { draggable: false });
 
 // A caller's `class` is a FALLTHROUGH ATTRIBUTE, not a pt entry, so it never
 // reaches `ptViewMerge`/`twMerge` — PrimeVue concatenates it onto the root

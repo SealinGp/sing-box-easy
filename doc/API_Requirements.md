@@ -219,4 +219,4 @@ POST /api/1.12.12/service/start
 所有 `/api/1.12.12/*` 接口统一使用 `BasicResponse{code, data, msg}` 信封，HTTP 状态码恒为 200。详见 [`API_v1.13.0.md`](./API_v1.13.0.md#通用响应格式)。
 
 ### 3.5 组引用一致性
-删除 outbound（单个 / 批量）以及订阅更新会自动从所有 `selector` / `urltest` 的 `outbounds` 列表和 `selector.default` 字段中清理对应 tag，避免 `sing-box check` 通过但运行时分组指向失效节点的情况。实现见 `app/pkg/config/group_refs.go::PruneGroupReferences`。
+删除 outbound（单个 / 批量）以及订阅更新会自动从所有 `selector` / `urltest` 的 `outbounds` 列表和 `selector.default` 字段中清理对应 tag，避免 `sing-box check` 通过但运行时分组指向失效节点的情况。实现见 `app/pkg/singbox/config/outbounds/nodegroup/refs.go::PruneGroupReferences`。

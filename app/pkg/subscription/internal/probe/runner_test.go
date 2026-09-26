@@ -1,4 +1,4 @@
-package subprobe
+package probe
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 // fakeEnv is a scriptable Environment.

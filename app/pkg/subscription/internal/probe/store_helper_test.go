@@ -1,4 +1,4 @@
-package subprobe
+package probe
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"

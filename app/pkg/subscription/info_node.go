@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/nodetag"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 
@@ -110,7 +111,7 @@ func isInfoNode(n *node.SubNode, keywords []string) bool {
 // isLoopbackNode reports whether the node's server is a loopback/unspecified
 // address, which no real exit ever uses.
 func isLoopbackNode(n *node.SubNode) bool {
-	server := config.GetOutboundServer(config.Outbound{Type: n.Type, Options: n.Options})
+	server := nodetag.GetOutboundServer(config.Outbound{Type: n.Type, Options: n.Options})
 	_, ok := loopbackServers[strings.ToLower(strings.TrimSpace(server))]
 	return ok
 }

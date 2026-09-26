@@ -1,11 +1,11 @@
-// Package dnsprobe answers "what does this deployment actually do with this
+// Package dns answers "what does this deployment actually do with this
 // domain?" — the live answer sing-box returns, which rule produced it, and
 // whether the configured upstreams agree with each other.
 //
 // It deliberately separates fact from prediction. The answer comes from
 // sing-box itself; rule attribution is reconstructed here and is explicitly
 // marked inexact whenever a condition could not be evaluated offline.
-package dnsprobe
+package dns
 
 import (
 	"encoding/json"
@@ -422,7 +422,6 @@ func rawSectionString(section json.RawMessage, key string) string {
 	return rawJSONString(object[key])
 }
 
-
 func anyKeyword(keywords []string, queryDomain string) bool {
 	for _, keyword := range keywords {
 		if keyword != "" && strings.Contains(queryDomain, keyword) {
@@ -447,9 +446,6 @@ func anyRegex(patterns []string, queryDomain string) bool {
 	}
 	return false
 }
-
-
-
 
 // joinCapped renders at most `limit` values, marking the rest with an ellipsis
 // so a 40-entry rule_set does not flood the UI.

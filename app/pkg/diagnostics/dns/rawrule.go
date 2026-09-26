@@ -1,4 +1,4 @@
-package dnsprobe
+package dns
 
 // Reading a DNS rule out of raw config JSON, rather than through the pinned
 // sing-box option schema.
@@ -262,4 +262,3 @@ func sortStrings(values []string) {
 		}
 	}
 }
-

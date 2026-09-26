@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 
-	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
+	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/sagernet/sing-box/option"
 	singjson "github.com/sagernet/sing/common/json"
 )

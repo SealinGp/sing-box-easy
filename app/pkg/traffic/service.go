@@ -1,11 +1,11 @@
-package trafficflow
+package traffic
 
 import (
 	"context"
 	"errors"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"strings"
 )
 

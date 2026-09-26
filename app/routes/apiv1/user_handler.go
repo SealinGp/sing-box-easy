@@ -51,7 +51,7 @@ type AuthStatusResponse struct {
 func (h *Handler) GetAuthStatus(ctx context.Context, c *app.RequestContext) {
 	respOK(ctx, c, AuthStatusResponse{
 		AuthEnabled: h.authEnabled,
-		SystemType:  string(h.systemType),
+		SystemType:  h.systemType,
 	})
 }
 
@@ -65,7 +65,7 @@ func (h *Handler) Login(ctx context.Context, c *app.RequestContext) {
 
 	u, token, err := h.userManager.Authenticate(req.Username, req.Password)
 	if err != nil {
-		if errors.Is(err, user.ErrUserNotFound) || errors.Is(err, user.ErrInvalidPassword) {
+		if errors.Is(err, identity.ErrUserNotFound) || errors.Is(err, identity.ErrInvalidPassword) {
 			respErr(ctx, c, CodeUnauthorized, "Incorrect username or password")
 		} else {
 			respErr(ctx, c, CodeInternalError, "Authentication error: "+err.Error())
@@ -129,7 +129,7 @@ func (h *Handler) CreateUser(ctx context.Context, c *app.RequestContext) {
 
 	u, err := h.userManager.CreateUser(req.Username, req.Password, req.Role)
 	if err != nil {
-		if errors.Is(err, user.ErrUsernameExists) {
+		if errors.Is(err, identity.ErrUsernameExists) {
 			respErr(ctx, c, CodeConflict, "Username is already taken")
 		} else {
 			respErr(ctx, c, CodeInternalError, "Failed to create user: "+err.Error())
@@ -161,13 +161,13 @@ func (h *Handler) UpdateUser(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	u, err := user.UpdateAs(h.userManager, currentUser, id, req.Username, req.Password, req.Role)
+	u, err := identity.UpdateAs(h.userManager, currentUser, id, req.Username, req.Password, req.Role)
 	if err != nil {
 		if isOperationFault(err) {
 			respondOperationError(ctx, c, err)
-		} else if errors.Is(err, user.ErrUserNotFound) {
+		} else if errors.Is(err, identity.ErrUserNotFound) {
 			respErr(ctx, c, CodeNotFound, "User not found")
-		} else if errors.Is(err, user.ErrUsernameExists) {
+		} else if errors.Is(err, identity.ErrUsernameExists) {
 			respErr(ctx, c, CodeConflict, "Username is already taken")
 		} else if strings.Contains(err.Error(), "demote the last administrator") {
 			respErr(ctx, c, CodeForbidden, err.Error())
@@ -195,13 +195,13 @@ func (h *Handler) DeleteUser(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err = user.DeleteAs(h.userManager, currentUser, id)
+	err = identity.DeleteAs(h.userManager, currentUser, id)
 	if err != nil {
 		if isOperationFault(err) {
 			respondOperationError(ctx, c, err)
-		} else if errors.Is(err, user.ErrUserNotFound) {
+		} else if errors.Is(err, identity.ErrUserNotFound) {
 			respErr(ctx, c, CodeNotFound, "User not found")
-		} else if errors.Is(err, user.ErrLastAdminDeletion) {
+		} else if errors.Is(err, identity.ErrLastAdminDeletion) {
 			respErr(ctx, c, CodeForbidden, "Cannot delete the last administrator account")
 		} else {
 			respErr(ctx, c, CodeInternalError, "Failed to delete user: "+err.Error())
@@ -233,13 +233,13 @@ func (h *Handler) UpdatePreferences(ctx context.Context, c *app.RequestContext) 
 		respErr(ctx, c, CodeUnauthorized, "A signed-in account is required")
 		return
 	}
-	var req user.Preferences
+	var req identity.Preferences
 	if err := c.BindJSON(&req); err != nil || req.OverviewOrder == nil {
 		respErr(ctx, c, CodeBadRequest, "overview_order must be an array of card IDs")
 		return
 	}
 	preferences, err := h.userManager.UpdatePreferences(u.ID, req)
-	if errors.Is(err, user.ErrInvalidPreferences) {
+	if errors.Is(err, identity.ErrInvalidPreferences) {
 		respErr(ctx, c, CodeBadRequest, err.Error())
 		return
 	}

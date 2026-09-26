@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -38,12 +38,12 @@ func TestMain(m *testing.M) {
 // fakeRules is an in-memory NodeRulesProvider for testing the rebuild path
 // without a database.
 type fakeRules struct {
-	filters []*noderules.Filter
-	groups  []*noderules.Group
+	filters []*rules.Filter
+	groups  []*rules.Group
 }
 
-func (f *fakeRules) ListFilters() ([]*noderules.Filter, error) { return f.filters, nil }
-func (f *fakeRules) ListGroups() ([]*noderules.Group, error)   { return f.groups, nil }
+func (f *fakeRules) ListFilters() ([]*rules.Filter, error) { return f.filters, nil }
+func (f *fakeRules) ListGroups() ([]*rules.Group, error)   { return f.groups, nil }
 
 func ep(tag string) config.Outbound {
 	return config.Outbound{Tag: tag, Type: "trojan", Options: &option.TrojanOutboundOptions{}}
@@ -80,17 +80,17 @@ func hasTag(obs []config.Outbound, tag string) bool {
 // references its Filters, and a user-authored selector is preserved.
 func TestRebuildNodeRules_AssignsAndBuilds(t *testing.T) {
 	au := &Service{nodeRules: &fakeRules{
-		filters: []*noderules.Filter{
-			{ID: "f_asia", Name: "Asia", Priority: 10, OutboundType: "urltest", Matchers: []noderules.Matcher{
-				{Type: noderules.MatcherCode, Value: "HK"}, {Type: noderules.MatcherCode, Value: "JP"},
+		filters: []*rules.Filter{
+			{ID: "f_asia", Name: "Asia", Priority: 10, OutboundType: "urltest", Matchers: []rules.Matcher{
+				{Type: rules.MatcherCode, Value: "HK"}, {Type: rules.MatcherCode, Value: "JP"},
 			}},
-			{ID: "f_stream", Name: "Streaming", Priority: 20, OutboundType: "selector", Matchers: []noderules.Matcher{
-				{Type: noderules.MatcherKeyword, Value: "Streaming"},
+			{ID: "f_stream", Name: "Streaming", Priority: 20, OutboundType: "selector", Matchers: []rules.Matcher{
+				{Type: rules.MatcherKeyword, Value: "Streaming"},
 			}},
-			{ID: noderules.FallbackFilterID, Name: noderules.FallbackFilterName, IsFallback: true, Priority: noderules.FallbackPriority, OutboundType: "urltest"},
+			{ID: rules.FallbackFilterID, Name: rules.FallbackFilterName, IsFallback: true, Priority: rules.FallbackPriority, OutboundType: "urltest"},
 		},
-		groups: []*noderules.Group{
-			{ID: "g_all", Name: "All Regions", FilterIDs: []string{"f_asia", "f_stream", noderules.FallbackFilterID}},
+		groups: []*rules.Group{
+			{ID: "g_all", Name: "All Regions", FilterIDs: []string{"f_asia", "f_stream", rules.FallbackFilterID}},
 		},
 	}}
 
@@ -116,7 +116,7 @@ func TestRebuildNodeRules_AssignsAndBuilds(t *testing.T) {
 		t.Errorf("Streaming members = %v, want 1", m)
 	}
 	// Other collects the unmatched US node.
-	if m := groupMembers(t, got, noderules.FallbackFilterName); len(m) != 1 || m[0] != "US West | sub_a" {
+	if m := groupMembers(t, got, rules.FallbackFilterName); len(m) != 1 || m[0] != "US West | sub_a" {
 		t.Errorf("Other members = %v, want [US West | sub_a]", m)
 	}
 	// Group references all three live filters.
@@ -133,9 +133,9 @@ func TestRebuildNodeRules_AssignsAndBuilds(t *testing.T) {
 // identical outbound set (deterministic membership).
 func TestRebuildNodeRules_Idempotent(t *testing.T) {
 	provider := &fakeRules{
-		filters: []*noderules.Filter{
-			{ID: "f_asia", Name: "Asia", Priority: 10, OutboundType: "urltest", Matchers: []noderules.Matcher{{Type: noderules.MatcherCode, Value: "HK"}}},
-			{ID: noderules.FallbackFilterID, Name: noderules.FallbackFilterName, IsFallback: true, Priority: noderules.FallbackPriority, OutboundType: "urltest"},
+		filters: []*rules.Filter{
+			{ID: "f_asia", Name: "Asia", Priority: 10, OutboundType: "urltest", Matchers: []rules.Matcher{{Type: rules.MatcherCode, Value: "HK"}}},
+			{ID: rules.FallbackFilterID, Name: rules.FallbackFilterName, IsFallback: true, Priority: rules.FallbackPriority, OutboundType: "urltest"},
 		},
 	}
 	au := &Service{nodeRules: provider}
@@ -153,7 +153,7 @@ func TestRebuildNodeRules_Idempotent(t *testing.T) {
 	if len(first) != len(second) {
 		t.Fatalf("non-idempotent: first=%d second=%d outbounds", len(first), len(second))
 	}
-	for _, tag := range []string{"Asia", noderules.FallbackFilterName} {
+	for _, tag := range []string{"Asia", rules.FallbackFilterName} {
 		a, b := groupMembers(t, first, tag), groupMembers(t, second, tag)
 		if len(a) != len(b) {
 			t.Errorf("%q membership changed across rebuilds: %v vs %v", tag, a, b)

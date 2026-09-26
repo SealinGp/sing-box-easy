@@ -1,19 +1,11 @@
-package service
+package singbox
 
 import (
 	"context"
 	"os"
 	"os/exec"
-	"strings"
-)
 
-// SystemType represents the type of operating system distribution.
-type SystemType string
-
-const (
-	SystemDebian  SystemType = "debian"
-	SystemOpenWRT SystemType = "openwrt"
-	SystemUnknown SystemType = "unknown"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 // Backend kinds reported in logs and (potentially) status payloads.
@@ -70,38 +62,9 @@ type Backend interface {
 	FollowLogs(ctx context.Context) (<-chan FollowEvent, error)
 }
 
-// DetectSystemType detects whether the system is OpenWrt, Debian, or other.
-// Exported so other packages (e.g. the installer) can branch on the same
-// platform detection instead of re-implementing it.
-func DetectSystemType() SystemType {
-	// Check for OpenWrt first
-	if _, err := os.Stat("/etc/openwrt_release"); err == nil {
-		return SystemOpenWRT
-	}
-
-	// Check for Debian-based systems
-	if _, err := os.Stat("/etc/debian_version"); err == nil {
-		return SystemDebian
-	}
-
-	// Check /etc/os-release for more info
-	if data, err := os.ReadFile("/etc/os-release"); err == nil {
-		content := strings.ToLower(string(data))
-		if strings.Contains(content, "openwrt") {
-			return SystemOpenWRT
-		}
-		if strings.Contains(content, "debian") || strings.Contains(content, "ubuntu") {
-			return SystemDebian
-		}
-	}
-
-	// Default to unknown, but compatible commands will still be attempted.
-	return SystemUnknown
-}
-
 // detectBackend picks the service backend for this host. Detection order:
 // systemd unit → procd init script → direct process management.
-func detectBackend(systemType SystemType, singBoxPath string, configPath, logPath func() string) Backend {
+func detectBackend(systemType sysinfo.SystemType, singBoxPath string, configPath, logPath func() string) Backend {
 	if detectSystemd() {
 		return &systemdBackend{}
 	}
@@ -126,8 +89,8 @@ func detectSystemd() bool {
 
 // hasProcdInitScript reports whether this is an OpenWrt host with an
 // executable /etc/init.d/sing-box script to delegate to.
-func hasProcdInitScript(systemType SystemType) bool {
-	if systemType != SystemOpenWRT {
+func hasProcdInitScript(systemType sysinfo.SystemType) bool {
+	if systemType != sysinfo.SystemOpenWRT {
 		return false
 	}
 	fi, err := os.Stat(procdInitScript)

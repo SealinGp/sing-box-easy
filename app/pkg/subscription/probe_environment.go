@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/probe"
 )
 
@@ -28,18 +28,18 @@ type probeEnvironment struct {
 }
 
 // Targets lists the subscriptions with probing enabled.
-func (e *probeEnvironment) Targets() ([]subprobe.Target, error) {
+func (e *probeEnvironment) Targets() ([]probe.Target, error) {
 	subs, err := e.subscriptions.List()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list subscriptions: %w", err)
 	}
 
-	targets := make([]subprobe.Target, 0, len(subs))
+	targets := make([]probe.Target, 0, len(subs))
 	for _, sub := range subs {
 		if !sub.ProbeEnabled {
 			continue
 		}
-		targets = append(targets, subprobe.Target{
+		targets = append(targets, probe.Target{
 			SubID: sub.ID,
 			// Resolved (and re-validated) at read time: a row written before
 			// the https rule existed must not reach sing-box, which would
@@ -72,7 +72,7 @@ func (e *probeEnvironment) OutboundTags() ([]string, error) {
 }
 
 // Prober builds a client against the running sing-box.
-func (e *probeEnvironment) Prober() (subprobe.Prober, error) {
+func (e *probeEnvironment) Prober() (probe.Prober, error) {
 	clash, err := e.configManager.GetClashAPISettings()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -85,8 +85,8 @@ func (e *probeEnvironment) Prober() (subprobe.Prober, error) {
 }
 
 // Settings reads the current knobs.
-func (e *probeEnvironment) Settings() subprobe.Settings {
-	return subprobe.Settings{
+func (e *probeEnvironment) Settings() probe.Settings {
+	return probe.Settings{
 		Interval:  e.settings.GetProbeInterval(),
 		Timeout:   e.settings.GetProbeTimeout(),
 		MaxAge:    24 * time.Hour * time.Duration(e.settings.GetProbeRetentionDays()),
@@ -96,6 +96,6 @@ func (e *probeEnvironment) Settings() subprobe.Settings {
 		// there is no way for an operator to observe that trade-off from the
 		// panel — so it is a constant chosen for the worst case (a 233-node
 		// config on a router).
-		Concurrency: subprobe.DefaultConcurrency,
+		Concurrency: probe.DefaultConcurrency,
 	}
 }

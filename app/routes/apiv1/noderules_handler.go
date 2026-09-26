@@ -2,7 +2,7 @@ package apiv1
 
 import (
 	"context"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

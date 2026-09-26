@@ -16,12 +16,12 @@ const (
 // noAuthUser is the synthetic identity injected when login is disabled: every
 // request acts as an administrator so downstream RequireAdmin checks and
 // self-service handlers keep working unchanged.
-var noAuthUser = &user.User{ID: 0, Username: "admin", Role: "admin"}
+var noAuthUser = &identity.User{ID: 0, Username: "admin", Role: "admin"}
 
 // AuthMiddleware creates a middleware that checks the session token. When
 // enabled is false (server.auth: disabled, or "auto" on OpenWrt) the check is
 // bypassed and every request runs as an administrator.
-func AuthMiddleware(userManager user.UserManager, enabled bool) app.HandlerFunc {
+func AuthMiddleware(userManager identity.UserManager, enabled bool) app.HandlerFunc {
 	if !enabled {
 		return func(ctx context.Context, c *app.RequestContext) {
 			c.Set(UserContextKey, noAuthUser)
@@ -67,7 +67,7 @@ func RequireAdmin() app.HandlerFunc {
 			return
 		}
 
-		u, ok := uVal.(*user.User)
+		u, ok := uVal.(*identity.User)
 		if !ok || u.Role != "admin" {
 			respErr(ctx, c, CodeForbidden, "Administrator privilege required")
 			c.Abort()
@@ -79,11 +79,11 @@ func RequireAdmin() app.HandlerFunc {
 }
 
 // GetCurrentUser retrieves the user object set by AuthMiddleware
-func GetCurrentUser(c *app.RequestContext) (*user.User, bool) {
+func GetCurrentUser(c *app.RequestContext) (*identity.User, bool) {
 	uVal, exists := c.Get(UserContextKey)
 	if !exists {
 		return nil, false
 	}
-	u, ok := uVal.(*user.User)
+	u, ok := uVal.(*identity.User)
 	return u, ok
 }

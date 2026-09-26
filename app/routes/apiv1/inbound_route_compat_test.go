@@ -1,16 +1,16 @@
 package apiv1
 
 import (
-	dnsprobe "github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/dns"
 	"bytes"
 	"context"
 	"encoding/json"
+	dnsprobe "github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/dns"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
+	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

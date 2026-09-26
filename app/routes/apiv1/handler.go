@@ -2,20 +2,21 @@ package apiv1
 
 import (
 	"context"
+
 	"github.com/SealinGp/sing-box-easy/app/bootstrap"
-	"github.com/SealinGp/sing-box-easy/app/pkg/configuration"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
-	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/install"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
@@ -26,17 +27,18 @@ import (
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
 	system                *system.Service
-	installationModule    *installer.Service
-	trafficServiceModule  *trafficflow.Service
+	installationModule    *install.Service
+	trafficServiceModule  *traffic.Service
 	settingsServiceModule *settings.Service
 	diagnosticsModule     *diagnostics.Service
 	outboundsModule       *outbounds.Service
-	configurationModule   *configuration.Service
+	configurationModule   *sections.Service
+	configServiceModule   *config.Service
 	subscriptions         *subscription.Service
 	configManager         *config.Manager
-	serviceController     *service.Controller
+	serviceController     *singbox.Controller
 	schedulerHandler      *schedulerHandler
-	userManager           user.UserManager
+	userManager           identity.UserManager
 	updater               *appupdate.Updater
 	githubAuth            *githubauth.Manager
 	// authEnabled is the resolved login requirement (server.auth × platform).
@@ -44,7 +46,7 @@ type Handler struct {
 	authEnabled bool
 	// systemType is the detected distribution family, probed once at startup.
 	// It drives both the auth default and the frontend's navigation layout.
-	systemType service.SystemType
+	systemType string
 }
 
 func NewHandler(m *bootstrap.Modules) *Handler {
@@ -56,6 +58,7 @@ func NewHandler(m *bootstrap.Modules) *Handler {
 		diagnosticsModule:     m.Diagnostics,
 		outboundsModule:       m.Outbounds,
 		configurationModule:   m.Configuration,
+		configServiceModule:   m.ConfigService,
 		subscriptions:         m.SubscriptionManager,
 		configManager:         m.ConfigManager,
 		serviceController:     m.ServiceController,
@@ -63,7 +66,7 @@ func NewHandler(m *bootstrap.Modules) *Handler {
 		updater:               m.Updater,
 		githubAuth:            m.GithubAuth,
 		authEnabled:           m.AuthEnabled,
-		systemType:            m.SystemType,
+		systemType:            string(m.SystemType),
 		schedulerHandler:      newSchedulerHandler(m.SubscriptionManager),
 	}
 }

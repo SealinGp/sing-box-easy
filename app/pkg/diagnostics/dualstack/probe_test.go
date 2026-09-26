@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 type fakeResolver struct {

@@ -16,7 +16,7 @@ func (s *Service) ConfigureProbes(e *xorm.Engine, settings *settings.ManagerXORM
 	if err := s.probeStore.Init(); err != nil {
 		return err
 	}
-	s.probeRunner = subprobe.NewRunner(s.probeStore, &probeEnvironment{subscriptions: s, configManager: s.configManager, settings: settings})
+	s.probeRunner = probe.NewRunner(s.probeStore, &probeEnvironment{subscriptions: s, configManager: s.configManager, settings: settings})
 	return nil
 }
 func (s *Service) StartBackground(cron string) error {

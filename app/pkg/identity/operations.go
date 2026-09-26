@@ -1,4 +1,4 @@
-package user
+package identity
 
 import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"

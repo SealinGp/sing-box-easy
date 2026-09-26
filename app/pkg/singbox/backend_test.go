@@ -1,9 +1,11 @@
-package service
+package singbox
 
 import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 )
 
 func TestParseProcStatStartTicks(t *testing.T) {
@@ -146,7 +148,7 @@ func TestFilterSyslogLinesExcludesPanelOwnLines(t *testing.T) {
 func TestHasProcdInitScriptNonOpenwrt(t *testing.T) {
 	// On non-OpenWrt system types the procd backend must never be selected,
 	// regardless of what exists on disk.
-	for _, st := range []SystemType{SystemDebian, SystemUnknown} {
+	for _, st := range []sysinfo.SystemType{sysinfo.SystemDebian, sysinfo.SystemUnknown} {
 		if hasProcdInitScript(st) {
 			t.Errorf("hasProcdInitScript(%s) = true, want false", st)
 		}

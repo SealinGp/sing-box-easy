@@ -3,7 +3,7 @@ package apiv1
 import (
 	"context"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"

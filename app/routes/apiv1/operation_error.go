@@ -3,9 +3,9 @@ package apiv1
 import (
 	"context"
 	"errors"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
@@ -17,11 +17,11 @@ func respondOperationError(ctx context.Context, c *app.RequestContext, err error
 	}
 	code := CodeInternalError
 	switch {
-	case errors.Is(err, noderules.ErrNotFound):
+	case errors.Is(err, rules.ErrNotFound):
 		code = CodeNotFound
-	case errors.Is(err, noderules.ErrInvalidInput):
+	case errors.Is(err, rules.ErrInvalidInput):
 		code = CodeValidationError
-	case errors.Is(err, noderules.ErrDuplicateName), errors.Is(err, noderules.ErrFallbackProtected):
+	case errors.Is(err, rules.ErrDuplicateName), errors.Is(err, rules.ErrFallbackProtected):
 		code = CodeConflict
 	}
 	var e *fault.Error

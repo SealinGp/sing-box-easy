@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
+	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/route/param"
 )
 
 func TestValidateConfigDelegatesNewDNSActionsToInstalledCore(t *testing.T) {
@@ -68,5 +70,58 @@ func TestGetConfigReturnsUnknownFieldsInsideResponseEnvelope(t *testing.T) {
 	}
 	if _, ok := response.Data["future_section"]; !ok {
 		t.Fatalf("unknown top-level field was lost: %s", requestContext.Response.Body())
+	}
+}
+
+// emptyVersionStore is a history with no versions, behaving like
+// history.StoreXORM does for an id it does not have.
+type emptyVersionStore struct{}
+
+func (emptyVersionStore) Save([]byte) (int64, error)             { return 1, nil }
+func (emptyVersionStore) List() ([]configpkg.VersionInfo, error) { return nil, nil }
+func (emptyVersionStore) Prune(int) error                        { return nil }
+func (emptyVersionStore) DeleteBatch(ids []int64) (int64, error) { return 0, nil }
+func (emptyVersionStore) Get(id int64) ([]byte, error) {
+	return nil, fmt.Errorf("config version %d: %w", id, configpkg.ErrVersionNotFound)
+}
+func (emptyVersionStore) Delete(id int64) error {
+	return fmt.Errorf("config version %d: %w", id, configpkg.ErrVersionNotFound)
+}
+
+// The version endpoints moved their id and not-found handling into
+// config.Service. These are the response codes they returned before the move.
+func TestConfigVersionEndpointsKeepTheirResponseCodes(t *testing.T) {
+	manager := configpkg.NewManager(filepath.Join(t.TempDir(), "config.json"), "sing-box", "")
+	manager.SetVersionStore(emptyVersionStore{})
+	handler := testHandler(&Handler{configManager: manager})
+
+	cases := []struct {
+		name string
+		call func(context.Context, *app.RequestContext)
+		id   string
+		want Code
+	}{
+		{"get missing version", handler.GetConfigVersion, "42", CodeNotFound},
+		{"get unparsable id", handler.GetConfigVersion, "abc", CodeBadRequest},
+		{"get non-positive id", handler.GetConfigVersion, "0", CodeBadRequest},
+		{"delete missing version", handler.DeleteConfigVersion, "42", CodeNotFound},
+		{"delete non-positive id", handler.DeleteConfigVersion, "-3", CodeBadRequest},
+		{"restore missing version", handler.RollbackToConfigVersion, "42", CodeInternalError},
+		{"restore unparsable id", handler.RollbackToConfigVersion, "x", CodeBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			requestContext := app.NewContext(0)
+			requestContext.Params = append(requestContext.Params, param.Param{Key: "id", Value: tc.id})
+			tc.call(context.Background(), requestContext)
+
+			var response BasicResponse[any]
+			if err := json.Unmarshal(requestContext.Response.Body(), &response); err != nil {
+				t.Fatalf("response is not valid JSON: %v (%s)", err, requestContext.Response.Body())
+			}
+			if response.Code != tc.want {
+				t.Errorf("code = %d (%s), want %d", response.Code, response.Msg, tc.want)
+			}
+		})
 	}
 }

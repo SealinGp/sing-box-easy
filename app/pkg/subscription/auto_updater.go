@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/nodetag"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/autoupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
@@ -28,13 +29,13 @@ import (
 // an interface (not the concrete manager) so the updater stays testable and the
 // rules feature can be absent (nil) without breaking subscription updates.
 type NodeRulesProvider interface {
-	ListFilters() ([]*noderules.Filter, error)
-	ListGroups() ([]*noderules.Group, error)
+	ListFilters() ([]*rules.Filter, error)
+	ListGroups() ([]*rules.Group, error)
 }
 
 // Service handles automatic subscription updates
 type Service struct {
-	probeRunner      *subprobe.Runner
+	probeRunner      *probe.Runner
 	probeStore       *repo.ProbeStore
 	settingsManager  *settings.ManagerXORM
 	repository       repo.Repository
@@ -277,7 +278,7 @@ func (au *Service) updateSubscription(ctx context.Context, sub *Subscription) (r
 	// honoring the per-subscription fetch strategy (direct / clean-DNS / proxy)
 	// for censored networks.
 	lines := []string{sub.URL}
-	newNodes, meta, err := au.sublinkManager.Resolve(ctx, lines, sublink.FetchOptions{
+	newNodes, meta, err := au.sublinkManager.Resolve(ctx, lines, feed.FetchOptions{
 		Mode:     sub.FetchMode,
 		ProxyURL: sub.ProxyURL,
 	})
@@ -427,7 +428,7 @@ func fingerprintLegacyTag(tag, subID string) string {
 	if !strings.Contains(endpoint, ":") && !strings.Contains(endpoint, ".") {
 		return ""
 	}
-	fp := config.FingerprintEndpointKey(endpoint)
+	fp := nodetag.FingerprintEndpointKey(endpoint)
 	if fp == "" || fp == endpoint {
 		return ""
 	}
@@ -471,14 +472,14 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 			Type:    n.Type,
 			Options: n.Options,
 		}
-		if svr := config.GetOutboundServer(outbound); svr != "" {
+		if svr := nodetag.GetOutboundServer(outbound); svr != "" {
 			subServers[svr] = struct{}{}
 		}
-		if config.GetOutboundServerKey(outbound) == "" {
+		if nodetag.GetOutboundServerKey(outbound) == "" {
 			continue
 		}
 		// Final tag = "<name> <endpoint-fingerprint> | <subID>".
-		taggedTag := config.GenerateFingerprintedTag(n.Tag, outbound) + suffix
+		taggedTag := nodetag.GenerateFingerprintedTag(n.Tag, outbound) + suffix
 		outbound.Tag = taggedTag
 		// Two feed nodes with the same name AND endpoint are genuinely
 		// indistinguishable; collapsing them here is correct (one survives).
@@ -533,7 +534,7 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 		}
 		// Only outbounds whose server is present in this feed are candidates,
 		// matching the historical host-based ownership heuristic.
-		if _, ok := subServers[config.GetOutboundServer(outbound)]; !ok {
+		if _, ok := subServers[nodetag.GetOutboundServer(outbound)]; !ok {
 			continue
 		}
 
@@ -543,7 +544,7 @@ func (au *Service) diffNodes(cfg *config.SingBoxConfig, sub *Subscription, newNo
 		// form: the bare tag, the tag plus this outbound's own fingerprint, and
 		// the tag with an endpoint it already spells out converted.
 		candidates := []string{outbound.Tag + suffix}
-		if fp := config.FingerprintEndpointKey(config.GetOutboundServerKey(outbound)); fp != "" {
+		if fp := nodetag.FingerprintEndpointKey(nodetag.GetOutboundServerKey(outbound)); fp != "" {
 			candidates = append(candidates, outbound.Tag+" "+fp+suffix)
 		}
 		if migrated := fingerprintLegacyTag(outbound.Tag+suffix, sub.ID); migrated != "" {
@@ -708,5 +709,5 @@ func (s *Service) lockSubscription(id string) func() {
 }
 
 type feedResolver interface {
-	Resolve(context.Context, []string, sublink.FetchOptions) ([]*node.SubNode, *sublink.FetchMeta, error)
+	Resolve(context.Context, []string, feed.FetchOptions) ([]*node.SubNode, *feed.FetchMeta, error)
 }

@@ -1,4 +1,4 @@
-package service
+package singbox
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/platform/process"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +25,7 @@ import (
 // Controller's lifecycleMu does that across all backends, so concurrent
 // Start/Stop/Restart calls never interleave.
 type processBackend struct {
-	systemType  SystemType
+	systemType  sysinfo.SystemType
 	singBoxPath string
 	// configPath returns the path of the active sing-box config file.
 	configPath func() string
@@ -36,7 +37,7 @@ type processBackend struct {
 	pm *process.ProcessManager
 }
 
-func newProcessBackend(systemType SystemType, singBoxPath string, configPath, logPath func() string) *processBackend {
+func newProcessBackend(systemType sysinfo.SystemType, singBoxPath string, configPath, logPath func() string) *processBackend {
 	return &processBackend{
 		systemType:  systemType,
 		singBoxPath: singBoxPath,

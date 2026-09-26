@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
 
 // End-to-end over the shape a real OpenWrt gateway runs: a direct inbound named

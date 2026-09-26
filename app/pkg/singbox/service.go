@@ -1,4 +1,4 @@
-package service
+package singbox
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/platform/openwrtnet"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +27,7 @@ const hostNetStateFile = ".openwrt-net-state.json"
 type Controller struct {
 	configManager *config.Manager
 	singBoxPath   string
-	systemType    SystemType
+	systemType    sysinfo.SystemType
 	backend       Backend
 
 	// hostNet applies the OpenWrt-side integration a TUN config needs — a
@@ -57,7 +58,7 @@ func NewController(configManager *config.Manager, singBoxPath string) *Controlle
 		singBoxPath = "sing-box"
 	}
 
-	systemType := DetectSystemType()
+	systemType := sysinfo.DetectSystemType()
 	controller := &Controller{
 		configManager: configManager,
 		singBoxPath:   singBoxPath,
@@ -72,7 +73,7 @@ func NewController(configManager *config.Manager, singBoxPath string) *Controlle
 	// State lives beside config.json so it survives a panel restart while
 	// sing-box keeps running.
 	controller.hostNet = openwrtnet.NewManager(
-		systemType == SystemOpenWRT,
+		systemType == sysinfo.SystemOpenWRT,
 		filepath.Join(filepath.Dir(configManager.GetConfigPath()), hostNetStateFile),
 	)
 
@@ -103,7 +104,7 @@ func (c *Controller) BackendKind() string {
 }
 
 // SystemType reports the detected distribution family.
-func (c *Controller) SystemType() SystemType {
+func (c *Controller) SystemType() sysinfo.SystemType {
 	return c.systemType
 }
 

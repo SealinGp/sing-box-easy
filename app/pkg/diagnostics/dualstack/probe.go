@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/integrations/clashapi"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
 
 // Limits on what one request may ask for.

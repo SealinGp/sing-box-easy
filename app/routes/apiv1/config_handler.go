@@ -5,16 +5,16 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // GetConfig returns the current configuration
 func (h *Handler) GetConfig(ctx context.Context, c *app.RequestContext) {
-	document, err := h.configManager.GetConfigDocument()
+	document, err := h.configDocument().Current()
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 
@@ -24,9 +24,9 @@ func (h *Handler) GetConfig(ctx context.Context, c *app.RequestContext) {
 // GetRawConfig returns the active document directly for exact export and raw
 // editor use. Unlike GetConfig, this endpoint has no response envelope.
 func (h *Handler) GetRawConfig(ctx context.Context, c *app.RequestContext) {
-	document, err := h.configManager.GetConfigDocument()
+	document, err := h.configDocument().Current()
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 	c.Data(consts.StatusOK, "application/json; charset=utf-8", document.Raw)
@@ -34,8 +34,8 @@ func (h *Handler) GetRawConfig(ctx context.Context, c *app.RequestContext) {
 
 // UpdateConfig saves the provided configuration
 func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
-	if err := h.configManager.SaveRawConfig(ctx, c.Request.Body()); err != nil {
-		respondConfigError(ctx, c, err)
+	if err := h.configDocument().Save(ctx, c.Request.Body()); err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
 
@@ -46,8 +46,8 @@ func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
 
 // ValidateConfig validates the provided configuration
 func (h *Handler) ValidateConfig(ctx context.Context, c *app.RequestContext) {
-	if err := h.configManager.ValidateRawConfig(ctx, c.Request.Body()); err != nil {
-		respondConfigError(ctx, c, err)
+	if err := h.configDocument().Validate(ctx, c.Request.Body()); err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
 
@@ -59,9 +59,9 @@ func (h *Handler) ValidateConfig(ctx context.Context, c *app.RequestContext) {
 
 // GetBackupConfig returns the backup configuration
 func (h *Handler) GetBackupConfig(ctx context.Context, c *app.RequestContext) {
-	document, err := h.configManager.GetBackupDocument()
+	document, err := h.configDocument().Backup()
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 
@@ -70,8 +70,8 @@ func (h *Handler) GetBackupConfig(ctx context.Context, c *app.RequestContext) {
 
 // RollbackConfig restores the most recent historical configuration.
 func (h *Handler) RollbackConfig(ctx context.Context, c *app.RequestContext) {
-	if err := h.configManager.Rollback(); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+	if err := h.configDocument().RestoreLatest(); err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
 
@@ -82,9 +82,9 @@ func (h *Handler) RollbackConfig(ctx context.Context, c *app.RequestContext) {
 
 // ListConfigVersions returns historical config metadata (newest first).
 func (h *Handler) ListConfigVersions(ctx context.Context, c *app.RequestContext) {
-	versions, err := h.configManager.ListVersions()
+	versions, err := h.configDocument().ListHistory()
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, map[string]any{"versions": versions})
@@ -92,18 +92,9 @@ func (h *Handler) ListConfigVersions(ctx context.Context, c *app.RequestContext)
 
 // GetConfigVersion returns the full config of a single historical version.
 func (h *Handler) GetConfigVersion(ctx context.Context, c *app.RequestContext) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || id <= 0 {
-		respErr(ctx, c, CodeBadRequest, "invalid version id")
-		return
-	}
-	document, err := h.configManager.GetVersionDocument(id)
+	document, err := h.configDocument().HistoryVersion(versionIDParam(c))
 	if err != nil {
-		if errors.Is(err, config.ErrVersionNotFound) {
-			respErr(ctx, c, CodeNotFound, err.Error())
-		} else {
-			respErr(ctx, c, CodeInternalError, err.Error())
-		}
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, document)
@@ -112,9 +103,9 @@ func (h *Handler) GetConfigVersion(ctx context.Context, c *app.RequestContext) {
 // GetCoreInfo reports the installed core version and structured-editor feature
 // gates. Raw config validation remains available for newer, untested versions.
 func (h *Handler) GetCoreInfo(ctx context.Context, c *app.RequestContext) {
-	capabilities, err := h.configManager.CoreCapabilities(ctx)
+	capabilities, err := h.configDocument().CoreInfo(ctx)
 	if err != nil {
-		respErr(ctx, c, CodeServiceError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, map[string]any{
@@ -147,17 +138,8 @@ func respondConfigError(ctx context.Context, c *app.RequestContext, err error) {
 // DeleteConfigVersion removes a single historical version by id. This only
 // affects history; the live config is untouched.
 func (h *Handler) DeleteConfigVersion(ctx context.Context, c *app.RequestContext) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || id <= 0 {
-		respErr(ctx, c, CodeBadRequest, "invalid version id")
-		return
-	}
-	if err := h.configManager.DeleteVersion(id); err != nil {
-		if errors.Is(err, config.ErrVersionNotFound) {
-			respErr(ctx, c, CodeNotFound, err.Error())
-		} else {
-			respErr(ctx, c, CodeInternalError, err.Error())
-		}
+	if err := h.configDocument().DeleteHistory(versionIDParam(c)); err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, map[string]any{
@@ -177,20 +159,9 @@ func (h *Handler) DeleteConfigVersionsBatch(ctx context.Context, c *app.RequestC
 		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
 		return
 	}
-	if len(req.IDs) == 0 {
-		respErr(ctx, c, CodeBadRequest, "ids array is required and cannot be empty")
-		return
-	}
-	for _, id := range req.IDs {
-		if id <= 0 {
-			respErr(ctx, c, CodeBadRequest, "ids must be positive integers")
-			return
-		}
-	}
-
-	deleted, err := h.configManager.DeleteVersions(req.IDs)
+	deleted, err := h.configDocument().DeleteHistoryBatch(req.IDs)
 	if err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, map[string]any{
@@ -201,16 +172,22 @@ func (h *Handler) DeleteConfigVersionsBatch(ctx context.Context, c *app.RequestC
 
 // RollbackToConfigVersion restores a specific historical version to live config.
 func (h *Handler) RollbackToConfigVersion(ctx context.Context, c *app.RequestContext) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || id <= 0 {
-		respErr(ctx, c, CodeBadRequest, "invalid version id")
-		return
-	}
-	if err := h.configManager.RollbackToVersion(id); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+	if err := h.configDocument().RestoreVersion(versionIDParam(c)); err != nil {
+		respondOperationError(ctx, c, err)
 		return
 	}
 	respOK(ctx, c, map[string]any{
 		"message": "configuration rolled back to selected version",
 	})
+}
+
+// versionIDParam reads the :id path segment. An unparsable id becomes 0, which
+// the service rejects with the same "invalid version id" a negative one gets —
+// the range rule lives there, not in the transport.
+func versionIDParam(c *app.RequestContext) int64 {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }
