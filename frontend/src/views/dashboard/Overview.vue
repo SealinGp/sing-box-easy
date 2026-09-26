@@ -102,7 +102,7 @@ onMounted(load)
       <div v-for="(card, index) in renderedCards" :key="card.id" class="overview-tile"
         v-bind="reorder.rowAttrs(index)"
         :role="enabled ? 'listitem' : undefined"
-        :class="[card.id === 'route-topology' ? 'md:col-span-2 lg:col-span-3' : '', enabled ? 'is-arranging' : '']">
+        :class="[card.id === 'route-topology' ? 'is-wide md:col-span-2 lg:col-span-3' : '', enabled ? 'is-arranging' : '']">
         <div
           class="overview-tile-surface"
           v-bind="enabled ? reorder.surfaceAttrs(index) : reorder.activationAttrs(index)"
@@ -132,10 +132,20 @@ onMounted(load)
 .overview-sort-move {
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.overview-grid { isolation: isolate; }
+/* Cards keep their natural height — a card with little in it stays short —
+   but none grows past --overview-card-max; beyond that it scrolls. Frame
+   cards (header + .overview-card-body) scroll only their body, so the title
+   and actions stay in view. One shared cap keeps a long subscription list
+   from towering over its row. The full-width flow diagram is alone in its
+   row and keeps a larger cap. */
+.overview-grid {
+  isolation: isolate;
+  --overview-card-max: 26rem;
+}
 .overview-tile { min-width: 0; }
+.overview-tile.is-wide { --overview-card-max: 32rem; }
 .overview-card {
-  max-height: 32rem;
+  max-height: var(--overview-card-max);
   overflow: auto;
 }
 .overview-card.overview-card-frame { overflow: hidden; }
