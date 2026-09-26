@@ -3,10 +3,10 @@
 // Inbound (server) options, keyed by the `type` field of an entry in `inbounds`.
 //
 // Reflected from github.com/sagernet/sing-box v1.12.12 — the same option structs
-// app/pkg/config/registry.go feeds to sing-box's own config parser, so this is
+// app/pkg/singbox/config/registry.go feeds to sing-box's own config parser, so this is
 // what the running binary actually accepts.
 //
-// Regenerate with:  go generate ./app/pkg/config/
+// Regenerate with:  go generate ./app/pkg/singbox/config/
 //
 // This file says which fields EXIST and what shape they are. It deliberately
 // says nothing about which ones matter, what they are called in the UI, or what

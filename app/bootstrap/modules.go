@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
-	"github.com/SealinGp/sing-box-easy/app/pkg/configuration"
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
@@ -12,16 +12,16 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config/history"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/history"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 )
 
@@ -33,7 +33,7 @@ type Modules struct {
 	SettingsService     *settings.Service
 	Diagnostics         *diagnostics.Service
 	Outbounds           *outbounds.Service
-	Configuration       *configuration.Service
+	Configuration       *sections.Service
 	ConfigManager       *config.Manager
 	ServiceController   *singbox.Controller
 	SubscriptionManager *subscription.Service
@@ -137,7 +137,7 @@ func New(
 		SettingsService:     settings.NewService(settingsManager, configManager, githubAuth.Configured),
 		Diagnostics:         diagnostics.New(configManager, serviceController),
 		Outbounds:           outbounds.New(configManager, nodeRulesManager),
-		Configuration:       configuration.New(configManager),
+		Configuration:       sections.New(configManager),
 		ConfigManager:       configManager,
 		ServiceController:   serviceController,
 		SubscriptionManager: subscriptionManager,

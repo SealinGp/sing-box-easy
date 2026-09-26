@@ -4,8 +4,8 @@ package diagnostics
 import (
 	"encoding/json"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
 
 type Service struct {

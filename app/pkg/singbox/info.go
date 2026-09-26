@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/core"
 )
 
 // ServiceInfo is a richer status snapshot than the bare running bool returned by
@@ -37,7 +37,7 @@ func (c *Controller) Version() string {
 	if err != nil {
 		return "unknown"
 	}
-	return config.DisplayCoreVersion(string(output))
+	return core.DisplayCoreVersion(string(output))
 }
 
 // Info returns an enriched status snapshot. It never fails just because the

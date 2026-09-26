@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/nodetag"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/nodetag"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed/node"
 )
 

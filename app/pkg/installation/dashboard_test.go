@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
 
 func TestPersistExternalUIPreservesNewerConfig(t *testing.T) {

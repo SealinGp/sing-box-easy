@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/core"
 	"go.uber.org/zap"
 )
 
@@ -291,7 +292,7 @@ func (m *Manager) GetInstallStatus() (bool, string, error) {
 	}
 
 	// Parse version from output
-	version := config.DisplayCoreVersion(string(output))
+	version := core.DisplayCoreVersion(string(output))
 	return true, version, nil
 }
 

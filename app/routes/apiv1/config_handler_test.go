@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/config"
+	configpkg "github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

@@ -3,9 +3,9 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/internal/feed"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 )

@@ -30,7 +30,7 @@ Every copy drifted:
 | Route rule actions | 9 of ~45 fields across 6 of the 7 actions; `direct` was not offered at all. The ten dial options were shown only under `route-options`, though sing-box accepts them on `route` too. |
 | `registry.go` itself | Spelled HTTP/3 DNS `"http3"`; sing-box's constant is `"h3"`. A valid config could not be parsed, and a saved one could not start. |
 
-The authoritative list already exists in this repo — `app/pkg/config/registry.go`
+The authoritative list already exists in this repo — `app/pkg/singbox/config/registry.go`
 maps each type to a real `option.*Options` struct from the pinned sing-box. The
 pattern below reads those structs instead of copying them.
 
@@ -297,11 +297,11 @@ carries X's removals, so both must gate like X.
 
 ### Add a type to an existing domain
 
-1. Add a case to the matching `Create*Options` in `app/pkg/config/registry.go`.
+1. Add a case to the matching `Create*Options` in `app/pkg/singbox/config/registry.go`.
    Use the `C.Type*` / `C.DNSType*` constants, never a string literal — that is
    how `"http3"` diverged from `"h3"`.
 2. Add it to `config.InboundTypes` / `DNSTypes` / `OutboundTypes`.
-3. `go generate ./app/pkg/config/`
+3. `go generate ./app/pkg/singbox/config/`
 4. Optionally curate in the domain's `*Fields.ts`. Uncurated is valid.
 
 `Test*TypesAreRegistered` fails if the list and the registry disagree. The
@@ -368,7 +368,7 @@ disappear from a rule that uses it.
 
 ### Add a domain (`endpoint`, `service`)
 
-1. `app/pkg/config/<domain>_types.go` — exported list + `IsKnown*Type`, mirroring
+1. `app/pkg/singbox/config/<domain>_types.go` — exported list + `IsKnown*Type`, mirroring
    `outbound_types.go`.
 2. A `Test*TypesAreRegistered` + round-trip test.
 3. A row in `domains()` in `cmd/gen-option-schema/main.go`.
@@ -378,8 +378,8 @@ disappear from a rule that uses it.
 ### Commands
 
 ```bash
-go generate ./app/pkg/config/     # regenerate all inventories
-go test ./app/pkg/config/         # registry/list consistency + round-trips
+go generate ./app/pkg/singbox/config/     # regenerate all inventories
+go test ./app/pkg/singbox/config/         # registry/list consistency + round-trips
 cd frontend && bun test           # schema decision rules
 cd frontend && bun run build      # vue-tsc catches curation naming a dead field
 ```
@@ -553,8 +553,8 @@ Each of these cost real time.
 
 | Path | Role |
 |---|---|
-| `app/pkg/config/registry.go` | Type → option struct. The source of truth. |
-| `app/pkg/config/{inbound,dns,outbound,dns_rule_action,route_rule}_types.go` | Exported type lists + classification helpers |
+| `app/pkg/singbox/config/registry.go` | Type → option struct. The source of truth. |
+| `app/pkg/singbox/config/{inbound,dns,outbound,dns_rule_action,route_rule}_types.go` | Exported type lists + classification helpers |
 | `cmd/gen-option-schema/main.go` | Generator: domains table, reflection, emission |
 | `cmd/gen-option-schema/versions.go` | sing-box deprecation table → inventory mapping |
 | `frontend/src/schemas/optionSchema.ts` | Domain-agnostic: tiers, visibility, prune, defaults, version helpers |

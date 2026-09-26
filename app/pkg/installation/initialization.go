@@ -3,8 +3,8 @@ package installation
 import (
 	"context"
 	"encoding/json"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
 
 func (h *Service) GetInitStatus(ctx context.Context) (any, error) {

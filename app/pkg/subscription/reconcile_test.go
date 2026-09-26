@@ -2,8 +2,8 @@ package subscription
 
 import (
 	"context"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 )
 
 func (s *Service) applyChanges(deleted map[string]struct{}, added []config.Outbound, updated map[string]config.Outbound, id string) error {

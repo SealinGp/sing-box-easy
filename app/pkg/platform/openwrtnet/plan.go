@@ -34,7 +34,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/sagernet/sing/common/json"
 )
 

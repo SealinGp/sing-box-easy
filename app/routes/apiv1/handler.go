@@ -3,19 +3,19 @@ package apiv1
 import (
 	"context"
 	"github.com/SealinGp/sing-box-easy/app/bootstrap"
-	"github.com/SealinGp/sing-box-easy/app/pkg/configuration"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
@@ -31,7 +31,7 @@ type Handler struct {
 	settingsServiceModule *settings.Service
 	diagnosticsModule     *diagnostics.Service
 	outboundsModule       *outbounds.Service
-	configurationModule   *configuration.Service
+	configurationModule   *sections.Service
 	subscriptions         *subscription.Service
 	configManager         *config.Manager
 	serviceController     *singbox.Controller

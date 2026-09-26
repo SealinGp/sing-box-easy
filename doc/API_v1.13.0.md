@@ -483,6 +483,6 @@ POST 请求体：
 
 ## 已知约束
 
-- `sing-box check` 只校验协议层字段，不校验 `selector` / `urltest` 的 `outbounds` 列表里是否还有失效 tag。删除 / 订阅更新接口已经在应用层做了清理（见 `app/pkg/config/group_refs.go`），手工 `PUT /config` 时仍需调用方保证一致性。
+- `sing-box check` 只校验协议层字段，不校验 `selector` / `urltest` 的 `outbounds` 列表里是否还有失效 tag。删除 / 订阅更新接口已经在应用层做了清理（见 `app/pkg/singbox/config/outbounds/nodegroup/refs.go`），手工 `PUT /config` 时仍需调用方保证一致性。
 - `Manager.UpdateConfig` 当前没有进程内锁，并发写存在 TOCTOU 窗口。生产部署下应保证仅一个写入入口（前端 + cron 调度器是串行触发）。
 - HTTP 状态码统一为 200。前端务必按 `data.code` 分流。

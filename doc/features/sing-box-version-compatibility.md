@@ -743,7 +743,7 @@ The feature is complete when all of the following are true:
 
 The first implementation slice should touch only:
 
-- `app/pkg/config`: raw document, core adapter, staging validation, and storage;
+- `app/pkg/singbox/config`: raw document, staging validation, and storage;
 - `app/routes/v1_12_12/config_handler.go`: raw validation request path;
 - `app/pkg/service`: shared installed-core adapter;
 - `frontend/src/services/config.ts`: raw validation and capability query;

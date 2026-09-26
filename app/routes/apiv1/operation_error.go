@@ -3,9 +3,9 @@ package apiv1
 import (
 	"context"
 	"errors"
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/outbounds/rules"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds/rules"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
 	"github.com/SealinGp/sing-box-easy/app/pkg/installation/state"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"go.uber.org/zap"
 )
 

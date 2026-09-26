@@ -18,7 +18,7 @@
 // "h3", so a valid config could not be opened and a saved one could not start.
 //
 // The authoritative field list already exists, exactly and version-correctly,
-// in the structs app/pkg/config/registry.go constructs. This reads those
+// in the structs app/pkg/singbox/config/registry.go constructs. This reads those
 // structs and writes them out, so a sing-box upgrade that renames or removes a
 // field becomes a `vue-tsc` failure instead of a form that silently stops
 // editing something.
@@ -46,7 +46,7 @@
 //
 // Usage:
 //
-//	go generate ./app/pkg/config/
+//	go generate ./app/pkg/singbox/config/
 //	go run ./cmd/gen-option-schema
 //	go run ./cmd/gen-option-schema -only DNSServer
 package main
@@ -66,7 +66,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SealinGp/sing-box-easy/app/pkg/config"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
 
 // singBoxModule is the dependency whose version is stamped into the generated
@@ -457,10 +457,10 @@ func render(d domain, deprecations deprecationIndex, table map[string]deprecatio
 // %s
 //
 // Reflected from %s %s — the same option structs
-// app/pkg/config/registry.go feeds to sing-box's own config parser, so this is
+// app/pkg/singbox/config/registry.go feeds to sing-box's own config parser, so this is
 // what the running binary actually accepts.
 //
-// Regenerate with:  go generate ./app/pkg/config/
+// Regenerate with:  go generate ./app/pkg/singbox/config/
 //
 // This file says which fields EXIST and what shape they are. It deliberately
 // says nothing about which ones matter, what they are called in the UI, or what
