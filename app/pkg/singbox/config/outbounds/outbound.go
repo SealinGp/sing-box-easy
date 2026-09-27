@@ -31,6 +31,9 @@ func (h *Service) GetOutbounds(ctx context.Context) (any, error) {
 		// members, so url/interval/tolerance go too. The UI warns rather than
 		// letting the operator spend time on an edit that will not survive.
 		"managed_tags": h.managedOutboundTags(),
+		// Endpoints are valid targets for a route rule's `outbound` and a
+		// detour, so the pickers need their tags too. See EndpointRef.
+		"endpoints": h.endpointRefs(),
 	}
 	return response, nil
 }

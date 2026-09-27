@@ -43,6 +43,7 @@ declare module 'vue' {
     Input: typeof import('./src/components/Input.vue')['default']
     JsonField: typeof import('./src/components/JsonField.vue')['default']
     LabeledField: typeof import('./src/components/LabeledField.vue')['default']
+    LanClientPicker: typeof import('./src/components/LanClientPicker.vue')['default']
     LanguageSwitcher: typeof import('./src/components/LanguageSwitcher.vue')['default']
     List: typeof import('./src/components/List.vue')['default']
     ListField: typeof import('./src/components/ListField.vue')['default']

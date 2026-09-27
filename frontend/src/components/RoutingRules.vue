@@ -11,6 +11,7 @@ import RouteRuleMatchers from './RouteRuleMatchers.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
 import { ALL_MATCHER_KEYS } from '../schemas/routeRuleMatcherFields'
+import { LIST_MATCHER_KEYS } from '../schemas/routeRuleMatcherInventory'
 import {
   ROUTE_RULE_ACTION_TYPE_NAMES,
   applyActionDefaults,
@@ -20,8 +21,8 @@ import {
   isTerminalAction,
   type RouteRuleActionTypeName,
 } from '../schemas/routeRuleActionFields'
-import type { RouteRule, Outbound } from '../types/api'
-import { routeService, outboundService } from '../services'
+import type { RouteRule, Outbound, EndpointRef, CoreInfo } from '../types/api'
+import { routeService, outboundService, configService } from '../services'
 import { useToast } from 'primevue'
 import { useDragReorder } from '../composables/useDragReorder'
 import { useRoute, useRouter } from 'vue-router'
@@ -39,27 +40,32 @@ function toArray<T>(v: T | T[] | undefined | null): T[] | undefined {
 // Input is the raw wire payload (scalar-or-array), output matches RouteRule
 // (post-normalization, arrays only). Cast on entry because the wire shape is
 // intentionally not captured in the TS contract — see the note on RouteRule.
+//
+// Driven by the inventory rather than a hand-kept key list: the list used to
+// name 16 matchers, so any other one loaded as a scalar — e.g.
+// `"source_mac_address": "00:00:00:00:00:00"` — rendered as an empty chips box
+// while still living in the rule. `sniffer` is the one action field that shares
+// the scalar-or-array shape.
+const LIST_KEYS = [...LIST_MATCHER_KEYS, 'sniffer']
+
 function normalizeRouteRule(rule: RouteRule): RouteRule {
   const raw = rule as Record<string, unknown>
-  return {
-    ...rule,
-    inbound: toArray(raw.inbound as string | string[] | undefined),
-    protocol: toArray(raw.protocol as string | string[] | undefined),
-    network: toArray(raw.network as string | string[] | undefined),
-    domain: toArray(raw.domain as string | string[] | undefined),
-    domain_suffix: toArray(raw.domain_suffix as string | string[] | undefined),
-    domain_keyword: toArray(raw.domain_keyword as string | string[] | undefined),
-    domain_regex: toArray(raw.domain_regex as string | string[] | undefined),
-    geosite: toArray(raw.geosite as string | string[] | undefined),
-    source_geoip: toArray(raw.source_geoip as string | string[] | undefined),
-    geoip: toArray(raw.geoip as string | string[] | undefined),
-    ip_cidr: toArray(raw.ip_cidr as string | string[] | undefined),
-    source_ip_cidr: toArray(raw.source_ip_cidr as string | string[] | undefined),
-    source_port: toArray(raw.source_port as number | number[] | undefined),
-    port: toArray(raw.port as number | number[] | undefined),
-    rule_set: toArray(raw.rule_set as string | string[] | undefined),
-    sniffer: toArray(raw.sniffer as string | string[] | undefined),
+  const next: Record<string, unknown> = { ...raw }
+  for (const key of LIST_KEYS) {
+    if (key in raw) next[key] = toArray(raw[key])
   }
+  return next as RouteRule
+}
+
+/** A copy whose list values are fresh arrays, so edits cannot reach `rules`. */
+function copyRouteRule(rule: RouteRule): RouteRule {
+  const raw = rule as Record<string, unknown>
+  const next: Record<string, unknown> = { ...raw }
+  for (const key of LIST_KEYS) {
+    const value = raw[key]
+    if (Array.isArray(value)) next[key] = [...value]
+  }
+  return next as RouteRule
 }
 
 const toast = useToast()
@@ -69,6 +75,25 @@ const { t } = useI18n()
 const loading = ref(false)
 const rules = ref<RouteRule[]>([])
 const outbounds = ref<Outbound[]>([])
+const endpoints = ref<EndpointRef[]>([])
+
+/**
+ * What the installed sing-box can decode, from `GET /core` — computed on the
+ * backend by `core.CapabilitiesForCoreVersion`. Gates source_mac_address /
+ * source_hostname (1.14+). `undefined` until loaded, or when the backend
+ * predates /core; the matchers editor then withholds the gated fields.
+ */
+const coreCapabilities = ref<CoreInfo['capabilities'] | undefined>(undefined)
+
+async function fetchCoreCapabilities() {
+  try {
+    const { data } = await configService.getCoreInfo()
+    coreCapabilities.value = data.capabilities
+  } catch (err) {
+    // Non-fatal: the gated matchers stay hidden, everything else works.
+    console.error('Failed to fetch core capabilities:', err)
+  }
+}
 
 // State for dialog
 const showAddRuleDialog = ref(false)
@@ -119,6 +144,7 @@ const fetchOutbounds = async () => {
   try {
     const { data } = await outboundService.getOutbounds()
     outbounds.value = data.outbounds || []
+    endpoints.value = data.endpoints || []
   } catch (err: any) {
     console.error('Failed to fetch outbounds:', err)
   }
@@ -336,9 +362,15 @@ const flowOutcome = computed(() => {
 /** Only route/reject/hijack-dns stop matching — route.go:478-484. */
 const flowContinues = computed(() => !isTerminalAction(currentAction.value))
 
-/** Outbound tags that actually exist, for the validation `sing-box check` skips. */
+/**
+ * Tags a rule may route to, for the validation `sing-box check` skips.
+ * Endpoints count: `"outbound": "tparts-endpoint"` naming a wireguard endpoint
+ * is a working rule, and leaving them out rejected it as unknown on save.
+ */
 const knownOutboundTags = computed(() =>
-  outbounds.value.map((o) => o.tag || '').filter(Boolean),
+  [...outbounds.value.map((o) => o.tag || ''), ...endpoints.value.map((e) => e.tag)].filter(
+    Boolean,
+  ),
 )
 
 const dialogVisible = computed({
@@ -357,28 +389,7 @@ function startEditRule(index: number, rule: RouteRule) {
   // Ensure add dialog is closed
   showAddRuleDialog.value = false
 
-  // Deep copy the rule to avoid mutations
-  const ruleCopy: RouteRule = {
-    ...rule,
-    // Common matching criteria
-    inbound: rule.inbound ? [...rule.inbound] : undefined,
-    protocol: rule.protocol ? [...rule.protocol] : undefined,
-    network: rule.network ? [...rule.network] : undefined,
-    domain: rule.domain ? [...rule.domain] : undefined,
-    domain_suffix: rule.domain_suffix ? [...rule.domain_suffix] : undefined,
-    domain_keyword: rule.domain_keyword ? [...rule.domain_keyword] : undefined,
-    domain_regex: rule.domain_regex ? [...rule.domain_regex] : undefined,
-    geosite: rule.geosite ? (Array.isArray(rule.geosite) ? [...rule.geosite] : rule.geosite) : undefined,
-    source_geoip: rule.source_geoip ? [...rule.source_geoip] : undefined,
-    geoip: rule.geoip ? (Array.isArray(rule.geoip) ? [...rule.geoip] : rule.geoip) : undefined,
-    ip_cidr: rule.ip_cidr ? [...rule.ip_cidr] : undefined,
-    source_ip_cidr: rule.source_ip_cidr ? [...rule.source_ip_cidr] : undefined,
-    source_port: rule.source_port ? [...rule.source_port] : undefined,
-    port: rule.port ? [...rule.port] : undefined,
-    rule_set: rule.rule_set ? (Array.isArray(rule.rule_set) ? [...rule.rule_set] : rule.rule_set) : undefined,
-    // Sniffer field can be string[] or string
-    sniffer: rule.sniffer ? (Array.isArray(rule.sniffer) ? [...rule.sniffer] : rule.sniffer) : undefined,
-  }
+  const ruleCopy = copyRouteRule(rule)
 
   matchersKey.value++
   editingRule.value = { index, rule: ruleCopy }
@@ -485,6 +496,7 @@ function consumeSeedFromQuery() {
 onMounted(() => {
   fetchRouteRules()
   fetchOutbounds()
+  fetchCoreCapabilities()
   consumeSeedFromQuery()
 })
 </script>
@@ -611,7 +623,13 @@ onMounted(() => {
 
           <!-- Remounted per dialog open (:key) so the collapse state is decided
                from the rule as loaded, not from the previous edit. -->
-          <RouteRuleMatchers :key="matchersKey" v-model="activeRule" />
+          <!-- The key also changes when /core answers, so a dialog opened
+               before the capabilities arrived re-derives its gated fields. -->
+          <RouteRuleMatchers
+            :key="`${matchersKey}-${coreCapabilities ? 'core' : 'nocore'}`"
+            v-model="activeRule"
+            :capabilities="coreCapabilities"
+          />
         </section>
 
         <section class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">

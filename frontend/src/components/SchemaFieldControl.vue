@@ -25,6 +25,7 @@ import ChipsField from './ChipsField.vue'
 import JsonField from './JsonField.vue'
 import UsersEditor from './UsersEditor.vue'
 import HostsEditor from './HostsEditor.vue'
+import LanClientPicker from './LanClientPicker.vue'
 import { MultiSelect, Select } from '../volt'
 import type { ResolvedField } from '../schemas/optionSchema'
 import type { UserFieldSpec } from '../schemas/inboundFields'
@@ -54,7 +55,7 @@ const { t } = useI18n()
  * until the next validate.
  */
 const outboundsStore = useOutboundsStore()
-const { outbounds } = storeToRefs(outboundsStore)
+const { outbounds, endpoints } = storeToRefs(outboundsStore)
 
 /**
  * DNS server tags for a rule's `server`. Same contract as the outbound store
@@ -187,6 +188,15 @@ const outboundOptions = computed(() => {
   for (const outbound of outbounds.value) {
     if (outbound.tag) options.push({ value: outbound.tag, label: outbound.tag })
   }
+  // Endpoints dial by tag exactly like an outbound. Labelled, because the two
+  // are edited in different places and a bare tag does not say which.
+  for (const endpoint of endpoints.value) {
+    if (!endpoint.tag || options.some((o) => o.value === endpoint.tag)) continue
+    options.push({
+      value: endpoint.tag,
+      label: t('common.endpointTag', { tag: endpoint.tag, type: endpoint.type || 'endpoint' }),
+    })
+  }
   // A detour naming an outbound that was since renamed would otherwise vanish
   // from the picker while still living in the config, and the next save would
   // look like the operator had cleared it. Surface it instead.
@@ -262,6 +272,15 @@ function onNumber(raw: string | number) {
     :placeholder="field.placeholder"
     :disabled="disabled"
     @update:modelValue="onChips"
+  />
+
+  <LanClientPicker
+    v-else-if="field.control === 'lan-mac' || field.control === 'lan-hostname'"
+    :mode="field.control === 'lan-mac' ? 'mac' : 'hostname'"
+    :value="value"
+    :placeholder="field.placeholder"
+    :disabled="disabled"
+    @change="(v) => emit('change', v)"
   />
 
   <MultiSelect

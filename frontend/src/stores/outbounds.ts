@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { Outbound } from '../types/api'
+import type { EndpointRef, Outbound } from '../types/api'
 import { outboundService } from '../services'
 
 export const useOutboundsStore = defineStore('outbounds', () => {
@@ -10,6 +10,11 @@ export const useOutboundsStore = defineStore('outbounds', () => {
    * edit to one of these does not survive the next rule apply.
    */
   const managedTags = ref<string[]>([])
+  /**
+   * Top-level endpoints. Kept apart from `outbounds` because they are not
+   * editable through the outbounds form, but offered wherever a tag is picked.
+   */
+  const endpoints = ref<EndpointRef[]>([])
   const loading = ref(false)
 
   // Fetch all outbounds
@@ -19,6 +24,7 @@ export const useOutboundsStore = defineStore('outbounds', () => {
       const { data } = await outboundService.getOutbounds()
       outbounds.value = data.outbounds
       managedTags.value = data.managed_tags ?? []
+      endpoints.value = data.endpoints ?? []
       return data.outbounds
     } catch (err: any) {
       console.error('Failed to fetch outbounds:', err)
@@ -103,6 +109,7 @@ export const useOutboundsStore = defineStore('outbounds', () => {
   return {
     outbounds,
     managedTags,
+    endpoints,
     loading,
     fetchOutbounds,
     addOutbound,

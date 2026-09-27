@@ -75,12 +75,20 @@ type CoreCapabilities struct {
 	DNSRace          bool   `json:"dns_race"`
 	DNSMatchResponse bool   `json:"dns_match_response"`
 	DNSOptimistic    bool   `json:"dns_optimistic"`
+	// Route rule matchers resolved from the host's neighbour table
+	// (source_mac_address) and DHCP leases (source_hostname). Added in 1.14.0;
+	// an older core fails config decode on either with "unknown field".
+	RouteSourceMACAddress bool `json:"route_source_mac_address"`
+	RouteSourceHostname   bool `json:"route_source_hostname"`
 }
 
 // CapabilitiesForCoreVersion maps the installed version to features the panel
 // may safely offer in its structured editors.
 func CapabilitiesForCoreVersion(version CoreVersion) CoreCapabilities {
-	dnsActions := version.Major > 1 || version.Major == 1 && version.Minor >= 14
+	// Everything below that arrived in 1.14 shares one gate. A prerelease
+	// ("1.14.0-beta.3") parses as 1.14.0, which is where these first shipped.
+	since114 := version.Major > 1 || version.Major == 1 && version.Minor >= 14
+	dnsActions := since114
 	atLeastMinimum := version.Major > 1 ||
 		version.Major == 1 && (version.Minor > 12 || version.Minor == 12 && version.Patch >= 12)
 	testedLine := version.Major == 1 && version.Minor >= 12 && version.Minor <= 14
@@ -94,6 +102,9 @@ func CapabilitiesForCoreVersion(version CoreVersion) CoreCapabilities {
 		DNSRace:          dnsActions,
 		DNSMatchResponse: dnsActions,
 		DNSOptimistic:    dnsActions,
+
+		RouteSourceMACAddress: since114,
+		RouteSourceHostname:   since114,
 	}
 }
 

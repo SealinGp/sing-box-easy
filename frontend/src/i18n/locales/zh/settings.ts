@@ -93,6 +93,7 @@ export default {
   },
   about: {
     title: '关于',
+    source: 'GitHub 源码',
     app: 'sing-box-easy',
     singBox: 'sing-box',
     platform: '系统',

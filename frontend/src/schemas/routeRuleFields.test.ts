@@ -10,10 +10,12 @@ import {
 import {
   CONTENT_MATCHER_KEYS,
   MATCHER_GROUPS,
+  gateMatcherFields,
   resolveMatcherFields,
+  unsupportedMatcherKeys,
 } from './routeRuleMatcherFields'
 import { isRetired, type OptionVersionNote } from './optionSchema'
-import { ROUTE_RULE_MATCHER_INVENTORY } from './routeRuleMatcherInventory.generated'
+import { LIST_MATCHER_KEYS, ROUTE_RULE_MATCHER_INVENTORY } from './routeRuleMatcherInventory'
 
 /**
  * Decision rules, not curation data. The exceptions are the regressions at the
@@ -342,5 +344,52 @@ describe('port vs port_range', () => {
     const context = resolveMatcherFields('context').map((f) => f.key)
     expect(context).toContain('port')
     expect(context).toContain('port_range')
+  })
+})
+
+describe('matchers newer than the pinned library', () => {
+  // The generated inventory reflects sing-box 1.12; these arrived in 1.14 and
+  // live in the overlay (routeRuleMatcherInventory.ts).
+  const NEW = ['source_mac_address', 'source_hostname']
+  const context = resolveMatcherFields('context')
+  const none = () => false
+
+  test.each([
+    ['source_mac_address', 'lan-mac'],
+    ['source_hostname', 'lan-hostname'],
+  ])('%s is a list-shaped context condition picked from LAN clients', (key, control) => {
+    expect(LIST_MATCHER_KEYS).toContain(key)
+    expect(context.find((f) => f.key === key)?.control as string | undefined).toBe(control)
+    expect(CONTENT_MATCHER_KEYS).not.toContain(key)
+  })
+
+  test('offered when GET /core reports the capability', () => {
+    const caps = { route_source_mac_address: true, route_source_hostname: true }
+    const keys = gateMatcherFields(context, caps, none).map((f) => f.key)
+    expect(keys).toEqual(expect.arrayContaining(NEW))
+    expect(unsupportedMatcherKeys(caps)).toEqual([])
+  })
+
+  test('withheld when the core lacks it, or /core is unknown', () => {
+    for (const caps of [
+      { route_source_mac_address: false, route_source_hostname: false },
+      undefined,
+    ]) {
+      const keys = gateMatcherFields(context, caps, none).map((f) => f.key)
+      for (const key of NEW) expect(keys).not.toContain(key)
+      expect(unsupportedMatcherKeys(caps).map(String).sort()).toEqual([...NEW].sort())
+    }
+  })
+
+  test('a matcher the rule already holds stays visible so it can be cleared', () => {
+    const keys = gateMatcherFields(context, undefined, (k) => k === 'source_mac_address').map(
+      (f) => f.key,
+    )
+    expect(keys).toContain('source_mac_address')
+    expect(keys).not.toContain('source_hostname')
+  })
+
+  test('ungated matchers are never touched', () => {
+    expect(gateMatcherFields(context, undefined, none).length).toBe(context.length - NEW.length)
   })
 })

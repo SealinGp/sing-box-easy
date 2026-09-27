@@ -161,6 +161,8 @@ const IDENTIFYING_MATCHERS = [
   'domain_regex',
   'ip_cidr',
   'source_ip_cidr',
+  'source_mac_address',
+  'source_hostname',
   'port',
   'source_port',
   'protocol',

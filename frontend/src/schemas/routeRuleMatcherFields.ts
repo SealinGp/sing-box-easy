@@ -49,9 +49,10 @@ import {
   ROUTE_RULE_MATCHER_INVENTORY,
   type RouteRuleMatcherFieldKey,
   type RouteRuleMatcherTypeName,
-} from './routeRuleMatcherInventory.generated'
+} from './routeRuleMatcherInventory'
 import { createSchema, type FieldCuration, type ResolvedField } from './optionSchema'
 import { INTERFACE_TYPES } from './vocabularies'
+import type { CoreInfo } from '../types/api'
 
 /** The sections the matcher form renders. Order is render order. */
 export const MATCHER_GROUPS = ['ruleSet', 'content', 'context'] as const
@@ -167,6 +168,26 @@ const BY_TYPE: {
     wifi_ssid: { tier: 'advanced', order: 220, group: 'context', control: 'chips' },
     wifi_bssid: { tier: 'advanced', order: 230, group: 'context', control: 'chips' },
 
+    // LAN client identity (sing-box 1.14+), read from the neighbour table — so
+    // it only resolves for clients on a segment the host can see at layer 2.
+    // Placed with the source matchers because that is what they narrow.
+    source_mac_address: {
+      tier: 'advanced',
+      order: 95,
+      group: 'context',
+      control: 'lan-mac',
+      placeholder: '00:11:22:33:44:55',
+      hintKey: 'route.rules.hints.sourceMacAddress',
+    },
+    source_hostname: {
+      tier: 'advanced',
+      order: 96,
+      group: 'context',
+      control: 'lan-hostname',
+      placeholder: 'my-laptop',
+      hintKey: 'route.rules.hints.sourceHostname',
+    },
+
     // Negates the whole rule. Context rather than content: it is about how the
     // rule is applied, not what it matches.
     invert: { tier: 'advanced', order: 240, group: 'context' },
@@ -210,6 +231,49 @@ export const ALL_MATCHER_KEYS = Object.keys(
  * hand-listed a second time.
  */
 export const CONTENT_MATCHER_KEYS = resolveMatcherFields('content').map((f) => f.key)
+
+/** The `GET /core` capability flags, keyed as the backend names them. */
+export type CoreCapabilityFlags = CoreInfo['capabilities']
+
+/**
+ * Matchers the installed core has to support, and the `GET /core` capability
+ * that says it does. The flag is computed by `core.CapabilitiesForCoreVersion`
+ * on the backend — the same place the DNS `evaluate`/`respond` gates come from
+ * — so the version rule is stated once rather than re-derived in the browser.
+ */
+export const MATCHER_CAPABILITIES: Partial<Record<MatcherKey, keyof CoreCapabilityFlags>> = {
+  source_mac_address: 'route_source_mac_address',
+  source_hostname: 'route_source_hostname',
+}
+
+/**
+ * Drops matchers the installed core cannot decode.
+ *
+ * A field the rule ALREADY holds is kept regardless: hiding it would leave the
+ * value in the rule, invisible, with no way to clear the thing that makes the
+ * config fail. Unknown capabilities (`undefined` — an older panel backend, or
+ * /core unreachable) withhold, the same default DNSRules uses: offering a field
+ * the binary rejects turns every save into an opaque `unknown field` error.
+ */
+export function gateMatcherFields(
+  fields: readonly ResolvedField[],
+  capabilities: Partial<CoreCapabilityFlags> | undefined,
+  isFilled: (key: string) => boolean,
+): ResolvedField[] {
+  return fields.filter((field) => {
+    const flag = MATCHER_CAPABILITIES[field.key as MatcherKey]
+    return !flag || capabilities?.[flag] === true || isFilled(field.key)
+  })
+}
+
+/** Matcher keys the installed core cannot take, for the "hidden" note. */
+export function unsupportedMatcherKeys(
+  capabilities: Partial<CoreCapabilityFlags> | undefined,
+): MatcherKey[] {
+  return (Object.entries(MATCHER_CAPABILITIES) as [MatcherKey, keyof CoreCapabilityFlags][])
+    .filter(([, flag]) => capabilities?.[flag] !== true)
+    .map(([key]) => key)
+}
 
 export { ROUTE_RULE_MATCHER_INVENTORY, INTERFACE_TYPES, PROTOCOLS }
 export type { RouteRuleMatcherTypeName }

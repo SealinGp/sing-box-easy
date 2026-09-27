@@ -14,6 +14,7 @@ export default {
   delete: 'Delete',
   direct: 'Direct (no proxy)',
   missingTag: '{tag} (missing)',
+  endpointTag: '{tag} · {type} endpoint',
   remove: 'Remove',
   close: 'Close',
   back: 'Back',

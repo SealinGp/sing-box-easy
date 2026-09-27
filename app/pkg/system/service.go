@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
+	"github.com/SealinGp/sing-box-easy/app/pkg/platform/lanclients"
 	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 )
@@ -12,10 +13,27 @@ type Service struct {
 	configPath, databasePath string
 	serviceController        *singbox.Controller
 	systemType               sysinfo.SystemType
+	lanClients               *lanclients.Collector
 }
 
 func New(configPath, databasePath string, controller *singbox.Controller) *Service {
-	return &Service{configPath, databasePath, controller, controller.SystemType()}
+	systemType := controller.SystemType()
+	return &Service{
+		configPath:        configPath,
+		databasePath:      databasePath,
+		serviceController: controller,
+		systemType:        systemType,
+		// Leases, static hosts and the neighbour table all exist together
+		// only on OpenWrt; elsewhere the pickers fall back to free text.
+		lanClients: lanclients.New(systemType == sysinfo.SystemOpenWRT),
+	}
+}
+
+// LANClients lists the devices on the router's LAN, for the route rule
+// source_mac_address / source_hostname pickers. Read per request: leases
+// change constantly and the files are a few KB.
+func (h *Service) LANClients() lanclients.Result {
+	return h.lanClients.Collect()
 }
 
 type SystemInfoResponse struct {

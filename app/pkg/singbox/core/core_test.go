@@ -62,6 +62,27 @@ func TestCapabilitiesForCoreVersion(t *testing.T) {
 	}
 }
 
+// source_mac_address / source_hostname route matchers arrived in 1.14.0; an
+// older core rejects the rule at decode with "unknown field".
+func TestCapabilitiesRouteSourceMatchers(t *testing.T) {
+	for _, tt := range []struct {
+		version CoreVersion
+		want    bool
+	}{
+		{version: CoreVersion{Major: 1, Minor: 12, Patch: 12}, want: false},
+		{version: CoreVersion{Major: 1, Minor: 13, Patch: 11}, want: false},
+		{version: CoreVersion{Major: 1, Minor: 14, Patch: 0, Raw: "1.14.0-beta.3"}, want: true},
+		{version: CoreVersion{Major: 1, Minor: 15, Patch: 1}, want: true},
+		{version: CoreVersion{Major: 2, Minor: 0, Patch: 0}, want: true},
+	} {
+		got := CapabilitiesForCoreVersion(tt.version)
+		if got.RouteSourceMACAddress != tt.want || got.RouteSourceHostname != tt.want {
+			t.Errorf("CapabilitiesForCoreVersion(%+v) route source matchers = %v/%v, want %v",
+				tt.version, got.RouteSourceMACAddress, got.RouteSourceHostname, tt.want)
+		}
+	}
+}
+
 func TestDisplayCoreVersion(t *testing.T) {
 	tests := map[string]string{
 		"sing-box version 1.12.12\n\nEnvironment: go1.25.3 linux/amd64\n": "1.12.12",
