@@ -133,6 +133,13 @@ export type ControlKind =
    * config, and the typo is invisible until the next validate.
    */
   | 'rule-set'
+  /**
+   * A route rule's `source_mac_address` / `source_hostname` — picked from the
+   * LAN clients the router reports (GET /system/lan-clients), with free-text
+   * entry kept for devices that are offline. Falls back to chips off OpenWrt.
+   */
+  | 'lan-mac'
+  | 'lan-hostname'
   | 'json'
 
 export interface FieldCuration {

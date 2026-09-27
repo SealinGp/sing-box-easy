@@ -117,6 +117,9 @@ export interface CoreInfo {
     dns_race: boolean
     dns_match_response: boolean
     dns_optimistic: boolean
+    /** Route rule matchers added in sing-box 1.14.0. */
+    route_source_mac_address: boolean
+    route_source_hostname: boolean
   }
 }
 
@@ -302,6 +305,12 @@ export type {
   InboundTLSOptions,
 } from './inbound'
 
+/** One entry of the top-level `endpoints` section, as GET /outbounds lists it. */
+export interface EndpointRef {
+  tag: string
+  type: string
+}
+
 export interface RouteRule {
   // Common fields (matching criteria)
   // NOTE: sing-box accepts scalar OR array on the wire for every list-like
@@ -329,6 +338,9 @@ export interface RouteRule {
   source_ip_cidr?: string[]
   source_port?: number[]
   port?: number[]
+  // sing-box 1.14+ (see schemas/routeRuleMatcherInventory.ts)
+  source_mac_address?: string[]
+  source_hostname?: string[]
   rule_set?: string[] | string
 
   // Action: route
@@ -489,6 +501,29 @@ export interface DiskUsage {
   /** Space an unprivileged writer can still consume — the number that matters. */
   free_bytes: number
   used_percent: number
+}
+
+/** Where a LAN client was seen. See app/pkg/platform/lanclients. */
+export type LanClientSource = 'lease' | 'static' | 'neighbor'
+
+/** One LAN device, from GET /system/lan-clients. `mac` is lower-case. */
+export interface LanClient {
+  mac: string
+  ip?: string
+  /** The name announced over DHCP, or the static host's name. */
+  hostname?: string
+  device?: string
+  /** Answered recently, per the kernel neighbour table. */
+  online: boolean
+  sources: readonly LanClientSource[]
+}
+
+export interface LanClients {
+  /** False off OpenWrt; the pickers fall back to free text. */
+  supported: boolean
+  clients: LanClient[]
+  /** One entry per source that could not be read. */
+  warnings?: string[]
 }
 
 export interface SystemInfo {

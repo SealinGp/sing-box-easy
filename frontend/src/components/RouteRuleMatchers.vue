@@ -67,9 +67,22 @@ import { useMatchStyle, type MatchStyle } from '../composables/useMatcherFields'
 import { isFieldFilled } from '../schemas/optionSchema'
 import {
   CONTENT_MATCHER_KEYS,
+  gateMatcherFields,
   resolveMatcherFields,
+  unsupportedMatcherKeys,
+  type CoreCapabilityFlags,
 } from '../schemas/routeRuleMatcherFields'
 import type { RouteRule } from '../types/api'
+
+const props = defineProps<{
+  /**
+   * `GET /core` capabilities of the installed sing-box. Matchers newer than the
+   * core (source_mac_address / source_hostname need 1.14) are withheld unless
+   * this says they are supported. Read once per mount — the parent remounts
+   * this component when the capabilities arrive.
+   */
+  capabilities?: Partial<CoreCapabilityFlags>
+}>()
 
 const model = defineModel<RouteRule>({ required: true })
 const { t } = useI18n()
@@ -78,7 +91,24 @@ const { t } = useI18n()
 // domain has a single type, so it cannot go stale.
 const ruleSetFields = resolveMatcherFields('ruleSet')
 const contentFields = resolveMatcherFields('content')
-const contextFields = resolveMatcherFields('context')
+const allContextFields = resolveMatcherFields('context')
+
+// Snapshot of what the rule held when the dialog opened. A gated matcher the
+// rule already uses stays on screen so it can be seen and cleared, and stays
+// put while being edited rather than vanishing the moment its chips empty.
+const heldAtOpen = new Set(
+  allContextFields
+    .map((f) => f.key)
+    .filter((key) => isFieldFilled((model.value as Record<string, unknown>)[key])),
+)
+const contextFields = gateMatcherFields(allContextFields, props.capabilities, (key) =>
+  heldAtOpen.has(key),
+)
+
+/** Matchers withheld because the installed core cannot decode them. */
+const withheldKeys = unsupportedMatcherKeys(props.capabilities).filter(
+  (key) => !heldAtOpen.has(key),
+)
 
 /**
  * The rule as a plain record, for the editors.
@@ -105,7 +135,7 @@ const hasRuleSet = computed(() => isFilled('rule_set'))
  * when both sides actually carry a condition. Showing "AND" above an empty
  * context section would claim a constraint that is not there.
  */
-const contextKeys = contextFields.map((f) => f.key)
+const contextKeys = allContextFields.map((f) => f.key)
 const hasContext = computed(() => contextKeys.some(isFilled))
 // Derived from the curation rather than a second hand-written list, so the
 // warning cannot drift from what the content section actually renders.
@@ -251,6 +281,11 @@ const clearContent = () => clearKeys(CONTENT_MATCHER_KEYS)
         {{ t('route.rules.flow.contextHint') }}
       </p>
       <SchemaFieldsEditor v-model="record" :fields="contextFields" />
+      <!-- Stated rather than silently absent: an operator reading the sing-box
+           docs for source_mac_address would otherwise go looking for it. -->
+      <p v-if="withheldKeys.length" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {{ t('route.rules.hints.coreGated', { fields: withheldKeys.join(', ') }) }}
+      </p>
     </div>
   </div>
 </template>

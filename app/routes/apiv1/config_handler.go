@@ -119,6 +119,9 @@ func (h *Handler) GetCoreInfo(ctx context.Context, c *app.RequestContext) {
 			"dns_race":           capabilities.DNSRace,
 			"dns_match_response": capabilities.DNSMatchResponse,
 			"dns_optimistic":     capabilities.DNSOptimistic,
+
+			"route_source_mac_address": capabilities.RouteSourceMACAddress,
+			"route_source_hostname":    capabilities.RouteSourceHostname,
 		},
 	})
 }

@@ -233,6 +233,9 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// sing-box + panel versions). Signed-in users only — see
 	// SystemInfoResponse for why the public surface stays coarser.
 	auth.GET("/system/info", handler.GetSystemInfo)
+	// LAN devices for the route rule source_mac_address / source_hostname
+	// pickers. Behind auth: it names every device on the network.
+	auth.GET("/system/lan-clients", handler.GetLANClients)
 
 	// App version / self-update APIs.
 	// Reading is available to any signed-in user; performing the update

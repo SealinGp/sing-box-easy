@@ -1,5 +1,12 @@
 import type { ApiService } from './api'
-import type { BasicResponse, Outbound } from '../types/api'
+import type { BasicResponse, EndpointRef, Outbound } from '../types/api'
+
+/** GET /outbounds. `endpoints` is absent on a server that predates it. */
+export interface OutboundsListing {
+  outbounds: Outbound[]
+  managed_tags?: string[]
+  endpoints?: EndpointRef[]
+}
 
 export class OutboundService {
   private api: ApiService
@@ -12,12 +19,12 @@ export class OutboundService {
    * `managed_tags` lists the outbounds the node-rules engine owns and rebuilds
    * in place. Editing one through the form is discarded on the next apply, so
    * the UI warns instead of letting the work be lost.
+   *
+   * `endpoints` lists the top-level endpoints (wireguard, …): not outbounds,
+   * but valid wherever an outbound tag is — a route rule's `outbound`, a detour.
    */
-  async getOutbounds(): Promise<BasicResponse<{ outbounds: Outbound[]; managed_tags?: string[] }>> {
-    const response =
-      await this.api.get<BasicResponse<{ outbounds: Outbound[]; managed_tags?: string[] }>>(
-        '/outbounds',
-      )
+  async getOutbounds(): Promise<BasicResponse<OutboundsListing>> {
+    const response = await this.api.get<BasicResponse<OutboundsListing>>('/outbounds')
     return response.data
   }
 
