@@ -95,6 +95,7 @@ export default {
   },
   about: {
     title: 'About',
+    source: 'Source on GitHub',
     app: 'sing-box-easy',
     singBox: 'sing-box',
     platform: 'Platform',
