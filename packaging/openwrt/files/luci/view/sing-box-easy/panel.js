@@ -38,6 +38,12 @@ return view.extend({
 			'rel': 'noopener',
 			'class': 'cbi-button cbi-button-apply'
 		}, _('Open sing-box-easy'));
+		var header = E('div', {
+			'style': 'display:flex; align-items:center; flex-wrap:wrap; gap:1em; margin-bottom:0.75em;'
+		}, [
+			E('h2', { 'style': 'margin:0;' }, 'sing-box-easy'),
+			openLink
+		]);
 
 		/*
 		 * The iframe is best-effort. A browser will refuse it when LuCI is
@@ -52,16 +58,7 @@ return view.extend({
 		});
 
 		return E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, 'sing-box-easy'),
-			E('div', { 'class': 'cbi-map-descr' }, [
-				_('Manage sing-box configuration, subscriptions and the service lifecycle.'),
-				' ',
-				E('span', { 'style': 'white-space:nowrap' }, [
-					_('Panel address:'), ' ',
-					E('code', {}, url)
-				])
-			]),
-			E('p', {}, openLink),
+			header,
 			frame
 		]);
 	},
