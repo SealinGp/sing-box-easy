@@ -140,6 +140,18 @@ All config modifications follow a safe workflow (implemented in `config.Manager`
      (see "Config version history" — there is no more `config.old.json` file)
    - Atomically rename the staging file over `config.json`
 4. On failure: Keep original config, remove the staging file
+   Outbound edits (`UpdateOutboundsConfig`) carry one extra guard before step 1:
+   they are refused if they would remove an outbound that `route.final`, a
+   route rule, a rule-set `download_detour` or a DNS server `detour` still
+   names (`outbound_refs.go`). `sing-box check` does not catch this — it parses
+   the config without building the router — so the core only fails at START
+   ("default outbound not found"), and a respawning init system turns that into
+   a crash loop on the router. Every outbound write goes through that one
+   function, so the guard covers a manual delete, a subscription refresh and a
+   node-rules apply whose filter now matches no nodes (an empty filter is
+   dropped, never emitted: sing-box rejects a group with no members). Only
+   references THIS edit breaks are reported; one that was already dangling
+   must not block the edits that would fix it.
 5. Rollback available via `/api/v1/config/rollback` (or to a specific
    version via `/api/v1/config/versions/:id/rollback`)
 

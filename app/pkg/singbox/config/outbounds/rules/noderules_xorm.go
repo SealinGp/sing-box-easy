@@ -401,6 +401,16 @@ func filterFromRow(r *repo.FilterRule) (*Filter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filter %q has invalid excludes: %w", r.ID, err)
 	}
+	// Both lists are arrays on the wire, never `null`. The seeded fallback row
+	// has no excludes column value at all, so it alone came back as
+	// `"excludes": null` beside every other filter's `[]` (#14) — one more
+	// shape for each client to special-case.
+	if matchers == nil {
+		matchers = []Matcher{}
+	}
+	if excludes == nil {
+		excludes = []Matcher{}
+	}
 	return &Filter{
 		ID:            r.ID,
 		Name:          r.Name,

@@ -1,3 +1,4 @@
+import { normalizePreview } from '../utils/nodeRulesPreview'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { nodeRulesService } from '../services'
@@ -91,7 +92,7 @@ export const useNodeRulesStore = defineStore('nodeRules', () => {
     error.value = ''
     try {
       const res = await nodeRulesService.preview()
-      preview.value = res.data
+      preview.value = normalizePreview(res.data)
     } catch (e) {
       setError(e)
     } finally {

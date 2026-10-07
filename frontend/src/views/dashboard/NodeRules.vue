@@ -111,8 +111,11 @@ const endpointTags = computed<string[]>(() => {
   const p = preview.value
   if (!p) return []
   const seen = new Set<string>()
-  for (const pf of p.filters) for (const tag of pf.members) seen.add(tag)
-  for (const tag of p.unmatched) seen.add(tag)
+  // `?? []` throughout: this runs on every render of the page, so one field
+  // arriving as null from an older backend must cost an empty list, not the
+  // whole page (#14 — a filter with no members was sent as `members: null`).
+  for (const pf of p.filters ?? []) for (const tag of pf.members ?? []) seen.add(tag)
+  for (const tag of p.unmatched ?? []) seen.add(tag)
   for (const tag of p.optional ?? []) seen.add(tag)
   return [...seen].sort((a, b) => a.localeCompare(b))
 })
