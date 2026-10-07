@@ -17,8 +17,9 @@ type SelfUpdateMethod string
 const (
 	// SelfUpdateTarball: the panel swaps the binary itself and re-execs.
 	SelfUpdateTarball SelfUpdateMethod = "tarball"
-	// SelfUpdateOpkg: opkg owns the files. The panel prepares the package but
-	// the operator runs the install — see PrepareIpk for why.
+	// SelfUpdateOpkg: opkg owns the files. The panel prepares the package, then
+	// either installs it through a detached helper (ipk_install.go) or hands
+	// the operator the command.
 	SelfUpdateOpkg SelfUpdateMethod = "opkg"
 )
 
@@ -38,6 +39,11 @@ type SelfUpdateInfo struct {
 	// which case FeedProvides carries no information.
 	FeedProvides bool `json:"feed_provides"`
 	FeedKnown    bool `json:"feed_known"`
+	// InstallSupported reports whether the panel can install a prepared
+	// package itself, through the detached helper in ipk_install.go. Separate
+	// from Automatic, which keeps meaning "one request does everything": an
+	// opkg install is still two steps (prepare, then install).
+	InstallSupported bool `json:"install_supported"`
 }
 
 // DetectSelfUpdate resolves how this install can be upgraded.
@@ -49,11 +55,12 @@ func DetectSelfUpdate() SelfUpdateInfo {
 
 	provides, known := FeedProvidesSelf()
 	return SelfUpdateInfo{
-		Method:       SelfUpdateOpkg,
-		Automatic:    false,
-		Architecture: install.Architecture,
-		FeedProvides: provides,
-		FeedKnown:    known,
+		Method:           SelfUpdateOpkg,
+		Automatic:        false,
+		Architecture:     install.Architecture,
+		FeedProvides:     provides,
+		FeedKnown:        known,
+		InstallSupported: packageInstallSupported(),
 	}
 }
 
@@ -96,12 +103,12 @@ func feedUpgradeCommand() string {
 // StartIpkPrepare downloads and verifies the ipk for the given tag, without
 // installing it. An empty tag means "latest".
 //
-// The panel deliberately stops short of installing. Our ipk's prerm runs
-// `/etc/init.d/sing-box-easy stop`, so an opkg install driven from inside this
-// process would kill the process group mid-transaction and could leave the
-// router with no panel binary — recoverable only over SSH. Handing back a
-// verified file and an exact command keeps that step under the operator's
-// control.
+// Preparing is a separate step from installing on purpose. Our ipk's prerm
+// runs `/etc/init.d/sing-box-easy stop`, so an opkg install run as a child of
+// this process would be killed with it mid-transaction. The install is
+// therefore either run by the operator from the command this returns, or by
+// the detached helper StartIpkInstall launches — both consume this task's
+// verified file.
 //
 // Progress is reported through the same Task machinery as a tarball update, so
 // the frontend reuses its existing polling. The task finishes as `completed`

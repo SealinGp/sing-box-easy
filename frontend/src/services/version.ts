@@ -56,6 +56,21 @@ export class VersionService {
     return response.data.data
   }
 
+  /**
+   * Install the package a finished prepare task downloaded. Takes that task's
+   * ID, not a path: the server installs only what it fetched and verified.
+   *
+   * The panel is restarted by the install, so the returned task is already
+   * `restarting`; the outcome shows up in `getStatus()` as
+   * `last_package_install`.
+   */
+  async installPackage(taskId: string): Promise<UpdateTask> {
+    const response = await this.api.post<BasicResponse<UpdateTask>>('/version/install-package', {
+      task_id: taskId,
+    })
+    return response.data.data
+  }
+
   /** Poll a running update. */
   async getTask(taskId: string): Promise<UpdateTask> {
     const response = await this.api.get<BasicResponse<UpdateTask>>(`/version/task/${taskId}`)

@@ -65,9 +65,8 @@ func (h *Handler) StartVersionUpdate(ctx context.Context, c *app.RequestContext)
 // install's architecture, without installing it. An empty version means
 // "latest".
 //
-// Admin-only and deliberately stopping short of the install: opkg's prerm
-// stops this very service, so an install driven from inside this process would
-// kill itself mid-transaction. The response carries the exact command to run.
+// Admin-only. Stops short of the install: the finished task carries the
+// command to run by hand, and its ID is what InstallVersionPackage takes.
 //
 // POST /version/prepare-package  {"version": "v1.2.5"}
 func (h *Handler) PrepareVersionPackage(ctx context.Context, c *app.RequestContext) {
@@ -85,6 +84,41 @@ func (h *Handler) PrepareVersionPackage(ctx context.Context, c *app.RequestConte
 	}
 
 	task, err := h.updater.StartIpkPrepare(strings.TrimSpace(req.Version))
+	if err != nil {
+		respErr(ctx, c, CodeOperationFailed, err.Error())
+		return
+	}
+
+	respOK(ctx, c, task.Snapshot())
+}
+
+// InstallVersionPackage installs the package a prepare task downloaded, through
+// a helper that outlives the panel (opkg's prerm stops this very service).
+//
+// The body names the prepare TASK, never a file: what gets installed as root
+// is then something this server fetched and verified itself.
+//
+// The response is a task already in `restarting`. The outcome arrives later in
+// `GET /version` as `last_package_install`, because this process is restarted
+// by the install it started.
+//
+// POST /version/install-package  {"task_id": "ipk_..."}
+func (h *Handler) InstallVersionPackage(ctx context.Context, c *app.RequestContext) {
+	type Request struct {
+		TaskID string `json:"task_id"`
+	}
+
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		respErr(ctx, c, CodeBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+	if strings.TrimSpace(req.TaskID) == "" {
+		respErr(ctx, c, CodeBadRequest, "task_id is required")
+		return
+	}
+
+	task, err := h.updater.StartIpkInstall(req.TaskID)
 	if err != nil {
 		respErr(ctx, c, CodeOperationFailed, err.Error())
 		return

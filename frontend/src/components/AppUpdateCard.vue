@@ -43,11 +43,13 @@ const {
   latestVersion,
   selfUpdate,
   isOpkgManaged,
+  canInstallPackage,
   plan,
   refreshStatus,
   loadReleases,
   startUpdate,
   preparePackage,
+  installPackage,
   reset,
 } = useAppUpdate()
 
@@ -196,6 +198,31 @@ const runPrepare = async () => {
     notify.apiError(err, t('settings.update.opkg.prepareFailed'))
   }
 }
+
+/**
+ * opkg path, one click: prepare, then install as soon as the package is
+ * verified. Confirmed first — this one does restart the panel.
+ */
+const runPackageUpdate = async () => {
+  if (!canUpdate.value) return
+  try {
+    await preparePackage(selectedTag.value || undefined, true)
+    notify.success(t('settings.update.toast.started'))
+  } catch (err) {
+    notify.apiError(err, t('settings.update.opkg.prepareFailed'))
+  }
+}
+
+/**
+ * A failed install from an earlier visit. The page reloads when the panel
+ * returns, so without this a failure that restored the old version would
+ * leave no trace on screen.
+ */
+const lastFailedInstall = computed(() => {
+  const last = status.value?.last_package_install
+  if (!last || phase.value !== 'idle') return null
+  return last.state === 'failed' || last.state === 'interrupted' ? last : null
+})
 </script>
 
 <template>
@@ -251,11 +278,34 @@ const runPrepare = async () => {
 
       <!--
         opkg owns the files on an ipk install, and its prerm stops this very
-        service — so the panel prepares a verified package and hands over the
-        command rather than installing itself.
+        service. Where the host allows it the panel installs the package
+        through a helper that outlives it; "download only" stays beside it for
+        an operator who would rather run opkg by hand. Elsewhere only the
+        prepare-and-copy path is offered.
       -->
+      <div v-if="canUpdate && isOpkgManaged && canInstallPackage" class="ml-auto flex items-center gap-2">
+        <button
+          @click="runPrepare"
+          :title="$t('settings.update.opkg.downloadOnlyHint')"
+          class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        >
+          <ArrowDownTrayIcon class="h-4 w-4" />
+          <span>{{ $t('settings.update.opkg.downloadOnly') }}</span>
+        </button>
+        <PopConfirm
+          :key="targetVersion"
+          :message="$t('settings.update.opkg.confirmInstall', { version: targetVersion })"
+          :confirm-label="$t('settings.update.update')"
+          tone="primary"
+          trigger-class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors cursor-pointer"
+          @confirm="runPackageUpdate"
+        >
+          <ArrowUpCircleIcon class="h-4 w-4" />
+          <span>{{ $t('settings.update.updateTo', { version: targetVersion }) }}</span>
+        </PopConfirm>
+      </div>
       <button
-        v-if="canUpdate && isOpkgManaged"
+        v-else-if="canUpdate && isOpkgManaged"
         @click="runPrepare"
         :disabled="!canUpdate"
         class="ml-auto flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -278,9 +328,9 @@ const runPrepare = async () => {
       </PopConfirm>
     </div>
 
-    <!-- Why the button says "Prepare" instead of "Update" on this host. -->
+    <!-- How an update works on this host. -->
     <p v-if="isOpkgManaged" class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-      {{ $t('settings.update.opkg.managed', { arch: selfUpdate.architecture || '?' }) }}
+      {{ $t(canInstallPackage ? 'settings.update.opkg.managedAuto' : 'settings.update.opkg.managed', { arch: selfUpdate.architecture || '?' }) }}
     </p>
 
     <!-- Status line -->
@@ -390,8 +440,23 @@ const runPrepare = async () => {
         <span v-else class="text-amber-700 dark:text-amber-400">{{ $t('settings.update.opkg.unverified') }}</span>
       </p>
 
+      <!-- Not offered for an unverified package: nobody reads the warning
+           during an unattended install. -->
+      <PopConfirm
+        v-if="canInstallPackage && plan.verified"
+        :message="$t('settings.update.opkg.confirmInstall', { version: plan.version })"
+        :confirm-label="$t('settings.update.opkg.installNow')"
+        tone="primary"
+        class="mt-3"
+        trigger-class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors cursor-pointer"
+        @confirm="installPackage"
+      >
+        <ArrowUpCircleIcon class="h-4 w-4" />
+        <span>{{ $t('settings.update.opkg.installNow') }}</span>
+      </PopConfirm>
+
       <p class="mt-3 text-xs font-medium text-gray-700 dark:text-gray-300">
-        {{ $t('settings.update.opkg.runThis') }}
+        {{ $t(canInstallPackage && plan.verified ? 'settings.update.opkg.orRunThis' : 'settings.update.opkg.runThis') }}
       </p>
       <div class="mt-1 flex items-stretch gap-2">
         <code
@@ -430,6 +495,23 @@ const runPrepare = async () => {
       </p>
     </div>
 
+    <!-- An install that failed before this page was (re)loaded. -->
+    <div
+      v-if="lastFailedInstall"
+      class="mt-3 rounded-control border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-3"
+    >
+      <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
+        {{ $t('settings.update.opkg.lastFailedTitle', { version: lastFailedInstall.to_version }) }}
+      </p>
+      <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+        {{ $t('settings.update.opkg.lastFailedNote') }}
+      </p>
+      <pre
+        v-if="lastFailedInstall.log_tail"
+        class="mt-2 max-h-48 overflow-auto rounded-control bg-gray-900 dark:bg-black p-2 text-xs text-gray-100 whitespace-pre-wrap"
+      >{{ lastFailedInstall.log_tail }}</pre>
+    </div>
+
     <!-- Failure -->
     <div
       v-if="phase === 'failed'"
@@ -438,7 +520,7 @@ const runPrepare = async () => {
       <p class="text-sm font-medium text-red-700 dark:text-red-300">
         {{ $t('settings.update.progress.failed') }}
       </p>
-      <p class="mt-1 text-xs text-red-600 dark:text-red-400 break-words">{{ errorMessage }}</p>
+      <p class="mt-1 text-xs text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">{{ errorMessage }}</p>
       <button
         @click="reset"
         class="mt-2 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"

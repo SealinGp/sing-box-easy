@@ -40,6 +40,15 @@ export default {
     // OpenWrt ipk 安装：文件归 opkg 管理，且其 prerm 会停掉本服务，
     // 因此由面板下载校验安装包，实际安装交给用户执行。
     opkg: {
+      managedAuto:
+        '本实例由 opkg 管理（{arch}）。更新时面板会下载并校验对应的 .ipk，自动安装并重启面板，代理本身不受影响。',
+      downloadOnly: '仅下载',
+      downloadOnlyHint: '只下载并校验安装包，之后自行执行 opkg',
+      confirmInstall: '将通过 opkg 安装 {version} 并重启面板，本页面会失联几秒，代理本身不受影响。是否继续？',
+      installNow: '立即安装',
+      orRunThis: '或自行通过 SSH 执行：',
+      lastFailedTitle: '上次安装 {version} 失败',
+      lastFailedNote: '已保留并运行原版本。以下是 opkg 的输出：',
       managed:
         '本实例由 opkg 管理（{arch}）。面板无法替换自身的软件包，将为你下载并校验对应的 .ipk，并给出安装命令。',
       prepare: '准备安装包',
