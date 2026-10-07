@@ -198,6 +198,11 @@ type Status struct {
 	// install is offered a prepare-and-copy flow instead of an Update button
 	// that always fails.
 	SelfUpdate SelfUpdateInfo `json:"self_update"`
+	// LastPackageInstall is the outcome of the most recent panel-driven opkg
+	// install. Read from files the helper left behind: the process that
+	// started the install is never the one that sees it finish, and a failed
+	// install that restored the old panel would otherwise report nothing.
+	LastPackageInstall *PackageInstallResult `json:"last_package_install,omitempty"`
 }
 
 // CheckStatus resolves the current version and the newest available release.
@@ -209,6 +214,9 @@ func (u *Updater) CheckStatus(force bool) *Status {
 		CurrentKnown:   IsKnown(),
 		AssetName:      AssetName(),
 		SelfUpdate:     DetectSelfUpdate(),
+	}
+	if status.SelfUpdate.Method == SelfUpdateOpkg {
+		status.LastPackageInstall = ReadPackageInstallResult()
 	}
 
 	if task := u.RunningTask(); task != nil {

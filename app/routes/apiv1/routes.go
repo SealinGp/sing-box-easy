@@ -267,6 +267,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// service), so the panel prepares a verified .ipk and hands back the
 	// command instead of running it.
 	admin.POST("/version/prepare-package", handler.PrepareVersionPackage)
+	admin.POST("/version/install-package", handler.InstallVersionPackage)
 
 	// GitHub sign-in (OAuth device flow). The issued token is an instance-wide
 	// credential used for every outbound GitHub call, so everything that

@@ -286,13 +286,23 @@ sing-box check -c /etc/sing-box/config.json
 
 ## 8. 升级
 
-ipk 安装的实例**不能用面板的自动更新**：文件归 opkg 管理，直接替换会让 opkg 的文件记录错乱。面板会识别这一点，把「更新」按钮变成「准备安装包」——它会下载并校验好对应架构的 ipk，然后给出命令让你自己执行：
+ipk 安装的实例文件归 opkg 管理，面板不会像 tarball 安装那样直接替换二进制（那会让 opkg 的文件记录错乱），而是通过 opkg 升级：
+
+**自动（推荐）**：在「设置 → 应用更新」点「更新到 vX」。面板会下载并校验对应架构的 ipk，自动执行 `opkg install`，随后面板重启、页面自动刷新。期间页面会失联几秒，**sing-box 本身不受影响**。
+
+**手动**：点「仅下载」，面板只下载并校验 ipk，然后给出命令让你自己执行：
 
 ```sh
 opkg install /tmp/sing-box-easy_<新版本>_<架构>.ipk
 ```
 
-之所以不由面板自动执行：ipk 的 `prerm` 会先停掉 sing-box-easy 本身，如果由面板进程发起安装，会在事务中途把自己杀掉。
+自动安装的几点说明：
+
+- ipk 的 `prerm` 会先停掉 sing-box-easy 本身，所以安装不是由面板进程直接执行的，而是交给一个独立的辅助脚本（脱离面板的会话和 procd 的 cgroup），面板被停掉后它继续跑完。
+- 只安装**校验通过**的包。发布里没有校验文件的旧版本只能走手动。
+- 安装失败时脚本会保证面板重新启用并启动（必要时恢复原二进制），「应用更新」里会显示 opkg 的输出。
+- 安装日志在 `/tmp/sbe-package-install.log`，结果在 `/tmp/sbe-package-install.state`（`/tmp` 是内存盘，重启后清空）。
+- 如果辅助脚本本身被意外终止、面板没有回来，SSH 登录后执行上面的手动命令，或 `/etc/init.d/sing-box-easy enable && /etc/init.d/sing-box-easy start`。
 
 ---
 

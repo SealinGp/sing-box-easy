@@ -5,8 +5,8 @@ export type UpdateTaskStatus = 'running' | 'completed' | 'failed' | 'restarting'
 
 /**
  * A downloaded, checksum-verified OpenWrt package plus the commands that
- * install it. Present only on a finished `prepare-package` task: opkg installs
- * are never performed by the panel itself.
+ * install it. Present only on a finished `prepare-package` task. The panel can
+ * then install it (`install-package`) or the operator can run the command.
  */
 export interface IpkPlan {
   version: string
@@ -41,9 +41,9 @@ export interface UpdateTask {
 export type SelfUpdateMethod = 'tarball' | 'opkg'
 
 /**
- * Which upgrade path applies to this install. opkg-managed installs cannot
- * self-update — opkg's prerm stops this very service — so the UI offers a
- * prepare-and-copy flow instead of an Update button that always fails.
+ * Which upgrade path applies to this install. An opkg-managed install is
+ * upgraded in two steps — prepare a verified package, then install it — because
+ * opkg's prerm stops this very service.
  */
 export interface SelfUpdateInfo {
   method: SelfUpdateMethod
@@ -58,6 +58,31 @@ export interface SelfUpdateInfo {
    */
   feed_provides: boolean
   feed_known: boolean
+  /**
+   * True when the panel can install a prepared package itself, through a
+   * helper that outlives it. Optional: a release older than the feature does
+   * not send it.
+   */
+  install_supported?: boolean
+}
+
+/** Where a panel-driven opkg install got to. */
+export type PackageInstallState = 'running' | 'succeeded' | 'failed' | 'interrupted'
+
+/**
+ * Outcome of the most recent panel-driven opkg install, as left behind by the
+ * install helper. It outlives the panel process that started it.
+ */
+export interface PackageInstallResult {
+  state: PackageInstallState
+  from_version: string
+  to_version: string
+  /** opkg's exit status; -1 while unknown. */
+  exit_code: number
+  started_at: string
+  finished_at: string
+  /** End of the helper's output — opkg's own words on a failure. */
+  log_tail: string
 }
 
 /** Running version compared against the newest published release. */
@@ -84,6 +109,8 @@ export interface VersionStatus {
   check_error: string
   running_task_id: string | null
   self_update: SelfUpdateInfo
+  /** Absent when no install has been driven from the panel since boot. */
+  last_package_install?: PackageInstallResult
 }
 
 /** A single published release the user can pick as an update target. */

@@ -1,6 +1,7 @@
 import { computed, readonly, ref } from 'vue'
 import { versionService } from '../services'
 import type { IpkPlan, ReleaseInfo, SelfUpdateInfo, UpdateTask, VersionStatus } from '../types/version'
+import { packageInstallFailureText, packageInstallVerdict } from '../utils/packageInstall'
 
 /**
  * App version / self-update state.
@@ -29,6 +30,12 @@ const SERVER_PROBE_INTERVAL_MS = 2000
 /** Give up waiting for the restarted server after this long. */
 const SERVER_PROBE_TIMEOUT_MS = 120_000
 
+/**
+ * How long to wait for a package install. Longer than a plain restart: opkg
+ * unpacks a ~45 MB binary onto flash before the panel comes back.
+ */
+const PACKAGE_INSTALL_TIMEOUT_MS = 240_000
+
 /** Grace period before reloading, so the user can read the success state. */
 const RELOAD_DELAY_MS = 1200
 
@@ -41,6 +48,12 @@ const checking = ref(false)
 const loadingReleases = ref(false)
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Set by the one-click path: install as soon as the package is prepared,
+ * instead of stopping to show the command.
+ */
+let installWhenPrepared = false
 
 // Shared with the rest of the module-level state above: every caller of
 // useAppUpdate() must see the same in-flight status request, otherwise the
@@ -74,8 +87,13 @@ export function useAppUpdate() {
     () => status.value?.self_update ?? { method: 'tarball', automatic: true, architecture: '', feed_provides: false, feed_known: false },
   )
 
-  /** True when opkg owns this install and the panel must not install itself. */
+  /** True when opkg owns this install, so updates go through a package. */
   const isOpkgManaged = computed(() => selfUpdate.value.method === 'opkg')
+
+  /** True when the panel can install a prepared package without SSH. */
+  const canInstallPackage = computed(
+    () => isOpkgManaged.value && Boolean(selfUpdate.value.install_supported),
+  )
 
   /** The prepared package, once a prepare task has finished. */
   const plan = computed<IpkPlan | null>(() => task.value?.plan ?? null)
@@ -187,10 +205,11 @@ export function useAppUpdate() {
    * the task is accepted; the file lands on the router and the finished task
    * carries the command to run.
    */
-  const preparePackage = async (version?: string): Promise<void> => {
+  const preparePackage = async (version?: string, thenInstall = false): Promise<void> => {
     clearPoll()
     errorMessage.value = ''
     phase.value = 'preparing'
+    installWhenPrepared = thenInstall
 
     try {
       const started = await versionService.preparePackage(version)
@@ -224,6 +243,12 @@ export function useAppUpdate() {
           phase.value = next.plan ? 'prepared' : 'failed'
           if (!next.plan) {
             errorMessage.value = 'The package finished downloading but no install command was returned.'
+            return
+          }
+          // An unverified package is never installed unattended — stop on the
+          // prepared view, where the warning and the manual command are.
+          if (installWhenPrepared && next.plan.verified) {
+            await installPackage()
           }
           return
         }
@@ -236,6 +261,73 @@ export function useAppUpdate() {
     }
 
     pollTimer = setTimeout(tick, TASK_POLL_INTERVAL_MS)
+  }
+
+  /**
+   * Install the prepared package. The panel is restarted by the install, so
+   * from here the outcome is read off whichever panel process answers next.
+   * Never throws: a refusal lands in the failed phase with the server's reason.
+   */
+  const installPackage = async (): Promise<void> => {
+    const prepared = task.value
+    if (!prepared?.plan) return
+    const target = prepared.plan.version
+    const from = prepared.from_version
+
+    clearPoll()
+    installWhenPrepared = false
+    errorMessage.value = ''
+    phase.value = 'restarting'
+
+    try {
+      task.value = await versionService.installPackage(prepared.id)
+    } catch (err) {
+      phase.value = 'failed'
+      errorMessage.value = err instanceof Error ? err.message : String(err)
+      return
+    }
+    await waitForPackageInstall(target, from)
+  }
+
+  /**
+   * Probe until the install is known to have finished. Unlike `waitForServer`,
+   * "the server answers" proves nothing here: the old panel keeps answering
+   * until the helper stops it, and it is the old panel again after a failed
+   * install. See `packageInstallVerdict`.
+   */
+  const waitForPackageInstall = async (target: string, from: string): Promise<void> => {
+    phase.value = 'waiting'
+    const deadline = Date.now() + PACKAGE_INSTALL_TIMEOUT_MS
+    let sawOutage = false
+
+    while (Date.now() < deadline) {
+      await sleep(SERVER_PROBE_INTERVAL_MS)
+      let next: VersionStatus
+      try {
+        next = await versionService.getStatus(false)
+      } catch {
+        sawOutage = true
+        continue
+      }
+
+      const verdict = packageInstallVerdict({ status: next, target, from, sawOutage })
+      if (verdict === 'succeeded') {
+        phase.value = 'done'
+        await sleep(RELOAD_DELAY_MS)
+        window.location.reload()
+        return
+      }
+      if (verdict === 'failed') {
+        status.value = next
+        phase.value = 'failed'
+        errorMessage.value = packageInstallFailureText(next.last_package_install)
+        return
+      }
+    }
+
+    phase.value = 'failed'
+    errorMessage.value =
+      'The install did not report a result in time. Reload the page to check which version is running.'
   }
 
   /** Attach to an already-running task (e.g. started in another tab). */
@@ -310,6 +402,7 @@ export function useAppUpdate() {
   /** Reset after a failure so the user can retry. */
   const reset = () => {
     clearPoll()
+    installWhenPrepared = false
     phase.value = 'idle'
     task.value = null
     errorMessage.value = ''
@@ -331,11 +424,13 @@ export function useAppUpdate() {
     latestVersion,
     selfUpdate,
     isOpkgManaged,
+    canInstallPackage,
     plan,
     refreshStatus,
     loadReleases,
     startUpdate,
     preparePackage,
+    installPackage,
     reset,
   }
 }

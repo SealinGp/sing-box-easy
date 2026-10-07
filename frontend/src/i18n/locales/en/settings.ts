@@ -38,8 +38,19 @@ export default {
       failed: 'Update failed',
     },
     // OpenWrt ipk installs: opkg owns the files, and its prerm stops this very
-    // service, so the panel prepares the package and the operator installs it.
+    // service. The panel prepares the package, then installs it through a
+    // helper that outlives it — or hands the operator the command.
     opkg: {
+      managedAuto:
+        'This install is managed by opkg ({arch}). Updating downloads and verifies the right .ipk, installs it and restarts the panel. The proxy itself keeps running.',
+      downloadOnly: 'Download only',
+      downloadOnlyHint: 'Download and verify the package, then run opkg yourself',
+      confirmInstall:
+        'This installs {version} with opkg and restarts the panel, so this page will lose contact for a few seconds. The proxy itself keeps running. Continue?',
+      installNow: 'Install now',
+      orRunThis: 'Or run this over SSH yourself:',
+      lastFailedTitle: 'The last install of {version} failed',
+      lastFailedNote: 'The previous version was kept and is running. This is what opkg reported:',
       managed:
         'This install is managed by opkg ({arch}). The panel cannot replace its own package — it will download and verify the right .ipk and give you the command to run.',
       prepare: 'Prepare package',
