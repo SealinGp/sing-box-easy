@@ -29,6 +29,8 @@ export default {
   loadFailed: '获取代理分组失败',
   selectFailed: '切换节点失败',
   testFailed: '测速失败',
+  fromNodeRules: '节点规则',
+  fromNodeRulesHint: '该分组由节点规则生成，点击打开对应的规则',
   testGroup: '点击测速：{group}',
   searchInGroup: '在 {group} 中搜索节点',
   searchInGroupPlaceholder: '搜索本组节点',

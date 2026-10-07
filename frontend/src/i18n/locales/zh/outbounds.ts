@@ -26,6 +26,7 @@ export default {
   form: {
     managedByRulesTitle: '由节点规则管理',
     managedByRules: '该出站由节点规则重新生成。在此保存的修改会在下次应用规则时被覆盖 —— 请改为编辑对应的过滤器或分组。',
+    openNodeRule: '在节点规则中打开「{name}」',
     defaultFirst: '第一个成员（默认）',
     noOptionsHint: '该出站类型没有可配置项，其行为是固定的。',
     tag: '标签 *',

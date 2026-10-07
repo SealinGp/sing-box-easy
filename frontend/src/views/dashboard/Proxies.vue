@@ -13,6 +13,8 @@ import ProxyGroupCard from '../../components/ProxyGroupCard.vue'
 import { useRuntimeProxies } from '../../composables/useRuntimeProxies'
 import { useNotify } from '../../composables/useNotify'
 import { useServiceStore } from '../../stores/service'
+import { useOutboundsStore } from '../../stores/outbounds'
+import { useFocusTarget } from '../../composables/useFocusTarget'
 import { columnCount, dealIntoColumns, visibleGroups, type MemberSort } from '../../utils/proxyGroups'
 
 const { t } = useI18n()
@@ -85,7 +87,22 @@ const readOpen = (): Set<string> | null => {
 }
 const openSet = ref<Set<string> | null>(readOpen())
 
-const isOpen = (name: string, switchable: boolean) => (openSet.value ? openSet.value.has(name) : switchable)
+// A link from a connection's exit chain lands on one card (`?focus=`). That
+// card opens regardless of what was remembered: arriving at a collapsed strip
+// of latency blocks would answer "which group?" and nothing else.
+const { isFocused } = useFocusTarget(() => (view.value?.groups.length ?? 0) > 0)
+
+const isOpen = (name: string, switchable: boolean) =>
+  isFocused(name) || (openSet.value ? openSet.value.has(name) : switchable)
+
+/**
+ * Groups the node-rules engine generates. They are edited on the Node Rules
+ * page, not here and not in the outbound form, so their cards link there.
+ * Config data on a runtime page: a failure just means no links.
+ */
+const outboundsStore = useOutboundsStore()
+const managed = computed(() => new Set(outboundsStore.managedTags))
+outboundsStore.fetchOutbounds().catch(() => undefined)
 
 const currentOpen = (): Set<string> =>
   new Set((view.value?.groups ?? []).filter((group) => isOpen(group.name, group.switchable)).map((group) => group.name))
@@ -223,6 +240,8 @@ const onTestAll = async () => {
           :open="isOpen(entry.group.name, entry.group.switchable)"
           :testing="testing.has(entry.group.name)"
           :switching-to="switchingTo(entry.group.name)"
+          :managed="managed.has(entry.group.name)"
+          :class="{ 'focus-target': isFocused(entry.group.name) }"
           @toggle="toggle(entry.group.name)"
           @test="onTest(entry.group.name)"
           @select="(name) => onSelect(entry.group.name, name)"

@@ -1,0 +1,33 @@
+/*
+ * The card a `?focus=<name>` link points at (composables/useFocusTarget.ts).
+ *
+ * One rule for every destination page, so "this is the one you came for" looks
+ * the same on Node Rules, Proxies and Rule Sets.
+ *
+ * UNLAYERED on purpose, unlike density.css. The cards it lands on set their
+ * own background with Tailwind utilities (`bg-white dark:bg-slate-900`), and
+ * the utilities layer beats the components layer. Unlayered rules beat every
+ * layer, so the tint wins without `!important`.
+ *
+ * The doubled class is for the rules that are NOT layered: the glass shim
+ * (`.liquid-app article.bg-white`, glass.css) and the scoped `.node-rule-card`
+ * both paint a background and a border, and outrank a single class. Without
+ * it the Proxies and Node Rules cards scrolled into view and stayed exactly
+ * the colour of their neighbours.
+ */
+.focus-target.focus-target.focus-target {
+  /*
+   * Laid OVER the card's own background as an image, not swapped in as its
+   * colour. Replacing an opaque dark card with a mostly transparent tint let
+   * the page show through, and on Node Rules the "highlighted" card came out
+   * the same colour as its neighbours.
+   */
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--color-primary) 20%, transparent),
+    color-mix(in srgb, var(--color-primary) 20%, transparent)
+  );
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  /* Clear of a sticky page header when scrolled to. */
+  scroll-margin-block: 96px;
+}

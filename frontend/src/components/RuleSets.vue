@@ -15,6 +15,7 @@ import { useToast } from 'primevue'
 import { useRouteStore } from '../stores/route'
 import { useOutboundsStore } from '../stores/outbounds'
 import { storeToRefs } from 'pinia'
+import { useFocusTarget } from '../composables/useFocusTarget'
 import { useConfirm } from '../composables/useConfirm'
 import { FILTER_THRESHOLD } from '../utils/selectFilter'
 import { useRouter } from 'vue-router'
@@ -340,6 +341,9 @@ async function handleDeleteRuleSet(tag: string) {
   }
 }
 
+// A connection's "matched rule" links here with the rule set's tag.
+const { isFocused } = useFocusTarget(() => ruleSets.value.length > 0)
+
 // Load data on mount
 onMounted(() => {
   routeStore.fetchRuleSets()
@@ -367,7 +371,11 @@ onMounted(() => {
       <List :loading="loading" :empty="ruleSets.length === 0">
         <template #empty>{{ $t('route.ruleSets.empty') }}</template>
 
-        <ListRow v-for="ruleSet in ruleSets" :key="ruleSet.tag">
+        <ListRow
+          v-for="ruleSet in ruleSets"
+          :key="ruleSet.tag"
+          :class="{ 'focus-target': isFocused(ruleSet.tag) }"
+        >
           <ListField :label="$t('route.ruleSets.fields.tag')" :value="ruleSet.tag" />
           <ListField :label="$t('route.ruleSets.fields.type')" :value="ruleSet.type" />
           <ListField :label="$t('route.ruleSets.fields.format')" :value="ruleSet.format" />

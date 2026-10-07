@@ -33,6 +33,7 @@ import { isDeprecatedIn, isRetired } from "../schemas/optionSchema";
 import { useSingBoxVersion } from "../composables/useSingBoxVersion";
 import { storeToRefs } from "pinia";
 import { Dialog } from '../volt'
+import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 
 const outboundsStore = useOutboundsStore();
 // Use storeToRefs to maintain reactivity when destructuring
@@ -635,6 +636,14 @@ onMounted(() => {
       <div class="space-y-3">
         <Alert v-if="managedWarning" type="warning" :title="$t('outbounds.form.managedByRulesTitle')">
           {{ managedWarning }}
+          <!-- The tag of a managed outbound is its Filter's or Group's name,
+               so the link can land on the exact card to edit. -->
+          <RouterLink
+            :to="focusLink(FOCUS_PAGES.nodeRules, editingTag)"
+            class="mt-1 block font-medium underline underline-offset-2 hover:no-underline"
+          >
+            {{ $t('outbounds.form.openNodeRule', { name: editingTag }) }}
+          </RouterLink>
         </Alert>
 
         <!--

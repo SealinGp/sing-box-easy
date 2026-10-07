@@ -18,6 +18,7 @@
 @import './style/glass.css'; /* liquid-glass surfaces                */
 @import './style/controls.css'; /* inputs, textareas, selects           */
 @import './style/density.css'; /* tables + page shells (unscoped)      */
+@import './style/focus.css'; /* ?focus= link target (unlayered)     */
 @import './style/primevue.css'; /* teleported volt overlays             */
 @import './style/legacy.css'; /* ⚠️ deprecated shims — shrink me      */
 

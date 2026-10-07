@@ -17,7 +17,8 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { AdjustmentsHorizontalIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 import { displayName, latencyTier, stripFitsOneLine, tierShares, type LatencyTier } from '../utils/proxyGroups'
 import type { RuntimeGroup, RuntimeMember } from '../types/runtime'
 
@@ -29,6 +30,8 @@ const props = defineProps<{
   testing: boolean
   /** Name of the member being switched to, '' when idle. */
   switchingTo: string
+  /** True when the node-rules engine generates this group. */
+  managed?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -141,6 +144,22 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
       <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {{ group.type }} · {{ group.members.length }}
       </span>
+      <!--
+        Where this group comes from. It stops its own click like the other
+        controls in the header — the row is the expand toggle.
+      -->
+      <RouterLink
+        v-if="managed"
+        :to="focusLink(FOCUS_PAGES.nodeRules, group.name)"
+        :title="$t('proxies.fromNodeRulesHint')"
+        class="inline-flex items-center gap-1 rounded-pill bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700 hover:bg-primary-200 dark:bg-primary-950/40 dark:text-primary-300 dark:hover:bg-primary-900/60"
+        @click.stop
+        @keydown.enter.stop
+        @keydown.space.stop
+      >
+        <AdjustmentsHorizontalIcon class="h-3 w-3" />
+        <span>{{ $t('proxies.fromNodeRules') }}</span>
+      </RouterLink>
       <span class="ml-auto flex items-center gap-1.5">
         <!--
           The search opens WHERE IT WAS ASKED FOR. The control is anchored on

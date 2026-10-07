@@ -56,6 +56,8 @@ export default {
   streamFailed: '连接数据流中断',
   closeFailed: '关闭连接失败',
   details: {
+    openProxyGroup: '在代理页查看 {name}',
+    openRuleSet: '在规则集页查看 {name}',
     title: '连接详情',
     dismiss: '收起',
     source: '源地址',
