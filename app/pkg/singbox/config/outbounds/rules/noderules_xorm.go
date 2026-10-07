@@ -411,7 +411,7 @@ func filterFromRow(r *repo.FilterRule) (*Filter, error) {
 	if excludes == nil {
 		excludes = []Matcher{}
 	}
-	return &Filter{
+	filter := &Filter{
 		ID:            r.ID,
 		Name:          r.Name,
 		Matchers:      matchers,
@@ -424,7 +424,24 @@ func filterFromRow(r *repo.FilterRule) (*Filter, error) {
 		TestTolerance: r.TestTolerance,
 		CreatedAt:     r.CreatedAt,
 		UpdatedAt:     r.UpdatedAt,
-	}, nil
+	}
+	// A urltest filter reports the settings it actually RUNS with.
+	//
+	// The defaults were applied only when the config was built (BuildSpecs calls
+	// URLTestSettings), so a row that never stored them — the seeded fallback,
+	// which no form ever saved — was served as `test_url: ""`, `test_interval:
+	// ""`, `test_tolerance: 0` while its generated group probed gstatic every
+	// 3m with a tolerance of 200. The API contradicted the config it produced,
+	// and the edit form opened on three blank fields for values that were set.
+	//
+	// Filled on read rather than by a migration: it covers rows that already
+	// exist, and a later change to a default reaches every filter that never
+	// chose its own value. A selector has no health check, so it is left as
+	// stored.
+	if filter.OutboundType == OutboundTypeURLTest {
+		filter.TestURL, filter.TestInterval, filter.TestTolerance = filter.URLTestSettings()
+	}
+	return filter, nil
 }
 
 func groupFromRow(r *repo.GroupRule) (*Group, error) {

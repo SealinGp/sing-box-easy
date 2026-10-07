@@ -189,3 +189,64 @@ func TestManager_GroupExtraTagsRoundTrip(t *testing.T) {
 		t.Fatalf("cleared extra_tags = %v, want empty", cleared.ExtraTags)
 	}
 }
+
+// The seeded fallback is never saved through a form, so it stores no health
+// check values. It must still REPORT the ones its urltest group runs with —
+// the same ones BuildSpecs writes into config.json — not three blanks.
+func TestManager_FallbackReportsEffectiveURLTestSettings(t *testing.T) {
+	m := newTestManager(t)
+	fallback, err := m.GetFilter(FallbackFilterID)
+	if err != nil {
+		t.Fatalf("get fallback: %v", err)
+	}
+	if fallback.TestURL != DefaultURLTestURL || fallback.TestInterval != DefaultURLTestInterval || fallback.TestTolerance != DefaultURLTestTolerance {
+		t.Fatalf("fallback url-test settings = (%q, %q, %d), want the defaults (%q, %q, %d)",
+			fallback.TestURL, fallback.TestInterval, fallback.TestTolerance,
+			DefaultURLTestURL, DefaultURLTestInterval, DefaultURLTestTolerance)
+	}
+
+	// What is reported is what is built: the two must not be able to disagree.
+	url, interval, tolerance := fallback.URLTestSettings()
+	if url != fallback.TestURL || interval != fallback.TestInterval || tolerance != fallback.TestTolerance {
+		t.Errorf("reported settings differ from the ones the config is built with")
+	}
+
+	listed, err := m.ListFilters()
+	if err != nil {
+		t.Fatalf("list filters: %v", err)
+	}
+	for _, filter := range listed {
+		if filter.IsFallback && filter.TestURL == "" {
+			t.Error("the list endpoint still serves the fallback with a blank test_url")
+		}
+	}
+}
+
+// A filter's own choices win over the defaults, and a selector — which has no
+// health check — is not handed settings it would never use.
+func TestManager_URLTestDefaultsDoNotOverrideOrLeakIntoSelectors(t *testing.T) {
+	m := newTestManager(t)
+
+	custom, err := m.CreateFilter(&Filter{
+		Name: "custom", OutboundType: OutboundTypeURLTest, Priority: 10,
+		Matchers: []Matcher{{Type: "keyword", Value: "hk"}},
+		TestURL:  "https://example.com/204", TestInterval: "30s", TestTolerance: 50,
+	})
+	if err != nil {
+		t.Fatalf("create urltest filter: %v", err)
+	}
+	if custom.TestURL != "https://example.com/204" || custom.TestInterval != "30s" || custom.TestTolerance != 50 {
+		t.Errorf("explicit settings were overridden: (%q, %q, %d)", custom.TestURL, custom.TestInterval, custom.TestTolerance)
+	}
+
+	selector, err := m.CreateFilter(&Filter{
+		Name: "manual", OutboundType: OutboundTypeSelector, Priority: 20,
+		Matchers: []Matcher{{Type: "keyword", Value: "jp"}},
+	})
+	if err != nil {
+		t.Fatalf("create selector filter: %v", err)
+	}
+	if selector.TestURL != "" || selector.TestInterval != "" || selector.TestTolerance != 0 {
+		t.Errorf("a selector was given url-test settings: (%q, %q, %d)", selector.TestURL, selector.TestInterval, selector.TestTolerance)
+	}
+}
