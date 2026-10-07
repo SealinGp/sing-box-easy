@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { parseLogLine, stripAnsi, isStartupFailure } from './logLine'
+import { parseLogLine, splitLogLine, filterLogEntries, stripAnsi, isStartupFailure } from './logLine'
 
 // Samples are verbatim from a real OpenWrt box (bin/log.md), escapes included.
 const FATAL =
@@ -130,5 +130,77 @@ describe('structured (zap) lines', () => {
   it('falls through for JSON without a recognised level', () => {
     const line = '{"foo":"bar"}'
     expect(parseLogLine(line).text).toBe(line)
+  })
+})
+
+describe('splitLogLine', () => {
+  const BODY = '[5612797024 24ms] connection: open connection to 203.0.113.7:58886 using outbound/direct[直连]: connection refused'
+
+  it('strips an OpenWrt logread prefix and sing-box\'s own header, keeping the local time', () => {
+    const entry = splitLogLine(`Wed Oct  7 16:38:38 2026 daemon.err sing-box[22865]: +0000 2026-10-07 08:38:38 ERROR ${BODY}`)
+    expect(entry).toEqual({ level: 'error', time: '16:38:38', message: BODY })
+  })
+
+  it('strips a journald prefix', () => {
+    const entry = splitLogLine(`Oct 07 16:38:39 router sing-box[931]: +0800 2026-10-07 16:38:39 INFO inbound/tun[tun-in]: inbound connection from 192.168.1.20:51458`)
+    expect(entry).toEqual({ level: 'info', time: '16:38:39', message: 'inbound/tun[tun-in]: inbound connection from 192.168.1.20:51458' })
+  })
+
+  it('reads a bare log.output line, using sing-box\'s time when it is the only one', () => {
+    expect(splitLogLine(`+0000 2026-10-07 08:38:38 DEBUG router: match[12] => route(direct)`))
+      .toEqual({ level: 'debug', time: '08:38:38', message: 'router: match[12] => route(direct)' })
+  })
+
+  it('handles timestamps being disabled in the sing-box config', () => {
+    expect(splitLogLine('Wed Oct  7 16:38:38 2026 daemon.info sing-box[1]: WARN dns: exchange failed'))
+      .toEqual({ level: 'warn', time: '16:38:38', message: 'dns: exchange failed' })
+    expect(splitLogLine('INFO sing-box started')).toEqual({ level: 'info', time: '', message: 'sing-box started' })
+  })
+
+  it('strips ANSI colour before matching', () => {
+    expect(splitLogLine('\u001b[31mERROR\u001b[0m [1 0ms] boom').level).toBe('error')
+  })
+
+  it('leaves an unrecognised line whole rather than guessing at a prefix', () => {
+    const line = 'something happened: 12:00:00 and then more'
+    expect(splitLogLine(line)).toEqual({ level: 'info', time: '', message: line })
+  })
+
+  it('keeps a multi-line message intact', () => {
+    expect(splitLogLine('+0000 2026-10-07 08:38:38 FATAL start service: line one\nline two').message)
+      .toBe('start service: line one\nline two')
+  })
+
+  it('maps PANIC onto fatal and a crash loop onto fatal', () => {
+    expect(splitLogLine('PANIC runtime error').level).toBe('fatal')
+    expect(splitLogLine('procd: sing-box is in a crash loop').level).toBe('fatal')
+  })
+
+  it('reads the panel\'s own JSON lines', () => {
+    const entry = splitLogLine('{"level":"warn","timestamp":"2026-10-07T16:40:01.120+0800","caller":"apiv1/x.go:10","msg":"slow","elapsed_ms":1200}')
+    expect(entry).toEqual({ level: 'warn', time: '16:40:01', message: 'apiv1/x.go:10 slow elapsed_ms=1200' })
+  })
+})
+
+describe('filterLogEntries', () => {
+  const entries = [
+    { level: 'debug' as const, time: '', message: 'router: match[12]' },
+    { level: 'info' as const, time: '', message: 'inbound connection from 192.168.1.2' },
+    { level: 'error' as const, time: '', message: 'connection refused' },
+    { level: 'fatal' as const, time: '', message: 'start service failed' },
+  ]
+
+  it('keeps entries at or above the minimum level, returning their indexes', () => {
+    expect(filterLogEntries(entries, 'trace', '')).toEqual([0, 1, 2, 3])
+    expect(filterLogEntries(entries, 'info', '')).toEqual([1, 2, 3])
+    expect(filterLogEntries(entries, 'error', '')).toEqual([2, 3])
+  })
+
+  it('applies a case-insensitive regex', () => {
+    expect(filterLogEntries(entries, 'trace', 'REFUSED|failed')).toEqual([2, 3])
+  })
+
+  it('falls back to a literal match for an unfinished regex', () => {
+    expect(filterLogEntries(entries, 'trace', 'match[1')).toEqual([0])
   })
 })

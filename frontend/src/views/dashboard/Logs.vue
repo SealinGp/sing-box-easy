@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { parseLogLine, isStartupFailure, type LogLevel } from '../../utils/logLine'
+import { ArrowDownTrayIcon, ChevronDoubleDownIcon, PauseIcon, PlayIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { parseLogLine, isStartupFailure, splitLogLine, filterLogEntries, type LogLevel } from '../../utils/logLine'
 import { useLogStream, MAX_LINES, type LogFeed } from '../../composables/useLogStream'
 
 const { t } = useI18n()
@@ -24,6 +25,13 @@ const TABS: { value: LogFeed; labelKey: string }[] = [
 ]
 
 const lines = ref<string[]>([])
+/**
+ * Lines received since the buffer was last replaced. Not displayed — it gives
+ * each row a render KEY that stays with its line. The window is bounded, so a
+ * row's index changes every time an older line falls off; keying by index
+ * would make Vue re-patch all 500 rows on every append instead of adding one.
+ */
+const received = ref(0)
 const streaming = ref(true)
 const autoScroll = ref(true)
 
@@ -67,6 +75,7 @@ const appendLines = (incoming: string[]) => {
     if (isStartupFailure(line)) startupFailure.value = parseLogLine(line).text
   }
 
+  received.value += incoming.length
   const combined = lines.value.concat(incoming)
   lines.value = combined.length > MAX_LINES ? combined.slice(combined.length - MAX_LINES) : combined
   if (autoScroll.value) void scrollToBottom()
@@ -77,6 +86,7 @@ const replaceLines = (incoming: string[]) => {
     if (isStartupFailure(line)) startupFailure.value = parseLogLine(line).text
   }
   lines.value = incoming
+  received.value = incoming.length
   if (autoScroll.value) void scrollToBottom()
 }
 
@@ -98,6 +108,7 @@ const { source, transport, errored, initialLoading } = stream
 const selectFeed = (next: LogFeed) => {
   if (feed.value === next) return
   lines.value = []
+  received.value = 0
   startupFailure.value = ''
   feed.value = next
 }
@@ -125,18 +136,68 @@ const transportNote = computed(() =>
 )
 
 /**
- * Lines are parsed once here rather than per-render: a burst re-renders the
+ * Lines are split once here rather than per-render: a burst re-renders the
  * whole window.
  */
-const parsedLines = computed(() => lines.value.map(parseLogLine))
+const entries = computed(() => lines.value.map(splitLogLine))
 
-const LEVEL_CLASS: Record<LogLevel, string> = {
-  fatal: 'text-red-300 font-semibold bg-red-950/40',
-  error: 'text-red-400',
-  warn: 'text-amber-300',
-  info: 'text-gray-200',
-  debug: 'text-gray-500',
-  trace: 'text-gray-600',
+/**
+ * The level filter is a FLOOR, not a single level: someone who picks "warn" is
+ * asking what went wrong, and an error is more of an answer to that than a
+ * warning is.
+ */
+const minLevel = ref<LogLevel>('trace')
+const LEVEL_OPTIONS: { value: LogLevel; labelKey: string }[] = [
+  { value: 'trace', labelKey: 'logs.level.all' },
+  { value: 'debug', labelKey: 'logs.level.debug' },
+  { value: 'info', labelKey: 'logs.level.info' },
+  { value: 'warn', labelKey: 'logs.level.warn' },
+  { value: 'error', labelKey: 'logs.level.error' },
+]
+const query = ref('')
+
+/** Rows on screen, each with the stable key of its line (see `received`). */
+const rows = computed(() => {
+  const first = received.value - entries.value.length + 1
+  return filterLogEntries(entries.value, minLevel.value, query.value).flatMap((index) => {
+    const entry = entries.value[index]
+    return entry ? [{ seq: first + index, entry }] : []
+  })
+})
+
+const filtered = computed(() => minLevel.value !== 'trace' || query.value.trim() !== '')
+
+const LEVEL_BADGE: Record<LogLevel, string> = {
+  fatal: 'text-white bg-red-600',
+  error: 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40',
+  warn: 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40',
+  info: 'text-sky-700 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/40',
+  debug: 'text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-gray-700/60',
+  trace: 'text-gray-400 bg-gray-100 dark:text-gray-500 dark:bg-gray-700/60',
+}
+
+const LEVEL_TEXT: Record<LogLevel, string> = {
+  fatal: 'text-red-700 dark:text-red-300 font-semibold',
+  error: 'text-red-700 dark:text-red-300',
+  warn: 'text-amber-800 dark:text-amber-200',
+  info: 'text-gray-900 dark:text-gray-100',
+  debug: 'text-gray-500 dark:text-gray-400',
+  trace: 'text-gray-400 dark:text-gray-500',
+}
+
+/**
+ * Saves what is on screen — the filtered rows, not the raw window — because
+ * that is what the operator just narrowed down to and wants to attach to a
+ * bug report.
+ */
+const downloadLogs = () => {
+  const text = rows.value.map(({ entry }) => `${entry.time} ${entry.level.toUpperCase()} ${entry.message}`.trim()).join('\n')
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${feed.value === 'app' ? 'sing-box-easy' : 'sing-box'}-${new Date().toISOString().replace(/[:.]/g, '-')}.log`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 const toggleStreaming = () => {
@@ -150,6 +211,7 @@ const toggleStreaming = () => {
 
 const clearLogs = () => {
   lines.value = []
+  received.value = 0
 }
 
 const jumpToBottom = () => {
@@ -176,41 +238,6 @@ onMounted(async () => {
 
 <template>
   <div class="page-shell h-screen flex flex-col overflow-hidden">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-4 shrink-0">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $t('logs.title') }}</h2>
-      <div class="flex items-center gap-3">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          {{ $t('logs.lineCount', { n: lines.length, max: MAX_LINES }) }}
-        </span>
-
-        <button
-          @click="jumpToBottom"
-          :disabled="autoScroll"
-          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-        >
-          {{ $t('logs.jumpToBottom') }}
-        </button>
-
-        <button
-          @click="clearLogs"
-          class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-control hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          {{ $t('logs.clear') }}
-        </button>
-
-        <button
-          @click="toggleStreaming"
-          class="px-4 py-2 text-sm font-medium rounded-control transition-colors"
-          :class="streaming
-            ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-            : 'text-white bg-primary-600 hover:bg-primary-700'"
-        >
-          {{ streaming ? $t('logs.pause') : $t('logs.resume') }}
-        </button>
-      </div>
-    </div>
-
     <!--
       Feed switch. Buttons rather than <TabNav>, which is route-driven: these
       two views share one viewer and one set of controls, so a route per feed
@@ -286,26 +313,128 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Log surface -->
+    <!-- Filters -->
+    <div class="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+      <select
+        v-model="minLevel"
+        :aria-label="$t('logs.level.label')"
+        class="h-8 rounded-control border border-gray-300 bg-white px-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+      >
+        <option v-for="option in LEVEL_OPTIONS" :key="option.value" :value="option.value">{{ $t(option.labelKey) }}</option>
+      </select>
+      <input
+        v-model="query"
+        type="search"
+        :placeholder="$t('logs.searchPlaceholder')"
+        :aria-label="$t('logs.searchPlaceholder')"
+        class="h-8 min-w-0 flex-[1_1_220px] rounded-control border border-gray-300 bg-white px-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+      />
+
+      <!--
+        The actions sit beside the filters they act on, as icons. There is no
+        page title above them: the nav already says which page this is, and a
+        heading row spent a fifth of a short screen saying it again. Each icon
+        carries its name as both `aria-label` and `title`, so it is announced
+        and shows on hover.
+      -->
+      <span class="whitespace-nowrap text-xs tabular-nums text-gray-500 dark:text-gray-400">
+        {{ filtered
+          ? $t('logs.filteredCount', { shown: rows.length, n: lines.length })
+          : $t('logs.lineCount', { n: lines.length, max: MAX_LINES }) }}
+      </span>
+      <div class="flex items-center gap-1">
+        <button type="button" class="log-action" :disabled="rows.length === 0" :aria-label="$t('logs.download')" :title="$t('logs.download')" @click="downloadLogs">
+          <ArrowDownTrayIcon class="h-4 w-4" />
+        </button>
+        <button type="button" class="log-action" :disabled="autoScroll" :aria-label="$t('logs.jumpToBottom')" :title="$t('logs.jumpToBottom')" @click="jumpToBottom">
+          <ChevronDoubleDownIcon class="h-4 w-4" />
+        </button>
+        <button type="button" class="log-action" :disabled="lines.length === 0" :aria-label="$t('logs.clear')" :title="$t('logs.clear')" @click="clearLogs">
+          <TrashIcon class="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          class="log-action"
+          :class="{ 'is-paused': !streaming }"
+          :aria-pressed="!streaming"
+          :aria-label="streaming ? $t('logs.pause') : $t('logs.resume')"
+          :title="streaming ? $t('logs.pause') : $t('logs.resume')"
+          @click="toggleStreaming"
+        >
+          <PauseIcon v-if="streaming" class="h-4 w-4" />
+          <PlayIcon v-else class="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+
+    <!--
+      Log surface. Rows rather than a terminal block: the level and the time
+      are the two things scanned for, so they get their own aligned columns
+      instead of being somewhere inside a wrapped line.
+    -->
     <div
       ref="logContainer"
       @scroll="onScroll"
-      class="flex-1 min-h-0 overflow-y-auto bg-gray-900 dark:bg-black rounded-surface shadow-float p-4 font-mono text-xs leading-relaxed"
+      class="flex-1 min-h-0 overflow-y-auto rounded-surface border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
     >
       <div v-if="initialLoading" class="flex items-center justify-center h-full">
         <div class="animate-spin rounded-pill h-7 w-7 border-b-2 border-primary-500"></div>
       </div>
-      <div v-else-if="lines.length === 0" class="flex items-center justify-center h-full text-gray-500">
+      <div v-else-if="lines.length === 0" class="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400">
         {{ feed === 'app' ? $t('logs.emptyApp') : $t('logs.empty') }}
       </div>
-      <div v-else>
-        <div
-          v-for="(line, i) in parsedLines"
-          :key="i"
-          class="whitespace-pre-wrap break-all hover:bg-white/5 px-1 -mx-1 rounded"
-          :class="LEVEL_CLASS[line.level]"
-        >{{ line.text }}</div>
+      <div v-else-if="rows.length === 0" class="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400">
+        {{ $t('logs.noMatch') }}
       </div>
+      <ol v-else class="divide-y divide-gray-100 dark:divide-gray-700/60">
+        <li
+          v-for="row in rows"
+          :key="row.seq"
+          class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 sm:grid-cols-[4rem_4.5rem_minmax(0,1fr)]"
+        >
+          <span class="self-start rounded px-1.5 py-px text-center text-[10px] font-semibold uppercase tracking-wide" :class="LEVEL_BADGE[row.entry.level]">
+            {{ row.entry.level }}
+          </span>
+          <span class="hidden text-xs tabular-nums text-gray-500 dark:text-gray-400 sm:block">{{ row.entry.time }}</span>
+          <span class="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed" :class="LEVEL_TEXT[row.entry.level]">{{ row.entry.message }}</span>
+        </li>
+      </ol>
     </div>
   </div>
 </template>
+
+<style scoped>
+.log-action {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-control, 10px);
+  color: var(--color-text-secondary);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.log-action:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.log-action:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.log-action:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+/* Paused is a state, not just a button: it stays lit until streaming resumes. */
+.log-action.is-paused {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+</style>

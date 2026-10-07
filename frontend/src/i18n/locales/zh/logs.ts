@@ -31,4 +31,16 @@ export default {
   },
   sourceMemory: '面板自身日志保存在内存中，重启或更新后会从空开始。',
   emptyApp: '暂无面板日志。',
+  filteredCount: '显示 {shown} / {n} 行',
+  download: '下载',
+  searchPlaceholder: '搜索日志内容（支持正则）',
+  noMatch: '没有符合筛选条件的日志。',
+  level: {
+    label: '最低级别',
+    all: '全部级别',
+    debug: 'debug 及以上',
+    info: 'info 及以上',
+    warn: 'warn 及以上',
+    error: 'error 及以上',
+  },
 }
