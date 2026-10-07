@@ -193,7 +193,13 @@ func (h *Service) buildPreview(pool rules.NodePool) ([]previewFilter, []string, 
 	membership, others := rules.AssignFilters(pool, filters)
 	out := make([]previewFilter, 0, len(filters))
 	for _, f := range filters {
+		// Never nil. A filter that matches nothing has no entry in the map, and
+		// a nil slice is encoded as JSON `null` — which the Node Rules page
+		// then tried to iterate, taking the whole page down with it (#14).
 		members := membership[f.ID]
+		if members == nil {
+			members = []string{}
+		}
 		out = append(out, previewFilter{
 			ID:           f.ID,
 			Name:         f.Name,
@@ -202,6 +208,9 @@ func (h *Service) buildPreview(pool rules.NodePool) ([]previewFilter, []string, 
 			MemberCount:  len(members),
 			Members:      members,
 		})
+	}
+	if others == nil {
+		others = []string{}
 	}
 	return out, others, nil
 }
