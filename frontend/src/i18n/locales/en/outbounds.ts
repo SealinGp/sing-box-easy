@@ -26,6 +26,7 @@ export default {
   form: {
     managedByRulesTitle: 'Managed by node rules',
     managedByRules: 'This outbound is rebuilt from your node rules. Changes saved here are discarded the next time the rules are applied — edit the matching Filter or Group instead.',
+    openNodeRule: 'Open “{name}” in node rules',
     defaultFirst: 'First member (default)',
     noOptionsHint: 'This outbound type has no options — its behaviour is fixed.',
     tag: 'Tag *',

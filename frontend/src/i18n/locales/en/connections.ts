@@ -56,6 +56,8 @@ export default {
   streamFailed: 'The connection stream dropped',
   closeFailed: 'Could not close the connection',
   details: {
+    openProxyGroup: 'Show {name} on the Proxies page',
+    openRuleSet: 'Show {name} on the Rule Sets page',
     title: 'Connection details',
     dismiss: 'Hide',
     source: 'Source',

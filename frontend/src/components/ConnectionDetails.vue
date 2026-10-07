@@ -11,6 +11,8 @@ import { displayName } from '../utils/proxyGroups'
 import { formatBytes } from '../utils/formatBytes'
 import { formatRate } from '../utils/flowOverlay'
 import { durationOf, formatDuration, type TrackedConnection } from '../utils/connectionsTable'
+import { FOCUS_PAGES, focusLink, splitRuleByRuleSets } from '../utils/focusTarget'
+import { useConnectionLinks } from '../composables/useConnectionLinks'
 
 defineProps<{
   connection: TrackedConnection
@@ -20,6 +22,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ (e: 'dismiss'): void; (e: 'close'): void }>()
+
+const { ruleSetTags, isGroup } = useConnectionLinks()
 </script>
 
 <template>
@@ -57,13 +61,35 @@ const emit = defineEmits<{ (e: 'dismiss'): void; (e: 'close'): void }>()
         <dt>{{ $t('connections.details.chain') }}</dt>
         <dd>
           <template v-for="(hop, index) in connection.chains" :key="index">
-            <span v-if="index" class="text-gray-400"> → </span><span :title="hop">{{ displayName(hop) }}</span>
+            <span v-if="index" class="text-gray-400"> → </span>
+            <!--
+              Only the FIRST hop — the outbound the rule named — and only when
+              it is a group: that is what has a card on the Proxies page. The
+              hops after it are that group's members, shown inside its card.
+            -->
+            <RouterLink
+              v-if="index === 0 && isGroup(hop)"
+              :to="focusLink(FOCUS_PAGES.proxies, hop)"
+              :title="$t('connections.details.openProxyGroup', { name: hop })"
+              class="detail-link"
+            >{{ displayName(hop) }}</RouterLink>
+            <span v-else :title="hop">{{ displayName(hop) }}</span>
           </template>
         </dd>
       </div>
       <div class="wide">
         <dt>{{ $t('connections.details.rule') }}</dt>
-        <dd class="font-mono text-xs">{{ connection.rule }}</dd>
+        <dd class="font-mono text-xs">
+          <template v-for="(part, index) in splitRuleByRuleSets(connection.rule, ruleSetTags)" :key="index">
+            <RouterLink
+              v-if="part.ruleSet"
+              :to="focusLink(FOCUS_PAGES.ruleSets, part.ruleSet)"
+              :title="$t('connections.details.openRuleSet', { name: part.ruleSet })"
+              class="detail-link"
+            >{{ part.text }}</RouterLink>
+            <template v-else>{{ part.text }}</template>
+          </template>
+        </dd>
       </div>
     </dl>
     <div class="flex flex-wrap gap-2">
@@ -106,6 +132,16 @@ dl > .wide {
 dt {
   font-size: 11px;
   color: var(--color-text-secondary);
+}
+/* A name that leads to its card on another page. */
+.detail-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  text-underline-offset: 2px;
+}
+.detail-link:hover {
+  text-decoration-color: currentColor;
 }
 dd {
   min-width: 0;

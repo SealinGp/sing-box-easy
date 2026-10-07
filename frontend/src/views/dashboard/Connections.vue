@@ -18,6 +18,7 @@ import ConnectionSourcePicker from '../../components/ConnectionSourcePicker.vue'
 import ConnectionTableSettings from '../../components/ConnectionTableSettings.vue'
 import ConnectionsTable from '../../components/ConnectionsTable.vue'
 import { useConnections } from '../../composables/useConnections'
+import { useConnectionLinks } from '../../composables/useConnectionLinks'
 import { useFillHeight } from '../../composables/useFillHeight'
 import { useConnectionTableSettings } from '../../composables/useConnectionTableSettings'
 import { useConfirm } from '../../composables/useConfirm'
@@ -37,6 +38,10 @@ const running = computed(() => serviceStore.status?.status === 'running')
 
 const { active, closed, totals, now, error, connecting, paused, clearClosed } =
   useConnections(running, () => t('connections.streamFailed'))
+
+// What a connection's details may link to (proxy groups, rule sets). Loaded
+// once per visit here, not by each expanded row.
+useConnectionLinks().refresh()
 const { settings, update, reset } = useConnectionTableSettings()
 
 const tableRegion = ref<HTMLElement | null>(null)

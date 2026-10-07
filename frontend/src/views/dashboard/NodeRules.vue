@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useFocusTarget } from '../../composables/useFocusTarget'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useNodeRulesStore } from '../../stores/noderules'
@@ -379,6 +380,10 @@ function filterName(id: string): string {
   return filters.value.find((f) => f.id === id)?.name ?? id
 }
 
+// A managed outbound's tag IS its Filter's or Group's name, so the name is
+// what an Outbounds/Proxies link carries here.
+const { isFocused } = useFocusTarget(() => filters.value.length + groups.value.length > 0)
+
 onMounted(async () => {
   await Promise.all([store.fetchAll(), store.fetchCatalog()])
   await store.runPreview()
@@ -479,6 +484,7 @@ onMounted(async () => {
               <li
                 v-for="f in filters"
                 :key="f.id"
+                :class="{ 'focus-target': isFocused(f.name) }"
                 class="node-rule-card rounded-control border border-gray-200 dark:border-gray-800 px-2.5 py-2 flex items-start justify-between gap-2 bg-white dark:bg-slate-900 transition-colors duration-200"
               >
                 <div class="min-w-0 space-y-1">
@@ -552,6 +558,7 @@ onMounted(async () => {
               <li
                 v-for="g in groups"
                 :key="g.id"
+                :class="{ 'focus-target': isFocused(g.name) }"
                 class="node-rule-card rounded-control border border-gray-200 dark:border-gray-800 px-2.5 py-2 flex items-start justify-between gap-2 bg-white dark:bg-slate-900 transition-colors duration-200"
               >
                 <div class="min-w-0 space-y-1">
