@@ -2,10 +2,12 @@ package apiv1
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
@@ -41,7 +43,7 @@ func (h *Handler) GetServiceStatus(ctx context.Context, c *app.RequestContext) {
 // StartService starts the sing-box service
 func (h *Handler) StartService(ctx context.Context, c *app.RequestContext) {
 	if err := h.serviceController.Start(); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondServiceError(ctx, c, err)
 		return
 	}
 
@@ -61,7 +63,7 @@ func (h *Handler) StopService(ctx context.Context, c *app.RequestContext) {
 // RestartService restarts the sing-box service
 func (h *Handler) RestartService(ctx context.Context, c *app.RequestContext) {
 	if err := h.serviceController.Restart(); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondServiceError(ctx, c, err)
 		return
 	}
 
@@ -173,4 +175,17 @@ func (h *Handler) StreamServiceLogs(ctx context.Context, c *app.RequestContext) 
 			}
 		}
 	}
+}
+
+// respondServiceError reports a failed start/restart. A config the pre-check
+// refused keeps its structured form — which setting, which outbound — so the
+// UI can send the operator to the page that fixes it; anything else stays the
+// plain internal error it always was.
+func respondServiceError(ctx context.Context, c *app.RequestContext, err error) {
+	var validation *config.ValidationError
+	if errors.As(err, &validation) {
+		respondConfigError(ctx, c, err)
+		return
+	}
+	respErr(ctx, c, CodeInternalError, err.Error())
 }

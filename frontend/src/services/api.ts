@@ -1,3 +1,4 @@
+import { reportConfigProblem } from '../composables/useConfigProblem'
 import axios, { type AxiosInstance, AxiosError } from 'axios'
 import { API_BASE_URL } from './apiBase'
 import { ApiError, Code, type BasicResponse } from '../types/api'
@@ -75,7 +76,11 @@ export class ApiService {
               console.warn('[api.ts Response Business Error] Already on login page, skipping redirect.')
             }
           }
-          throw new ApiError(body.code, body.msg || 'Request failed')
+          // Broken outbound references open the app-wide dialog, which can take
+          // the operator to the page that fixes them. The error is still
+          // thrown: the caller's own failure handling must run as usual.
+          if (body.code === Code.ConfigError) reportConfigProblem(body.data, body.msg || '')
+          throw new ApiError(body.code, body.msg || 'Request failed', body.data)
         }
         return response
       },
@@ -94,7 +99,8 @@ export class ApiService {
               console.warn('[api.ts Response Network/HTTP Error BasicResponse] Already on login page, skipping redirect.')
             }
           }
-          return Promise.reject(new ApiError(body.code, body.msg || error.message))
+          if (body.code === Code.ConfigError) reportConfigProblem(body.data, body.msg || '')
+          return Promise.reject(new ApiError(body.code, body.msg || error.message, body.data))
         }
         if (error.response?.status === 401) {
           console.warn('[api.ts Response Network/HTTP Error 401] Unauthorized status. Clearing token.')

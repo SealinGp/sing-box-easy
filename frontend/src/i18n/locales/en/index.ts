@@ -1,6 +1,7 @@
 // English message catalog — merges all namespace modules into one object.
 import common from './common'
 import nav from './nav'
+import configProblem from './configProblem'
 import proxies from './proxies'
 import connections from './connections'
 import wizard from './wizard'
@@ -36,6 +37,7 @@ import ruleSet from './ruleSet'
 export default {
   common,
   nav,
+  configProblem,
   proxies,
   connections,
   wizard,

@@ -127,6 +127,20 @@ func (h *Handler) GetCoreInfo(ctx context.Context, c *app.RequestContext) {
 }
 
 func respondConfigError(ctx context.Context, c *app.RequestContext, err error) {
+	// A reference problem gets its own code and a machine-readable body: the
+	// frontend does not show this one as a toast, it opens a dialog that names
+	// each broken setting and links to the page where it is fixed. `reason`
+	// rather than the code alone, so another kind of config error can use
+	// CodeConfigError later without being mistaken for this one.
+	var referenceErr *config.ReferenceError
+	if errors.As(err, &referenceErr) {
+		resp(ctx, c, CodeConfigError, map[string]any{
+			"stage":    config.ValidationStagePanelGuard,
+			"reason":   "outbound_reference",
+			"problems": referenceErr.Problems,
+		}, referenceErr.Error())
+		return
+	}
 	var validationErr *config.ValidationError
 	if errors.As(err, &validationErr) {
 		resp(ctx, c, CodeValidationError, map[string]any{

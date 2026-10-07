@@ -21,6 +21,7 @@ declare module 'vue' {
     Card: typeof import('./src/components/Card.vue')['default']
     ChipsField: typeof import('./src/components/ChipsField.vue')['default']
     ClashAPISettings: typeof import('./src/components/ClashAPISettings.vue')['default']
+    ConfigProblemDialog: typeof import('./src/components/ConfigProblemDialog.vue')['default']
     ConfirmDialog: typeof import('./src/components/ConfirmDialog.vue')['default']
     ConnectionDetails: typeof import('./src/components/ConnectionDetails.vue')['default']
     ConnectionSourcePicker: typeof import('./src/components/ConnectionSourcePicker.vue')['default']
