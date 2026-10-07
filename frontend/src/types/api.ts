@@ -31,10 +31,17 @@ export interface BasicResponse<T = unknown> {
 // API Error class for handling non-success responses
 export class ApiError extends Error {
   code: Code
+  /**
+   * The envelope's `data` on a failure. Usually null; a few errors carry a
+   * structured body the UI acts on — a config pre-check failure lists the
+   * broken settings (see utils/configProblems.ts).
+   */
+  data: unknown
 
-  constructor(code: Code, message: string) {
+  constructor(code: Code, message: string, data: unknown = null) {
     super(message)
     this.code = code
+    this.data = data
     this.name = 'ApiError'
   }
 }

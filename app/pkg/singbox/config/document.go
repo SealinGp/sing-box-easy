@@ -161,6 +161,13 @@ func (m *Manager) validateDocumentLocked(ctx context.Context, document ConfigDoc
 		return err
 	}
 	document = validated
+	// The panel's own pre-check, BEFORE the core is asked — the core would pass
+	// what this catches (see reference_check.go). An explicit "validate" is a
+	// question about this document as a whole, so every problem is reported,
+	// not only the ones a save would add.
+	if problems := CheckReferences(document.Raw); len(problems) > 0 {
+		return &ValidationError{Stage: ValidationStagePanelGuard, Err: &ReferenceError{Problems: problems}}
+	}
 	if err := os.WriteFile(m.newConfigPath, document.Raw, 0600); err != nil {
 		return &ValidationError{Stage: ValidationStageStagingWrite, Err: fmt.Errorf("failed to write temp config file: %w", err)}
 	}
@@ -196,6 +203,12 @@ func (m *Manager) saveDocumentLocked(ctx context.Context, document ConfigDocumen
 		return err
 	}
 	document = validated
+	// The panel's own pre-check, BEFORE the core is asked. A save is refused
+	// only for problems it would ADD, so a config with several broken
+	// references can still be repaired one edit at a time.
+	if err := m.guardNewReferences(document.Raw); err != nil {
+		return err
+	}
 	if err := os.WriteFile(m.newConfigPath, document.Raw, 0600); err != nil {
 		return &ValidationError{Stage: ValidationStageStagingWrite, Err: fmt.Errorf("failed to write temp config file: %w", err)}
 	}
@@ -216,6 +229,15 @@ func (m *Manager) saveDocumentLocked(ctx context.Context, document ConfigDocumen
 // ValidateCurrentConfig asks the installed core to check the active file
 // directly, avoiding a typed read during start/restart/reload.
 func (m *Manager) ValidateCurrentConfig(ctx context.Context) error {
+	// Pre-check first: it is instant, and its message names the setting to
+	// fix, where the core's — if it noticed at all — would not. Nothing is
+	// grandfathered here, unlike a save: the service is about to be started on
+	// this exact file, and it would fail on any of these.
+	if raw, err := os.ReadFile(m.configPath); err == nil {
+		if problems := CheckReferences(raw); len(problems) > 0 {
+			return &ValidationError{Stage: ValidationStagePanelGuard, Err: &ReferenceError{Problems: problems}}
+		}
+	}
 	if err := m.core.Validate(ctx, m.configPath); err != nil {
 		version, _ := m.core.Version(ctx)
 		return &ValidationError{Stage: ValidationStageCoreCheck, CoreVersion: version.Raw, Err: err}

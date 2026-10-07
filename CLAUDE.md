@@ -140,18 +140,41 @@ All config modifications follow a safe workflow (implemented in `config.Manager`
      (see "Config version history" — there is no more `config.old.json` file)
    - Atomically rename the staging file over `config.json`
 4. On failure: Keep original config, remove the staging file
-   Outbound edits (`UpdateOutboundsConfig`) carry one extra guard before step 1:
-   they are refused if they would remove an outbound that `route.final`, a
-   route rule, a rule-set `download_detour` or a DNS server `detour` still
-   names (`outbound_refs.go`). `sing-box check` does not catch this — it parses
-   the config without building the router — so the core only fails at START
-   ("default outbound not found"), and a respawning init system turns that into
-   a crash loop on the router. Every outbound write goes through that one
-   function, so the guard covers a manual delete, a subscription refresh and a
-   node-rules apply whose filter now matches no nodes (an empty filter is
-   dropped, never emitted: sing-box rejects a group with no members). Only
-   references THIS edit breaks are reported; one that was already dangling
-   must not block the edits that would fix it.
+   **Step 2 is not `sing-box check` alone.** The panel runs its own pre-check
+   first (`reference_check.go`), because `check` builds the outbounds and parses
+   the route but never STARTS the router — and it is at start that sing-box
+   resolves the tags the route names. A `route.final`, a route rule
+   (`outbound`, including sub-rules of logical rules), a rule-set
+   `download_detour` or a DNS server `detour` naming an outbound that does not
+   exist passes `check` and then kills the service ("default outbound not
+   found"); under a respawning init system that is a crash loop on the router.
+   The pre-check resolves those references itself, against `outbounds` **and**
+   `endpoints` (a wireguard/tailscale endpoint is a legal route target since
+   1.11), and also reports a referenced selector/urltest with no members. It
+   runs at three doors, with a deliberately different rule at each:
+   - **every save** (`saveDocumentLocked`) refuses only problems the save would
+     ADD. One already present does not block it, or a config with two broken
+     references could never be repaired one edit at a time. Problems are keyed
+     by kind + field + tag, not by index, so reordering a broken rule is not a
+     new problem.
+   - **validate-only** (`POST /config/validate`) reports every problem: it is a
+     question about that document as a whole.
+   - **before start/restart/reload** (`ValidateCurrentConfig`) nothing is
+     grandfathered: the core is about to fail on it anyway, and naming the
+     setting beats a respawn loop.
+
+   Everything is read from raw JSON and any section with an unexpected shape is
+   skipped — a guard that cannot read a section must not invent a problem in it.
+   The API answers with `CodeConfigError` and
+   `data: {reason: "outbound_reference", problems: [{kind, field, where, tag}]}`
+   (`respondConfigError`); `reason` is what the client keys on, so another kind
+   of config error can use the code later. The frontend's API client hands that
+   body to `useConfigProblem`, which opens the app-wide `ConfigProblemDialog`:
+   each problem listed, grouped by the page that fixes it, with a button there
+   (`utils/configProblems.ts` holds the field→page map). An empty node-rules
+   filter is dropped from the config, never emitted (sing-box rejects a group
+   with no members), which is how a `route.final` pointing at the fallback
+   group came to dangle in the first place.
 5. Rollback available via `/api/v1/config/rollback` (or to a specific
    version via `/api/v1/config/versions/:id/rollback`)
 

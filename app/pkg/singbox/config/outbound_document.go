@@ -158,18 +158,8 @@ func (m *Manager) UpdateOutboundsConfig(ctx context.Context, updateFn func(*Sing
 	}
 	cfg := &SingBoxConfig{}
 	cfg.Outbounds = typedOutbounds(records)
-	before := append([]Outbound(nil), cfg.Outbounds...)
 	if err := updateFn(cfg); err != nil {
 		return err
-	}
-	// Refuse an edit that would leave route.final, a route rule or a detour
-	// naming an outbound this edit removed. `sing-box check` passes such a
-	// config and the core then fails to START on it — see outboundReferences.
-	// Every outbound write goes through here: deleting one by hand, a
-	// subscription refresh that drops a node, and a node-rules apply whose
-	// filter now matches nothing.
-	if dangling := danglingAfter(before, cfg.Outbounds, sections); len(dangling) > 0 {
-		return danglingReferenceError(dangling)
 	}
 	sections["outbounds"], err = encodeUpdatedOutbounds(records, cfg.Outbounds)
 	if err != nil {

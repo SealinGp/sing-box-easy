@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Toast from './volt/Toast.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
+import ConfigProblemDialog from './components/ConfigProblemDialog.vue'
 </script>
 
 <template>
@@ -8,5 +9,6 @@ import ConfirmDialog from './components/ConfirmDialog.vue'
     <router-view />
     <Toast position="top-center" />
     <ConfirmDialog />
+    <ConfigProblemDialog />
   </div>
 </template>

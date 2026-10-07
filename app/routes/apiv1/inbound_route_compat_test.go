@@ -148,7 +148,9 @@ func TestRouteMutationPreservesNewerDNSRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(dir, "config.json")
-	raw := []byte(`{"dns":{"rules":[{"action":"evaluate","future":true}]},"route":{"final":"old","future_route":7}}`)
+	// Both outbounds exist: the panel's pre-check refuses a route.final that
+	// names a tag the config does not contain (see the test below).
+	raw := []byte(`{"dns":{"rules":[{"action":"evaluate","future":true}]},"outbounds":[{"type":"direct","tag":"old"},{"type":"direct","tag":"new"}],"route":{"final":"old","future_route":7}}`)
 	if err := os.WriteFile(configPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -167,5 +169,60 @@ func TestRouteMutationPreservesNewerDNSRules(t *testing.T) {
 	}
 	if !bytes.Contains(saved, []byte(`"action": "evaluate"`)) || !bytes.Contains(saved, []byte(`"future_route": 7`)) {
 		t.Fatalf("unrelated fields were lost: %s", saved)
+	}
+}
+
+// `sing-box check` accepts a route.final naming an outbound that does not
+// exist — the stub core here exits 0 for it, as the real one does — and the
+// core then fails to start. The panel must refuse it first, and say so in a
+// form the frontend can act on: a dedicated code, a reason, and the setting.
+func TestRouteFinalNamingAMissingOutboundIsAStructuredConfigError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test helper is a POSIX shell script")
+	}
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "sing-box")
+	script := []byte("#!/bin/sh\nif [ \"$1\" = version ]; then echo 'sing-box version 1.14.0'; exit 0; fi\nif [ \"$1\" = check ]; then exit 0; fi\nexit 1\n")
+	if err := os.WriteFile(binaryPath, script, 0700); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(dir, "config.json")
+	raw := []byte(`{"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"}}`)
+	if err := os.WriteFile(configPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	handler := testHandler(&Handler{configManager: configpkg.NewManager(configPath, binaryPath, "")})
+	requestContext := app.NewContext(0)
+	requestContext.Request.SetBody([]byte(`{"final":"Other Nodes"}`))
+	handler.UpdateRouteFinal(context.Background(), requestContext)
+
+	var response BasicResponse[struct {
+		Reason   string `json:"reason"`
+		Stage    string `json:"stage"`
+		Problems []struct {
+			Kind  string `json:"kind"`
+			Field string `json:"field"`
+			Where string `json:"where"`
+			Tag   string `json:"tag"`
+		} `json:"problems"`
+	}]
+	if err := json.Unmarshal(requestContext.Response.Body(), &response); err != nil {
+		t.Fatalf("decode %s: %v", requestContext.Response.Body(), err)
+	}
+	if response.Code != CodeConfigError || response.Data.Reason != "outbound_reference" || response.Data.Stage != "panel_guard" {
+		t.Fatalf("response = %s, want code %d with reason outbound_reference", requestContext.Response.Body(), CodeConfigError)
+	}
+	if len(response.Data.Problems) != 1 {
+		t.Fatalf("problems = %+v, want exactly one", response.Data.Problems)
+	}
+	if got := response.Data.Problems[0]; got.Kind != "missing_outbound" || got.Field != "route.final" || got.Tag != "Other Nodes" {
+		t.Errorf("problem = %+v", got)
+	}
+	saved, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(saved, raw) {
+		t.Fatalf("a refused edit changed the config: %s", saved)
 	}
 }
