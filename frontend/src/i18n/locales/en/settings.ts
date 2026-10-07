@@ -94,6 +94,13 @@ export default {
     clientIdSaveFailed: 'Failed to save the client ID',
   },
   about: {
+    report: {
+      title: 'Report a bug',
+      desc: 'Opens a new GitHub issue with the versions and system details above filled in. Your hostname, addresses and config are never included, and you can review everything before submitting.',
+      open: 'Report a bug',
+      copy: 'Copy diagnostics',
+      copied: 'Diagnostics copied',
+    },
     title: 'About',
     source: 'Source on GitHub',
     app: 'sing-box-easy',

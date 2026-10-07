@@ -92,6 +92,13 @@ export default {
     clientIdSaveFailed: '保存 Client ID 失败',
   },
   about: {
+    report: {
+      title: '反馈问题',
+      desc: '在 GitHub 上新建问题，并自动填好上面的版本和系统信息。不会包含主机名、地址或配置内容，提交前你可以检查和修改。',
+      open: '反馈问题',
+      copy: '复制诊断信息',
+      copied: '诊断信息已复制',
+    },
     title: '关于',
     source: 'GitHub 源码',
     app: 'sing-box-easy',
