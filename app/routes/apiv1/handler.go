@@ -8,6 +8,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
+	"github.com/SealinGp/sing-box-easy/app/pkg/proxies"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
@@ -29,6 +30,7 @@ type Handler struct {
 	system                *system.Service
 	installationModule    *install.Service
 	trafficServiceModule  *traffic.Service
+	proxiesModule         *proxies.Service
 	settingsServiceModule *settings.Service
 	diagnosticsModule     *diagnostics.Service
 	outboundsModule       *outbounds.Service
@@ -54,6 +56,7 @@ func NewHandler(m *bootstrap.Modules) *Handler {
 		system:                m.System,
 		installationModule:    m.Installation,
 		trafficServiceModule:  m.TrafficService,
+		proxiesModule:         m.Proxies,
 		settingsServiceModule: m.SettingsService,
 		diagnosticsModule:     m.Diagnostics,
 		outboundsModule:       m.Outbounds,

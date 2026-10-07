@@ -3,8 +3,6 @@ package traffic
 import (
 	"context"
 	"errors"
-	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
-	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 	"strings"
 )
@@ -19,15 +17,8 @@ type Stream struct {
 }
 
 func (s *Service) Prepare(filter Filter) (*Stream, error) {
-	settings, err := s.config.GetClashAPISettings()
+	client, err := s.controller("live traffic")
 	if err != nil {
-		return nil, err
-	}
-	client, err := clashapi.NewFromValues(settings.ExternalController, settings.Secret)
-	if err != nil {
-		if errors.Is(err, clashapi.ErrDisabled) {
-			return nil, fault.New(fault.Unavailable, "live traffic needs experimental.clash_api.external_controller to be set")
-		}
 		return nil, err
 	}
 	filter.SourceIP = strings.TrimSpace(filter.SourceIP)
@@ -39,9 +30,5 @@ func (s *Stream) Run(ctx context.Context, emit func(*Frame) error) error {
 	if err == nil || errors.Is(err, context.Canceled) {
 		return err
 	}
-	message := err.Error()
-	if !errors.Is(err, clashapi.ErrUnauthorized) {
-		message = "sing-box is not reachable: " + message
-	}
-	return &fault.Error{Kind: fault.Unavailable, Message: message, Cause: err}
+	return unreachable(err)
 }
