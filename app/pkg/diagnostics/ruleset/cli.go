@@ -51,6 +51,9 @@ const matchMarker = "match rules.["
 // walks it in memory; anything slower is a stuck process, not a slow one.
 const defaultCLITimeout = 3 * time.Second
 
+// cliWaitDelay bounds how long a killed command's output pipe is waited on.
+const cliWaitDelay = 200 * time.Millisecond
+
 // runRuleSetMatch evaluates `content` against `query` using the installed
 // sing-box binary.
 //
@@ -93,6 +96,13 @@ func runRuleSetMatch(
 	// Kill the child on every return path. An ignored one is an orphaned
 	// process per probe — the same leak the log follower's comments warn about.
 	command.Cancel = func() error { return command.Process.Kill() }
+	// Killing the process is not enough to make the wait return. If it forked
+	// anything that inherited the output pipe (a wrapper script around the
+	// binary does), the read below stays blocked until THAT process exits, and
+	// the timeout is silently not a timeout. WaitDelay closes the pipe instead
+	// of waiting for it. Linux only in practice: found by CI, where the same
+	// test passes on macOS.
+	command.WaitDelay = cliWaitDelay
 
 	// The marker goes to stderr and diagnostics may go to either, so both are
 	// read as one stream. Nothing here is parsed positionally.

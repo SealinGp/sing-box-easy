@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+// shimTimeout is the budget for a shim that is expected to FINISH. It is
+// generous on purpose: macOS scans a freshly written executable on first run,
+// which was measured here at 0.6s and occasionally over 1s — a one-second
+// budget made these tests fail at random with "timed out".
+const shimTimeout = 10 * time.Second
+
 // writeShim installs a fake `sing-box` whose `rule-set match` behaves as the
 // script body says. The body is appended after a preamble that records the
 // argument vector, so a test can assert on how the command was built as well
@@ -34,7 +40,7 @@ func TestRunRuleSetMatchReadsTheMatchMarker(t *testing.T) {
 	// rule set as a match.
 	binary, _ := writeShim(t, "echo 'match rules.[3]: domain_suffix=google.com' >&2\nexit 0\n")
 
-	verdict, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	verdict, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte(`{"version":1,"rules":[]}`), "www.google.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -47,7 +53,7 @@ func TestRunRuleSetMatchReadsTheMatchMarker(t *testing.T) {
 func TestRunRuleSetMatchTreatsSilenceAsNoMatch(t *testing.T) {
 	binary, _ := writeShim(t, "exit 0\n")
 
-	verdict, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	verdict, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte(`{"version":1,"rules":[]}`), "www.google.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -63,7 +69,7 @@ func TestRunRuleSetMatchFailureIsUnknownNotNoMatch(t *testing.T) {
 	// make: it turns an unreadable set into a confident routing prediction.
 	binary, _ := writeShim(t, "echo 'FATAL[0000] unsupported version: 4' >&2\nexit 1\n")
 
-	verdict, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	verdict, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte("SRS\x00"), "www.google.com")
 	if verdict != VerdictUnknown {
 		t.Fatalf("verdict = %v, want VerdictUnknown", verdict)
@@ -78,7 +84,7 @@ func TestRunRuleSetMatchFailureIsUnknownNotNoMatch(t *testing.T) {
 
 func TestRunRuleSetMatchMissingBinaryIsUnknown(t *testing.T) {
 	verdict, err := runRuleSetMatch(context.Background(),
-		filepath.Join(t.TempDir(), "absent"), time.Second,
+		filepath.Join(t.TempDir(), "absent"), shimTimeout,
 		[]byte(`{"version":1,"rules":[]}`), "www.google.com")
 	if verdict != VerdictUnknown {
 		t.Fatalf("verdict = %v, want VerdictUnknown", verdict)
@@ -108,7 +114,7 @@ func TestRunRuleSetMatchTimesOutAsUnknown(t *testing.T) {
 func TestRunRuleSetMatchBuildsTheCommand(t *testing.T) {
 	binary, argsFile := writeShim(t, "exit 0\n")
 
-	if _, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	if _, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte("SRS\x01rest"), "www.google.com"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -140,7 +146,7 @@ func TestRunRuleSetMatchBuildsTheCommand(t *testing.T) {
 func TestRunRuleSetMatchDeclaresSourceFormatForJSON(t *testing.T) {
 	binary, argsFile := writeShim(t, "exit 0\n")
 
-	if _, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	if _, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte(`{"version":1,"rules":[]}`), "www.google.com"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -155,7 +161,7 @@ func TestRunRuleSetMatchDeclaresSourceFormatForJSON(t *testing.T) {
 func TestRunRuleSetMatchRemovesItsTempFile(t *testing.T) {
 	binary, argsFile := writeShim(t, "exit 0\n")
 
-	if _, err := runRuleSetMatch(context.Background(), binary, time.Second,
+	if _, err := runRuleSetMatch(context.Background(), binary, shimTimeout,
 		[]byte("SRS\x01rest"), "www.google.com"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
