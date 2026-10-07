@@ -1,6 +1,8 @@
 // 中文消息目录 —— 合并所有命名空间模块为一个对象。
 import common from './common'
 import nav from './nav'
+import proxies from './proxies'
+import connections from './connections'
 import wizard from './wizard'
 import overview from './overview'
 import config from './config'
@@ -34,6 +36,8 @@ import ruleSet from './ruleSet'
 export default {
   common,
   nav,
+  proxies,
+  connections,
   wizard,
   overview,
   config,

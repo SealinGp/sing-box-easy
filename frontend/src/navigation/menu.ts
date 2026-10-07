@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { ChartBarIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, GlobeAltIcon, MapIcon,
   DocumentTextIcon, BeakerIcon, QueueListIcon, UsersIcon, Cog6ToothIcon,
-  ArrowPathIcon, AdjustmentsHorizontalIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+  ArrowPathIcon, AdjustmentsHorizontalIcon, WrenchScrewdriverIcon, ArrowsRightLeftIcon, ServerStackIcon } from '@heroicons/vue/24/outline'
 
 export interface MenuItem {
   name: string
@@ -21,6 +21,8 @@ export function createMenu(t: (key: string) => string, authEnabled: boolean): Me
   return [
     { id: 'monitor', name: t('nav.monitor'), items: [
       item('nav.overview', ChartBarIcon, 'overview', 'status service traffic 流量 状态'),
+      item('nav.liveProxies', ServerStackIcon, 'proxies', 'proxies nodes groups selector switch latency delay 代理 节点 切换 延迟 测速'),
+      item('nav.liveConnections', ArrowsRightLeftIcon, 'connections', 'connections live active sessions close 连接 活跃 关闭'),
       item('nav.logs', QueueListIcon, 'logs', 'logs events 日志'),
     ] },
     { id: 'connections', name: t('nav.connections'), items: [

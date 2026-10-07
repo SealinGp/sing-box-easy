@@ -35,6 +35,8 @@ export default {
   subscriptions: 'Subscriptions',
   nodeRules: 'Node Rules',
   logs: 'Logs',
+  liveProxies: 'Proxies',
+  liveConnections: 'Connections',
   serviceStatusHint: 'Live sing-box service status — click for details',
   signOut: 'Sign Out',
 }
