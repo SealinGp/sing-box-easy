@@ -32,7 +32,15 @@ async function navigate(index = active.value) {
     <div class="navigation-search">
       <div class="palette-input">
         <MagnifyingGlassIcon class="h-5 w-5 shrink-0" />
-        <input ref="input" v-model="query" role="combobox" :aria-label="$t('nav.search')" aria-autocomplete="list" aria-expanded="true" aria-controls="nav-search-results" :aria-activedescendant="results.length ? 'nav-result-' + active : undefined" :placeholder="$t('nav.searchPlaceholder')" autocomplete="off" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="navigate()" />
+        <!--
+          `autofocus` is what keeps the cursor here. The dialog emits `show`
+          when it STARTS to open (focusInput runs then, so typing works at
+          once), but when its enter transition ends it moves focus itself — to
+          the first `[autofocus]` element in its content, or, finding none, to
+          the close button. Without the attribute that second step stole the
+          focus from the field a moment after it was given.
+        -->
+        <input ref="input" v-model="query" autofocus role="combobox" :aria-label="$t('nav.search')" aria-autocomplete="list" aria-expanded="true" aria-controls="nav-search-results" :aria-activedescendant="results.length ? 'nav-result-' + active : undefined" :placeholder="$t('nav.searchPlaceholder')" autocomplete="off" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="navigate()" />
       </div>
       <div id="nav-search-results" role="listbox" :aria-label="$t('nav.navigation')" class="palette-results">
         <div v-for="(item, index) in results" :id="'nav-result-' + index" :key="item.path" role="option" :aria-selected="active === index" class="palette-result" :class="{ selected: active === index }" @pointermove="active = index" @mousedown.prevent @click="navigate(index)">
