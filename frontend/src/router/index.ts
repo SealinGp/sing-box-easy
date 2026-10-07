@@ -32,6 +32,8 @@ const NodeRules = () => import(/* webpackChunkName: "node-rules" */ '../views/da
 const Config = () => import(/* webpackChunkName: "config" */ '../views/dashboard/Config.vue')
 const Log = () => import(/* webpackChunkName: "log" */ '../views/dashboard/Log.vue')
 const Logs = () => import(/* webpackChunkName: "logs" */ '../views/dashboard/Logs.vue')
+const Proxies = () => import(/* webpackChunkName: "proxies" */ '../views/dashboard/Proxies.vue')
+const Connections = () => import(/* webpackChunkName: "connections" */ '../views/dashboard/Connections.vue')
 const Users = () => import(/* webpackChunkName: "users" */ '../views/dashboard/Users.vue')
 const Settings = () => import(/* webpackChunkName: "settings" */ '../views/dashboard/Settings.vue')
 const Login = () => import(/* webpackChunkName: "login" */ '../views/Login.vue')
@@ -221,6 +223,16 @@ const routes: RouteRecordRaw[] = [
         path: 'logs',
         name: 'DashboardLogs',
         component: Logs,
+      },
+      {
+        path: 'proxies',
+        name: 'DashboardProxies',
+        component: Proxies,
+      },
+      {
+        path: 'connections',
+        name: 'DashboardConnections',
+        component: Connections,
       },
       {
         path: 'users',

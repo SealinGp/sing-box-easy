@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Bars3Icon } from '@heroicons/vue/24/outline'
@@ -9,20 +9,25 @@ import { useDeployment } from '../../composables/useDeployment'
 import { useDragReorder } from '../../composables/useDragReorder'
 import { useNotify } from '../../composables/useNotify'
 import ServiceStatusCard from '../../components/ServiceStatusCard.vue'
+import ConnectionsOverviewCard from '../../components/ConnectionsOverviewCard.vue'
 import SubscriptionsOverviewCard from '../../components/SubscriptionsOverviewCard.vue'
 import DnsProbeCard from '../../components/DnsProbeCard.vue'
 import RouteProbeCard from '../../components/RouteProbeCard.vue'
 import ApiEndpointsCard from '../../components/ApiEndpointsCard.vue'
 import RouteTopologyCard from '../../components/RouteTopologyCard.vue'
+import { placeTiles } from '../../utils/overviewLayout'
 
 const cards = [
   { id: 'route-topology', component: RouteTopologyCard, title: 'routeFlow.title' },
   { id: 'service-status', component: ServiceStatusCard, title: 'overview.serviceStatus' },
+  { id: 'connections', component: ConnectionsOverviewCard, title: 'overview.connections.title' },
   { id: 'subscriptions', component: SubscriptionsOverviewCard, title: 'overview.subscriptions.title' },
   { id: 'dns-probe', component: DnsProbeCard, title: 'dnsProbe.title' },
   { id: 'route-probe', component: RouteProbeCard, title: 'routeProbe.title' },
   { id: 'api-endpoints', component: ApiEndpointsCard, title: 'overview.apis.title' },
 ]
+/** The one card that takes a whole row: the flow diagram needs the width. */
+const WIDE_CARD = 'route-topology'
 const defaults = cards.map(card => card.id)
 const order = ref([...defaults])
 const renderedCards = computed(() => order.value.map(id => cards.find(card => card.id === id)!))
@@ -78,6 +83,107 @@ function reset() {
   })
 }
 
+/**
+ * Column packing. See utils/overviewLayout.ts for the why; this is the part
+ * that needs the DOM — how many columns fit, and how tall each card is.
+ *
+ * The breakpoints are the ones the grid used before (`md`, `lg`), so the
+ * column count on any given screen is unchanged; only where cards sit within
+ * the columns is different.
+ */
+const GAP_PX = 16
+const twoColumns = window.matchMedia('(min-width: 768px)')
+const threeColumns = window.matchMedia('(min-width: 1024px)')
+const columns = ref(1)
+const syncColumns = () => {
+  columns.value = threeColumns.matches ? 3 : twoColumns.matches ? 2 : 1
+}
+
+const heights = ref<Record<string, number>>({})
+const tileElements = new Map<string, HTMLElement>()
+// One observer for every card. Heights change on their own — a probe result
+// appears, the chart fills, a list loads — and each change re-packs the column.
+const tileObserver = new ResizeObserver((entries) => {
+  const next = { ...heights.value }
+  let changed = false
+  for (const entry of entries) {
+    const id = (entry.target as HTMLElement).dataset.tile
+    if (!id) continue
+    const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+    if (next[id] !== height) {
+      next[id] = height
+      changed = true
+    }
+  }
+  if (changed) heights.value = next
+})
+
+/** Registers the element whose height IS the card's height (not the grid cell). */
+const trackTile = (id: string, el: Element | ComponentPublicInstance | null) => {
+  const previous = tileElements.get(id)
+  if (el instanceof HTMLElement) {
+    if (previous === el) return
+    if (previous) tileObserver.unobserve(previous)
+    tileElements.set(id, el)
+    tileObserver.observe(el)
+  } else if (previous) {
+    tileObserver.unobserve(previous)
+    tileElements.delete(id)
+  }
+}
+
+/**
+ * Reads every card's height directly, once, right after the DOM is in place.
+ *
+ * The observer alone is not enough for the first paint: its first callback is
+ * delivered with the next rendering frame, so until then every height is 0 and
+ * the cards would be stacked on top of one another — for a frame in a visible
+ * tab, and indefinitely in a background one, where frames are not produced.
+ */
+const measureAll = () => {
+  const next = { ...heights.value }
+  let changed = false
+  for (const [id, el] of tileElements) {
+    const height = el.offsetHeight
+    if (next[id] !== height) {
+      next[id] = height
+      changed = true
+    }
+  }
+  if (changed) heights.value = next
+}
+
+const placements = computed(() => placeTiles(
+  order.value.map(id => ({ id, wide: id === WIDE_CARD, height: heights.value[id] ?? 0 })),
+  columns.value,
+  GAP_PX,
+))
+
+const tileStyle = (id: string) => {
+  const place = placements.value.get(id)
+  return place
+    ? { gridColumn: `${place.column} / span ${place.columnSpan}`, gridRow: `${place.rowStart} / span ${place.rowSpan}` }
+    : undefined
+}
+
+onMounted(() => {
+  syncColumns()
+  void nextTick(measureAll)
+  twoColumns.addEventListener('change', syncColumns)
+  threeColumns.addEventListener('change', syncColumns)
+})
+onBeforeUnmount(() => {
+  twoColumns.removeEventListener('change', syncColumns)
+  threeColumns.removeEventListener('change', syncColumns)
+  tileObserver.disconnect()
+})
+// A card removed from the order must not keep a stale height.
+watch(order, (ids) => {
+  for (const id of tileElements.keys()) if (!ids.includes(id)) trackTile(id, null)
+})
+// A different column count changes every card's width, and so its height.
+watch(columns, () => void nextTick(measureAll), { flush: 'post' })
+
 // Leaving the overview discards its unsaved arrangement; saved layouts reload
 // from the current account when this route is visited again.
 onBeforeRouteLeave(() => { if (enabled.value) reorder.cancel() })
@@ -98,12 +204,15 @@ onMounted(load)
       </Button>
     </div>
     <p v-if="enabled && !authEnabled" class="mb-4 text-sm text-gray-500">{{ t('overview.layout.local') }}</p>
-    <TransitionGroup name="overview-sort" tag="div" class="overview-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" :aria-busy="loading || saving" :role="enabled ? 'list' : undefined">
+    <TransitionGroup name="overview-sort" tag="div" class="overview-grid" :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }" :aria-busy="loading || saving" :role="enabled ? 'list' : undefined">
       <div v-for="(card, index) in renderedCards" :key="card.id" class="overview-tile"
         v-bind="reorder.rowAttrs(index)"
         :role="enabled ? 'listitem' : undefined"
-        :class="[card.id === 'route-topology' ? 'is-wide md:col-span-2 lg:col-span-3' : '', enabled ? 'is-arranging' : '']">
+        :style="tileStyle(card.id)"
+        :class="[card.id === WIDE_CARD ? 'is-wide' : '', enabled ? 'is-arranging' : '']">
         <div
+          :ref="(el) => trackTile(card.id, el)"
+          :data-tile="card.id"
           class="overview-tile-surface"
           v-bind="enabled ? reorder.surfaceAttrs(index) : reorder.activationAttrs(index)"
           :class="{ 'is-holding': !enabled && holdingIndex === index }"
@@ -138,11 +247,21 @@ onMounted(load)
    and actions stay in view. One shared cap keeps a long subscription list
    from towering over its row. The full-width flow diagram is alone in its
    row and keeps a larger cap. */
+/* Rows are 1px tall and each tile is given its pixel row and span in script
+   (utils/overviewLayout.ts), so a card sits directly under the card above it
+   in its own column instead of at the bottom of the tallest card in its row.
+   The 16px between cards is part of each span, hence no row-gap here. */
 .overview-grid {
+  display: grid;
+  grid-auto-rows: 1px;
+  column-gap: 1rem;
+  row-gap: 0;
   isolation: isolate;
   --overview-card-max: 26rem;
 }
-.overview-tile { min-width: 0; }
+/* `start`, not the default stretch: the surface must keep its natural height,
+   because that height is what gets measured to size the span around it. */
+.overview-tile { min-width: 0; align-self: start; }
 .overview-tile.is-wide { --overview-card-max: 32rem; }
 .overview-card {
   max-height: var(--overview-card-max);

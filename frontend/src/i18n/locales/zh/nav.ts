@@ -35,6 +35,8 @@ export default {
   subscriptions: '订阅',
   nodeRules: '节点规则',
   logs: '日志',
+  liveProxies: '代理',
+  liveConnections: '连接',
   serviceStatusHint: 'sing-box 实时运行状态 —— 点击查看详情',
   signOut: '退出登录',
 }

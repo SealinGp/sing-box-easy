@@ -35,4 +35,16 @@ export default {
   // shown, not one that appears when something is wrong.
   sourceMemory: 'The panel\u2019s own log is kept in memory and starts empty after a restart or an update.',
   emptyApp: 'No panel log lines yet.',
+  filteredCount: 'Showing {shown} of {n} lines',
+  download: 'Download',
+  searchPlaceholder: 'Search messages (regex supported)',
+  noMatch: 'No log line matches the filter.',
+  level: {
+    label: 'Minimum level',
+    all: 'All levels',
+    debug: 'debug and above',
+    info: 'info and above',
+    warn: 'warn and above',
+    error: 'error and above',
+  },
 }

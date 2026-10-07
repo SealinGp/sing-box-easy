@@ -135,6 +135,25 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// the Clash API secret stays server-side — see traffic_handler.go.
 	auth.GET("/traffic/flow/stream", handler.StreamTrafficFlow)
 
+	// Runtime: what the RUNNING sing-box is doing, as opposed to what the
+	// config says. Served through the panel for the same reason as the traffic
+	// stream — the Clash API secret stays server-side.
+	//
+	// Outbound tags travel in the request BODY, never in the path: a tag is
+	// free text (spaces, emoji, "|", sometimes "/"), and none of that survives
+	// a path segment reliably. That also keeps this prefix free of wildcards,
+	// so nothing here can collide with a static sibling in the Hertz router.
+	// Reads and latency tests are open to any signed-in user; the two
+	// operations that change live traffic — switching a node and closing
+	// connections — are admin-only.
+	auth.GET("/runtime/proxies", handler.GetRuntimeProxies)
+	auth.POST("/runtime/proxies/delay", handler.TestRuntimeProxy)
+	auth.POST("/runtime/proxies/group-delay", handler.TestRuntimeGroup)
+	admin.PUT("/runtime/proxies/selection", handler.SelectRuntimeProxy)
+	auth.GET("/runtime/connections/stream", handler.StreamRuntimeConnections)
+	admin.DELETE("/runtime/connections", handler.CloseRuntimeConnections)
+	admin.DELETE("/runtime/connections/:id", handler.CloseRuntimeConnection)
+
 	// Route Rule-sets
 	auth.GET("/route/rule-sets", handler.GetRuleSets)
 	auth.POST("/route/rule-sets", handler.AddRuleSet)

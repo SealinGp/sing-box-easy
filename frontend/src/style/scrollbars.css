@@ -12,10 +12,36 @@
     border-radius: var(--radius-pill);
   }
 }
+/*
+ * A quiet scrollbar FADES in and out rather than switching.
+ *
+ * `scrollbar-color` itself does not transition, so the thumb colour is routed
+ * through a REGISTERED custom property: registering it as a <color> is what
+ * lets the browser interpolate it, and the scrollbar repaints on every step.
+ * (An unregistered `--var` is just a string and would still snap.) Fading out
+ * waits a beat so a pointer that merely crosses the region, or leaves and comes
+ * straight back, does not make the thumb flicker.
+ *
+ * Engines without @property ignore the registration and the transition and get
+ * the previous behaviour: the thumb appears and disappears at once.
+ */
+@property --quiet-scrollbar-thumb {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
 @media (hover: hover) {
-  .quiet-scrollbar { scrollbar-color: transparent transparent; }
+  .quiet-scrollbar {
+    --quiet-scrollbar-thumb: transparent;
+    scrollbar-color: var(--quiet-scrollbar-thumb) transparent;
+    transition: --quiet-scrollbar-thumb 0.35s ease 0.25s;
+  }
   .quiet-scrollbar:hover, .quiet-scrollbar:focus-within {
-    scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 55%, transparent) transparent;
+    --quiet-scrollbar-thumb: color-mix(in srgb, var(--color-text-secondary) 55%, transparent);
+    transition: --quiet-scrollbar-thumb 0.18s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quiet-scrollbar, .quiet-scrollbar:hover, .quiet-scrollbar:focus-within { transition: none; }
   }
   @supports not (scrollbar-width: thin) {
     .quiet-scrollbar::-webkit-scrollbar-thumb { background: transparent; }

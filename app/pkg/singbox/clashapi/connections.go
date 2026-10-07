@@ -2,6 +2,9 @@ package clashapi
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -89,4 +92,36 @@ func (c *Client) Rules(ctx context.Context) ([]Rule, error) {
 		return nil, err
 	}
 	return body.Rules, nil
+}
+
+// CloseConnection asks sing-box to close one tracked connection.
+//
+// sing-box answers 204 whether or not the id exists — a connection that ended
+// a moment ago is indistinguishable from one that was just closed, which is the
+// right answer for a button pressed against a list that is a second old.
+func (c *Client) CloseConnection(ctx context.Context, id string) error {
+	return c.delete(ctx, "/connections/"+url.PathEscape(id))
+}
+
+// CloseAllConnections closes every tracked connection and resets the network,
+// exactly as the Clash API's `DELETE /connections` does.
+func (c *Client) CloseAllConnections(ctx context.Context) error {
+	return c.delete(ctx, "/connections")
+}
+
+func (c *Client) delete(ctx context.Context, path string) error {
+	response, err := c.send(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case http.StatusNoContent, http.StatusOK:
+		return nil
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	default:
+		return fmt.Errorf("clash api returned status %d", response.StatusCode)
+	}
 }

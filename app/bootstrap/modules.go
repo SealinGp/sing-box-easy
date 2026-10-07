@@ -17,6 +17,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
 	"github.com/SealinGp/sing-box-easy/app/pkg/identity"
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/proxies"
 	"github.com/SealinGp/sing-box-easy/app/pkg/settings"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
@@ -32,6 +33,7 @@ type Modules struct {
 	System              *system.Service
 	Installation        *install.Service
 	TrafficService      *traffic.Service
+	Proxies             *proxies.Service
 	SettingsService     *settings.Service
 	Diagnostics         *diagnostics.Service
 	Outbounds           *outbounds.Service
@@ -137,6 +139,7 @@ func New(
 		System:              system.New(configManager.GetConfigPath(), database.Path(), serviceController),
 		Installation:        install.NewService(installerManager, dashboardManager, configManager, initStateManager),
 		TrafficService:      traffic.NewService(configManager),
+		Proxies:             proxies.NewService(configManager),
 		SettingsService:     settings.NewService(settingsManager, configManager, githubAuth.Configured),
 		Diagnostics:         diagnostics.New(configManager, serviceController),
 		Outbounds:           outbounds.New(configManager, nodeRulesManager),
