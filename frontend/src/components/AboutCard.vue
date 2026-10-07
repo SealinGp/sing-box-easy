@@ -18,6 +18,9 @@ import LanguageSwitcher from './LanguageSwitcher.vue'
 import AppUpdateCard from './AppUpdateCard.vue'
 import StorageUsage from './StorageUsage.vue'
 import type { SystemInfo } from '../types/api'
+import { BugAntIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
+import { PROJECT_URL, bugReportUrl, diagnosticsText, type Diagnostics } from '../utils/bugReport'
+import { writeTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
 const notify = useNotify()
@@ -28,10 +31,10 @@ const loading = ref(true)
 // The update panel is the authority on the running panel version — it is what
 // the self-update flow rewrites. /system/info agrees, but only until an update
 // finishes without a page reload.
-const { currentVersion } = useAppUpdate()
+const { currentVersion, status: updateStatus } = useAppUpdate()
 
 // Appearance preferences apply immediately and persist in this browser.
-const { layoutOverride, setLayoutOverride } = useDeployment()
+const { layoutOverride, setLayoutOverride, authEnabled } = useDeployment()
 
 const layoutOptions: { value: LayoutOverride; label: string }[] = [
   { value: 'auto', label: 'settings.about.layout.auto' },
@@ -41,8 +44,6 @@ const layoutOptions: { value: LayoutOverride; label: string }[] = [
 
 const buildVersion = __APP_VERSION__
 
-/** Where the source, issues and releases live. */
-const PROJECT_URL = 'https://github.com/SealinGp/sing-box-easy'
 
 onMounted(async () => {
   try {
@@ -55,6 +56,43 @@ onMounted(async () => {
 })
 
 const placeholder = '—'
+
+/**
+ * What a bug report is filled in with: the facts this card already shows,
+ * minus the hostname. An issue is public and permanent, and a hostname can
+ * name a person or a network without helping anyone diagnose anything.
+ *
+ * Computed, so the link is always built from what is on screen right now —
+ * including a version that changed under a self-update without a reload.
+ */
+const diagnostics = computed<Diagnostics>(() => ({
+  panelVersion: appVersion.value,
+  coreVersion: info.value?.sing_box_version,
+  distribution: info.value?.distribution,
+  systemType: info.value?.system_type,
+  os: info.value?.os,
+  arch: info.value?.arch,
+  cpuCores: info.value?.cpu_cores,
+  kernel: info.value?.kernel,
+  serviceBackend: info.value?.service_backend,
+  // Read from the raw status, not the composable's `selfUpdate`: that one
+  // defaults to "tarball" until the backend answers, and a report must not
+  // state an install method nobody measured.
+  installMethod: updateStatus.value?.self_update?.method,
+  authEnabled: authEnabled.value,
+  userAgent: navigator.userAgent,
+}))
+
+const reportUrl = computed(() => bugReportUrl(diagnostics.value))
+
+const copyDiagnostics = async () => {
+  try {
+    await writeTextToClipboard(diagnosticsText(diagnostics.value))
+    notify.success(t('settings.about.report.copied'))
+  } catch (err) {
+    notify.apiError(err, t('common.copyFailed'))
+  }
+}
 
 const appVersion = computed(() => currentVersion.value || info.value?.app_version || buildVersion)
 
@@ -158,6 +196,41 @@ const rows = computed(() => {
 
     <!-- Storage — dropped entirely when the host reports no filesystems. -->
     <StorageUsage v-if="!loading" :disks="info?.disks ?? []" />
+
+    <!--
+      Report a bug. Lives in this card because this card IS the report's
+      contents: what is running, and on what. The link opens GitHub's own form
+      with those fields filled in — the panel sends nothing itself, and the
+      operator reads the issue before submitting it as themselves.
+
+      "Copy" covers what the link cannot: adding the same block to an issue
+      that already exists, or to a chat.
+    -->
+    <div v-if="!loading" class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+      <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+        {{ $t('settings.about.report.title') }}
+      </h4>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">{{ $t('settings.about.report.desc') }}</p>
+      <div class="flex flex-wrap gap-2">
+        <a
+          :href="reportUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-control bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+        >
+          <BugAntIcon class="h-4 w-4" />
+          {{ $t('settings.about.report.open') }}
+        </a>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-control border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          @click="copyDiagnostics"
+        >
+          <ClipboardDocumentIcon class="h-4 w-4" />
+          {{ $t('settings.about.report.copy') }}
+        </button>
+      </div>
+    </div>
 
     <!-- Language -->
     <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">

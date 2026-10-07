@@ -1,0 +1,86 @@
+name: Bug report / 问题反馈
+description: Something is broken or behaves unexpectedly. / 功能异常或行为不符合预期。
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Tip:** the panel can fill in the version and environment fields for you — open *Settings → About → Report a bug*.
+
+        感谢反馈。**提示：**面板可以自动填好版本和环境信息 —— 打开「设置 → 关于 → 反馈问题」。
+
+        Please do not paste secrets: subscription URLs, node passwords, UUIDs, the Clash API secret.
+        请勿粘贴敏感信息：订阅链接、节点密码、UUID、Clash API 密钥。
+
+  # The `id` of every field below is part of a contract: the panel pre-fills
+  # this form through URL query parameters named after these ids
+  # (frontend/src/utils/bugReport.ts, checked by bugReport.test.ts).
+  # Renaming one silently drops that value from every report the panel opens.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened? / 发生了什么？
+      description: What you saw, and what you expected instead. / 实际现象，以及你期望的结果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+
+  - type: input
+    id: panel_version
+    attributes:
+      label: sing-box-easy version / 面板版本
+      placeholder: "1.5.3"
+    validations:
+      required: true
+
+  - type: input
+    id: core_version
+    attributes:
+      label: sing-box version / sing-box 版本
+      placeholder: "1.12.25"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 运行环境
+      description: |
+        System, architecture, kernel, service manager, install method.
+        系统、架构、内核、服务管理器、安装方式。
+      render: text
+      placeholder: |
+        System: ImmortalWrt 24.10 (openwrt)
+        Platform: linux/arm64, 4 cores
+        Kernel: 6.6.86
+        Service manager: procd
+        Install method: opkg
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / 浏览器
+      description: Only matters for problems in the web UI. / 仅与界面问题相关。
+      placeholder: "Chrome 141 on macOS"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / 日志
+      description: |
+        From the panel's Logs page (both the sing-box and sing-box-easy tabs), or the browser console for UI errors. Remove anything sensitive first.
+        来自面板「日志」页（sing-box 与 sing-box-easy 两个标签），界面报错请附浏览器控制台输出。请先去除敏感信息。
+      render: text
