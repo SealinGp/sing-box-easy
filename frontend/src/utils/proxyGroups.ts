@@ -96,6 +96,27 @@ export function withGroupDelays(group: RuntimeGroup, delays: Record<string, numb
   return { ...group, members, delay: current && !current.group ? current.delay : group.delay }
 }
 
+/**
+ * Folds ONE node's test result into every group that lists it, returning a new
+ * array. A node is routinely a member of several groups, and a figure that
+ * changed on the card that was clicked but not on its neighbour reads as two
+ * different nodes. Groups without the node are returned as the same object.
+ *
+ * Unlike a group test, the node here was dialled by its own name — so a member
+ * that is itself a group takes the figure too: it is what sing-box measured
+ * through that group's current node.
+ */
+export function withNodeDelay(groups: readonly RuntimeGroup[], name: string, delay: number): RuntimeGroup[] {
+  return groups.map((group) => {
+    if (!group.members.some((member) => member.name === name)) return group
+    return {
+      ...group,
+      members: group.members.map((member) => (member.name === name ? { ...member, delay } : member)),
+      delay: group.now === name ? delay : group.delay,
+    }
+  })
+}
+
 /** Side of one latency block in the collapsed strip, and the gap between two. */
 export const STRIP_BLOCK_PX = 11
 export const STRIP_GAP_PX = 4

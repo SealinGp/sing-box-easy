@@ -22,7 +22,7 @@ const notify = useNotify()
 const serviceStore = useServiceStore()
 const running = computed(() => serviceStore.status?.status === 'running')
 
-const { view, loading, error, testing, testingAll, switching, load, select, testGroup, testAll } =
+const { view, loading, error, testing, testingNodes, testingAll, switching, load, select, testGroup, testNode, testAll } =
   useRuntimeProxies(running, () => t('proxies.loadFailed'))
 
 const query = ref('')
@@ -155,6 +155,17 @@ const onTest = async (group: string) => {
   }
 }
 
+const onTestNode = async (name: string) => {
+  try {
+    await testNode(name)
+    // A group whose current node resolves THROUGH this one (nested groups)
+    // only learns the new figure from the server.
+    if (testingNodes.value.size === 0) void load(true)
+  } catch (err) {
+    notify.apiError(err, t('proxies.testFailed'))
+  }
+}
+
 const onTestAll = async () => {
   try {
     await testAll()
@@ -239,11 +250,13 @@ const onTestAll = async () => {
           :members="entry.members"
           :open="isOpen(entry.group.name, entry.group.switchable)"
           :testing="testing.has(entry.group.name)"
+          :testing-nodes="testingNodes"
           :switching-to="switchingTo(entry.group.name)"
           :managed="managed.has(entry.group.name)"
           :class="{ 'focus-target': isFocused(entry.group.name) }"
           @toggle="toggle(entry.group.name)"
           @test="onTest(entry.group.name)"
+          @test-node="onTestNode"
           @select="(name) => onSelect(entry.group.name, name)"
         />
         </div>

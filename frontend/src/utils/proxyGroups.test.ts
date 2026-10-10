@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { columnCount, dealIntoColumns, displayName, latencyTier, sortMembers, stripFitsOneLine, tierShares, visibleGroups, withGroupDelays } from './proxyGroups'
+import { columnCount, dealIntoColumns, displayName, latencyTier, sortMembers, stripFitsOneLine, tierShares, visibleGroups, withGroupDelays, withNodeDelay } from './proxyGroups'
 import type { RuntimeGroup, RuntimeMember } from '../types/runtime'
 
 const member = (name: string, delay: number, group = false): RuntimeMember => ({ name, delay, group, type: 'VLESS' })
@@ -88,6 +88,37 @@ describe('withGroupDelays', () => {
     const after = withGroupDelays(before, { a: 15 })
     expect(after.members[0]!.delay).toBe(90)
     expect(after.delay).toBe(90)
+  })
+})
+
+describe('withNodeDelay', () => {
+  test('updates the node in every group that holds it, and each group that is using it', () => {
+    const groups = [
+      group('auto', [member('a', 10), member('b', 20)], 'b'),
+      group('sel', [member('b', 20), member('c', 30)], 'c'),
+      group('other', [member('d', 40)], 'd'),
+    ]
+    const after = withNodeDelay(groups, 'b', 77)
+    expect(after[0]!.members.map((m) => m.delay)).toEqual([10, 77])
+    expect(after[0]!.delay).toBe(77)
+    expect(after[1]!.members.map((m) => m.delay)).toEqual([77, 30])
+    // `sel` is using c, so its own figure is not b's.
+    expect(after[1]!.delay).toBe(0)
+    // A group without the node is the same object: nothing to re-render.
+    expect(after[2]).toBe(groups[2]!)
+    expect(groups[0]!.members[1]!.delay).toBe(20)
+  })
+  test('a failed test is a result: the old figure is replaced by 0', () => {
+    const before = [{ ...group('auto', [member('a', 10)], 'a'), delay: 10 }]
+    const after = withNodeDelay(before, 'a', 0)
+    expect(after[0]!.members[0]!.delay).toBe(0)
+    expect(after[0]!.delay).toBe(0)
+  })
+  test('a nested group member takes the figure too', () => {
+    const before = [{ ...group('sel', [member('inner', 90, true)], 'inner'), delay: 90 }]
+    const after = withNodeDelay(before, 'inner', 120)
+    expect(after[0]!.members[0]!.delay).toBe(120)
+    expect(after[0]!.delay).toBe(120)
   })
 })
 

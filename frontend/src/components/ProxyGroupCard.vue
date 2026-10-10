@@ -5,7 +5,8 @@
  *
  * The header is the toggle — there is no separate chevron button. A whole row
  * is a bigger target than an icon, and the two controls in it stop their own
- * clicks: the latency badge, which IS the test button (the number it shows is
+ * clicks (a member's own latency badge does the same one level down: it tests
+ * that one node, and never switches to it): the latency badge, which IS the test button (the number it shows is
  * the thing a test refreshes, so a second button beside it said the same thing
  * twice), and the magnifier, which widens in place into a search over this
  * card's members and becomes its close button while it is open.
@@ -28,6 +29,8 @@ const props = defineProps<{
   members: RuntimeMember[]
   open: boolean
   testing: boolean
+  /** Names of single nodes with a latency test in flight. */
+  testingNodes: ReadonlySet<string>
   /** Name of the member being switched to, '' when idle. */
   switchingTo: string
   /** True when the node-rules engine generates this group. */
@@ -37,6 +40,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'toggle'): void
   (e: 'test'): void
+  (e: 'testNode', name: string): void
   (e: 'select', name: string): void
 }>()
 
@@ -119,6 +123,10 @@ const openSearch = async () => {
 const closeSearch = () => {
   searching.value = false
   query.value = ''
+}
+
+const testNode = (name: string) => {
+  if (!props.testingNodes.has(name)) emit('testNode', name)
 }
 
 const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
@@ -289,8 +297,26 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             </span>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
               <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
-              <span class="lat-badge" :class="TIER_BADGE[latencyTier(member.delay)]">
-                {{ member.delay > 0 ? $t('proxies.ms', { n: member.delay }) : $t('proxies.noResult') }}
+              <!--
+                The badge tests THIS node. A span with a button role, not a
+                <button>: in a selector the card around it already is one, and
+                a button inside a button is invalid markup whose click the
+                parser hands to the outer one. It stops its own click and keys
+                so testing a node never also switches to it.
+              -->
+              <span
+                role="button"
+                tabindex="0"
+                class="lat-badge lat-button"
+                :class="[TIER_BADGE[latencyTier(member.delay)], { 'animate-pulse': testingNodes.has(member.name) }]"
+                :aria-disabled="testingNodes.has(member.name)"
+                :aria-label="$t('proxies.testNode', { node: displayName(member.name) })"
+                :title="$t('proxies.testNode', { node: displayName(member.name) })"
+                @click.stop="testNode(member.name)"
+                @keydown.enter.stop.prevent="testNode(member.name)"
+                @keydown.space.stop.prevent="testNode(member.name)"
+              >
+                {{ testingNodes.has(member.name) ? $t('proxies.testing') : member.delay > 0 ? $t('proxies.ms', { n: member.delay }) : $t('proxies.noResult') }}
               </span>
             </span>
           </component>
@@ -430,14 +456,15 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
   cursor: pointer;
   transition: box-shadow 0.15s ease, filter 0.15s ease;
 }
-.lat-button:hover:not(:disabled) {
+.lat-button:hover:not(:disabled):not([aria-disabled='true']) {
   box-shadow: 0 0 0 1.5px currentColor;
 }
 .lat-button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-.lat-button:disabled {
+.lat-button:disabled,
+.lat-button[aria-disabled='true'] {
   cursor: wait;
 }
 

@@ -32,6 +32,7 @@ export default {
   fromNodeRules: '节点规则',
   fromNodeRulesHint: '该分组由节点规则生成，点击打开对应的规则',
   testGroup: '点击测速：{group}',
+  testNode: '点击测速：{node}',
   searchInGroup: '在 {group} 中搜索节点',
   searchInGroupPlaceholder: '搜索本组节点',
   noMatchInGroup: '本组没有匹配的节点',

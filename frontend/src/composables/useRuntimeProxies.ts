@@ -1,7 +1,7 @@
 import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import { runtimeService } from '../services'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
-import { withGroupDelays } from '../utils/proxyGroups'
+import { withGroupDelays, withNodeDelay } from '../utils/proxyGroups'
 import type { RuntimeProxies } from '../types/runtime'
 
 /**
@@ -23,6 +23,8 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
   const error = ref('')
   /** Groups with a latency test in flight. */
   const testing = ref<ReadonlySet<string>>(new Set())
+  /** Single nodes with a latency test in flight. */
+  const testingNodes = ref<ReadonlySet<string>>(new Set())
   const testingAll = ref(false)
   /** `group\u0000name` of a switch in flight. */
   const switching = ref('')
@@ -89,6 +91,21 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
   }
 
   /**
+   * Tests one node. Throws so the caller can toast the reason. A node that did
+   * not answer is a result (delay 0), not a failure.
+   */
+  const testNode = async (name: string) => {
+    if (testingNodes.value.has(name)) return
+    testingNodes.value = new Set([...testingNodes.value, name])
+    try {
+      const { data } = await runtimeService.testNode(name)
+      if (view.value) view.value = { ...view.value, groups: withNodeDelay(view.value.groups, name, data.delay) }
+    } finally {
+      testingNodes.value = new Set([...testingNodes.value].filter((node) => node !== name))
+    }
+  }
+
+  /**
    * One group at a time, in order. Parallel would be faster and would also ask
    * a router that is busy routing traffic to dial every node it has at once.
    */
@@ -118,7 +135,7 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
     timer = setInterval(() => {
       // A background tab learns nothing from a refresh, and a test in flight
       // must not have its results overwritten by a stale list.
-      if (document.hidden || testing.value.size > 0 || switching.value) return
+      if (document.hidden || testing.value.size > 0 || testingNodes.value.size > 0 || switching.value) return
       void load(true)
     }, REFRESH_MS)
   }
@@ -137,5 +154,5 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
 
   onBeforeUnmount(stop)
 
-  return { view, loading, error, testing, testingAll, switching, load, select, testGroup, testAll }
+  return { view, loading, error, testing, testingNodes, testingAll, switching, load, select, testGroup, testNode, testAll }
 }
