@@ -15,7 +15,7 @@ export interface MenuGroup {
   items: MenuItem[]
 }
 
-export function createMenu(t: (key: string) => string, authEnabled: boolean): MenuGroup[] {
+export function createMenu(t: (key: string) => string): MenuGroup[] {
   const item = (key: string, icon: Component, path: string, keywords = ''): MenuItem =>
     ({ name: t(key), icon, path: '/dashboard/' + path, keywords })
   return [
@@ -41,7 +41,7 @@ export function createMenu(t: (key: string) => string, authEnabled: boolean): Me
       item('nav.config', DocumentTextIcon, 'config', 'json configuration history 配置'),
       item('nav.experimental', BeakerIcon, 'experimental', 'clash v2ray cache api 实验'),
       item('nav.settings', Cog6ToothIcon, 'settings', 'update language github 设置'),
-      ...(authEnabled ? [item('nav.users', UsersIcon, 'users', 'accounts 用户')] : []),
+      item('nav.users', UsersIcon, 'users', 'accounts 用户'),
     ] },
   ]
 }

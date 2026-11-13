@@ -301,16 +301,16 @@ router.beforeEach(async (to, _, next) => {
 
   // 0. When the deployment has authentication disabled (server.auth:
   //    disabled, or "auto" on OpenWrt) there is no login flow and no
-  //    profile/user management — skip the token checks entirely.
+  //    personal profile — skip the token checks entirely.
   //    Resolving it here (rather than in the layout) also means the platform
   //    is already known by the time Dashboard mounts, so the sidebar/top-bar
   //    choice never flashes the wrong layout.
   await ensureDeployment()
   const { authEnabled } = useDeployment()
   if (!authEnabled.value) {
-    // Account-bound routes do not apply without a login flow. `/dashboard/users`
-    // is included because accounts created there could never sign in.
-    const accountRoutes = ['/login', '/dashboard/profile', '/dashboard/users']
+    // Login and personal profile require a session. User management remains
+    // available so operators can prepare accounts before enabling login.
+    const accountRoutes = ['/login', '/dashboard/profile']
     if (accountRoutes.includes(to.path)) {
       next('/dashboard')
       return

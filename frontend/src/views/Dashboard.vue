@@ -13,7 +13,7 @@ import '../style/navigation.css'
 const { t } = useI18n()
 const { prefersTopbar, authEnabled } = useDeployment()
 // Share the dev-only lab entry across sidebar, mobile navigation and search.
-const menuItems = computed(() => createMenu(t, authEnabled.value).map(group =>
+const menuItems = computed(() => createMenu(t).map(group =>
   import.meta.env.DEV && group.id === 'system'
     ? { ...group, items: [...group.items, { name: t('nav.lab'), path: '/dashboard/lab', icon: BeakerIcon }] }
     : group,

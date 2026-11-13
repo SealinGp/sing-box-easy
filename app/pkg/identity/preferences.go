@@ -9,7 +9,7 @@ import (
 
 var ErrInvalidPreferences = errors.New("overview_order must contain unique, known card IDs")
 
-var overviewCards = []string{"route-topology", "service-status", "subscriptions", "dns-probe", "route-probe", "api-endpoints"}
+var overviewCards = []string{"route-topology", "service-status", "connections", "subscriptions", "dns-probe", "route-probe", "api-endpoints"}
 
 type Preferences struct {
 	OverviewOrder []string `json:"overview_order"`

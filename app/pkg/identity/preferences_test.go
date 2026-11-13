@@ -22,13 +22,14 @@ func TestPreferencesIsolationAndPersistence(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(initial.OverviewOrder, overviewCards) {
 		t.Fatalf("defaults: %+v, %v", initial, err)
 	}
-	wanted := []string{"api-endpoints", "dns-probe"}
+	// Submit the full layout sent by the overview, including the connections card.
+	wanted := []string{"connections", "api-endpoints", "dns-probe", "route-topology", "subscriptions", "route-probe", "service-status"}
 	if _, err := m.UpdatePreferences(first.ID, Preferences{OverviewOrder: wanted}); err != nil {
 		t.Fatal(err)
 	}
 	reloaded := NewManagerXORM(testEngine(), "", "")
 	got, err := reloaded.GetPreferences(first.ID)
-	if err != nil || !reflect.DeepEqual(got.OverviewOrder, normalizeOverviewOrder(wanted)) {
+	if err != nil || !reflect.DeepEqual(got.OverviewOrder, wanted) {
 		t.Fatalf("reload: %+v, %v", got, err)
 	}
 	other, err := reloaded.GetPreferences(second.ID)
