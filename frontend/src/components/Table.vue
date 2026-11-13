@@ -30,8 +30,37 @@
  * runtime check for that. Use the `#head` slot instead when a header needs
  * markup of its own (a select-all checkbox, say).
  */
-import { computed, ref, type VNode } from 'vue'
+import { computed, ref, watch, type VNode } from 'vue'
 import { useFillHeight } from '../composables/useFillHeight'
+import { useInterfaceMotion } from '../composables/useInterfaceMotion'
+import Skeleton from './Skeleton.vue'
+import { useI18n } from 'vue-i18n'
+
+const interfaceMotion = useInterfaceMotion()
+const { t } = useI18n()
+
+// Freeze only departing rows so the remaining rows can slide into place.
+// Cell widths are captured before leaving table layout; no heights animate.
+function prepareLeave(element: Element) {
+  if (!interfaceMotion || !(element instanceof HTMLElement)) return
+  const box = element.getBoundingClientRect()
+  const parent = element.parentElement?.getBoundingClientRect()
+  const cells = [...element.children] as HTMLElement[]
+  const widths = cells.map(cell => cell.getBoundingClientRect().width)
+  cells.forEach((cell, index) => { cell.style.width = `${widths[index]}px` })
+  Object.assign(element.style, {
+    position: 'absolute', top: `${box.top - (parent?.top ?? box.top)}px`,
+    left: '0', width: `${box.width}px`,
+  })
+  element.setAttribute('inert', '')
+}
+
+function cancelLeave(element: Element) {
+  if (!interfaceMotion || !(element instanceof HTMLElement)) return
+  for (const key of ['position', 'top', 'left', 'width']) element.style.removeProperty(key)
+  for (const cell of element.children) (cell as HTMLElement).style.removeProperty('width')
+  element.removeAttribute('inert')
+}
 
 export interface TableColumn {
   /** Stable identity for the `v-for` key. */
@@ -45,6 +74,8 @@ export interface TableColumn {
 }
 
 interface Props {
+  /** Table layout utilities; the scroll wrapper stays independent. */
+  tableClass?: string
   /** Header definition. Omit and use the `#head` slot for bespoke headers. */
   columns?: TableColumn[]
   /** Shows the spinner instead of the table. */
@@ -99,16 +130,28 @@ defineSlots<{
 const region = ref<HTMLElement | null>(null)
 const noFill = computed(() => !props.scroll || !!props.maxHeight)
 useFillHeight(region, noFill)
+
+const loadingHeight = ref(0)
+const loadingWidths = ref<number[]>([])
+const loadingRows = ref([36, 36, 36, 36, 36])
+watch(() => props.loading, (loading) => {
+  if (!interfaceMotion || !loading || !region.value) return
+  loadingHeight.value = region.value.getBoundingClientRect().height
+  loadingWidths.value = [...region.value.querySelectorAll('thead th')].map(cell => cell.getBoundingClientRect().width)
+  const heights = [...region.value.querySelectorAll('tbody tr')].slice(0, 12).map(row => row.getBoundingClientRect().height)
+  if (heights.length) loadingRows.value = heights
+}, { flush: 'pre' })
+const skeletonColumns = computed(() => loadingWidths.value.length || props.columns?.length || 4)
 </script>
 
 <template>
-  <div v-if="props.loading" class="flex items-center justify-center py-8">
+  <div v-if="props.loading && !interfaceMotion" class="flex items-center justify-center py-8">
     <slot name="loading">
       <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
     </slot>
   </div>
 
-  <div v-else-if="props.empty" class="py-8 text-center text-gray-500 dark:text-gray-400">
+  <div v-else-if="props.empty && !props.loading" class="py-8 text-center text-gray-500 dark:text-gray-400">
     <slot name="empty" />
   </div>
 
@@ -121,16 +164,23 @@ useFillHeight(region, noFill)
     v-else
     ref="region"
     :class="props.scroll ? 'scroll-region' : undefined"
-    :style="props.maxHeight ? { '--scroll-max-h': props.maxHeight } : undefined"
+    :aria-busy="props.loading || undefined"
+    :aria-label="props.loading ? t('common.loading') : undefined"
+    :style="{
+      ...(props.maxHeight ? { '--scroll-max-h': props.maxHeight } : {}),
+      ...(props.loading && interfaceMotion ? { minHeight: `${loadingHeight}px` } : {}),
+    }"
   >
-    <table class="data-table">
+    <span v-if="props.loading && interfaceMotion" class="sr-only" role="status">{{ t('common.loading') }}</span>
+    <table class="data-table" :class="props.tableClass">
       <thead v-if="$slots.head || props.columns?.length">
         <tr>
           <slot name="head">
             <th
-              v-for="col in props.columns"
+              v-for="(col, index) in props.columns"
               :key="col.key"
               :class="[col.align === 'right' ? 'col-actions' : undefined, col.class]"
+              :style="props.loading && loadingWidths[index] ? { width: `${loadingWidths[index]}px` } : undefined"
             >
               {{ col.label }}
             </th>
@@ -143,12 +193,24 @@ useFillHeight(region, noFill)
         nine tables never reorder. See `<List>` for why there is no leave
         transition.
       -->
+      <tbody v-if="props.loading && interfaceMotion" aria-hidden="true">
+        <tr v-for="(height, row) in loadingRows" :key="row" :style="{height: `${height}px`}">
+          <td v-for="column in skeletonColumns" :key="column">
+            <Skeleton class="h-3" :class="column === 1 ? 'w-3/4' : 'w-2/3'" />
+          </td>
+        </tr>
+      </tbody>
       <TransitionGroup
-        v-if="props.transition"
+        v-else-if="props.transition || interfaceMotion"
         tag="tbody"
-        move-class="row-move"
-        enter-active-class="row-enter-active"
-        enter-from-class="row-enter-from"
+        :class="interfaceMotion ? 'ui-table-body' : undefined"
+        :move-class="interfaceMotion ? 'ui-row-move' : 'row-move'"
+        :enter-active-class="interfaceMotion ? 'ui-row-enter-active' : 'row-enter-active'"
+        :enter-from-class="interfaceMotion ? 'ui-row-enter-from' : 'row-enter-from'"
+        :leave-active-class="interfaceMotion ? 'ui-row-leave-active' : undefined"
+        :leave-to-class="interfaceMotion ? 'ui-row-leave-to' : undefined"
+        @before-leave="prepareLeave"
+        @leave-cancelled="cancelLeave"
       >
         <slot />
       </TransitionGroup>

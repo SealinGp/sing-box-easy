@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusIndicator from './StatusIndicator.vue'
 /**
  * Editor for the subscription "info label" keywords.
  *
@@ -17,11 +18,11 @@ import { useI18n } from 'vue-i18n'
 import { ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
 import ChipsField from './ChipsField.vue'
-import Badge from './Badge.vue'
+
 import { apiService } from '../services/api'
 import { SubscriptionService } from '../services/subscription'
 import { useNotify } from '../composables/useNotify'
-import { Dialog } from '../volt'
+import { ContextPanel } from '../volt'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
@@ -142,20 +143,20 @@ const save = async () => {
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" :header="$t('subscriptions.keywords.title')" modal class="w-full max-w-2xl">
+  <ContextPanel v-model:visible="visible" :header="$t('subscriptions.keywords.title')" modal class="w-full max-w-2xl">
     <div class="space-y-4">
       <p class="text-sm text-gray-500 dark:text-gray-400">
         {{ $t('subscriptions.keywords.desc') }}
       </p>
 
       <div class="flex items-center gap-2">
-        <Badge :variant="usingDefaults ? 'secondary' : 'success'">
+        <StatusIndicator :variant="usingDefaults ? 'secondary' : 'success'">
           {{
             usingDefaults
               ? $t('subscriptions.keywords.usingDefaults')
               : $t('subscriptions.keywords.usingCustom')
           }}
-        </Badge>
+        </StatusIndicator>
         <span class="text-xs text-gray-400 dark:text-gray-500">
           {{ $t('subscriptions.keywords.count', { n: keywords.length, max: maxKeywords }) }}
         </span>
@@ -189,5 +190,5 @@ const save = async () => {
         {{ $t('common.save') }}
       </Button>
     </template>
-  </Dialog>
+  </ContextPanel>
 </template>

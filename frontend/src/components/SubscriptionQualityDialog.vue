@@ -10,8 +10,9 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowPathIcon, BoltIcon, CheckCircleIcon, MinusCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
+import Skeleton from './Skeleton.vue'
 import ProbeTrendChart from './ProbeTrendChart.vue'
-import { Dialog } from '../volt'
+import { ContextPanel } from '../volt'
 import { subProbeService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import type { Subscription } from '../types/api'
@@ -175,7 +176,7 @@ const probeTarget = computed(
 </script>
 
 <template>
-  <Dialog
+  <ContextPanel
     v-model:visible="visible"
     :header="$t('subProbe.dialog.title', { name: subscription?.name ?? '' })"
     modal
@@ -276,6 +277,9 @@ const probeTarget = computed(
           {{ $t('subProbe.dialog.nodesUnavailable') }}
         </p>
 
+        <div v-else-if="loadingNodes && !nodes.length" class="space-y-3 rounded-control border border-border p-3" role="status" :aria-label="$t('common.loading')">
+          <div v-for="row in 5" :key="row" class="flex items-center gap-3"><Skeleton class="h-3 w-3" /><Skeleton class="h-3 flex-1" /><Skeleton class="h-3 w-16" /></div>
+        </div>
         <div v-else class="max-h-64 overflow-y-auto rounded-control border border-gray-100 dark:border-gray-700">
           <table class="w-full text-xs">
             <tbody>
@@ -325,5 +329,5 @@ const probeTarget = computed(
     <template #footer>
       <Button variant="secondary" @click="visible = false">{{ $t('common.close') }}</Button>
     </template>
-  </Dialog>
+  </ContextPanel>
 </template>

@@ -8,8 +8,8 @@
  * what it renders, so adding the next one costs a line rather than another
  * block of state at the top of the page.
  *
- * The links at the bottom are deliberately the three places you go NEXT when
- * this card says something is wrong: the log settings, the live log, and the
+ * The links at the bottom are deliberately the places you go next when
+ * this card says something is wrong: core installation, log settings, the live log, and the
  * raw config the whole panel is an editor for.
  */
 import { computed, onMounted, ref } from 'vue'
@@ -20,7 +20,7 @@ import Button from './Button.vue'
 import { serviceControlService } from '../services'
 import { useNotify } from '../composables/useNotify'
 import { formatRelativeTime } from '../utils/relativeTime'
-import { CodeBracketIcon, CommandLineIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { Cog6ToothIcon, CodeBracketIcon, CommandLineIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const status = ref<ServiceStatus | null>(null)
 const loading = ref(false)
@@ -46,11 +46,11 @@ const statusColor = computed(() => {
   if (!status.value) return 'text-gray-500'
   switch (status.value.status) {
     case 'running':
-      return 'text-green-600'
+      return 'text-success'
     case 'stopped':
-      return 'text-red-600'
+      return 'text-danger'
     default:
-      return 'text-yellow-600'
+      return 'text-warning'
   }
 })
 
@@ -217,6 +217,9 @@ onMounted(fetchStatus)
       <!-- Wraps rather than scrolls: three links do not fit one column at the
            narrow end of the grid. -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <RouterLink to="/dashboard/settings#sing-box-core" class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors">
+          <Cog6ToothIcon class="h-4 w-4" />{{ $t('workspace.core.title') }}
+        </RouterLink>
         <RouterLink
           :to="{ name: 'DashboardLog' }"
           class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"

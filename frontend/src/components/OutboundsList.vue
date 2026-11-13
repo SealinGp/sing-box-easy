@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from './IconButton.vue'
+
 import { ref, onMounted, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Outbound } from "../types/api";
@@ -12,8 +14,6 @@ import SchemaFieldsEditor from "./SchemaFieldsEditor.vue";
 import { Select } from "../volt";
 import {
   PlusIcon,
-  PencilIcon,
-  TrashIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/vue/24/outline";
 import { nodesService } from "../services";
@@ -32,7 +32,7 @@ import {
 import { isDeprecatedIn, isRetired } from "../schemas/optionSchema";
 import { useSingBoxVersion } from "../composables/useSingBoxVersion";
 import { storeToRefs } from "pinia";
-import { Dialog } from '../volt'
+import { ContextPanel } from '../volt'
 import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 
 const outboundsStore = useOutboundsStore();
@@ -123,6 +123,7 @@ const currentTypeWarning = computed(() => {
 // and skips the index entirely.
 const showDeleteConfirm = ref(false);
 const deletingOutbound = ref<Outbound | null>(null);
+const deletingOutboundIndex = ref(-1);
 
 // Import modal state
 const showImportModal = ref(false);
@@ -154,7 +155,7 @@ const toggleSelectAllOutbounds = () => {
 
 const handleBatchDelete = async () => {
   if (selectedOutbounds.value.size === 0) return;
-  
+
   localLoading.value = true;
   try {
     const tags = Array.from(selectedOutbounds.value);
@@ -370,9 +371,7 @@ const closeDeleteConfirm = () => {
 const handleDelete = async () => {
   if (!deletingOutbound.value) return;
   localLoading.value = true;
-  // -1 forces deleteOutbound to use outbound.tag — the confirm modal does
-  // not know the array index of the row that opened it.
-  await deleteOutbound(-1, deletingOutbound.value);
+  await deleteOutbound(deletingOutboundIndex.value, deletingOutbound.value);
   closeDeleteConfirm();
 };
 
@@ -532,35 +531,38 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-end items-center mb-2">
-      <div class="flex gap-3">
-        <Button
-          v-if="selectedOutbounds.size > 0"
-          @click="handleBatchDelete"
-          variant="danger"
-        >
-          <TrashIcon class="h-5 w-5 mr-2" />
-          {{ $t('outbounds.deleteSelected', { count: selectedOutbounds.size }) }}
+    <div class="mb-4 grid gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-text-primary">{{ $t('outbounds.tabs.list') }}</h1>
+        <p class="mt-1 text-xs text-text-secondary">{{ $t('outbounds.count', outbounds.length) }}</p>
+      </div>
+      <div class="flex min-h-9 min-w-0 flex-wrap items-center justify-end gap-2">
+        <span v-if="selectedOutbounds.size > 0" class="text-xs text-text-secondary">{{ $t('outbounds.importModal.selected', { count: selectedOutbounds.size }) }}</span>
+        <IconButton action="delete" v-if="selectedOutbounds.size > 0" :label="$t('outbounds.deleteSelected', { count: selectedOutbounds.size })" @click="handleBatchDelete" />
+        <Button v-if="selectedOutbounds.size > 0" variant="ghost" class="sm:hidden" @click="selectedOutbounds.clear()">
+          {{ $t('common.cancel') }}
         </Button>
+        <div :class="selectedOutbounds.size > 0 ? 'hidden sm:flex' : 'flex'" class="items-center gap-2">
         <Button @click="openImportModal" variant="secondary">
-          <ArrowDownTrayIcon class="h-5 w-5 mr-2" />
+          <ArrowDownTrayIcon class="h-5 w-5" />
           {{ $t('outbounds.import') }}
         </Button>
         <Button @click="openAddModal" variant="primary">
-          <PlusIcon class="h-5 w-5 mr-2" />
+          <PlusIcon class="h-5 w-5" />
           {{ $t('outbounds.add') }}
         </Button>
+        </div>
       </div>
     </div>
 
     <div
-      class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden"
+      class="table-surface"
     >
       <!--
         The select-all checkbox means this header needs markup, not just
         labels, so it uses #head rather than the `columns` prop.
       -->
-      <Table :loading="loading && outbounds.length === 0" :empty="outbounds.length === 0">
+      <Table table-class="table-fixed min-w-5xl" :loading="loading && outbounds.length === 0" :empty="outbounds.length === 0">
         <template #empty>
           <p class="mb-3">{{ $t('outbounds.empty') }}</p>
           <Button @click="openAddModal" variant="primary" size="sm">
@@ -570,55 +572,55 @@ onMounted(() => {
         </template>
 
         <template #head>
-          <th>
+          <th class="col-select">
+            <label class="table-checkbox">
             <input
               type="checkbox"
               :checked="selectedOutbounds.size === outbounds.length && outbounds.length > 0"
               :indeterminate="selectedOutbounds.size > 0 && selectedOutbounds.size < outbounds.length"
+              :aria-label="$t('outbounds.selectAll')"
               class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               @change="toggleSelectAllOutbounds"
             />
+            </label>
           </th>
-          <th>#</th>
+          <th class="w-16">#</th>
           <th>{{ $t('outbounds.table.tag') }}</th>
-          <th>{{ $t('outbounds.table.type') }}</th>
-          <th>{{ $t('outbounds.table.server') }}</th>
-          <th>{{ $t('outbounds.table.port') }}</th>
-          <th class="col-actions">{{ $t('outbounds.table.actions') }}</th>
+          <th class="w-36">{{ $t('outbounds.table.type') }}</th>
+          <th class="w-52">{{ $t('outbounds.table.server') }}</th>
+          <th class="w-20">{{ $t('outbounds.table.port') }}</th>
+          <th class="col-actions w-28">{{ $t('outbounds.table.actions') }}</th>
         </template>
 
-        <tr v-for="(outbound, i) in outbounds" :key="outbound.tag">
-          <td>
+        <tr v-for="(outbound, i) in outbounds" :key="outbound.tag" :data-selected="selectedOutbounds.has(outbound.tag)">
+          <td class="col-select">
+            <label class="table-checkbox">
             <input
               type="checkbox"
               :checked="selectedOutbounds.has(outbound.tag)"
+              :aria-label="$t('outbounds.selectOutbound', {tag: outbound.tag})"
               class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               @change="toggleOutboundSelection(outbound.tag)"
             />
+            </label>
           </td>
           <td class="font-medium text-gray-900 dark:text-gray-100">{{ i + 1 }}</td>
-          <td class="font-medium text-gray-900 dark:text-gray-100">{{ outbound.tag || i }}</td>
+          <td class="font-medium text-gray-900 dark:text-gray-100"><span class="block truncate" :title="outbound.tag">{{ outbound.tag || i }}</span></td>
           <td>
             <Badge :variant="getOutboundBadgeVariant(outbound.type)">
               {{ getOutboundTypeLabel(outbound.type) }}
             </Badge>
           </td>
-          <td class="text-gray-900 dark:text-gray-100">{{ (outbound as any).server || "-" }}</td>
+          <td class="text-gray-900 dark:text-gray-100"><span class="block truncate" :title="(outbound as any).server">{{ (outbound as any).server || "-" }}</span></td>
           <td class="text-gray-900 dark:text-gray-100">{{ (outbound as any).server_port || "-" }}</td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
-              <Button @click="openEditModal(outbound)" variant="ghost" size="sm" action>
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <Button
-                @click="deleteOutbound(i, outbound)"
-                variant="ghost"
-                size="sm"
-                action
-                class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-              >
-                <TrashIcon class="h-4 w-4" />
-              </Button>
+              <IconButton action="edit" @click="openEditModal(outbound)" :label="`${$t('common.edit')} ${outbound.tag}`" />
+              <IconButton
+                action="delete"
+                @click="deletingOutbound = outbound; deletingOutboundIndex = i; showDeleteConfirm = true"
+                :label="`${$t('common.delete')} ${outbound.tag}`"
+              />
             </div>
           </td>
         </tr>
@@ -626,7 +628,7 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showModal"
       @update:visible="(v: boolean) => { if (!v) closeModal() }"
       :header="isEditMode ? $t('outbounds.modal.edit') : $t('outbounds.modal.add')"
@@ -710,10 +712,10 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Import Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showImportModal"
       @update:visible="(v: boolean) => { if (!v) closeImportModal() }"
       :header="$t('outbounds.importModal.title')"
@@ -840,10 +842,10 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Delete Confirmation Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showDeleteConfirm"
       @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
       :header="$t('outbounds.del.title')"
@@ -855,17 +857,9 @@ onMounted(() => {
       </p>
 
       <template #footer>
-        <Button @click="closeDeleteConfirm" variant="secondary"
-          >{{ $t('common.cancel') }}</Button
-        >
-        <Button
-          @click="handleDelete"
-          variant="danger"
-          :disabled="localLoading"
-        >
-          {{ $t('common.delete') }}
-        </Button>
+        <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <IconButton action="delete" @click="handleDelete" :disabled="localLoading" />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

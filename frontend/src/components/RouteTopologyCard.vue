@@ -396,7 +396,7 @@ onBeforeUnmount(() => {
       <div
         :class="
           expanded
-            ? 'topology-content fixed inset-0 z-40 flex flex-col bg-white dark:bg-slate-900 p-4 sm:p-6 overflow-hidden'
+            ? 'topology-content fixed inset-0 z-40 flex flex-col bg-bg-secondary p-4 sm:p-6 overflow-hidden'
             : 'topology-content flex flex-col min-h-0'
         "
         :role="expanded ? 'dialog' : undefined"
@@ -585,7 +585,7 @@ onBeforeUnmount(() => {
         client address in the snapshot, so a list beats recalling an IP — and a
         typo in a typed one is indistinguishable from a device with no traffic.
         A value picker, so `volt/Select`; the `value: ''` entry needs its label
-        repeated as the placeholder (see DESIGN.md §6).
+        repeated as the placeholder so an empty value still has a label.
 
         The panel teleports to <body> like every other overlay in the app — see
         the full-window container's z-index for why that keeps working there,
@@ -724,7 +724,7 @@ onBeforeUnmount(() => {
           top of both scrollbars at once.
         -->
         <div
-          class="absolute bottom-3 right-3 inline-flex items-center rounded-md border border-gray-200 dark:border-slate-600 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-surface overflow-hidden"
+          class="absolute bottom-3 right-3 inline-flex items-center rounded-md border border-border bg-bg-secondary shadow-surface overflow-hidden"
           :title="$t('routeFlow.zoom.hint')"
         >
           <button

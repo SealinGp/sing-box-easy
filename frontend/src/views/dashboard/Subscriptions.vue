@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiService } from "../../services/api";
@@ -7,7 +8,7 @@ import { type Subscription } from "../../types/api";
 import { useNotify } from "../../composables/useNotify";
 import Button from "../../components/Button.vue";
 import Input from "../../components/Input.vue";
-import Badge from "../../components/Badge.vue";
+import StatusIndicator from "../../components/StatusIndicator.vue";
 import Table from "../../components/Table.vue";
 import CopyIcon from "../../components/CopyIcon.vue";
 import PopConfirm from "../../components/PopConfirm.vue";
@@ -26,19 +27,15 @@ import { subProbeService } from "../../services";
 import type { ProbePoint } from "../../types/subprobe";
 import {
   PlusIcon,
-  PencilIcon,
-  TrashIcon,
   ArrowPathIcon,
   CloudArrowDownIcon,
   ServerIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   ClockIcon,
   TagIcon,
   ArrowTopRightOnSquareIcon,
 } from "@heroicons/vue/24/outline";
 import { Select } from "../../volt";
-import { Dialog } from '../../volt'
+import { ContextPanel } from '../../volt'
 
 const subscriptionService = new SubscriptionService(apiService);
 const { t } = useI18n();
@@ -326,24 +323,21 @@ const formatDate = (dateString?: string) => {
 // The freshness rule itself lives in utils/subscriptionHealth so this page and
 // the Overview card cannot drift into disagreeing about the same subscription;
 // only the presentation is decided here.
-const getStatusBadge = (subscription: Subscription) => {
+const getSubscriptionStatus = (subscription: Subscription) => {
   switch (subscriptionHealth(subscription)) {
     case "never":
       return {
         type: "warning" as const,
-        icon: ClockIcon,
         text: t("subscriptions.status.notUpdated"),
       };
     case "outdated":
       return {
         type: "warning" as const,
-        icon: ClockIcon,
         text: t("subscriptions.status.outdated"),
       };
     default:
       return {
         type: "success" as const,
-        icon: CheckCircleIcon,
         text: t("subscriptions.status.updated"),
       };
   }
@@ -379,7 +373,7 @@ onMounted(() => {
 <template>
   <div>
     <!-- Header: subtitle + actions -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <p class="text-gray-500 dark:text-gray-400">
         {{ $t("subscriptions.subtitle") }}
       </p>
@@ -396,7 +390,7 @@ onMounted(() => {
                          `CloudArrowDownIcon` with the per-row update button,
                          because it is that same operation applied to every row.
       -->
-      <div class="flex gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <Button
           variant="ghost"
           :loading="isLoading && !isUpdating.length"
@@ -435,27 +429,12 @@ onMounted(() => {
 
     <!-- Subscriptions List -->
     <div
-      class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden"
+      class="table-surface"
     >
-      <Table
+      <Table table-class="table-fixed min-w-[68rem]"
         :loading="isLoading && subscriptions.length === 0"
         :empty="subscriptions.length === 0"
       >
-        <!-- This page's loading state is a labelled placeholder, not a bare
-             spinner, so it overrides Table's default. -->
-        <template #loading>
-          <div class="text-center">
-            <div
-              class="inline-flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-pill mb-4"
-            >
-              <ServerIcon class="h-8 w-8 text-primary-600 dark:text-primary-400" />
-            </div>
-            <p class="text-gray-500 dark:text-gray-400">
-              {{ $t("subscriptions.loading") }}
-            </p>
-          </div>
-        </template>
-
         <template #empty>
           <div
             class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-pill mb-4"
@@ -475,19 +454,19 @@ onMounted(() => {
         </template>
 
         <template #head>
-          <th>
+          <th class="w-[28%]">
             {{ $t("subscriptions.table.subscription") }}
           </th>
-          <th>
+          <th class="w-56">
             {{ $t("subscriptions.table.status") }}
           </th>
-          <th>
+          <th class="w-28">
             {{ $t("subProbe.column") }}
           </th>
           <th>
             {{ $t("subscriptions.table.info") }}
           </th>
-          <th class="col-actions">
+          <th class="col-actions w-36">
             {{ $t("subscriptions.table.actions") }}
           </th>
         </template>
@@ -565,41 +544,19 @@ onMounted(() => {
               </div>
             </div>
           </td>
-          <!-- Status: state badge + auto-update/interval + last update, stacked -->
+          <!-- State uses plain indicators; descriptive labels remain badges. -->
           <td class="align-top">
             <div class="flex flex-col items-start gap-1.5">
-              <Badge
-                :variant="getStatusBadge(subscription).type"
-                class="inline-flex items-center gap-1"
-              >
-                <component
-                  :is="getStatusBadge(subscription).icon"
-                  class="h-3 w-3"
-                />
-                {{ getStatusBadge(subscription).text }}
-              </Badge>
+              <StatusIndicator :variant="getSubscriptionStatus(subscription).type" :busy="isUpdating.includes(subscription.id)">
+                {{ getSubscriptionStatus(subscription).text }}
+              </StatusIndicator>
               <div class="flex items-center gap-1.5 flex-wrap">
-                <Badge
-                  :variant="subscription.auto_update ? 'success' : 'secondary'"
-                  class="inline-flex items-center gap-1"
-                >
-                  <component
-                    :is="subscription.auto_update ? CheckCircleIcon : XCircleIcon"
-                    class="h-3 w-3"
-                  />
-                  {{
-                    subscription.auto_update
-                      ? $t("subscriptions.enabled")
-                      : $t("subscriptions.disabled")
-                  }}
-                </Badge>
-                <span
-                  v-if="subscription.auto_update && subscription.update_interval"
-                  class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
-                  :title="$t('subscriptions.form.updateInterval')"
-                >
-                  <ClockIcon class="h-3 w-3" />
-                  {{ subscription.update_interval }}
+                <span class="text-xs text-text-secondary">{{ $t('subscriptions.form.autoUpdate') }}:</span>
+                <StatusIndicator :variant="subscription.auto_update ? 'success' : 'secondary'">
+                  {{ subscription.auto_update ? $t('subscriptions.enabled') : $t('subscriptions.disabled') }}
+                </StatusIndicator>
+                <span v-if="subscription.auto_update && subscription.update_interval" class="inline-flex items-center gap-1 text-xs text-text-secondary" :title="$t('subscriptions.form.updateInterval')">
+                  <ClockIcon class="h-3 w-3" />{{ subscription.update_interval }}
                 </span>
               </div>
               <span
@@ -647,20 +604,8 @@ onMounted(() => {
                   class="h-4 w-4"
                 />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                action
-                @click="openEditModal(subscription)"
-                :title="$t('subscriptions.tooltip.edit')"
-                :aria-label="$t('subscriptions.tooltip.edit')"
-              >
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <!-- Anchored confirm rather than a modal: the popover names the
-                   subscription, so the question stays attached to the row that
-                   raised it. triggerClass mirrors <Button variant="danger"
-                   size="sm" action> so the row's three controls stay a set. -->
+              <IconButton action="edit" @click="openEditModal(subscription)" :label="$t('subscriptions.tooltip.edit')" />
+              <!-- Keep the confirmation attached to the named subscription. -->
               <PopConfirm
                 :message="$t('subscriptions.del.confirmHeading')"
                 :target="subscription.name"
@@ -668,12 +613,8 @@ onMounted(() => {
                 :confirm-label="$t('common.delete')"
                 tone="danger"
                 align="right"
-                trigger-class="inline-flex items-center justify-center gap-1 rounded-control bg-danger px-2.5 py-0.5 font-semibold text-white transition-colors duration-200 hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                 @confirm="deleteSubscription(subscription)"
-              >
-                <TrashIcon class="h-4 w-4" />
-                <span class="sr-only">{{ $t("subscriptions.tooltip.del") }}</span>
-              </PopConfirm>
+              />
             </div>
           </td>
         </tr>
@@ -684,7 +625,7 @@ onMounted(() => {
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />
 
     <!-- Add/Edit Modal -->
-    <Dialog v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">
+    <ContextPanel v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">
       <form @submit.prevent="saveSubscription">
         <div class="space-y-4">
           <Input
@@ -814,7 +755,7 @@ onMounted(() => {
           {{ isEditing ? $t("common.update") : $t("common.add") }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
   </div>
 </template>

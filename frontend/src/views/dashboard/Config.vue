@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import StatusIndicator from '../../components/StatusIndicator.vue'
+import IconButton from '../../components/IconButton.vue'
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { configService, serviceControlService } from '../../services'
@@ -190,6 +192,7 @@ const batchDeleteVersions = async () => {
     title: t('config.versionsModal.deleteSelected'),
     message: t('config.confirm.deleteBatch', { n: ids.length }),
     confirmLabel: t('common.delete'),
+    action: 'delete',
     tone: 'danger',
   })
   if (!ok) return
@@ -250,6 +253,7 @@ const deleteVersion = async (v: ConfigVersion) => {
     title: t('config.versionsModal.delete'),
     message: t('config.confirm.delete', { id: v.id }),
     confirmLabel: t('common.delete'),
+    action: 'delete',
     tone: 'danger',
   })
   if (!ok) return
@@ -601,14 +605,12 @@ onUnmounted(() => {
               <span class="text-xs text-gray-500 dark:text-gray-400">
                 <template v-if="selectedVersionIds.size">{{ $t('config.versionsModal.selected', { n: selectedVersionIds.size }) }}</template>
               </span>
-              <button
+              <IconButton
+                action="delete"
+                :label="$t('config.versionsModal.deleteSelected')"
                 @click="batchDeleteVersions"
                 :disabled="selectedVersionIds.size === 0 || batchDeleting || versionsLoading"
-                class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {{ $t('config.versionsModal.deleteSelected') }}
-                <span v-if="selectedVersionIds.size">({{ selectedVersionIds.size }})</span>
-              </button>
+              />
             </div>
             <!--
               The dialog's own content area scrolls, so `scroll` is off: a second
@@ -649,7 +651,7 @@ onUnmounted(() => {
                 </td>
                 <td>
                   #{{ v.id }}
-                  <span v-if="i === 0" class="ml-2 px-2 py-0.5 text-[10px] rounded-pill bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">{{ $t('config.versionsModal.latest') }}</span>
+                  <StatusIndicator v-if="i === 0" variant="primary" class="ml-2">{{ $t('config.versionsModal.latest') }}</StatusIndicator>
                 </td>
                 <td class="text-gray-600 dark:text-gray-400">
                   {{ formatTime(v.created_at) }}
@@ -671,14 +673,7 @@ onUnmounted(() => {
                     >
                       {{ $t('config.versionsModal.rollback') }}
                     </button>
-                    <button
-                      @click="deleteVersion(v)"
-                      :disabled="loading || versionsLoading"
-                      class="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-control hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-                      :title="$t('config.versionsModal.delete')"
-                    >
-                      {{ $t('config.versionsModal.delete') }}
-                    </button>
+                    <IconButton action="delete" @click="deleteVersion(v)" :disabled="loading || versionsLoading" :label="$t('config.versionsModal.delete')" />
                   </div>
                 </td>
               </tr>

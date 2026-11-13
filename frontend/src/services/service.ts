@@ -1,5 +1,5 @@
 import type { ApiService } from './api'
-import type { BasicResponse, InitState, InstallTask, ServiceStatus, ServiceLogs } from '../types/api'
+import type { BasicResponse, InstallTask, ServiceStatus, ServiceLogs } from '../types/api'
 
 export class ServiceControlService {
   private api: ApiService
@@ -53,20 +53,8 @@ export class ServiceControlService {
   }
 
 
-  async getInitStatus(): Promise<BasicResponse<InitState>> {
-    const response = await this.api.get<BasicResponse<InitState>>('/init/status')
-    return response.data
-  }
 
-  async completeInit(): Promise<BasicResponse<{ message: string }>> {
-    const response = await this.api.post<BasicResponse<{ message: string }>>('/init/complete')
-    return response.data
-  }
 
-  async resetInit(): Promise<BasicResponse<{ message: string }>> {
-    const response = await this.api.post<BasicResponse<{ message: string }>>('/init/reset')
-    return response.data
-  }
 
 
 
@@ -88,8 +76,8 @@ export class ServiceControlService {
     return response.data
   }
 
-  async updateSingBox(version?: string, beta?: boolean): Promise<BasicResponse<InstallTask>> {
-    const response = await this.api.post<BasicResponse<InstallTask>>('/update', {
+  async updateSingBox(version?: string, beta?: boolean): Promise<BasicResponse<{ task_id: string; message: string }>> {
+    const response = await this.api.post<BasicResponse<{ task_id: string; message: string }>>('/update', {
       version,
       beta,
     })

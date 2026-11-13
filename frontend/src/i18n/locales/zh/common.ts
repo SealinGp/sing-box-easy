@@ -2,7 +2,7 @@
 export default {
   save: '保存',
   // 每个多值（标签）输入框下方的提示 —— 见 components/ChipsField.vue。
-  chipsHint: '输入后按回车添加；也可用逗号分隔一次粘贴多个。',
+  chipsHint: '输入或粘贴内容，编辑完成后按回车添加。',
   saving: '保存中...',
   cancel: '取消',
   copy: '复制',

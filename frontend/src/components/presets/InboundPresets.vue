@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../../composables/useConfirm'
 import type { Inbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { useSingBoxVersion } from '../../composables/useSingBoxVersion'
+import { compatibleInbound } from '../../utils/presetCompatibility'
 import { inboundService } from '../../services'
 import { RECOMMENDED_TUN_ADDRESS, RECOMMENDED_TUN_ADDRESS_V6 } from '../../composables/useSetupDefaults'
 
@@ -11,10 +14,9 @@ const RECOMMENDED_TUN_ADDRESS_ALL = [RECOMMENDED_TUN_ADDRESS, RECOMMENDED_TUN_AD
 
 const { t } = useI18n()
 
-const emit = defineEmits<{
-  next: []
-  prev: []
-}>()
+const emit = defineEmits<{ applied: [] }>()
+const { confirm } = useConfirm()
+const { singBoxVersion, ensureVersion } = useSingBoxVersion()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -146,6 +148,7 @@ const loadInbounds = async () => {
 }
 
 const toggleInbound = (presetId: string) => {
+  if (loading.value || saving.value || success.value) return
   const next = new Set(selectedInbounds.value)
   if (next.has(presetId)) next.delete(presetId); else next.add(presetId)
   selectedInbounds.value = next
@@ -161,6 +164,8 @@ const selectRecommended = () => {
 // re-added from the snapshot. Best-effort: if any restore call fails we
 // surface a clear message pointing the user at /config/rollback.
 const saveInbounds = async () => {
+  if (saving.value || success.value) return
+  if (!(await confirm({ message: t('workspace.presets.inboundsImpact'), confirmLabel: t('workspace.presets.apply') }))) return
   if (selectedInbounds.value.size === 0) {
     error.value = t('setup.inbounds.selectAtLeastOneError')
     return
@@ -180,6 +185,7 @@ const saveInbounds = async () => {
     return
   }
 
+  await ensureVersion()
   const existingByTag = new Map(inboundsSnapshot.map((ib) => [ib.tag, ib]))
   const addedTags: string[] = []
   const removedSnapshots: Inbound[] = []
@@ -189,7 +195,7 @@ const saveInbounds = async () => {
       const wanted = selectedInbounds.value.has(preset.id)
       const present = existingByTag.has(preset.tag)
       if (wanted && !present) {
-        await inboundService.addInbound(preset.config as Inbound)
+        await inboundService.addInbound(compatibleInbound(preset.config, singBoxVersion.value))
         addedTags.push(preset.tag)
       } else if (!wanted && present) {
         removedSnapshots.push(existingByTag.get(preset.tag)!)
@@ -198,7 +204,7 @@ const saveInbounds = async () => {
     }
 
     success.value = true
-    setTimeout(() => emit('next'), 2000)
+    emit('applied')
   } catch (err: any) {
     let restoreOk = true
     // Undo additions
@@ -218,17 +224,6 @@ const saveInbounds = async () => {
   }
 }
 
-const handleNext = () => {
-  if (!success.value) {
-    saveInbounds()
-  } else {
-    emit('next')
-  }
-}
-
-const handleSkip = () => {
-  emit('next')
-}
 </script>
 
 <template>
@@ -248,8 +243,8 @@ const handleSkip = () => {
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.inbounds.selectHeading') }}</h3>
-            <p class="text-sm text-gray-600">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.inbounds.selectHeading') }}</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
               {{ $t('setup.inbounds.selectDesc') }}
             </p>
           </div>
@@ -274,6 +269,7 @@ const handleSkip = () => {
           >
             <input
               type="checkbox"
+              :aria-label="preset.name"
               :checked="selectedInbounds.has(preset.id)"
               class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
               :disabled="loading || saving || success"
@@ -281,11 +277,11 @@ const handleSkip = () => {
             />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ preset.name }}</p>
                 <Badge v-if="preset.id === 'mixed'" variant="primary" size="sm">{{ $t('setup.inbounds.recommended') }}</Badge>
                 <Badge variant="gray" size="sm">{{ preset.type }}</Badge>
               </div>
-              <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
+              <p class="text-xs text-gray-600 mt-1 dark:text-gray-400">{{ preset.description }}</p>
               <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
                 <span v-if="preset.listen">{{ $t('setup.inbounds.listen', { address: preset.listen, port: preset.listen_port }) }}</span>
                 <span v-if="preset.type === 'tun'">{{ $t('setup.inbounds.interface', { name: (preset.config as any).interface_name }) }}</span>
@@ -295,9 +291,9 @@ const handleSkip = () => {
         </div>
 
         <!-- 选择统计 -->
-        <div class="bg-gray-50 rounded-control p-3 text-center">
-          <p class="text-sm text-gray-600">
-            <span class="font-semibold text-gray-900">{{ selectedInbounds.size }}</span> {{ $t('setup.inbounds.selectedCount') }}
+        <div class="bg-gray-50 rounded-control p-3 text-center dark:bg-slate-800">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedInbounds.size }}</span> {{ $t('setup.inbounds.selectedCount') }}
           </p>
         </div>
       </div>
@@ -309,27 +305,21 @@ const handleSkip = () => {
         variant="primary"
         :loading="saving"
         :disabled="saving || success || selectedInbounds.size === 0"
-        @click="handleNext"
+        @click="saveInbounds"
       >
-        {{ success ? $t('setup.inbounds.saved') : saving ? $t('common.saving') : selectedInbounds.size > 0 ? $t('setup.inbounds.addInbounds', { count: selectedInbounds.size }) : $t('setup.inbounds.selectAtLeastOne') }}
+        {{ success ? $t('workspace.presets.applied') : saving ? $t('common.saving') : $t('workspace.presets.apply') }}
       </Button>
 
-      <Button
-        variant="ghost"
-        :disabled="saving || success"
-        @click="handleSkip"
-      >
-        {{ $t('setup.inbounds.skip') }}
-      </Button>
+
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-primary-50 border-primary-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200 dark:bg-primary-950/30">
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-primary-900 space-y-2">
+        <div class="text-sm text-primary-900 space-y-2 dark:text-primary-200">
           <p class="font-medium">{{ $t('setup.inbounds.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800 dark:text-primary-300">
             <li><strong>{{ $t('setup.inbounds.aboutMixedLabel') }}</strong> {{ $t('setup.inbounds.aboutMixed') }}</li>
             <li><strong>{{ $t('setup.inbounds.aboutHttpLabel') }}</strong> {{ $t('setup.inbounds.aboutHttp') }}</li>
             <li><strong>{{ $t('setup.inbounds.aboutSocksLabel') }}</strong> {{ $t('setup.inbounds.aboutSocks') }}</li>
@@ -344,9 +334,9 @@ const handleSkip = () => {
     </Card>
 
     <!-- 端口说明 -->
-    <Card padding="sm" class="bg-gray-50">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">{{ $t('setup.inbounds.portsHeading') }}</p>
+    <Card padding="sm" class="bg-gray-50 dark:bg-slate-800">
+      <div class="text-sm text-gray-600 space-y-2 dark:text-gray-400">
+        <p class="font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.inbounds.portsHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li><strong>{{ $t('setup.inbounds.portMixedLabel') }}</strong> {{ $t('setup.inbounds.portMixed') }}</li>
           <li><strong>{{ $t('setup.inbounds.portHttpLabel') }}</strong> {{ $t('setup.inbounds.portHttp') }}</li>

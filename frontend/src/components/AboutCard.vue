@@ -11,6 +11,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { systemService } from '../services'
+import { useSingBoxVersion } from '../composables/useSingBoxVersion'
 import { useAppUpdate } from '../composables/useAppUpdate'
 import { useDeployment, type LayoutOverride } from '../composables/useDeployment'
 import { useNotify } from '../composables/useNotify'
@@ -23,6 +24,7 @@ import { PROJECT_URL, bugReportUrl, diagnosticsText, type Diagnostics } from '..
 import { writeTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
+const { singBoxVersion: detectedCoreVersion } = useSingBoxVersion()
 const notify = useNotify()
 
 const info = ref<SystemInfo | null>(null)
@@ -104,7 +106,7 @@ const appVersion = computed(() => currentVersion.value || info.value?.app_versio
  */
 const singBoxVersion = computed(() => {
   if (!info.value) return placeholder
-  const version = info.value.sing_box_version
+  const version = detectedCoreVersion.value ?? info.value.sing_box_version
   if (!version || version === 'unknown') return t('settings.about.notInstalled')
   return version
 })

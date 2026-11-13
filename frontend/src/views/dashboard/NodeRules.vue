@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
+
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useFocusTarget } from '../../composables/useFocusTarget'
 import { useI18n } from 'vue-i18n'
@@ -8,13 +10,11 @@ import PopConfirm from '../../components/PopConfirm.vue'
 import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import SearchPicker, { type PickerOption } from '../../components/SearchPicker.vue'
-import { Dialog } from '../../volt'
+import { ContextPanel } from '../../volt'
 import { Select } from '../../volt'
 import type { Filter, Group, Matcher, MatcherType, FilterOutboundType } from '../../types/noderules'
 import { URLTEST_DEFAULTS } from '../../types/noderules'
 import {
-  PencilIcon,
-  TrashIcon,
   PlusIcon,
   XMarkIcon,
   AdjustmentsHorizontalIcon,
@@ -515,23 +515,18 @@ onMounted(async () => {
                   <div v-else class="text-xs text-gray-400">{{ t('nodeRules.fallbackHint') }}</div>
                 </div>
                 <div class="flex gap-0.5 shrink-0">
-                  <button
+                  <IconButton
+                    action="edit"
                     @click="startEditFilter(f)"
-                    class="p-1 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    :title="t('nodeRules.edit')"
-                  >
-                    <PencilIcon class="h-3.5 w-3.5" />
-                  </button>
+                    :label="t('nodeRules.edit')"
+                  />
                   <PopConfirm
                     v-if="!f.is_fallback"
                     :message="t('nodeRules.confirmDeleteFilter', { name: f.name })"
                     :confirm-label="t('nodeRules.delete')"
                     tone="danger"
-                    triggerClass="p-1 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                     @confirm="removeFilter(f)"
-                  >
-                    <TrashIcon class="h-3.5 w-3.5" />
-                  </PopConfirm>
+                  />
                 </div>
               </li>
             </ul>
@@ -582,22 +577,17 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div class="flex gap-0.5 shrink-0">
-                  <button
+                  <IconButton
+                    action="edit"
                     @click="startEditGroup(g)"
-                    class="p-1 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    :title="t('nodeRules.edit')"
-                  >
-                    <PencilIcon class="h-3.5 w-3.5" />
-                  </button>
+                    :label="t('nodeRules.edit')"
+                  />
                   <PopConfirm
                     :message="t('nodeRules.confirmDeleteGroup', { name: g.name })"
                     :confirm-label="t('nodeRules.delete')"
                     tone="danger"
-                    triggerClass="p-1 rounded-control text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer inline-flex items-center justify-center"
                     @confirm="removeGroup(g)"
-                  >
-                    <TrashIcon class="h-3.5 w-3.5" />
-                  </PopConfirm>
+                  />
                 </div>
               </li>
               <li v-if="!groups.length" class="text-xs text-gray-400 text-center py-4 bg-gray-50/20 dark:bg-slate-900/20 border border-dashed border-gray-200 dark:border-gray-800 rounded-control">
@@ -703,7 +693,7 @@ onMounted(async () => {
     </Transition>
 
     <!-- Create/Edit Filter Modal -->
-    <Dialog
+    <ContextPanel
       :visible="editingFilterId !== null"
       @update:visible="(v: boolean) => { if (!v) cancelFilterEdit() }"
       modal
@@ -776,9 +766,7 @@ onMounted(async () => {
                 class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"
                 :placeholder="t('nodeRules.matcherValue')"
               />
-              <button @click="removeMatcher(idx)" class="text-gray-400 hover:text-red-500 p-1 cursor-pointer">
-                <XMarkIcon class="h-4 w-4" />
-              </button>
+              <IconButton action="delete" @click="removeMatcher(idx)" />
             </div>
             <div v-if="!filterForm.matchers.length" class="text-xs text-gray-400 text-center py-2 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
               No matchers configured. This filter will not match any nodes.
@@ -855,9 +843,7 @@ onMounted(async () => {
                 class="bg-transparent flex-1 text-sm text-gray-900 dark:text-white focus:outline-none border-none py-1 px-2"
                 :placeholder="t('nodeRules.matcherValue')"
               />
-              <button @click="removeExclude(idx)" class="text-gray-400 hover:text-red-500 p-1 cursor-pointer">
-                <XMarkIcon class="h-4 w-4" />
-              </button>
+              <IconButton action="delete" @click="removeExclude(idx)" />
             </div>
             <div v-if="!filterForm.excludes.length" class="text-xs text-gray-400 text-center py-2 bg-gray-50/40 dark:bg-slate-800/10 rounded-control border border-dashed border-gray-200 dark:border-gray-800">
               No exclusion rules configured.
@@ -938,10 +924,10 @@ onMounted(async () => {
           {{ t('nodeRules.save') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Create/Edit Group Modal -->
-    <Dialog
+    <ContextPanel
       :visible="editingGroupId !== null"
       @update:visible="(v: boolean) => { if (!v) cancelGroupEdit() }"
       modal
@@ -1041,7 +1027,7 @@ onMounted(async () => {
           {{ t('nodeRules.save') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>
 
@@ -1051,7 +1037,7 @@ onMounted(async () => {
  *
  * 220ms in / 150ms out on the same curve the select panel and the nav pill use
  * — below ~150ms a transition stops reading as motion and just looks like a
- * flicker (DESIGN.md §8). The two directions travel opposite ways so the swap
+ * flicker. The two directions travel opposite ways so the swap
  * reads as one view moving aside for the other rather than two unrelated fades.
  */
 .mode-swap-enter-active {

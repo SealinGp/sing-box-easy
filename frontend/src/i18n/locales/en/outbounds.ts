@@ -11,6 +11,9 @@ export default {
   addFirst: 'Add Your First Outbound',
   import: 'Import',
   deleteSelected: 'Delete ({count})',
+  count: 'No outbounds | {count} outbound | {count} outbounds',
+  selectAll: 'Select all outbounds',
+  selectOutbound: 'Select {tag}',
   empty: 'No outbounds configured',
   table: {
     tag: 'Tag',

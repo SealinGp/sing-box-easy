@@ -2,16 +2,14 @@
 /**
  * Downloads the selected dashboard into sing-box's `external_ui` directory.
  *
- * Mirrors the init wizard's DownloadDashboard step (POST /dashboard/download,
- * then poll /dashboard/task/:id) but scoped to a single button next to the URL
- * picker, so an already-initialised install can swap dashboards without
- * re-running the wizard.
+ * Download or upload an archive beside the dashboard URL picker, then poll
+ * its installation task until it completes.
  *
  * The target directory and URL are passed in from the live form values rather
  * than read from the saved config — the user may have just changed them, and
  * downloading what they see is the least surprising behaviour.
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowDownTrayIcon,
@@ -22,6 +20,7 @@ import type { DashboardTask } from '../types/api'
 import { dashboardService } from '../services'
 import Button from './Button.vue'
 import Input from './Input.vue'
+import { ContextPanel } from '../volt'
 
 interface Props {
   /** sing-box `external_ui` path; blank lets the backend fall back. */
@@ -46,7 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { t } = useI18n()
 
-/** How often to poll the download task. Matches the init wizard. */
+/** How often to poll the download task. Shared by download and upload. */
 const POLL_INTERVAL_MS = 2000
 
 const downloading = ref(false)
@@ -55,6 +54,10 @@ const errorMessage = ref('')
 const installedPath = ref('')
 const showProxy = ref(false)
 const proxy = ref('')
+const uploadOpen = ref(false)
+const uploadFile = ref<File | null>(null)
+const folderName = ref('')
+const uploadId = useId()
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -101,6 +104,22 @@ const startDownload = async () => {
       err instanceof Error && err.message
         ? err.message
         : t('experimental.clash.dashboard.downloadFailed')
+  }
+}
+
+const startUpload = async () => {
+  if (!uploadFile.value || downloading.value || props.disabled) return
+  stopPolling()
+  downloading.value = true
+  errorMessage.value = ''
+  task.value = null
+  try {
+    const { data } = await dashboardService.uploadDashboard(uploadFile.value, props.targetDir?.trim() || undefined, folderName.value.trim() || undefined)
+    task.value = { id: data.task_id, status: 'running', message: data.message }
+    pollTask(data.task_id)
+  } catch (err) {
+    downloading.value = false
+    errorMessage.value = err instanceof Error ? err.message : t('workspace.archive.failed')
   }
 }
 
@@ -177,6 +196,7 @@ onMounted(() => refreshStatus())
         </span>
       </Button>
 
+      <Button variant="secondary" size="sm" action :disabled="disabled || downloading" @click="uploadOpen = true">{{ t('workspace.archive.button') }}</Button>
       <button
         type="button"
         class="cursor-pointer text-xs text-gray-500 underline-offset-2 hover:underline dark:text-gray-400"
@@ -232,5 +252,23 @@ onMounted(() => refreshStatus())
     <p v-else class="text-xs text-gray-400 dark:text-gray-500">
       {{ $t('experimental.clash.dashboard.downloadHint') }}
     </p>
+    <ContextPanel v-model:visible="uploadOpen" :header="t('workspace.archive.title')" class="w-full max-w-lg">
+      <form class="space-y-4" @submit.prevent="startUpload">
+        <p class="text-sm text-text-secondary">{{ t('workspace.archive.description') }}</p>
+        <div>
+          <label :for="uploadId" class="mb-2 block text-sm font-medium text-text-primary">{{ t('workspace.archive.file') }}</label>
+          <input :id="uploadId" type="file" accept=".zip,.tar,.tar.gz,.tgz" :disabled="downloading" required class="w-full rounded-control border border-border p-2 text-sm text-text-primary" @change="uploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null" />
+        </div>
+        <Input v-model="folderName" :label="t('workspace.archive.folder')" :disabled="downloading" />
+        <p class="break-all text-xs text-text-secondary">{{ t('workspace.archive.target') }}: {{ targetDir || '—' }}</p>
+        <div v-if="downloading || task || errorMessage" class="min-h-20 rounded-control border border-border bg-bg-tertiary p-3 text-sm text-text-secondary" role="status" :aria-busy="downloading">
+          {{ errorMessage || task?.error || task?.message || t('common.loading') }}
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button variant="secondary" @click="uploadOpen = false">{{ t('common.close') }}</Button>
+          <Button type="submit" :disabled="!uploadFile || downloading" :loading="downloading">{{ t('workspace.archive.submit') }}</Button>
+        </div>
+      </form>
+    </ContextPanel>
   </div>
 </template>

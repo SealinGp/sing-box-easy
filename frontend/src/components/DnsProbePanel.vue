@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusIndicator from './StatusIndicator.vue'
 /**
  * DNS route inspector: resolve a domain the way sing-box does, and explain
  * which rule produced the answer.
@@ -13,7 +14,6 @@ import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowPathIcon,
-  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import Button from './Button.vue'
@@ -160,18 +160,6 @@ const stateClass = (state: MatchState) => {
 }
 
 const stateLabel = (state: MatchState) => t(`dnsProbe.state.${state}`)
-
-/** Lamp colour for one rule set's own verdict, independent of its rule's. */
-const ruleSetClass = (state: MatchState) => {
-  switch (state) {
-    case 'matched':
-      return 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-    case 'not_matched':
-      return 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-    default:
-      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-  }
-}
 
 /** Why a configured server was left out of the comparison. */
 const skipLabel = (server: DnsServerResult) =>
@@ -338,10 +326,10 @@ const logStatusMessage = computed(() => {
               <span
                 v-for="set in rule.rule_sets"
                 :key="set.tag"
-                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-pill text-[10px] font-mono"
-                :class="ruleSetClass(set.state)"
+                class="inline-flex items-center gap-2 text-xs font-mono"
               >
-                {{ set.tag }}
+                <span class="rounded-badge border border-border px-1.5 py-0.5">{{ set.tag }}</span>
+                <StatusIndicator :variant="set.state === 'matched' ? 'success' : set.state === 'unevaluated' ? 'warning' : 'secondary'">{{ stateLabel(set.state) }}</StatusIndicator>
                 <!-- Only the binary tier is marked: an in-process decode is
                      the norm and a badge on every set would say nothing. -->
                 <span v-if="set.tier === 'sing-box'" :title="$t('dnsProbe.ruleSetTier.sing-box')">⎋</span>
@@ -355,13 +343,12 @@ const logStatusMessage = computed(() => {
       <section v-if="result.servers.length" :key="`upstreams-${runToken}`" class="animate-reveal">
         <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
           {{ $t('dnsProbe.upstreams') }}
-          <span
+          <StatusIndicator
             v-if="result.disagreement"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill bg-red-100 dark:bg-red-900/40 text-xs font-medium text-red-700 dark:text-red-300"
+            variant="danger"
           >
-            <ExclamationTriangleIcon class="h-3.5 w-3.5" />
             {{ $t('dnsProbe.disagreement') }}
-          </span>
+          </StatusIndicator>
         </h4>
         <!-- No header: the three columns are self-describing, so no #head slot. -->
         <Table>

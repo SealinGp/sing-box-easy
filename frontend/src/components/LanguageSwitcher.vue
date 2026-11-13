@@ -15,7 +15,7 @@ const { locale, toggle, shortLabel, availableLocales } = useLocale()
   <button
     v-if="variant === 'compact'"
     @click="toggle"
-    class="inline-flex items-center gap-1 px-2 py-1 rounded-control text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    class="language-toggle inline-flex items-center gap-1 px-2 py-1 rounded-control text-xs font-medium text-text-secondary hover:bg-bg-tertiary transition-colors"
     :title="$t('common.language')"
     :aria-label="$t('common.language')"
   >
@@ -23,7 +23,7 @@ const { locale, toggle, shortLabel, availableLocales } = useLocale()
     <span>{{ shortLabel }}</span>
   </button>
 
-  <!-- Full: a labeled select, for the Settings page and the wizard. -->
+  <!-- Full: a labeled select, for the Settings page. -->
   <Select
     v-else
     class="w-40"

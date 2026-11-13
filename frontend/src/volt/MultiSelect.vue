@@ -15,6 +15,8 @@
 <script setup lang="ts">
 import MultiSelect, { type MultiSelectPassThroughOptions, type MultiSelectProps } from 'primevue/multiselect';
 import { ptViewMerge } from './utils';
+import { computed } from 'vue';
+import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ MultiSelectProps {}
 defineProps<Props>();
@@ -42,7 +44,8 @@ defineProps<Props>();
  *
  * See src/volt/Select.vue for the same reasoning applied there first.
  */
-const theme: MultiSelectPassThroughOptions = {
+const interfaceMotion = useInterfaceMotion();
+const baseTheme: MultiSelectPassThroughOptions = {
     root: ({ props }) => ({
         class: `volt-select relative inline-flex items-stretch cursor-pointer select-none text-sm
             transition-[border-color,box-shadow] duration-200
@@ -148,16 +151,8 @@ const theme: MultiSelectPassThroughOptions = {
         icon: `w-2.5 h-2.5 text-white`
     },
     emptyMessage: `px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400`,
-    /*
-     * No open/close animation.
-     *
-     * The panel used to scale from 95% over 100ms in and 75ms out. Below roughly
-     * 150ms motion stops reading as motion and just registers as a flicker, and
-     * a scale transform on a list of text makes the labels visibly reflow. The
-     * panel now simply appears. (volt/Select.vue keeps a transition because its
-     * 220ms travel is long enough to read as a deliberate drop-down; if this one
-     * ever gets motion back, it needs the same duration, not the old 100ms.)
-     */
+    // Fallback when an embedding surface disables interface motion.
+    // The shared profile below supplies the reversible panel transition.
     transition: {
         enterFromClass: '',
         enterActiveClass: '',
@@ -167,4 +162,8 @@ const theme: MultiSelectPassThroughOptions = {
         leaveToClass: ''
     }
 };
+const theme = computed<MultiSelectPassThroughOptions>(() => ({
+    ...baseTheme,
+    transition: interfaceMotion ? popoverMotion : baseTheme.transition,
+}));
 </script>

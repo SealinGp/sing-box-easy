@@ -26,7 +26,7 @@
  * ────────────────────────────
  * 9 of the 37 matchers sing-box accepts. The 28 with no control included
  * `ip_cidr` — which this repo's OWN init wizard creates
- * (views/init-steps/ConfigureRoutes.vue) and the form could then never edit.
+ * (components/presets/RoutePresets.vue) and the form could then never edit.
  *
  * TWO OF THE NINE WERE DEAD
  * ─────────────────────────

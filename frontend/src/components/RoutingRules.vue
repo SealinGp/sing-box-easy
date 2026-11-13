@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import ModulePresets from './ModulePresets.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
 import Card from './Card.vue'
-import { Dialog, Select } from '../volt'
+import { ContextPanel, Select } from '../volt'
 import Button from './Button.vue'
 import RoutingRuleItem from './RoutingRuleItem.vue'
 import List from './List.vue'
@@ -508,7 +509,8 @@ onMounted(() => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {{ $t('route.rules.title') }}
         </h3>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <ModulePresets kind="routes" @applied="fetchRouteRules" />
           <!-- Reorder is a MODE, and a BATCHED one: turning it on swaps every
                row's edit/delete cluster for a drag handle, and nothing is
                written until Save — a five-row cleanup is one config write, not
@@ -578,7 +580,7 @@ onMounted(() => {
     </Card>
 
     <!-- Add/Edit Rule Dialog -->
-    <Dialog
+    <ContextPanel
       v-model:visible="dialogVisible"
       modal
       :header="editingRule ? $t('route.rules.modal.edit') : $t('route.rules.modal.add')"
@@ -691,6 +693,6 @@ onMounted(() => {
           @click="editingRule ? submitUpdateRule() : submitAddRule()"
         />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

@@ -15,11 +15,14 @@
 <script setup lang="ts">
 import Select, { type SelectPassThroughOptions, type SelectProps } from 'primevue/select';
 import { ptViewMerge } from './utils';
+import { computed } from 'vue';
+import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ SelectProps {}
 defineProps<Props>();
 
-const theme: SelectPassThroughOptions = {
+const interfaceMotion = useInterfaceMotion();
+const baseTheme: SelectPassThroughOptions = {
     /*
      * The field is one surface on the root; `label` and `dropdown` are
      * transparent children.
@@ -113,4 +116,8 @@ const theme: SelectPassThroughOptions = {
         leaveToClass: 'opacity-0 scale-[0.97] -translate-y-1'
     }
 };
+const theme = computed<SelectPassThroughOptions>(() => ({
+    ...baseTheme,
+    transition: interfaceMotion ? popoverMotion : baseTheme.transition,
+}));
 </script>

@@ -23,17 +23,17 @@
   .text-gray-950,
   .text-gray-900,
   .text-gray-800 {
-    color: #f8fafc !important;
+    color: var(--color-text-primary) !important;
   }
 
   .text-gray-700,
   .text-gray-600 {
-    color: #dbe4ef !important;
+    color: var(--color-text-primary) !important;
   }
 
   .text-gray-500,
   .text-gray-400 {
-    color: #9fb0c5 !important;
+    color: var(--color-text-secondary) !important;
   }
 
   .border-gray-100,
@@ -41,7 +41,7 @@
   .border-gray-700,
   .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
   .divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--color-border) !important;
   }
 }
 

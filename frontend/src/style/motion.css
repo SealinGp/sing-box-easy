@@ -1,0 +1,123 @@
+/* Shared dashboard and /lab interactions. No animation dependency.
+ * Spatial paths reverse on exit; color/focus transitions retarget naturally.
+ * Principles: https://developer.apple.com/videos/play/wwdc2018/803/
+ */
+:root {
+  --motion-feedback: 140ms;
+  --motion-panel: 220ms;
+  --motion-page: 260ms;
+  --motion-view: 160ms;
+  --motion-enter: cubic-bezier(.22, .8, .3, 1);
+  /* Time reverse of (.22, .8, .3, 1). */
+  --motion-exit: cubic-bezier(.7, 0, .78, .2);
+  --motion-continuous: cubic-bezier(.4, 0, .2, 1);
+}
+
+.ui-popover-enter-active, .ui-dialog-enter-active,
+.ui-page-enter-active, .ui-row-enter-active, .ui-field-enter-active {
+  transition: opacity var(--motion-panel) var(--motion-enter),
+    transform var(--motion-panel) var(--motion-enter);
+}
+.ui-popover-leave-active, .ui-dialog-leave-active,
+.ui-page-leave-active, .ui-row-leave-active, .ui-field-leave-active {
+  transition: opacity var(--motion-panel) var(--motion-exit),
+    transform var(--motion-panel) var(--motion-exit);
+  pointer-events: none;
+}
+.ui-popover-enter-from, .ui-popover-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.ui-popover-enter-to, .ui-popover-leave-from,
+.ui-dialog-enter-to, .ui-dialog-leave-from,
+.ui-page-enter-to, .ui-page-leave-from,
+.ui-row-enter-to, .ui-row-leave-from {
+  opacity: 1;
+  transform: none;
+}
+.ui-dialog-enter-from, .ui-dialog-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(.98);
+}
+.ui-page-enter-active, .ui-page-leave-active {
+  transition-duration: var(--motion-page);
+}
+.ui-page-stack { display: grid; min-width: 0; align-items: start; }
+.ui-page-view { grid-area: 1 / 1; min-width: 0; }
+/* Sequential route exits and entries stay brief: 320ms for the whole switch. */
+.ui-page-stack > .ui-page-view.ui-page-enter-active,
+.ui-page-stack > .ui-page-view.ui-page-leave-active {
+  transition-duration: var(--motion-view);
+}
+.ui-page-enter-from, .ui-page-leave-to,
+.ui-row-enter-from, .ui-row-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.ui-field-enter-from, .ui-field-leave-to {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+.ui-field-leave-active { position: absolute; }
+.ui-table-body { position: relative; }
+.ui-row-move { transition: transform var(--motion-panel) var(--motion-continuous); }
+tr.ui-row-leave-active { display: table; table-layout: fixed; }
+
+.ui-control {
+  transition: transform var(--motion-feedback) var(--motion-continuous),
+    background-color var(--motion-feedback) var(--motion-continuous),
+    border-color var(--motion-feedback) var(--motion-continuous),
+    box-shadow var(--motion-feedback) var(--motion-continuous),
+    color var(--motion-feedback) var(--motion-continuous);
+}
+.ui-control:active:not(:disabled) { transform: scale(.985); }
+.ui-control-content { display: inline-flex; align-items: center; justify-content: center; gap: inherit; }
+.ui-field input, .ui-field textarea {
+  transition: border-color var(--motion-feedback) var(--motion-continuous),
+    box-shadow var(--motion-feedback) var(--motion-continuous),
+    background-color var(--motion-feedback) var(--motion-continuous);
+}
+
+/* One retained element makes a disclosure reversible even halfway through.
+ * Only this small content region animates layout; tables never animate height.
+ */
+.ui-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--motion-page) var(--motion-continuous),
+    opacity var(--motion-panel) var(--motion-continuous);
+}
+.ui-disclosure.is-open { grid-template-rows: 1fr; opacity: 1; }
+.ui-disclosure > div { min-height: 0; overflow: hidden; }
+
+@layer components {
+  .ui-skeleton {
+    min-height: 1em;
+    background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+    position: relative;
+    overflow: hidden;
+  }
+}
+.ui-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-text-secondary) 12%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.6s linear infinite;
+}
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton::after { animation: none; display: none; }
+  .ui-popover-enter-active, .ui-popover-leave-active,
+  .ui-dialog-enter-active, .ui-dialog-leave-active,
+  .ui-page-enter-active, .ui-page-leave-active,
+  .ui-row-enter-active, .ui-row-leave-active, .ui-row-move,
+  .ui-field-enter-active, .ui-field-leave-active, .ui-control,
+  .ui-field input, .ui-field textarea, .ui-disclosure {
+    transition: none !important;
+    transform: none !important;
+  }
+}

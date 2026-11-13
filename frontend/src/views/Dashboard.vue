@@ -5,6 +5,7 @@ import { GlobeAltIcon, MapIcon, BeakerIcon, UserCircleIcon } from '@heroicons/vu
 import Sidebar from '../components/Sidebar.vue'
 import Topbar from '../components/Topbar.vue'
 import NavigationSearch from '../components/NavigationSearch.vue'
+import PageTransition from '../components/PageTransition.vue'
 import { useDeployment } from '../composables/useDeployment'
 import { createMenu, type MenuItem } from '../navigation/menu'
 import '../style/navigation.css'
@@ -51,9 +52,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="liquid-app dashboard-shell" :class="{ 'horizontal-shell': useTopbar }">
     <a href="#dashboard-content" class="nav-skip-link">{{ $t('nav.skipContent') }}</a>
-    <Topbar v-if="useTopbar" :menu-items="menuItems" @search="searchOpen = true" />
-    <Sidebar v-else :menu-items="menuItems" @search="searchOpen = true" />
-    <main id="dashboard-content" tabindex="-1" class="dashboard-content"><router-view /></main>
+    <Topbar v-if="useTopbar" :menu-items="menuItems" @search="searchOpen = !searchOpen" />
+    <Sidebar v-else :menu-items="menuItems" @search="searchOpen = !searchOpen" />
+    <main id="dashboard-content" tabindex="-1" class="dashboard-content">
+      <RouterView v-slot="{ Component, route }">
+        <PageTransition :view-key="route.matched[1]?.path || route.path"><component :is="Component" /></PageTransition>
+      </RouterView>
+    </main>
     <NavigationSearch v-model="searchOpen" :groups="searchGroups" />
   </div>
 </template>

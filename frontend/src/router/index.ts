@@ -1,12 +1,10 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { serviceControlService } from '../services'
 import { ensureDeployment, useDeployment } from '../composables/useDeployment'
 
 // Eagerly load critical components
 import Dashboard from '../views/Dashboard.vue'
 
 // Lazy load routes with meaningful chunk names
-const InitWizard = () => import(/* webpackChunkName: "init-wizard" */ '../views/InitWizard.vue')
 const Overview = () => import(/* webpackChunkName: "overview" */ '../views/dashboard/Overview.vue')
 const Inbounds = () => import(/* webpackChunkName: "inbounds" */ '../views/dashboard/Inbounds.vue')
 const Outbounds = () => import(/* webpackChunkName: "outbounds" */ '../views/dashboard/Outbounds.vue')
@@ -38,11 +36,29 @@ const Users = () => import(/* webpackChunkName: "users" */ '../views/dashboard/U
 const Settings = () => import(/* webpackChunkName: "settings" */ '../views/dashboard/Settings.vue')
 const Login = () => import(/* webpackChunkName: "login" */ '../views/Login.vue')
 const Profile = () => import(/* webpackChunkName: "profile" */ '../views/dashboard/Profile.vue')
+const Lab = () => import('../views/Lab.vue')
+const PalettePreview = () => import('../views/PalettePreview.vue')
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/lab',
+    name: 'Lab',
+    component: Lab,
+  },
+  {
+    path: '/lab/palette-preview',
+    name: 'PalettePreview',
+    component: PalettePreview,
+  },
+  {
+    path: '/lab/login',
+    name: 'LoginLab',
+    component: Login,
+    props: { preview: true },
+  },
+  {
     path: '/',
-    redirect: '/init',
+    redirect: '/dashboard/overview',
   },
   {
     path: '/login',
@@ -51,8 +67,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/init',
-    name: 'Init',
-    component: InitWizard,
+    redirect: '/dashboard/settings#sing-box-core',
   },
   {
     path: '/dashboard',
@@ -258,8 +273,21 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard to check authentication and initialization state
+// Dashboard access follows the deployment authentication policy.
 router.beforeEach(async (to, _, next) => {
+  // Palette previews are isolated documents controlled by the lab reviewer.
+  // Direct visits open that reviewer with the requested palette.
+  if (to.name === 'PalettePreview' && window.self === window.top) {
+    next({ name: 'Lab', query: { palette: to.query.palette }, hash: '#palettes' })
+    return
+  }
+  // The design lab contains only local fixtures. Keep it usable without a
+  // backend, account, or initialized sing-box configuration.
+  if (to.name === 'Lab' || to.name === 'LoginLab' || to.name === 'PalettePreview') {
+    next()
+    return
+  }
+
   const token = localStorage.getItem('sb_token')
 
   // 0. When the deployment has authentication disabled (server.auth:
@@ -296,18 +324,6 @@ router.beforeEach(async (to, _, next) => {
     }
   }
 
-  // 3. If authenticated, check initialization status
-  if (!to.path.startsWith('/init')) {
-    try {
-      const { data } = await serviceControlService.getInitStatus()
-      if (!data.initialized) {
-        next('/init')
-        return
-      }
-    } catch (err) {
-      console.error('Failed to check init state:', err)
-    }
-  }
   next()
 })
 

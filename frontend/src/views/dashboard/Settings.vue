@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { settingsService } from '../../services'
 import { useNotify } from '../../composables/useNotify'
+import CoreSettingsCard from '../../components/CoreSettingsCard.vue'
 import AboutCard from '../../components/AboutCard.vue'
 import ProbeSettingsCard from '../../components/ProbeSettingsCard.vue'
 
@@ -16,6 +17,7 @@ const limits = ref({ min: 1, max: 100 })
 
 onMounted(async () => {
   await loadSettings()
+  if (window.location.hash === '#sing-box-core') document.getElementById('sing-box-core')?.scrollIntoView({ block: 'start' })
 })
 
 const loadSettings = async () => {
@@ -64,6 +66,8 @@ const saveSettings = async () => {
     -->
     <div class="@container">
       <div class="grid grid-cols-1 @3xl:grid-cols-2 @6xl:grid-cols-3 gap-4 items-start">
+        <!-- Installation stays first, including in the single-column layout. -->
+        <CoreSettingsCard />
         <!--
           About: what is running and on what, plus the language picker and the
           self-update controls. Deliberately one card — these are the things an

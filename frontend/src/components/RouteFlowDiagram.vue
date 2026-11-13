@@ -332,10 +332,10 @@ const ruleTitle = (rule: TopologyRule): string => {
 const ruleBadge = (rule: TopologyRule): string => (rule.action === 'route' ? '' : rule.action)
 
 const ruleClass = (rule: TopologyRule): string => {
-  if (!rule.reachable) return 'fill-gray-100 stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-700'
-  if (!rule.terminal) return 'fill-slate-50 stroke-slate-300 dark:fill-slate-800/60 dark:stroke-slate-600'
-  if (rule.catchAll) return 'fill-amber-50 stroke-amber-400 dark:fill-amber-950/40 dark:stroke-amber-600'
-  return 'fill-white stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-600'
+  if (!rule.reachable) return 'fill-bg-tertiary stroke-border'
+  if (!rule.terminal) return 'fill-bg-secondary stroke-border'
+  if (rule.catchAll) return 'fill-warning/10 stroke-warning'
+  return 'fill-[var(--control-bg)] stroke-border'
 }
 
 /* ── Exit rendering ───────────────────────────────────────────────────────── */
@@ -349,9 +349,9 @@ const exitFill = (box: ExitBox): string => {
     case 'hijack-dns':
       return 'fill-violet-50 dark:fill-violet-950/30'
     case 'implicit':
-      return 'fill-slate-50 dark:fill-slate-800/60'
+      return 'fill-bg-secondary'
     default:
-      return 'fill-white dark:fill-slate-800'
+      return 'fill-[var(--control-bg)]'
   }
 }
 
@@ -584,7 +584,7 @@ const fallthroughLabel = computed(() =>
         :height="box.height"
         rx="7"
         stroke-width="1"
-        class="fill-white stroke-gray-300 dark:fill-slate-800 dark:stroke-slate-600"
+        class="fill-[var(--control-bg)] stroke-border"
         :class="[fadeSpeed, fade(focus?.kind === 'inbound' && focus.id === box.tag, isCarrying(liveInbound(box)))]"
       />
       <text
@@ -862,7 +862,7 @@ const fallthroughLabel = computed(() =>
 
 <style scoped>
 /*
- * One curve for everything that eases. The shell's own (DESIGN.md §8), so a
+ * One curve for everything that eases. The shell's own, so a
  * ribbon settling and a menu opening feel like one system. CSS's keyword
  * `ease` is too shallow to read as a settle at these durations.
  */

@@ -11,6 +11,7 @@
  * file is markup. Same split as the route flow diagram.
  */
 import { computed, ref } from 'vue'
+import Skeleton from './Skeleton.vue'
 import { useI18n } from 'vue-i18n'
 import type { ProbePoint } from '../types/subprobe'
 import {
@@ -127,8 +128,11 @@ function availabilityClass(point: ProbePoint): string {
 
 <template>
   <div class="relative">
-    <div v-if="loading" class="flex h-[260px] items-center justify-center">
-      <div class="h-8 w-8 animate-spin rounded-pill border-b-2 border-primary-600"></div>
+    <div v-if="loading" class="flex h-[260px] flex-col justify-between gap-4 py-4" role="status" :aria-label="$t('common.loading')">
+      <Skeleton class="h-3 w-20" />
+      <Skeleton class="h-20 w-full" />
+      <Skeleton class="h-3 w-24" />
+      <Skeleton class="h-20 w-full" />
     </div>
 
     <!--

@@ -18,6 +18,14 @@ import { systemService } from '../services'
 const version = ref<string | undefined>(undefined)
 const loaded = ref(false)
 let inflight: Promise<void> | null = null
+let revision = 0
+
+/** Installation can replace the core without reloading the dashboard. */
+export function setSingBoxVersion(detected: string | undefined) {
+  revision++
+  version.value = detected && detected !== 'unknown' ? detected : undefined
+  loaded.value = true
+}
 
 /**
  * Fetch once, collapsing concurrent callers.
@@ -31,16 +39,18 @@ function ensureVersion(): Promise<void> {
   if (loaded.value) return Promise.resolve()
   if (inflight) return inflight
 
+  const requestedRevision = revision
   const request = systemService
     .getInfo()
     .then((info) => {
+      if (requestedRevision !== revision) return
       const reported = info?.sing_box_version
       // The backend degrades every field to a zero value rather than failing,
       // so "unknown" and "" both mean "could not detect".
       version.value = reported && reported !== 'unknown' ? reported : undefined
     })
     .catch(() => {
-      version.value = undefined
+      if (requestedRevision === revision) version.value = undefined
     })
     .finally(() => {
       loaded.value = true

@@ -19,6 +19,8 @@ export default {
     externalUiDownloadUrl: '外部界面下载地址',
     externalUiDownloadUrlHelp: '界面不存在时的下载地址',
     dashboard: {
+      zashboardDescription: 'Zashboard 仪表盘',
+      yacdDescription: 'Clash 仪表盘',
       placeholder: '选择面板或输入地址',
       custom: '自定义地址',
       customHelp: '输入你自己的面板压缩包地址',

@@ -1,12 +1,5 @@
 <template>
-    <Dialog
-        unstyled
-        :draggable="draggable"
-        :pt="theme"
-        :ptOptions="{
-            mergeProps: ptViewMerge
-        }"
-    >
+    <Dialog unstyled :draggable="draggable" :pt="theme" :ptOptions="{ mergeProps: ptViewMerge }">
         <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
             <slot :name="slotName" v-bind="slotProps ?? {}" />
         </template>
@@ -18,6 +11,7 @@ import { computed, useAttrs } from 'vue';
 import { twMerge } from 'tailwind-merge';
 import Dialog, { type DialogPassThroughOptions, type DialogProps } from 'primevue/dialog';
 import { ptViewMerge } from './utils';
+import { dialogMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ DialogProps {
     draggable?: boolean;
@@ -40,6 +34,7 @@ withDefaults(defineProps<Props>(), { draggable: false });
 // by stylesheet order. The attribute is still appended afterwards by Vue, but
 // it is then a duplicate of the value already chosen rather than a rival.
 const attrs = useAttrs();
+const interfaceMotion = useInterfaceMotion();
 
 const ROOT_BASE = `liquid-glass-float flex flex-col w-full max-w-lg max-h-[90vh] rounded-surface
     transform transition-all duration-200`;
@@ -90,5 +85,6 @@ const baseTheme: DialogPassThroughOptions = {
 const theme = computed<DialogPassThroughOptions>(() => ({
     ...baseTheme,
     root: twMerge(ROOT_BASE, attrs.class as string | undefined),
+    transition: interfaceMotion ? dialogMotion : baseTheme.transition,
 }));
 </script>

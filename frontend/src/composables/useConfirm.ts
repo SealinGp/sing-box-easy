@@ -16,6 +16,9 @@ import { reactive, readonly } from 'vue'
 export type ConfirmTone = 'danger' | 'primary'
 
 export interface ConfirmOptions {
+  /** Use the shared trash action only for deletion, independently of warning tone. */
+  action?: 'delete'
+
   /** Body text shown to the user. */
   message: string
   /** Header text. Falls back to a generic "Please confirm" in the dialog. */
@@ -59,6 +62,7 @@ function confirm(options: ConfirmOptions): Promise<boolean> {
   // If a previous dialog is still resolving, cancel it before reusing state.
   if (resolver) settle(false)
 
+  state.action = options.action
   state.message = options.message
   state.title = options.title
   state.confirmLabel = options.confirmLabel

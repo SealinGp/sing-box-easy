@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusIndicator from './StatusIndicator.vue'
 /**
  * The connection rows. Markup only: what is shown, searched and sorted is
  * decided by utils/connectionsTable.ts and handed in.
@@ -99,9 +100,9 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
         @mousedown.left="emit('select', row.id)"
       >
         <td class="align-middle">
-          <span v-if="row.closed" class="rounded-pill bg-gray-100 px-2 py-px text-[11px] font-semibold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+          <StatusIndicator v-if="row.closed" variant="secondary">
             {{ $t('connections.closedBadge') }}
-          </span>
+          </StatusIndicator>
           <button
             v-else
             type="button"

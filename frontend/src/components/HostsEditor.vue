@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from './IconButton.vue'
+
 /**
  * Editor for a `hosts` DNS server's `predefined` map.
  *
@@ -18,9 +20,8 @@
  */
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 import Input from './Input.vue'
-import Button from './Button.vue'
 
 type HostsMap = Record<string, string | string[]>
 
@@ -105,17 +106,12 @@ function addRow() {
         :placeholder="t('dns.servers.form.hostsAddressPlaceholder')"
         @update:modelValue="(v) => updateRow(index, { addresses: String(v) })"
       />
-      <Button
+      <IconButton
+        action="delete"
         type="button"
-        variant="ghost"
-        size="sm"
-        action
-        class="text-red-600 dark:text-red-400 shrink-0"
-        :title="t('common.delete')"
         @click="removeRow(index)"
-      >
-        <TrashIcon class="h-4 w-4" />
-      </Button>
+        :label="t('common.delete')"
+      />
     </div>
 
     <button

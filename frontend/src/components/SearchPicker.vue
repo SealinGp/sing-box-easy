@@ -27,6 +27,9 @@
  *     of nodes and rendering all of them on focus is felt.
  */
 import { computed, ref } from 'vue'
+import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion'
+
+const interfaceMotion = useInterfaceMotion()
 
 export interface PickerOption {
   /** What `select` emits, and the default label/tooltip. */
@@ -52,6 +55,7 @@ const props = withDefaults(
     /** Popover width; it is positioned against the input and may be wider. */
     panelClass?: string
     inputClass?: string
+    inputId?: string
   }>(),
   { tone: 'primary', limit: 50, panelClass: 'w-full', inputClass: 'w-full' },
 )
@@ -83,6 +87,7 @@ function pick(option: PickerOption) {
 <template>
   <div class="relative">
     <input
+      :id="inputId"
       v-model="query"
       :class="[
         'bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-control px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:outline-none',
@@ -94,6 +99,7 @@ function pick(option: PickerOption) {
       @blur="open = false"
     />
 
+    <Transition v-bind="popoverMotion" :css="interfaceMotion">
     <div
       v-if="open"
       :class="[
@@ -132,6 +138,7 @@ function pick(option: PickerOption) {
         {{ emptyMessage }}
       </div>
     </div>
+    </Transition>
   </div>
 </template>
 

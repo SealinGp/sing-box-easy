@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ModulePresets from './ModulePresets.vue'
+import IconButton from './IconButton.vue'
+
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSServer } from '../types/api'
@@ -6,9 +9,9 @@ import Button from './Button.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
-import { Dialog, Select } from '../volt'
+import { ContextPanel, Select } from '../volt'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 import { useToast } from 'primevue'
 import {
   DNS_SERVER_TYPE_NAMES,
@@ -254,24 +257,24 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-end mb-2">
+    <header class="section-toolbar">
+      <h1>{{ $t('dns.servers.heading') }}</h1>
+      <div class="section-toolbar-actions">
+        <ModulePresets kind="dns" @applied="dnsStore.fetchDNSServers()" />
       <Button @click="openAddServerModal" variant="primary">
-        <PlusIcon class="h-5 w-5 mr-2" />
+        <PlusIcon class="h-4 w-4" />
         {{ $t('dns.servers.add') }}
       </Button>
-    </div>
+      </div>
+    </header>
 
     <!-- DNS Servers Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-surface shadow overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t('dns.servers.heading') }}</h3>
-      </div>
-
+    <div class="table-surface">
       <Table :loading="loading && dnsServers.length === 0" :empty="dnsServers.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.servers.empty') }}</p>
           <Button @click="openAddServerModal" variant="primary" size="sm">
-            <PlusIcon class="h-4 w-4 mr-1.5" />
+            <PlusIcon class="h-4 w-4" />
             {{ $t('dns.servers.addFirst') }}
           </Button>
         </template>
@@ -318,12 +321,8 @@ onMounted(() => {
           </td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
-              <Button @click="openEditServerModal(server)" variant="ghost" size="sm" action>
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <Button @click="openDeleteConfirm(server)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                <TrashIcon class="h-4 w-4" />
-              </Button>
+              <IconButton action="edit" @click="openEditServerModal(server)" />
+              <IconButton action="delete" @click="openDeleteConfirm(server)" />
             </div>
           </td>
         </tr>
@@ -331,7 +330,7 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit DNS Server Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showServerModal"
       @update:visible="(v: boolean) => { if (!v) closeServerModal() }"
       :header="isEditMode ? $t('dns.servers.modal.edit') : $t('dns.servers.modal.add')"
@@ -394,10 +393,10 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Delete Confirmation Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showDeleteConfirm"
       @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
       :header="$t('dns.servers.del.title')"
@@ -412,10 +411,8 @@ onMounted(() => {
 
       <template #footer>
         <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleDeleteServer" variant="danger" :disabled="loading">
-          {{ $t('common.delete') }}
-        </Button>
+        <IconButton action="delete" @click="handleDeleteServer" :disabled="loading" />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

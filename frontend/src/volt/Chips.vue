@@ -3,11 +3,13 @@
         unstyled
         :modelValue="modelValue"
         :separator="separator"
-        :addOnBlur="addOnBlur"
+        :addOnBlur="false"
         :pt="theme"
         :ptOptions="{
             mergeProps: ptViewMerge
         }"
+        @paste.capture.stop
+        @blur="commitDraft"
         @update:modelValue="onUpdate"
     >
         <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
@@ -33,21 +35,40 @@ import InputChips, {
     type InputChipsProps,
 } from 'primevue/inputchips';
 import { ptViewMerge } from './utils';
+import { onBeforeUnmount } from 'vue';
 
 interface Props extends /* @vue-ignore */ InputChipsProps {
     modelValue?: string[];
-    // Typing this character commits the current entry, and a paste is split on
-    // it — so "a.com,b.com" becomes two chips.
+    // Typing this character commits the current entry. Pasting stays native
+    // and editable: the capture listener stops InputChips.onPaste (which turns
+    // even a single pasted word into a chip), without preventing insertion at
+    // the caret. Enter or blur still commits the edited draft.
     separator?: string;
     // Commit whatever is typed when focus leaves. Without this, typing an entry
     // and clicking "Save" straight away silently discards it.
     addOnBlur?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
     separator: ',',
     addOnBlur: true,
 });
+
+let unmounting = false;
+onBeforeUnmount(() => { unmounting = true; });
+
+function commitDraft(event: FocusEvent) {
+    // InputChips emits a model update BEFORE clearing its input ref on blur.
+    // Closing a schema editor can unmount that input during the update. Own
+    // this commit so we clear the native draft first and ignore teardown blur.
+    if (unmounting || !props.addOnBlur || props.disabled) return;
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || !input.value.trim()) return;
+    const draft = input.value;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    onUpdate([...(props.modelValue ?? []), draft]);
+}
 
 const emit = defineEmits<{
     'update:modelValue': [value: string[]];

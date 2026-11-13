@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
+
 import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { User } from '../../types/api'
@@ -6,10 +8,10 @@ import Button from '../../components/Button.vue'
 import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Table from '../../components/Table.vue'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 import { userService } from '../../services'
 import { useToast } from 'primevue/usetoast'
-import { Dialog, Select } from '../../volt'
+import { ContextPanel, Select } from '../../volt'
 
 const users = ref<User[]>([])
 const loading = ref(false)
@@ -215,7 +217,7 @@ onMounted(fetchUsers)
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden">
+    <div class="table-surface">
       <Table :loading="loading && users.length === 0" :empty="users.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('users.empty') }}</p>
@@ -240,12 +242,8 @@ onMounted(fetchUsers)
           </td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
-              <Button @click="openEditModal(user)" variant="ghost" size="sm" action>
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <Button @click="openDeleteConfirm(user)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                <TrashIcon class="h-4 w-4" />
-              </Button>
+              <IconButton action="edit" @click="openEditModal(user)" />
+              <IconButton action="delete" @click="openDeleteConfirm(user)" />
             </div>
           </td>
         </tr>
@@ -253,7 +251,7 @@ onMounted(fetchUsers)
     </div>
 
     <!-- Add/Edit Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showModal"
       @update:visible="(v: boolean) => { if (!v) closeModal() }"
       :header="isEditMode ? $t('users.modal.edit') : $t('users.modal.add')"
@@ -296,10 +294,10 @@ onMounted(fetchUsers)
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Delete Confirmation Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showDeleteConfirm"
       @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
       :header="$t('users.del.title')"
@@ -312,10 +310,8 @@ onMounted(fetchUsers)
 
       <template #footer>
         <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleDelete" variant="danger" :disabled="loading">
-          {{ $t('common.delete') }}
-        </Button>
+        <IconButton action="delete" @click="handleDelete" :disabled="loading" />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

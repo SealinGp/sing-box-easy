@@ -26,22 +26,22 @@
  * active state rather than introducing a second accent hue.
  */
 .volt-select-option-focus {
-  background: rgba(21, 117, 255, 0.09);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg-secondary));
 }
 
 .volt-select-option-selected {
-  background: rgba(21, 117, 255, 0.16);
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg-secondary));
   color: var(--color-primary-dark);
 }
 
 @media (prefers-color-scheme: dark) {
   .volt-select-option-focus {
-    background: rgba(107, 165, 255, 0.12);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-bg-secondary));
   }
 
   .volt-select-option-selected {
-    background: rgba(107, 165, 255, 0.22);
-    color: #cfe2ff;
+    background: color-mix(in srgb, var(--color-primary) 22%, var(--color-bg-secondary));
+    color: var(--color-primary);
   }
 }
 
@@ -68,25 +68,21 @@
 }
 
 .volt-toast-message[data-p~='info'] {
-  color: var(--color-info);
   border-color: color-mix(in srgb, var(--color-info) 32%, transparent);
   background: color-mix(in srgb, var(--color-info) 12%, var(--glass-bg-strong));
 }
 
 .volt-toast-message[data-p~='success'] {
-  color: var(--color-success);
   border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
   background: color-mix(in srgb, var(--color-success) 12%, var(--glass-bg-strong));
 }
 
 .volt-toast-message[data-p~='warn'] {
-  color: var(--color-warning);
   border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
   background: color-mix(in srgb, var(--color-warning) 12%, var(--glass-bg-strong));
 }
 
 .volt-toast-message[data-p~='error'] {
-  color: var(--color-danger);
   border-color: color-mix(in srgb, var(--color-danger) 32%, transparent);
   background: color-mix(in srgb, var(--color-danger) 12%, var(--glass-bg-strong));
 }

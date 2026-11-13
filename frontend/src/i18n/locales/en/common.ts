@@ -2,7 +2,7 @@
 export default {
   save: 'Save',
   // Shown under every multi-value (chips) field — see components/ChipsField.vue.
-  chipsHint: 'Type a value and press Enter to add it. Paste several separated by commas.',
+  chipsHint: 'Type or paste a value, edit it, then press Enter to add it.',
   saving: 'Saving...',
   cancel: 'Cancel',
   copy: 'Copy',

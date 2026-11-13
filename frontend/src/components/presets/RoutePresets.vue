@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../../composables/useConfirm'
 import type { RouteRule, Outbound } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { Select } from '../../volt'
@@ -10,10 +11,8 @@ import { outboundService, routeService } from '../../services';
 
 const { t } = useI18n()
 
-const emit = defineEmits<{
-  next: []
-  prev: []
-}>()
+const emit = defineEmits<{ applied: [] }>()
+const { confirm } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -44,7 +43,7 @@ const routePresets = computed<RoutePreset[]>(() => {
       rules: [
         {
           rule_set: ['geosite-category-ads-all'],
-          outbound: 'block',
+          action: 'reject',
         },
         {
           rule_set: ['geosite-cn', 'geoip-cn'],
@@ -79,7 +78,7 @@ const routePresets = computed<RoutePreset[]>(() => {
       rules: [
         {
           rule_set: ['geosite-category-ads-all'],
-          outbound: 'block',
+          action: 'reject',
         },
         {
           rule_set: ['geosite-cn', 'geoip-cn'],
@@ -122,7 +121,7 @@ const loadConfiguration = async () => {
 
     // 尝试识别当前配置
     const resp = await routeService.getRouteRules()
-    const existingRules = resp.data.rules    
+    const existingRules = resp.data.rules
     const resp1 = await routeService.getRouteFinal()
     const finalOutbound = resp1.data
 
@@ -176,6 +175,8 @@ const restoreRouteSnapshot = async (
 }
 
 const saveRouteConfig = async () => {
+  if (saving.value || success.value) return
+  if (!(await confirm({ message: t('workspace.presets.routesImpact'), confirmLabel: t('workspace.presets.apply') }))) return
   saving.value = true
   error.value = ''
   success.value = false
@@ -215,7 +216,7 @@ const saveRouteConfig = async () => {
     await routeService.updateRouteFinal(preset.final)
 
     success.value = true
-    setTimeout(() => emit('next'), 2000)
+    emit('applied')
   } catch (err: any) {
     const restored = await restoreRouteSnapshot(rulesSnapshot, finalSnapshot)
     const baseMsg = err.message || t('setup.routes.saveFailed')
@@ -227,17 +228,6 @@ const saveRouteConfig = async () => {
   }
 }
 
-const handleNext = () => {
-  if (!success.value) {
-    saveRouteConfig()
-  } else {
-    emit('next')
-  }
-}
-
-const handleSkip = () => {
-  emit('next')
-}
 </script>
 
 <template>
@@ -256,8 +246,8 @@ const handleSkip = () => {
     <Card v-if="proxyOutboundOptions.length > 0">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.routes.proxyHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.routes.proxyHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.routes.proxyDesc') }}
           </p>
         </div>
@@ -281,8 +271,8 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.routes.strategyHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.routes.strategyHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.routes.strategyDesc') }}
           </p>
         </div>
@@ -294,10 +284,12 @@ const handleSkip = () => {
             :key="preset.id"
             class="flex items-start gap-3 p-4 border border-gray-200 rounded-control hover:border-primary-300 hover:bg-primary-50 cursor-pointer transition-colors"
             :class="{ 'border-primary-500 bg-primary-50': selectedPreset === preset.id }"
-            @click="selectedPreset = preset.id"
+            @click="!loading && !saving && !success && (selectedPreset = preset.id)"
           >
             <input
               type="radio"
+              name="RoutePresets-preset"
+              :aria-label="preset.name"
               :checked="selectedPreset === preset.id"
               class="w-4 h-4 text-primary-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
@@ -305,10 +297,10 @@ const handleSkip = () => {
             />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ preset.name }}</p>
                 <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">{{ $t('setup.routes.recommended') }}</Badge>
               </div>
-              <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
+              <p class="text-xs text-gray-600 mt-1 dark:text-gray-400">{{ preset.description }}</p>
               <div class="flex items-center gap-2 mt-2">
                 <Badge variant="gray" size="sm">{{ $t('setup.routes.rulesCount', { count: preset.rules.length }) }}</Badge>
                 <Badge variant="gray" size="sm">{{ $t('setup.routes.final', { outbound: preset.final }) }}</Badge>
@@ -325,27 +317,21 @@ const handleSkip = () => {
         variant="primary"
         :loading="saving"
         :disabled="saving || success"
-        @click="handleNext"
+        @click="saveRouteConfig"
       >
-        {{ success ? $t('setup.routes.saved') : saving ? $t('common.saving') : $t('setup.routes.saveContinue') }}
+        {{ success ? $t('workspace.presets.applied') : saving ? $t('common.saving') : $t('workspace.presets.apply') }}
       </Button>
 
-      <Button
-        variant="ghost"
-        :disabled="saving || success"
-        @click="handleSkip"
-      >
-        {{ $t('setup.routes.skip') }}
-      </Button>
+
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-primary-50 border-primary-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200 dark:bg-primary-950/30">
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-primary-900 space-y-2">
+        <div class="text-sm text-primary-900 space-y-2 dark:text-primary-200">
           <p class="font-medium">{{ $t('setup.routes.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800 dark:text-primary-300">
             <li><strong>{{ $t('setup.routes.aboutSmartLabel') }}</strong> {{ $t('setup.routes.aboutSmart') }}</li>
             <li><strong>{{ $t('setup.routes.aboutGlobalLabel') }}</strong> {{ $t('setup.routes.aboutGlobal') }}</li>
             <li><strong>{{ $t('setup.routes.aboutDirectLabel') }}</strong> {{ $t('setup.routes.aboutDirect') }}</li>
@@ -361,9 +347,9 @@ const handleSkip = () => {
     </Card>
 
     <!-- 规则详情 -->
-    <Card padding="sm" class="bg-gray-50">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">{{ $t('setup.routes.rulesHeading') }}</p>
+    <Card padding="sm" class="bg-gray-50 dark:bg-slate-800">
+      <div class="text-sm text-gray-600 space-y-2 dark:text-gray-400">
+        <p class="font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.routes.rulesHeading') }}</p>
         <div v-if="routePresets.find(p => p.id === selectedPreset)">
           <ul class="list-disc list-inside space-y-1 ml-2">
             <li
@@ -372,9 +358,9 @@ const handleSkip = () => {
             >
               <strong v-if="rule.rule_set">{{ $t('setup.routes.ruleSet', { value: Array.isArray(rule.rule_set) ? rule.rule_set.join(', ') : rule.rule_set }) }}</strong>
               <strong v-else-if="rule.ip_cidr">{{ $t('setup.routes.privateIps') }}</strong>
-              → {{ rule.outbound }}
+              → {{ rule.action === 'reject' ? 'reject' : rule.outbound }}
             </li>
-            <li class="text-gray-700">
+            <li class="text-gray-700 dark:text-gray-300">
               <strong>{{ $t('setup.routes.allOther') }}</strong> → {{ routePresets.find(p => p.id === selectedPreset)!.final }}
             </li>
           </ul>

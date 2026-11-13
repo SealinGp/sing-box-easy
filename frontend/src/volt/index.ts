@@ -1,5 +1,7 @@
 export { default as Toast } from './Toast.vue'
+export { default as ContextPanel } from './ContextPanel.vue'
 export { default as Dialog } from './Dialog.vue'
+export { default as Popover } from './Popover.vue'
 export { default as Select } from './Select.vue'
 export { default as MultiSelect } from './MultiSelect.vue'
 export { default as Chips } from './Chips.vue'

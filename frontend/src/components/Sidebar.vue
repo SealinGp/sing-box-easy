@@ -20,7 +20,7 @@ watch([() => route.path, () => props.menuItems], measure, { deep: true, flush: '
 <template>
   <aside class="navigation-sidebar">
     <router-link to="/dashboard/overview" class="nav-brand">
-      <img src="/logo.jpg" alt="" width="30" height="30" />
+      <img src="/logo.svg" alt="" width="30" height="30" />
       <span>Sing Box Easy<span class="nav-brand-caption">{{ $t('nav.workspace') }}</span></span>
     </router-link>
     <button class="nav-search-trigger" aria-keyshortcuts="Control+K Meta+K" @click="$emit('search')">

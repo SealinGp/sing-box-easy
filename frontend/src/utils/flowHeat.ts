@@ -10,7 +10,7 @@
  * are "a lot of traffic" and leave it, so the extreme is a different COLOUR
  * rather than a slightly darker one that has to be compared against its
  * neighbour. Amber and orange are the warm side of the app's status palette
- * (DESIGN.md §2); red is not used, because red is what a missing outbound is.
+ * (the shared status palette); red is not used, because red is what a missing outbound is.
  */
 import type { Heat } from './flowOverlay'
 

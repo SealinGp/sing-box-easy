@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../../composables/useConfirm'
 import type { RuleSet } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { InformationCircleIcon } from '@heroicons/vue/24/outline'
@@ -8,10 +9,8 @@ import { routeService } from '../../services'
 
 const { t } = useI18n()
 
-const emit = defineEmits<{
-  next: []
-  prev: []
-}>()
+const emit = defineEmits<{ applied: [] }>()
+const { confirm } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -128,6 +127,7 @@ const loadRuleSets = async () => {
 }
 
 const togglePreset = (presetId: string) => {
+  if (loading.value || saving.value || success.value) return
   const next = new Set(selectedPresets.value)
   if (next.has(presetId)) next.delete(presetId); else next.add(presetId)
   selectedPresets.value = next
@@ -142,6 +142,8 @@ const deselectAll = () => {
 }
 
 const saveRuleSets = async () => {
+  if (saving.value || success.value) return
+  if (!(await confirm({ message: t('workspace.presets.ruleSetsImpact'), confirmLabel: t('workspace.presets.apply') }))) return
   saving.value = true
   error.value = ''
   success.value = false
@@ -174,10 +176,8 @@ const saveRuleSets = async () => {
 
     success.value = true
 
-    // 2秒后自动进入下一步
-    setTimeout(() => {
-      emit('next')
-    }, 2000)
+    // Notify the owning dashboard module to reload after the operation.
+    emit('applied')
   } catch (err: any) {
     error.value = err.message || t('setup.ruleSets.saveFailed')
   } finally {
@@ -185,17 +185,6 @@ const saveRuleSets = async () => {
   }
 }
 
-const handleNext = () => {
-  if (!success.value) {
-    saveRuleSets()
-  } else {
-    emit('next')
-  }
-}
-
-const handleSkip = () => {
-  emit('next')
-}
 </script>
 
 <template>
@@ -215,8 +204,8 @@ const handleSkip = () => {
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.ruleSets.selectHeading') }}</h3>
-            <p class="text-sm text-gray-600">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.ruleSets.selectHeading') }}</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
               {{ $t('setup.ruleSets.selectDesc') }}
             </p>
           </div>
@@ -251,6 +240,7 @@ const handleSkip = () => {
           >
             <input
               type="checkbox"
+              :aria-label="preset.name"
               :checked="selectedPresets.has(preset.id)"
               class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
               :disabled="loading || saving || success"
@@ -258,19 +248,19 @@ const handleSkip = () => {
             />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ preset.name }}</p>
                 <Badge variant="gray" size="sm">{{ preset.format }}</Badge>
               </div>
-              <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
+              <p class="text-xs text-gray-600 mt-1 dark:text-gray-400">{{ preset.description }}</p>
               <p class="text-xs text-gray-400 mt-1 truncate font-mono">{{ preset.tag }}</p>
             </div>
           </div>
         </div>
 
         <!-- 选择统计 -->
-        <div class="bg-gray-50 rounded-control p-3 text-center">
-          <p class="text-sm text-gray-600">
-            <span class="font-semibold text-gray-900">{{ selectedPresets.size }}</span> {{ $t('setup.ruleSets.selectedCount') }}
+        <div class="bg-gray-50 rounded-control p-3 text-center dark:bg-slate-800">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedPresets.size }}</span> {{ $t('setup.ruleSets.selectedCount') }}
           </p>
         </div>
       </div>
@@ -282,27 +272,21 @@ const handleSkip = () => {
         variant="primary"
         :loading="saving"
         :disabled="saving || success"
-        @click="handleNext"
+        @click="saveRuleSets"
       >
-        {{ success ? $t('setup.ruleSets.saved') : saving ? $t('common.saving') : selectedPresets.size > 0 ? $t('setup.ruleSets.addRuleSets', { count: selectedPresets.size }) : $t('setup.ruleSets.continue') }}
+        {{ success ? $t('workspace.presets.applied') : saving ? $t('common.saving') : $t('workspace.presets.apply') }}
       </Button>
 
-      <Button
-        variant="ghost"
-        :disabled="saving || success"
-        @click="handleSkip"
-      >
-        {{ $t('setup.ruleSets.skip') }}
-      </Button>
+
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-primary-50 border-primary-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200 dark:bg-primary-950/30">
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-primary-900 space-y-2">
+        <div class="text-sm text-primary-900 space-y-2 dark:text-primary-200">
           <p class="font-medium">{{ $t('setup.ruleSets.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800 dark:text-primary-300">
             <li><strong>{{ $t('setup.ruleSets.aboutGeositeLabel') }}</strong> {{ $t('setup.ruleSets.aboutGeosite') }}</li>
             <li><strong>{{ $t('setup.ruleSets.aboutGeoipLabel') }}</strong> {{ $t('setup.ruleSets.aboutGeoip') }}</li>
             <li><strong>{{ $t('setup.ruleSets.aboutFormatLabel') }}</strong> {{ $t('setup.ruleSets.aboutFormat') }}</li>
@@ -317,9 +301,9 @@ const handleSkip = () => {
     </Card>
 
     <!-- 使用建议 -->
-    <Card padding="sm" class="bg-gray-50">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">{{ $t('setup.ruleSets.recommendedHeading') }}</p>
+    <Card padding="sm" class="bg-gray-50 dark:bg-slate-800">
+      <div class="text-sm text-gray-600 space-y-2 dark:text-gray-400">
+        <p class="font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.ruleSets.recommendedHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li><strong>{{ $t('setup.ruleSets.recBasicLabel') }}</strong> {{ $t('setup.ruleSets.recBasic') }}</li>
           <li><strong>{{ $t('setup.ruleSets.recAdsLabel') }}</strong> {{ $t('setup.ruleSets.recAds') }}</li>

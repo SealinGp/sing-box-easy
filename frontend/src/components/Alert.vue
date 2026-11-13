@@ -39,20 +39,20 @@ const icon = computed(() => {
 const classes = computed(() => {
   const base = 'flex items-start p-4 rounded-surface border shadow-surface backdrop-blur-xl'
   const types = {
-    success: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-800 dark:text-emerald-100',
-    warning: 'bg-amber-500/15 border-amber-500/25 text-amber-800 dark:text-amber-100',
-    error: 'bg-red-500/15 border-red-500/25 text-red-800 dark:text-red-100',
-    info: 'bg-sky-500/15 border-sky-500/25 text-sky-800 dark:text-sky-100',
+    success: 'bg-success/10 border-success/25 text-success',
+    warning: 'bg-warning/10 border-warning/25 text-warning',
+    error: 'bg-danger/10 border-danger/25 text-danger',
+    info: 'bg-info/10 border-info/25 text-info',
   }
   return `${base} ${types[props.type]}`
 })
 
 const iconColorClass = computed(() => {
   const colors = {
-    success: 'text-emerald-500',
-    warning: 'text-amber-500',
-    error: 'text-red-500',
-    info: 'text-sky-500',
+    success: 'text-success',
+    warning: 'text-warning',
+    error: 'text-danger',
+    info: 'text-info',
   }
   return colors[props.type]
 })
@@ -70,6 +70,7 @@ const iconColorClass = computed(() => {
     <button
       v-if="closable"
       type="button"
+      :aria-label="$t('common.close')"
       class="ml-3 flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity"
       @click="emit('close')"
     >

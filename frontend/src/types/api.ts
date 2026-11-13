@@ -46,17 +46,6 @@ export class ApiError extends Error {
   }
 }
 
-export interface InitState {
-  initialized: boolean
-  steps: {
-    sing_box_installed: boolean
-    config_generated: boolean
-    dashboard_installed: boolean
-  }
-  sing_box_version?: string
-  init_time?: string
-}
-
 export interface InstallTask {
   id?: string
   task_id?: string

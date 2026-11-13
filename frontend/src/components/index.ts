@@ -13,7 +13,7 @@ export { default as CopyIcon } from './CopyIcon.vue'
 export { default as Table } from './Table.vue'
 export type { TableColumn } from './Table.vue'
 // `List` is `Table`'s sibling for record-per-row panels; both cap their height
-// through `.scroll-region`. See DESIGN.md §10.2 / §10.3.
+// through `.scroll-region`. Preview shared density in /lab.
 export { default as List } from './List.vue'
 export { default as ListRow } from './ListRow.vue'
 export { default as ListField } from './ListField.vue'
@@ -21,4 +21,8 @@ export { default as ListField } from './ListField.vue'
 // for quantities that are actually counted (nodes up / nodes total).
 export { default as SegmentedProgress } from './SegmentedProgress.vue'
 export { default as Loading } from './Loading.vue'
+export { default as Skeleton } from './Skeleton.vue'
 export { default as NodeList } from './NodeList.vue'
+
+export { default as IconButton } from './IconButton.vue'
+export { default as StatusIndicator } from './StatusIndicator.vue'

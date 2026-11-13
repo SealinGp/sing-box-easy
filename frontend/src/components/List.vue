@@ -23,8 +23,12 @@
  * different row primitive, and an operator switching between the Route and
  * Outbounds pages should not meet two different scroll behaviours.
  */
-import { computed, ref, type VNode } from 'vue'
+import { computed, ref, watch, type VNode } from 'vue'
 import { useFillHeight } from '../composables/useFillHeight'
+import Skeleton from './Skeleton.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface Props {
   /** Shows the spinner instead of the rows. */
@@ -75,16 +79,31 @@ defineSlots<{
 const region = ref<HTMLElement | null>(null)
 const noFill = computed(() => !props.scroll || !!props.maxHeight)
 useFillHeight(region, noFill)
+const loadingHeight = ref(0)
+const loadingRows = ref([64, 64, 64])
+watch(() => props.loading, loading => {
+  if (!loading || !region.value) return
+  loadingHeight.value = region.value.getBoundingClientRect().height
+  const heights = [...region.value.querySelectorAll('.list-row')].slice(0, 12).map(row => row.getBoundingClientRect().height)
+  if (heights.length) loadingRows.value = heights
+}, {flush: 'pre'})
+
+function prepareLeave(element: Element) {
+  if (!(element instanceof HTMLElement)) return
+  const box = element.getBoundingClientRect()
+  const parent = element.parentElement?.getBoundingClientRect()
+  Object.assign(element.style, {position:'absolute', top:`${box.top - (parent?.top ?? box.top)}px`, left:'0', width:`${box.width}px`})
+  element.setAttribute('inert', '')
+}
+function cancelLeave(element: Element) {
+  if (!(element instanceof HTMLElement)) return
+  for (const key of ['position', 'top', 'left', 'width']) element.style.removeProperty(key)
+  element.removeAttribute('inert')
+}
 </script>
 
 <template>
-  <div v-if="props.loading" class="flex items-center justify-center py-6">
-    <slot name="loading">
-      <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
-    </slot>
-  </div>
-
-  <div v-else-if="props.empty" class="py-6 text-center text-gray-500 dark:text-gray-400">
+  <div v-if="props.empty && !props.loading" class="py-6 text-center text-gray-500 dark:text-gray-400">
     <slot name="empty" />
   </div>
 
@@ -98,26 +117,35 @@ useFillHeight(region, noFill)
     v-else
     ref="region"
     :class="props.scroll ? 'scroll-region' : undefined"
-    :style="props.maxHeight ? { '--scroll-max-h': props.maxHeight } : undefined"
+    :aria-busy="props.loading || undefined"
+    :style="{...(props.maxHeight ? { '--scroll-max-h': props.maxHeight } : {}), ...(props.loading ? {minHeight:`${loadingHeight}px`} : {})}"
   >
+    <div v-if="props.loading" class="list-rows" role="status" :aria-label="t('common.loading')">
+      <slot name="loading">
+        <div v-for="(height, index) in loadingRows" :key="index" class="list-row space-y-2 p-3" :style="{minHeight:`${height}px`}">
+          <Skeleton class="h-3 w-1/3" /><Skeleton class="h-3 w-2/3" />
+        </div>
+      </slot>
+    </div>
     <!--
       Two branches rather than a dynamic `<component :is>`: `<TransitionGroup>`
       adds a per-child FLIP bookkeeping pass on every patch, and every other
       list in the app renders a plain stack.
 
-      No leave transition on purpose. Animating a removal needs the leaving row
-      pulled out of flow (`position: absolute`) or the rows below jump to close
-      the gap and then slide again — and pinning an absolute row's width inside
-      a flex column costs more than the effect is worth. Removal is instant;
-      the rows below it still slide up via `move`.
+      Departing rows are measured and removed from flow before the other rows
+      slide up. Their exit follows the reverse of their entry path.
     -->
     <TransitionGroup
-      v-if="props.transition"
+      v-else-if="props.transition"
       tag="div"
-      class="list-rows"
-      move-class="row-move"
-      enter-active-class="row-enter-active"
-      enter-from-class="row-enter-from"
+      class="list-rows relative"
+      move-class="ui-row-move"
+      enter-active-class="ui-row-enter-active"
+      enter-from-class="ui-row-enter-from"
+      leave-active-class="ui-row-leave-active"
+      leave-to-class="ui-row-leave-to"
+      @before-leave="prepareLeave"
+      @leave-cancelled="cancelLeave"
     >
       <slot />
     </TransitionGroup>

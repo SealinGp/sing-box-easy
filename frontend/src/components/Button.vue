@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useInterfaceMotion } from '../composables/useInterfaceMotion'
+
+const interfaceMotion = useInterfaceMotion()
 
 /**
  * The single button in the design system.
@@ -60,15 +63,15 @@ const resolvedVariant = computed<Variant>(() =>
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary disabled:bg-primary/40',
+    'bg-primary text-on-primary hover:bg-primary-hover focus-visible:ring-primary disabled:bg-primary/40',
   secondary:
-    'bg-white/70 dark:bg-white/10 text-gray-900 dark:text-gray-100 border border-border hover:bg-white dark:hover:bg-white/15 focus-visible:ring-gray-400 disabled:opacity-50',
+    'bg-bg-secondary text-text-primary border border-border hover:bg-bg-tertiary focus-visible:ring-primary disabled:opacity-50',
   danger:
-    'bg-danger text-white hover:bg-red-600 focus-visible:ring-danger disabled:bg-danger/40',
+    'bg-danger-action text-on-status-action hover:brightness-90 focus-visible:ring-danger disabled:opacity-50',
   success:
-    'bg-success text-white hover:bg-emerald-600 focus-visible:ring-success disabled:bg-success/40',
+    'bg-success-action text-on-status-action hover:brightness-90 focus-visible:ring-success disabled:opacity-50',
   ghost:
-    'bg-transparent text-gray-700 dark:text-gray-300 border border-transparent hover:bg-black/5 dark:hover:bg-white/10 focus-visible:ring-gray-400',
+    'bg-transparent text-text-primary border border-transparent hover:bg-bg-tertiary focus-visible:ring-primary',
 }
 
 // Compact density pass. `sm` and `md` deliberately still share a font size —
@@ -92,7 +95,7 @@ const SIZES: Record<NonNullable<Props['size']>, string> = {
  * were never part of this pass, and squashed their symmetric `p-1.5` box to
  * 2px top / 6px side — an asymmetric 30×22px target, under the 24px WCAG 2.2
  * minimum. Making it opt-in through the prop that already means "this button
- * is in a toolbar or a table row" (DESIGN.md §5) hits exactly the buttons that
+ * is in a toolbar or a table row" hits exactly the buttons that
  * asked for it.
  *
  * These REPLACE the size's `py-*` rather than stacking beside it; two
@@ -110,6 +113,7 @@ const classes = computed(() =>
     'cursor-pointer inline-flex items-center justify-center font-semibold transition-colors duration-200',
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'dark:focus-visible:ring-offset-gray-900 disabled:cursor-not-allowed',
+    interfaceMotion ? 'ui-control relative' : '',
     props.pill ? 'rounded-pill' : 'rounded-control',
     props.action || resolvedVariant.value === 'ghost' ? '' : 'shadow-surface',
     VARIANTS[resolvedVariant.value],
@@ -125,7 +129,8 @@ const classes = computed(() =>
   <button :type="type" :class="classes" :disabled="disabled || loading" :aria-busy="loading">
     <svg
       v-if="loading"
-      class="-ml-1 h-4 w-4 animate-spin"
+      class="h-4 w-4 animate-spin"
+      :class="interfaceMotion ? 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2' : '-ml-1'"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -145,6 +150,7 @@ const classes = computed(() =>
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
       ></path>
     </svg>
-    <slot>{{ label }}</slot>
+    <span v-if="interfaceMotion" class="ui-control-content" :class="loading ? 'opacity-0' : ''"><slot>{{ label }}</slot></span>
+    <slot v-else>{{ label }}</slot>
   </button>
 </template>

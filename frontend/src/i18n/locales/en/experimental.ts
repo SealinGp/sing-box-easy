@@ -19,6 +19,8 @@ export default {
     externalUiDownloadUrl: 'External UI Download URL',
     externalUiDownloadUrlHelp: 'URL to download UI if not exists',
     dashboard: {
+      zashboardDescription: 'Zashboard',
+      yacdDescription: 'Clash dashboard',
       placeholder: 'Select a dashboard or enter a URL',
       custom: 'Custom URL',
       customHelp: 'Enter your own dashboard archive URL',

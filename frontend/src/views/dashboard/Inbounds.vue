@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import ModulePresets from '../../components/ModulePresets.vue'
+import StatusIndicator from '../../components/StatusIndicator.vue'
+import IconButton from '../../components/IconButton.vue'
+
 import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Inbound } from '../../types/api'
@@ -7,7 +11,7 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Table from '../../components/Table.vue'
 import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
-import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import {
@@ -21,7 +25,7 @@ import {
   resolveInboundFields,
   type InboundTypeName,
 } from '../../schemas/inboundFields'
-import { Dialog, Select } from '../../volt'
+import { ContextPanel, Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
@@ -300,14 +304,15 @@ onMounted(fetchInbounds)
 
 <template>
   <div class="page-shell">
-    <div class="flex justify-end items-center mb-2">
+    <div class="flex flex-wrap justify-end items-center gap-2 mb-2">
+      <ModulePresets kind="inbounds" @applied="fetchInbounds" />
       <Button @click="openAddModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
         {{ $t('inbounds.add') }}
       </Button>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden">
+    <div class="table-surface">
       <Table :loading="loading && inbounds.length === 0" :empty="inbounds.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('inbounds.empty') }}</p>
@@ -336,8 +341,8 @@ onMounted(fetchInbounds)
           <td class="text-gray-900 dark:text-gray-100">{{ (inbound as any).listen || '-' }}</td>
           <td class="text-gray-900 dark:text-gray-100">{{ (inbound as any).listen_port || '-' }}</td>
           <td>
-            <Badge v-if="(inbound as any).sniff" variant="success">{{ $t('inbounds.sniff.enabled') }}</Badge>
-            <Badge v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</Badge>
+            <StatusIndicator v-if="(inbound as any).sniff" variant="success">{{ $t('inbounds.sniff.enabled') }}</StatusIndicator>
+            <StatusIndicator v-else variant="secondary">{{ $t('inbounds.sniff.disabled') }}</StatusIndicator>
           </td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
@@ -345,12 +350,8 @@ onMounted(fetchInbounds)
                 <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
                 <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-primary-600 dark:text-primary-400" />
               </Button>
-              <Button @click="openEditModal(inbound)" variant="ghost" size="sm" action>
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <Button @click="openDeleteConfirm(inbound)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                <TrashIcon class="h-4 w-4" />
-              </Button>
+              <IconButton action="edit" @click="openEditModal(inbound)" />
+              <IconButton action="delete" @click="openDeleteConfirm(inbound)" />
             </div>
           </td>
         </tr>
@@ -358,7 +359,7 @@ onMounted(fetchInbounds)
     </div>
 
     <!-- Add/Edit Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showModal"
       @update:visible="(v: boolean) => { if (!v) closeModal() }"
       :header="isEditMode ? $t('inbounds.modal.edit') : $t('inbounds.modal.add')"
@@ -423,10 +424,10 @@ onMounted(fetchInbounds)
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <!-- Delete Confirmation Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showDeleteConfirm"
       @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
       :header="$t('inbounds.del.title')"
@@ -439,10 +440,8 @@ onMounted(fetchInbounds)
 
       <template #footer>
         <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleDelete" variant="danger" :disabled="loading">
-          {{ $t('common.delete') }}
-        </Button>
+        <IconButton action="delete" @click="handleDelete" :disabled="loading" />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

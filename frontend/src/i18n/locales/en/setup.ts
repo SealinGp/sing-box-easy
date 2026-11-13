@@ -3,7 +3,7 @@
 export default {
   outbounds: {
     successTitle: 'Outbounds Saved',
-    successDesc: 'Outbound nodes have been added successfully. Proceeding to next step...',
+    successDesc: 'Outbound nodes have been added successfully.',
     subscriptionSaveFailed: 'Nodes were saved, but the subscription URL could not be recorded — auto-update will not refresh them. Add it manually on the Subscriptions page.',
     parseHeading: 'Parse Subscription or Nodes',
     parseDesc: 'Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.',
@@ -44,7 +44,7 @@ export default {
   },
   ruleSets: {
     successTitle: 'Rule Sets Configured',
-    successDesc: 'Rule sets have been configured successfully. Proceeding to next step...',
+    successDesc: 'Rule sets have been configured successfully.',
     selectHeading: 'Select Rule Sets',
     selectDesc: 'Choose commonly used rule sets for routing. You can add custom rule sets later.',
     selectAll: 'Select All',
@@ -101,7 +101,7 @@ export default {
   },
   dns: {
     successTitle: 'DNS Configured',
-    successDesc: 'DNS configuration has been saved successfully. Proceeding to next step...',
+    successDesc: 'DNS configuration has been saved successfully.',
     selectHeading: 'Select DNS Configuration',
     selectDesc: 'Choose a DNS configuration preset that best suits your needs.',
     recommended: 'Recommended',
@@ -178,7 +178,7 @@ export default {
   },
   inbounds: {
     successTitle: 'Inbounds Configured',
-    successDesc: 'Inbound configurations have been saved successfully. Proceeding to next step...',
+    successDesc: 'Inbound configurations have been saved successfully.',
     selectHeading: 'Select Inbound Protocols',
     selectDesc: 'Choose which proxy protocols to accept incoming connections.',
     useRecommended: 'Use Recommended',
@@ -237,7 +237,7 @@ export default {
   },
   routes: {
     successTitle: 'Routes Configured',
-    successDesc: 'Route configuration has been saved successfully. Proceeding to next step...',
+    successDesc: 'Route configuration has been saved successfully.',
     proxyHeading: 'Select Proxy Outbound',
     proxyDesc: 'Choose which outbound to use for proxied traffic.',
     proxyOutbound: 'Proxy Outbound',

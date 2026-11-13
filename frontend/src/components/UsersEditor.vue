@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from './IconButton.vue'
+
 /**
  * Editor for an inbound's `users` array.
  *
@@ -15,7 +17,7 @@
  * old modal produced one with no credentials.
  */
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, TrashIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import Input from './Input.vue'
 import Button from './Button.vue'
 import { Select } from '../volt'
@@ -136,17 +138,12 @@ function flowOptions() {
           </div>
         </div>
 
-        <Button
+        <IconButton
+          action="delete"
           type="button"
-          variant="ghost"
-          size="sm"
-          action
-          class="text-red-600 dark:text-red-400 shrink-0"
-          :title="t('common.delete')"
           @click="removeUser(index)"
-        >
-          <TrashIcon class="h-4 w-4" />
-        </Button>
+          :label="t('common.delete')"
+        />
       </div>
     </div>
 

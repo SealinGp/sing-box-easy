@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useNavIndicator } from '../composables/useNavIndicator'
 import { useRoute } from 'vue-router'
+import PageTransition from './PageTransition.vue'
 
 interface Tab {
   path: string
@@ -27,26 +28,8 @@ const isActiveTab = (path: string) => {
 </script>
 
 <template>
-  <!--
-    `page-shell` (style/density.css) is the gutter for every tabbed section —
-    DNS, Route and Experimental render through here.
-
-    `pt-3` trims the top gutter to 12px for tabbed pages only, which lines the
-    tab strip up with the top edge of the sidebar / top bar card (both `m-3`).
-    The utility wins over `.page-shell`'s own padding because density.css sits
-    in `@layer components` — see DESIGN.md §10.2.
-  -->
-  <div class="page-shell pt-3">
-    <!--
-      The strip is chrome, not content: it gets the minimum that still reads as
-      a divider. Was `mb-4` + `py-1.5` links, which cost 64px before a page's
-      first row; now 40px (12px gutter + a 28px strip). Link boxes stay at
-      ~28px, above the 24px WCAG 2.2 minimum target size.
-
-      No bottom margin: every panel below already leads with its own toolbar
-      row carrying `mb-2`, so a margin here stacked with it. The panel owns the
-      gap.
-    -->
+  <div class="page-shell space-y-5">
+    <!-- Keep the navigation separate from the page's heading and actions. -->
     <div class="border-b border-gray-200 dark:border-gray-700">
       <nav ref="nav" class="tab-navigation -mb-px flex gap-4 overflow-x-auto">
         <span ref="indicator" class="nav-active-indicator tab-active-indicator" aria-hidden="true" />
@@ -68,6 +51,8 @@ const isActiveTab = (path: string) => {
     </div>
 
     <!-- Router view for rendering child components -->
-    <RouterView />
+    <RouterView v-slot="{ Component, route: childRoute }">
+      <PageTransition :view-key="childRoute.path"><component :is="Component" /></PageTransition>
+    </RouterView>
   </div>
 </template>

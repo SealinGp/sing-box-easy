@@ -1,10 +1,10 @@
 // 中文消息目录 —— 合并所有命名空间模块为一个对象。
 import common from './common'
+import workspace from './workspace'
 import nav from './nav'
 import configProblem from './configProblem'
 import proxies from './proxies'
 import connections from './connections'
-import wizard from './wizard'
 import overview from './overview'
 import config from './config'
 import settings from './settings'
@@ -26,7 +26,6 @@ import experimental from './experimental'
 import dialer from './dialer'
 import log from './log'
 import logs from './logs'
-import init from './init'
 import setup from './setup'
 import users from './users'
 import profile from './profile'
@@ -36,11 +35,11 @@ import ruleSet from './ruleSet'
 
 export default {
   common,
+  workspace,
   nav,
   configProblem,
   proxies,
   connections,
-  wizard,
   overview,
   config,
   settings,
@@ -62,7 +61,6 @@ export default {
   dialer,
   log,
   logs,
-  init,
   setup,
   users,
   profile,

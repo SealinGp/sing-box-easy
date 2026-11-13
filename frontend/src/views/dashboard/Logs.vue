@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
+
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { ArrowDownTrayIcon, ChevronDoubleDownIcon, PauseIcon, PlayIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ChevronDoubleDownIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/outline'
 import { parseLogLine, isStartupFailure, splitLogLine, filterLogEntries, type LogLevel } from '../../utils/logLine'
 import { useLogStream, MAX_LINES, type LogFeed } from '../../composables/useLogStream'
 
@@ -349,9 +351,7 @@ onMounted(async () => {
         <button type="button" class="log-action" :disabled="autoScroll" :aria-label="$t('logs.jumpToBottom')" :title="$t('logs.jumpToBottom')" @click="jumpToBottom">
           <ChevronDoubleDownIcon class="h-4 w-4" />
         </button>
-        <button type="button" class="log-action" :disabled="lines.length === 0" :aria-label="$t('logs.clear')" :title="$t('logs.clear')" @click="clearLogs">
-          <TrashIcon class="h-4 w-4" />
-        </button>
+        <IconButton action="delete" type="button" :disabled="lines.length === 0" @click="clearLogs" :label="$t('logs.clear')" />
         <button
           type="button"
           class="log-action"

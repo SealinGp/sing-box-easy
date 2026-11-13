@@ -18,7 +18,7 @@
  */
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Dialog, MultiSelect } from '../volt'
+import { ContextPanel, MultiSelect } from '../volt'
 import Button from './Button.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import { useDNSStore } from '../stores/dns'
@@ -134,7 +134,7 @@ watch(
 </script>
 
 <template>
-  <Dialog
+  <ContextPanel
     :visible="visible"
     @update:visible="(v: boolean) => { if (!v) close() }"
     :header="$t('dns.rules.parallel.title')"
@@ -290,5 +290,5 @@ watch(
         {{ $t('dns.rules.parallel.create') }}
       </Button>
     </template>
-  </Dialog>
+  </ContextPanel>
 </template>

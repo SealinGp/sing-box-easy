@@ -2,7 +2,7 @@
 export default {
   outbounds: {
     successTitle: '出站已保存',
-    successDesc: '出站节点已成功添加，正在进入下一步……',
+    successDesc: '出站节点已成功添加。',
     subscriptionSaveFailed: '节点已保存，但订阅地址未能记录，自动更新将无法刷新这些节点。请在「订阅管理」页面手动添加。',
     parseHeading: '解析订阅或节点',
     parseDesc: '输入订阅链接或节点链接（vmess://、ss://、trojan:// 等）。多个条目请每行一个。',
@@ -43,7 +43,7 @@ export default {
   },
   ruleSets: {
     successTitle: '规则集已配置',
-    successDesc: '规则集已成功配置，正在进入下一步……',
+    successDesc: '规则集已成功配置。',
     selectHeading: '选择规则集',
     selectDesc: '选择常用的路由规则集。稍后可添加自定义规则集。',
     selectAll: '全选',
@@ -100,7 +100,7 @@ export default {
   },
   dns: {
     successTitle: 'DNS 已配置',
-    successDesc: 'DNS 配置已成功保存，正在进入下一步……',
+    successDesc: 'DNS 配置已成功保存。',
     selectHeading: '选择 DNS 配置',
     selectDesc: '选择最符合你需求的 DNS 配置方案。',
     recommended: '推荐',
@@ -177,7 +177,7 @@ export default {
   },
   inbounds: {
     successTitle: '入站已配置',
-    successDesc: '入站配置已成功保存，正在进入下一步……',
+    successDesc: '入站配置已成功保存。',
     selectHeading: '选择入站协议',
     selectDesc: '选择用于接收入站连接的代理协议。',
     useRecommended: '使用推荐',
@@ -236,7 +236,7 @@ export default {
   },
   routes: {
     successTitle: '路由已配置',
-    successDesc: '路由配置已成功保存，正在进入下一步……',
+    successDesc: '路由配置已成功保存。',
     proxyHeading: '选择代理出站',
     proxyDesc: '选择用于代理流量的出站。',
     proxyOutbound: '代理出站',

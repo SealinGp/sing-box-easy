@@ -5,9 +5,7 @@ import yacdIcon from '../assets/yacd.ico'
  * Known Clash-compatible web dashboards that sing-box can download into its
  * `external_ui` directory.
  *
- * Shared by the init wizard (ConfigureExperimental.vue, card grid) and the
- * Clash API settings page (ClashAPISettings.vue, dropdown) so both offer the
- * same list and the same URLs.
+ * Used by the Clash API settings picker to offer known dashboard archives.
  *
  * `descKey` is an i18n key; `name`/`url` are technical values and stay literal.
  */
@@ -20,7 +18,7 @@ export interface DashboardOption {
   link: string
   /** Bundled icon asset. */
   icon: string
-  /** Screenshot URL, used by the wizard's preview grid. */
+  /** Screenshot URL, available for dashboard previews. */
   preview: string
   descKey: string
 }
@@ -33,7 +31,7 @@ export const DASHBOARD_OPTIONS: readonly DashboardOption[] = [
     link: 'https://github.com/Zephyruso/zashboard',
     icon: zashboardIcon,
     preview: 'https://raw.githubusercontent.com/Zephyruso/zashboard/refs/heads/main/readme/pc.png',
-    descKey: 'init.experimental.dashboards.zashboard',
+    descKey: 'experimental.clash.dashboard.zashboardDescription',
   },
   {
     id: 'yacd',
@@ -43,7 +41,7 @@ export const DASHBOARD_OPTIONS: readonly DashboardOption[] = [
     icon: yacdIcon,
     preview:
       'https://user-images.githubusercontent.com/1166872/47954055-97e6cb80-dfc0-11e8-991f-230fd40481e5.png',
-    descKey: 'init.experimental.dashboards.yacd',
+    descKey: 'experimental.clash.dashboard.yacdDescription',
   },
 ] as const
 

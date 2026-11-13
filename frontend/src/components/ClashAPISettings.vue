@@ -22,6 +22,7 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const enabled = ref(false)
 const settings = ref<ClashAPI>({
   external_controller: '',
   external_ui: '',
@@ -67,6 +68,7 @@ const fetchClashAPI = async () => {
   loading.value = true
   try {
     const { data } = await experimentalService.getClashAPI()
+    enabled.value = Boolean(data?.external_controller)
     if (data) {
       settings.value = { ...data }
       // Convert array to comma-separated string for display
@@ -104,7 +106,7 @@ const handleSave = async () => {
 
   loading.value = true
   try {
-    await experimentalService.updateClashAPI(config)
+    await experimentalService.updateClashAPI(enabled.value ? config : {})
     toast.add({
       severity: 'success',
       summary: t('common.success'),
@@ -140,6 +142,7 @@ onMounted(() => {
       </div>
 
       <div v-else class="space-y-4">
+        <label class="flex items-center gap-2 text-sm font-medium text-text-primary"><input v-model="enabled" type="checkbox" class="h-4 w-4 accent-primary" />{{ $t('workspace.clashEnabled') }}</label>
         <!-- External Controller -->
         <div>
           <label class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">

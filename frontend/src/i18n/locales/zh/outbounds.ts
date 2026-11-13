@@ -11,6 +11,9 @@ export default {
   addFirst: '添加第一个出站',
   import: '导入',
   deleteSelected: '删除（{count}）',
+  count: '{count} 个出站',
+  selectAll: '选择全部出站',
+  selectOutbound: '选择 {tag}',
   empty: '尚未配置出站',
   table: {
     tag: '标签',

@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { useGitHubAuth } from '../composables/useGitHubAuth'
 import { useNotify } from '../composables/useNotify'
 import { settingsService } from '../services'
-import Dialog from '../volt/Dialog.vue'
+import ContextPanel from '../volt/ContextPanel.vue'
 import { writeTextToClipboard } from '../utils/clipboard'
 
 const visible = defineModel<boolean>({ required: true })
@@ -101,7 +101,7 @@ async function copyCode() {
 </script>
 
 <template>
-  <Dialog
+  <ContextPanel
     v-model:visible="visible"
     modal
     :header="$t('settings.githubAuth.title')"
@@ -280,5 +280,5 @@ async function copyCode() {
       </p>
     </div>
     <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400 mt-3">{{ error }}</p>
-  </Dialog>
+  </ContextPanel>
 </template>

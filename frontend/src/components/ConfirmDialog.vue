@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Dialog } from '../volt'
+import { ContextPanel } from '../volt'
 import Button from './Button.vue'
+import IconButton from './IconButton.vue'
 import { useConfirm } from '../composables/useConfirm'
 
 /**
@@ -21,7 +22,7 @@ function onVisibilityChange(visible: boolean) {
 </script>
 
 <template>
-  <Dialog
+  <ContextPanel
     :visible="state.visible"
     @update:visible="onVisibilityChange"
     modal
@@ -38,11 +39,12 @@ function onVisibilityChange(visible: boolean) {
         severity="secondary"
         @click="handleCancel"
       />
-      <Button
+      <IconButton v-if="state.action === 'delete'" action="delete" :label="state.confirmLabel || t('common.delete')" @click="handleConfirm" />
+      <Button v-else
         :label="state.confirmLabel || t('common.confirm')"
         :severity="state.tone === 'danger' ? 'danger' : 'primary'"
         @click="handleConfirm"
       />
     </template>
-  </Dialog>
+  </ContextPanel>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import IconButton from './IconButton.vue'
+
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Bars3Icon } from '@heroicons/vue/24/outline'
@@ -237,23 +239,18 @@ const ruleSummary = computed(() => {
     <!-- Reorder mode hides edit/delete on purpose: both are index-addressed,
          and the indices are exactly what is in motion. -->
     <template v-if="!reorderable" #actions>
-      <button
+      <IconButton
+        action="edit"
         @click="handleEdit"
-        class="list-action-btn text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-      >
-        {{ $t('common.edit') }}
-      </button>
+      />
       <PopConfirm
         :message="$t('route.rules.confirm.delete')"
         :target="ruleSummary"
         :confirm-label="$t('common.delete')"
         tone="danger"
         align="right"
-        trigger-class="list-action-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
         @confirm="handleDelete"
-      >
-        {{ $t('common.delete') }}
-      </PopConfirm>
+      />
     </template>
   </ListRow>
 </template>

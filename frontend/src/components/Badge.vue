@@ -14,16 +14,16 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const classes = computed(() => {
-  const base = 'inline-flex items-center font-semibold rounded-pill border'
+  const base = 'inline-flex items-center font-medium rounded-badge border'
 
   const variants = {
-    primary: 'bg-blue-500/15 text-blue-700 dark:text-blue-200 border-blue-500/25',
-    success: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/25',
-    warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-200 border-amber-500/25',
-    danger: 'bg-red-500/15 text-red-700 dark:text-red-200 border-red-500/25',
-    info: 'bg-sky-500/15 text-sky-700 dark:text-sky-200 border-sky-500/25',
-    secondary: 'bg-white/35 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-white/35 dark:border-white/10',
-    gray: 'bg-white/35 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-white/35 dark:border-white/10',
+    primary: 'bg-primary/10 text-primary border-primary/25',
+    success: 'bg-success/10 text-success border-success/25',
+    warning: 'bg-warning/10 text-warning border-warning/25',
+    danger: 'bg-danger/10 text-danger border-danger/25',
+    info: 'bg-info/10 text-info border-info/25',
+    secondary: 'bg-bg-tertiary text-text-secondary border-border',
+    gray: 'bg-bg-tertiary text-text-secondary border-border',
   }
 
   /*
@@ -46,13 +46,13 @@ const classes = computed(() => {
 
 const dotColorClass = computed(() => {
   const colors = {
-    primary: 'bg-blue-500',
-    success: 'bg-emerald-500',
-    warning: 'bg-amber-500',
-    danger: 'bg-red-500',
-    info: 'bg-sky-500',
-    secondary: 'bg-gray-500',
-    gray: 'bg-gray-500',
+    primary: 'bg-primary',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
+    info: 'bg-info',
+    secondary: 'bg-text-secondary',
+    gray: 'bg-text-secondary',
   }
   return colors[props.variant]
 })

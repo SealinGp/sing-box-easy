@@ -1,21 +1,23 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
+
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../../composables/useConfirm'
 import { userService } from '../../services'
 import Table from '../../components/Table.vue'
-import { Select } from '../../volt'
+import { ContextPanel, Select } from '../../volt'
 import type { User } from '../../types/api'
 import {
   UserIcon,
   ShieldCheckIcon,
   PlusIcon,
-  TrashIcon,
-  PencilIcon,
   CalendarIcon,
   SparklesIcon
 } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
+const { confirm } = useConfirm()
 
 const currentUser = ref<User | null>(null)
 const users = ref<User[]>([])
@@ -171,7 +173,12 @@ const handleEditUser = async () => {
 }
 
 const handleDeleteUser = async (user: User) => {
-  if (!confirm(t('profile.toast.deleteUserConfirm', { username: user.username }))) return
+  if (!(await confirm({
+    message: t('profile.toast.deleteUserConfirm', { username: user.username }),
+    confirmLabel: t('common.delete'),
+    action: 'delete',
+    tone: 'danger',
+  }))) return
 
   successMsg.value = ''
   errorMsg.value = ''
@@ -350,7 +357,7 @@ const formatDate = (dateStr: string) => {
       </div>
 
       <!-- Users List -->
-      <div class="bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-surface shadow-surface overflow-hidden">
+      <div class="table-surface">
         <Table>
           <template #head>
             <th>{{ $t('profile.usersSection.table.id') }}</th>
@@ -373,21 +380,17 @@ const formatDate = (dateStr: string) => {
             </td>
             <td class="text-gray-500 dark:text-gray-400 text-xs">{{ formatDate(user.created_at) }}</td>
             <td class="col-actions flex justify-end gap-1">
-              <button
+              <IconButton
+                action="edit"
                 @click="startEditUser(user)"
-                class="p-1.5 rounded-control text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                title="Edit User"
-              >
-                <PencilIcon class="h-4.5 w-4.5" />
-              </button>
-              <button
+                label="Edit User"
+              />
+              <IconButton
+                action="delete"
                 @click="handleDeleteUser(user)"
                 :disabled="user.id === currentUser?.id"
-                class="p-1.5 rounded-control text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                title="Delete User"
-              >
-                <TrashIcon class="h-4.5 w-4.5" />
-              </button>
+                label="Delete User"
+              />
             </td>
           </tr>
         </Table>
@@ -395,9 +398,7 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- Create User Modal -->
-    <div v-if="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-4 shadow-float animate-scale-up">
-        <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.addTitle') }}</h3>
+    <ContextPanel v-model:visible="showAddUserModal" :header="$t('profile.modals.addTitle')" class="w-full max-w-md">
         <form @submit.prevent="handleAddUser" class="space-y-4">
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{{ $t('profile.modals.username') }}</label>
@@ -443,13 +444,10 @@ const formatDate = (dateStr: string) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ContextPanel>
 
     <!-- Edit User Modal -->
-    <div v-if="showEditUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-surface border border-gray-100 dark:border-gray-800 max-w-md w-full p-4 shadow-float animate-scale-up">
-        <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">{{ $t('profile.modals.editTitle') }}</h3>
+    <ContextPanel v-model:visible="showEditUserModal" :header="$t('profile.modals.editTitle')" class="w-full max-w-md">
         <form @submit.prevent="handleEditUser" class="space-y-4">
           <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{{ $t('profile.modals.username') }}</label>
@@ -496,7 +494,6 @@ const formatDate = (dateStr: string) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ContextPanel>
   </div>
 </template>

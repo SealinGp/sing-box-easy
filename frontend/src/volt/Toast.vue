@@ -21,6 +21,8 @@
 import TimesIcon from '@primevue/icons/times';
 import Toast, { type ToastPassThroughOptions, type ToastProps } from 'primevue/toast';
 import { ptViewMerge } from './utils';
+import { computed } from 'vue';
+import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ ToastProps {}
 defineProps<Props>();
@@ -43,7 +45,8 @@ const pauseOnHover = () => {};
  * of CSS let the dependency go. It also let the palette switch from the
  * plugin's violet/green/yellow to the design system's own status tokens.
  */
-const theme: ToastPassThroughOptions = {
+const interfaceMotion = useInterfaceMotion();
+const baseTheme: ToastPassThroughOptions = {
     root: `volt-toast w-96 rounded-surface whitespace-pre-line break-words`,
     message: `volt-toast-message mb-4 border rounded-surface backdrop-blur-sm dark:backdrop-blur-md`,
     messageContent: `flex items-start p-3 gap-2`,
@@ -70,4 +73,8 @@ const theme: ToastPassThroughOptions = {
         leaveToClass: 'max-h-0 opacity-0 mb-0 overflow-hidden'
     }
 };
+const theme = computed<ToastPassThroughOptions>(() => ({
+    ...baseTheme,
+    transition: interfaceMotion ? popoverMotion : baseTheme.transition,
+}));
 </script>

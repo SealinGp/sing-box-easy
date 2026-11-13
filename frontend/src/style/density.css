@@ -24,7 +24,7 @@
  *
  * These rules are also deliberately NOT scoped under `.liquid-app`, and every
  * selector is CLASS-based rather than a bare `th`/`td`. Both follow from the
- * teleport rule (DESIGN.md §1): an unscoped bare `td { padding: … }` would
+ * teleport rule: an unscoped bare `td { padding: … }` would
  * reach into PrimeVue's own internal markup (Select panels, MultiSelect
  * lists) and fight the pass-through themes in `src/volt/*`, and a
  * `.liquid-app`-scoped rule would silently stop applying to any table that
@@ -47,8 +47,8 @@
    *      lost the column headers on the way. Rows now scroll inside the card.
    *   2. A STICKY HEADER, which only earns its keep once (1) exists.
    *
-   * Row maths, measured: 2 × 5px padding + a 20px badge = 30px, or 35px on rows
-   * carrying a `<Button size="sm" action>`. Was 52px.
+   * Rows leave 8px above and below their content. A 24px checkbox target or
+   * action button therefore produces a 41px row including its separator.
    */
 
   .scroll-region {
@@ -80,6 +80,14 @@
     border-spacing: 0;
   }
 
+  /* Data surfaces use tighter corners than a card or dialog. */
+  .table-surface {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-table);
+    background: var(--color-bg-secondary);
+  }
+
   .data-table th,
   .data-table td {
     padding: var(--table-cell-py) var(--table-cell-px);
@@ -88,16 +96,50 @@
     border-bottom: 1px solid var(--color-border);
   }
 
+  .data-table :is(th, td):first-child { padding-inline-start: var(--table-edge-px); }
+  .data-table :is(th, td):last-child { padding-inline-end: var(--table-edge-px); }
+
+  .data-table :is(th, td).col-select {
+    width: var(--table-select-width);
+    min-width: var(--table-select-width);
+    padding-inline: 1rem;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .table-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-inline: auto;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .table-checkbox input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+  }
+  .table-checkbox:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  .table-checkbox input:focus-visible { outline: none; }
+
   .data-table thead th {
     position: sticky;
     top: 0;
     z-index: 1;
     padding-block: var(--table-head-py);
     font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-text-tertiary);
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-text-secondary);
     /* Near-opaque: see the token comment in tokens.css. */
     background: var(--table-head-bg);
     backdrop-filter: var(--glass-blur);
@@ -115,6 +157,8 @@
   .data-table tbody tr:hover td {
     background: var(--table-row-hover);
   }
+
+  .data-table tbody tr[data-selected='true'] td { background: var(--table-row-selected); }
 
   /*
    * Cells that must wrap opt in. The default is `nowrap` because a proxy tag,
@@ -380,4 +424,40 @@
   .page-shell {
     padding: var(--space-gutter);
   }
+}
+
+@layer components {
+  .icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    background: transparent;
+    cursor: pointer;
+    transition: color 140ms, background-color 140ms, transform 140ms;
+  }
+  .icon-action:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
+  .icon-action-danger:hover { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 9%, transparent); }
+  .icon-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .icon-action:disabled { opacity: .4; cursor: not-allowed; }
+  .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 20px; color: var(--color-text-secondary); }
+  .status-indicator-mark { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
+  .status-indicator[data-tone="success"] { color: var(--color-success); }
+  .status-indicator[data-tone="warning"] { color: var(--color-warning); }
+
+
+  .status-indicator[data-tone="danger"] { color: var(--color-danger); }
+
+  .status-indicator[data-tone="primary"], .status-indicator[data-tone="info"] { color: var(--color-primary); }
+  .status-indicator-busy { width: 10px; height: 10px; background: none; border: 1.5px solid currentColor; border-top-color: transparent; animation: spin 1s linear infinite; }
+  .section-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; min-height: 36px; }
+  .section-toolbar h1 { font-size: 18px; font-weight: 600; color: var(--color-text-primary); }
+  .section-toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 }

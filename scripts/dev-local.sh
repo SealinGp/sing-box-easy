@@ -284,6 +284,7 @@ cmd_up() {
   status_table
   echo
   echo "  Frontend  : http://localhost:$FRONTEND_PORT   (proxies /api -> :$BACKEND_PORT)"
+  echo "  Design lab: http://localhost:$FRONTEND_PORT/lab"
   echo "  Backend   : http://localhost:$BACKEND_PORT/api/1.12.12"
   echo
   echo "  Logs   : $0 logs <name> [-f] (or run without args to tail all)"

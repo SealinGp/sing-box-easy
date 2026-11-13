@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusIndicator from './StatusIndicator.vue'
 /**
  * The rule ladder, with a lamp per rung.
  *
@@ -149,12 +150,9 @@ const stateLabel = (state: LadderState) => t(`rule.ladder.state.${state}`)
           <slot name="extra" :rung="rung" />
         </div>
 
-        <span
-          v-if="sequencer.isRevealed(rung.index)"
-          class="shrink-0 rounded-pill bg-white/70 dark:bg-black/25 px-2 py-0.5 text-xs"
-        >
+        <StatusIndicator v-if="sequencer.isRevealed(rung.index)" class="shrink-0">
           {{ stateLabel(rung.state) }}
-        </span>
+        </StatusIndicator>
       </div>
     </div>
 

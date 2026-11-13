@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import IconButton from '../../components/IconButton.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../../composables/useConfirm'
 import type { DNS } from '../../types/api'
 import { Button, Alert, Card, Badge } from '../../components'
 import { Select } from '../../volt'
@@ -10,10 +12,8 @@ import { dnsService } from '../../services'
 
 const { t } = useI18n()
 
-const emit = defineEmits<{
-  next: []
-  prev: []
-}>()
+const emit = defineEmits<{ applied: [] }>()
+const { confirm } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -173,7 +173,8 @@ const loadDNSConfig = async () => {
       }
 
       // 检查是否启用了 FakeIP
-      if (dns.fakeip) {
+      if (dns.servers.some(server => server.type === 'fakeip')) enableFakeIP.value = true
+      if (dns.fakeip?.enabled) {
         enableFakeIP.value = true
       }
 
@@ -190,6 +191,8 @@ const loadDNSConfig = async () => {
 }
 
 const saveDNSConfig = async () => {
+  if (saving.value || success.value) return
+  if (!(await confirm({ message: t('workspace.presets.dnsImpact'), confirmLabel: t('workspace.presets.apply') }))) return
   saving.value = true
   error.value = ''
   success.value = false
@@ -221,11 +224,12 @@ const saveDNSConfig = async () => {
 
     // 如果启用 FakeIP
     if (enableFakeIP.value) {
-      dnsConfig.fakeip = {
-        enabled: true,
+      servers.push({
+        type: 'fakeip',
+        tag: 'dns-fakeip',
         inet4_range: '198.18.0.0/15',
         inet6_range: 'fc00::/18',
-      }
+      })
     }
 
     // 添加规则和 final 服务器
@@ -238,8 +242,7 @@ const saveDNSConfig = async () => {
           },
           {
             rule_set: ['geosite-category-ads-all'],
-            server: 'dns-block',
-            disable_cache: true,
+            action: 'reject',
           },
         ]
         dnsConfig.final = 'dns-google-tls'
@@ -248,8 +251,7 @@ const saveDNSConfig = async () => {
         dnsConfig.rules = [
           {
             rule_set: ['geosite-category-ads-all'],
-            server: 'dns-block',
-            disable_cache: true,
+            action: 'reject',
           },
         ]
         dnsConfig.final = 'dns-cloudflare'
@@ -258,8 +260,7 @@ const saveDNSConfig = async () => {
         dnsConfig.rules = [
           {
             rule_set: ['geosite-category-ads-all'],
-            server: 'dns-block',
-            disable_cache: true,
+            action: 'reject',
           },
         ]
         dnsConfig.final = 'dns-google'
@@ -268,21 +269,21 @@ const saveDNSConfig = async () => {
         dnsConfig.rules = [
           {
             rule_set: ['geosite-category-ads-all'],
-            server: 'dns-block',
-            disable_cache: true,
+            action: 'reject',
           },
         ]
         dnsConfig.final = 'dns-china'
         break
     }
 
+    if (enableFakeIP.value) {
+      dnsConfig.rules = [...(dnsConfig.rules || []), { action: 'route', query_type: ['A', 'AAAA'], server: 'dns-fakeip' }]
+    }
     await dnsService.updateDNS(dnsConfig)
     success.value = true
 
-    // 2秒后自动进入下一步
-    setTimeout(() => {
-      emit('next')
-    }, 2000)
+    // Notify the owning dashboard module to reload after the operation.
+    emit('applied')
   } catch (err: any) {
     error.value = err.message || t('setup.dns.saveFailed')
   } finally {
@@ -290,17 +291,6 @@ const saveDNSConfig = async () => {
   }
 }
 
-const handleNext = () => {
-  if (!success.value) {
-    saveDNSConfig()
-  } else {
-    emit('next')
-  }
-}
-
-const handleSkip = () => {
-  emit('next')
-}
 </script>
 
 <template>
@@ -319,8 +309,8 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.selectHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.dns.selectHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.dns.selectDesc') }}
           </p>
         </div>
@@ -332,10 +322,12 @@ const handleSkip = () => {
             :key="preset.id"
             class="flex items-start gap-3 p-4 border border-gray-200 rounded-control hover:border-primary-300 hover:bg-primary-50 cursor-pointer transition-colors"
             :class="{ 'border-primary-500 bg-primary-50': selectedPreset === preset.id }"
-            @click="selectedPreset = preset.id"
+            @click="!loading && !saving && !success && (selectedPreset = preset.id)"
           >
             <input
               type="radio"
+              name="DNSPresets-preset"
+              :aria-label="preset.name"
               :checked="selectedPreset === preset.id"
               class="w-4 h-4 text-primary-600 border-gray-300 mt-0.5"
               :disabled="loading || saving || success"
@@ -343,22 +335,22 @@ const handleSkip = () => {
             />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900">{{ preset.name }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ preset.name }}</p>
                 <Badge v-if="preset.id === 'smart'" variant="primary" size="sm">{{ $t('setup.dns.recommended') }}</Badge>
               </div>
-              <p class="text-xs text-gray-600 mt-1">{{ preset.description }}</p>
+              <p class="text-xs text-gray-600 mt-1 dark:text-gray-400">{{ preset.description }}</p>
               <div class="space-y-1 mt-2">
                 <div
                   v-for="server in preset.servers"
                   :key="server.tag"
-                  class="text-xs text-gray-700"
+                  class="text-xs text-gray-700 dark:text-gray-300"
                 >
                   <span class="font-medium">{{ server.tag }}</span>
                   <span class="text-gray-500"> ({{ server.type || $t('setup.dns.legacy') }})</span>
-                  <span v-if="'server' in server" class="text-gray-600">
+                  <span v-if="'server' in server" class="text-gray-600 dark:text-gray-400">
                     : {{ server.server }}<span v-if="'server_port' in server && server.server_port !== 53 && server.server_port !== 853">:{{ server.server_port }}</span>
                   </span>
-                  <span v-else-if="'address' in server" class="text-gray-600">
+                  <span v-else-if="'address' in server" class="text-gray-600 dark:text-gray-400">
                     : {{ server.address }}
                   </span>
                 </div>
@@ -373,13 +365,13 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.hostsHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.dns.hostsHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.dns.hostsDesc') }}
           </p>
         </div>
 
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
+        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface dark:bg-slate-800">
           <input
             v-model="enableHosts"
             type="checkbox"
@@ -388,7 +380,7 @@ const handleSkip = () => {
             :disabled="loading || saving || success"
           />
           <label for="enable-hosts" class="flex-1 cursor-pointer">
-            <span class="text-sm font-medium text-gray-900">{{ $t('setup.dns.enableHosts') }}</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.dns.enableHosts') }}</span>
             <p class="text-xs text-gray-500 mt-0.5">
               {{ $t('setup.dns.enableHostsDesc') }}
             </p>
@@ -397,11 +389,11 @@ const handleSkip = () => {
 
         <div v-if="enableHosts" class="space-y-3">
           <!-- Add new host entry -->
-          <div class="p-4 bg-primary-50 border border-primary-200 rounded-surface">
-            <p class="text-sm font-medium text-gray-900 mb-3">{{ $t('setup.dns.addHostEntry') }}</p>
+          <div class="p-4 bg-primary-50 border border-primary-200 rounded-surface dark:bg-primary-950/30">
+            <p class="text-sm font-medium text-gray-900 mb-3 dark:text-gray-100">{{ $t('setup.dns.addHostEntry') }}</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">{{ $t('setup.dns.domain') }}</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1 dark:text-gray-300">{{ $t('setup.dns.domain') }}</label>
                 <input
                   v-model="newHostDomain"
                   type="text"
@@ -412,7 +404,7 @@ const handleSkip = () => {
                 />
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1 dark:text-gray-300">
                   {{ $t('setup.dns.ipAddresses') }}
                   <span class="text-gray-500 font-normal">{{ $t('setup.dns.ipAddressesHint') }}</span>
                 </label>
@@ -440,7 +432,7 @@ const handleSkip = () => {
 
           <!-- Host entries list -->
           <div v-if="Object.keys(hostEntries).length > 0" class="space-y-2">
-            <p class="text-sm font-medium text-gray-900">{{ $t('setup.dns.hostEntries') }}</p>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.dns.hostEntries') }}</p>
             <div class="space-y-2">
               <div
                 v-for="(value, domain) in hostEntries"
@@ -448,17 +440,10 @@ const handleSkip = () => {
                 class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-surface"
               >
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate">{{ domain }}</p>
-                  <p class="text-xs text-gray-600 truncate">{{ getHostIPDisplay(value) }}</p>
+                  <p class="text-sm font-medium text-gray-900 truncate dark:text-gray-100">{{ domain }}</p>
+                  <p class="text-xs text-gray-600 truncate dark:text-gray-400">{{ getHostIPDisplay(value) }}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  :disabled="saving || success"
-                  @click="removeHostEntry(domain)"
-                >
-                  {{ $t('setup.dns.remove') }}
-                </Button>
+                <IconButton action="delete" :disabled="saving || success" @click="removeHostEntry(domain)" />
               </div>
             </div>
           </div>
@@ -474,8 +459,8 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.strategyHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.dns.strategyHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.dns.strategyDesc') }}
           </p>
         </div>
@@ -496,13 +481,13 @@ const handleSkip = () => {
     <Card>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $t('setup.dns.fakeipHeading') }}</h3>
-          <p class="text-sm text-gray-600">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{{ $t('setup.dns.fakeipHeading') }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ $t('setup.dns.fakeipDesc') }}
           </p>
         </div>
 
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface">
+        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-surface dark:bg-slate-800">
           <input
             v-model="enableFakeIP"
             type="checkbox"
@@ -511,7 +496,7 @@ const handleSkip = () => {
             :disabled="loading || saving || success"
           />
           <label for="enable-fakeip" class="flex-1 cursor-pointer">
-            <span class="text-sm font-medium text-gray-900">{{ $t('setup.dns.enableFakeip') }}</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.dns.enableFakeip') }}</span>
             <p class="text-xs text-gray-500 mt-0.5">
               {{ $t('setup.dns.enableFakeipDesc') }}
             </p>
@@ -530,27 +515,21 @@ const handleSkip = () => {
         variant="primary"
         :loading="saving"
         :disabled="saving || success"
-        @click="handleNext"
+        @click="saveDNSConfig"
       >
-        {{ success ? $t('setup.dns.saved') : saving ? $t('common.saving') : $t('setup.dns.saveContinue') }}
+        {{ success ? $t('workspace.presets.applied') : saving ? $t('common.saving') : $t('workspace.presets.apply') }}
       </Button>
 
-      <Button
-        variant="ghost"
-        :disabled="saving || success"
-        @click="handleSkip"
-      >
-        {{ $t('setup.dns.skip') }}
-      </Button>
+
     </div>
 
     <!-- 说明信息 -->
-    <Card padding="sm" class="bg-primary-50 border-primary-200">
+    <Card padding="sm" class="bg-primary-50 border-primary-200 dark:bg-primary-950/30">
       <div class="flex items-start space-x-3">
         <InformationCircleIcon class="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-primary-900 space-y-2">
+        <div class="text-sm text-primary-900 space-y-2 dark:text-primary-200">
           <p class="font-medium">{{ $t('setup.dns.aboutHeading') }}</p>
-          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800">
+          <ul class="list-disc list-inside space-y-1 ml-2 text-primary-800 dark:text-primary-300">
             <li><strong>{{ $t('setup.dns.aboutSmartLabel') }}</strong> {{ $t('setup.dns.aboutSmart') }}</li>
             <li><strong>{{ $t('setup.dns.aboutSingleLabel') }}</strong> {{ $t('setup.dns.aboutSingle') }}</li>
             <li><strong>{{ $t('setup.dns.aboutChinaLabel') }}</strong> {{ $t('setup.dns.aboutChina') }}</li>
@@ -565,9 +544,9 @@ const handleSkip = () => {
     </Card>
 
     <!-- DNS 服务器详情 -->
-    <Card padding="sm" class="bg-gray-50">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p class="font-medium text-gray-900">{{ $t('setup.dns.selectedHeading') }}</p>
+    <Card padding="sm" class="bg-gray-50 dark:bg-slate-800">
+      <div class="text-sm text-gray-600 space-y-2 dark:text-gray-400">
+        <p class="font-medium text-gray-900 dark:text-gray-100">{{ $t('setup.dns.selectedHeading') }}</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li v-for="server in dnsPresets.find(p => p.id === selectedPreset)?.servers" :key="server.tag">
             <strong>{{ server.tag }}</strong>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
+import { useInterfaceMotion } from '../composables/useInterfaceMotion'
+
+const interfaceMotion = useInterfaceMotion()
 
 interface Props {
   modelValue?: string | number
@@ -58,7 +61,7 @@ const inputClasses = computed(() =>
 </script>
 
 <template>
-  <div :class="fullWidth ? 'w-full' : ''">
+  <div :class="[fullWidth ? 'w-full' : '', interfaceMotion ? 'ui-field relative' : '']">
     <label
       v-if="label"
       :for="inputId"
@@ -88,15 +91,18 @@ const inputClasses = computed(() =>
         )
       "
     />
-    <p v-if="error" :id="describedById" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
+    <Transition name="ui-field" :css="interfaceMotion">
+    <p v-if="error" key="error" :id="describedById" role="alert" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
       {{ error }}
     </p>
     <p
       v-else-if="hint"
+      key="hint"
       :id="describedById"
       class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
     >
       {{ hint }}
     </p>
+    </Transition>
   </div>
 </template>

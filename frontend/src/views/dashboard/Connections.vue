@@ -55,6 +55,7 @@ const sortKey = ref<ColumnKey>('downRate')
 const ascending = ref(false)
 const selectedId = ref('')
 const settingsOpen = ref(false)
+const settingsAnchor = ref<HTMLElement | null>(null)
 const closing = ref<ReadonlySet<string>>(new Set())
 const closingAll = ref(false)
 
@@ -255,7 +256,7 @@ const tipTone = computed<TipTone>(() =>
         class="inline-flex h-8 w-8 items-center justify-center rounded-control border border-gray-300 bg-white text-gray-700 hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
         :aria-label="$t('connections.settings.title')"
         :title="$t('connections.settings.title')"
-        @click="settingsOpen = true"
+        @click="event => { settingsAnchor = event.currentTarget as HTMLElement; settingsOpen = !settingsOpen }"
       >
         <WrenchScrewdriverIcon class="h-4 w-4" />
       </button>
@@ -295,7 +296,7 @@ const tipTone = computed<TipTone>(() =>
       space left in the window — the same behaviour as the Outbounds list, so
       the toolbar stays put and only the rows move.
     -->
-    <div ref="tableRegion" class="scroll-region rounded-surface border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div ref="tableRegion" class="scroll-region rounded-table border border-border bg-bg-secondary">
       <ConnectionsTable
         :rows="drawn"
         :settings="settings"
@@ -318,6 +319,7 @@ const tipTone = computed<TipTone>(() =>
 
     <ConnectionTableSettings
       v-model:visible="settingsOpen"
+      :anchor="settingsAnchor"
       :settings="settings"
       :sources="knownSources"
       @update="update"

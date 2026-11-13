@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MagnifyingGlassIcon, ArrowTurnDownLeftIcon } from '@heroicons/vue/24/outline'
-import Dialog from '../volt/Dialog.vue'
+import Popover from '../volt/Popover.vue'
 import { searchMenu, type MenuGroup } from '../navigation/menu'
 const props = defineProps<{ groups: MenuGroup[] }>()
 const visible = defineModel<boolean>({ required: true })
@@ -10,9 +10,20 @@ const router = useRouter()
 const query = ref('')
 const active = ref(0)
 const input = ref<HTMLInputElement>()
+const panel = ref<InstanceType<typeof Popover> | null>(null)
 const results = computed(() => searchMenu(props.groups, query.value))
 watch(query, () => { active.value = 0 })
-watch(visible, value => { if (value) { query.value = ''; active.value = 0 } })
+watch(visible, async value => {
+  if (!value) { panel.value?.hide(); return }
+  query.value = ''
+  active.value = 0
+  await nextTick()
+  if (!visible.value) return
+  const focused = document.activeElement?.closest<HTMLElement>('.nav-search-trigger')
+  const anchor = focused ?? [...document.querySelectorAll<HTMLElement>('.nav-search-trigger')].find(element => element.getClientRects().length)
+  if (anchor) panel.value?.showAt(anchor)
+  else visible.value = false
+})
 async function focusInput() { await nextTick(); input.value?.focus() }
 function move(delta: number) {
   if (!results.value.length) return
@@ -28,18 +39,11 @@ async function navigate(index = active.value) {
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" modal dismissable-mask :header="$t('nav.search')" :close-button-props="{ 'aria-label': $t('nav.close') }" class="max-w-xl" @show="focusInput">
+  <Popover ref="panel" :aria-label="$t('nav.search')" class="navigation-search-popover" @show="focusInput" @hide="visible = false">
     <div class="navigation-search">
       <div class="palette-input">
         <MagnifyingGlassIcon class="h-5 w-5 shrink-0" />
-        <!--
-          `autofocus` is what keeps the cursor here. The dialog emits `show`
-          when it STARTS to open (focusInput runs then, so typing works at
-          once), but when its enter transition ends it moves focus itself — to
-          the first `[autofocus]` element in its content, or, finding none, to
-          the close button. Without the attribute that second step stole the
-          focus from the field a moment after it was given.
-        -->
+        <!-- Ready for typing as soon as the anchored search opens. -->
         <input ref="input" v-model="query" autofocus role="combobox" :aria-label="$t('nav.search')" aria-autocomplete="list" aria-expanded="true" aria-controls="nav-search-results" :aria-activedescendant="results.length ? 'nav-result-' + active : undefined" :placeholder="$t('nav.searchPlaceholder')" autocomplete="off" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="navigate()" />
       </div>
       <div id="nav-search-results" role="listbox" :aria-label="$t('nav.navigation')" class="palette-results">
@@ -52,5 +56,5 @@ async function navigate(index = active.value) {
       <p v-if="!results.length" class="palette-empty" role="status">{{ $t('nav.noResults') }}</p>
       <div class="palette-footer"><span>↑ ↓ {{ $t('nav.browse') }}</span><span>↵ {{ $t('nav.open') }}</span><span>Esc {{ $t('nav.close') }}</span></div>
     </div>
-  </Dialog>
+  </Popover>
 </template>

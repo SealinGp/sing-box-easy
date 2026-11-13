@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import ModulePresets from './ModulePresets.vue'
+import IconButton from './IconButton.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
-import { Dialog, Select } from '../volt'
+import { ContextPanel, Select } from '../volt'
 import Button from './Button.vue'
 import PopConfirm from './PopConfirm.vue'
 import List from './List.vue'
@@ -34,7 +36,6 @@ const { outbounds } = storeToRefs(outboundsStore)
 // State for dialog
 const showAddRuleSetDialog = ref(false)
 const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
-
 
 // Form data
 const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
@@ -360,12 +361,15 @@ onMounted(() => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {{ $t('route.ruleSets.title') }}
         </h3>
+        <div class="flex flex-wrap items-center gap-2">
+          <ModulePresets kind="ruleSets" @applied="routeStore.fetchRuleSets()" />
         <button
           @click="showAddRuleSetDialog = true"
           class="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-control hover:bg-primary-700 transition-colors"
         >
           {{ $t('route.ruleSets.add') }}
         </button>
+        </div>
       </div>
 
       <List :loading="loading" :empty="ruleSets.length === 0">
@@ -390,12 +394,7 @@ onMounted(() => {
           />
 
           <template #actions>
-            <button
-              @click="startEditRuleSet(ruleSet)"
-              class="list-action-btn text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              {{ $t('common.edit') }}
-            </button>
+            <IconButton action="edit" @click="startEditRuleSet(ruleSet)" />
             <PopConfirm
               :message="$t('route.ruleSets.confirm.delete')"
               :target="ruleSet.tag"
@@ -404,24 +403,21 @@ onMounted(() => {
               :loading-label="$t('route.ruleSets.cascade.checking')"
               :confirm-label="
                 referenceInfo[ruleSet.tag]?.cascade
-                  ? $t('route.ruleSets.cascade.confirm')
-                  : $t('common.delete')
-              "
+                ? $t('route.ruleSets.cascade.confirm')
+                : $t('common.delete')
+                "
               tone="danger"
               align="right"
-              trigger-class="list-action-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               @open="loadRuleSetReferences(ruleSet.tag)"
               @confirm="handleDeleteRuleSet(ruleSet.tag)"
-            >
-              {{ $t('common.delete') }}
-            </PopConfirm>
+            />
           </template>
         </ListRow>
       </List>
     </Card>
 
     <!-- Add/Edit Rule Set Dialog -->
-    <Dialog
+    <ContextPanel
       v-model:visible="dialogVisible"
       modal
       :header="editingRuleSet ? $t('route.ruleSets.modal.edit') : $t('route.ruleSets.modal.add')"
@@ -519,6 +515,6 @@ onMounted(() => {
           @click="editingRuleSet ? handleUpdateRuleSet() : handleAddRuleSet()"
         />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

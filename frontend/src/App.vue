@@ -5,7 +5,7 @@ import ConfigProblemDialog from './components/ConfigProblemDialog.vue'
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100 dark:bg-slate-600">
+  <div class="min-h-screen bg-bg-primary">
     <router-view />
     <Toast position="top-center" />
     <ConfirmDialog />

@@ -1,16 +1,19 @@
 <script setup lang="ts">
+import StatusIndicator from './StatusIndicator.vue'
+import IconButton from './IconButton.vue'
+
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
-import { Dialog, Select } from '../volt'
+import { ContextPanel, Select } from '../volt'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
 import DNSRuleConditions from './DNSRuleConditions.vue'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
 import DNSParallelGroupDialog from './DNSParallelGroupDialog.vue'
-import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowsUpDownIcon, BoltIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, Bars3Icon, ArrowsUpDownIcon, BoltIcon } from '@heroicons/vue/24/outline'
 import { configService, dnsService } from '../services'
 import { useToast } from 'primevue'
 import { useDragReorder } from '../composables/useDragReorder'
@@ -224,7 +227,6 @@ const fetchDNSRules = async () => {
   }
 }
 
-
 const actionTypes = computed(() => [
   { value: 'route', label: t('dns.rules.actionTypes.route') },
   { value: 'route-options', label: t('dns.rules.actionTypes.routeOptions') },
@@ -273,7 +275,6 @@ const ruleSetOptions = computed(() => {
   }
   return options
 })
-
 
 /**
  * A blank rule. Only the conditions are seeded, as empty arrays for the Chips
@@ -602,7 +603,9 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-end items-center gap-2 mb-2">
+    <header class="section-toolbar">
+      <h1>{{ $t('dns.rules.heading') }}</h1>
+      <div class="section-toolbar-actions">
       <!-- Reorder is a MODE, and a BATCHED one: turning it on swaps the index
            column for a drag handle and hides edit/delete, and nothing is
            written until Save — a five-row cleanup is one config write, not
@@ -612,7 +615,7 @@ onMounted(() => {
           {{ $t('dns.rules.reorder.cancel') }}
         </Button>
         <Button @click="reorder.save()" variant="primary" :disabled="reorder.saving.value">
-          <ArrowsUpDownIcon class="h-5 w-5 mr-2" />
+          <ArrowsUpDownIcon class="h-4 w-4" />
           {{ reorder.dirty.value ? $t('dns.rules.reorder.save') : $t('dns.rules.reorder.done') }}
         </Button>
       </template>
@@ -622,7 +625,7 @@ onMounted(() => {
         @click="reorder.start()"
         variant="secondary"
       >
-        <ArrowsUpDownIcon class="h-5 w-5 mr-2" />
+        <ArrowsUpDownIcon class="h-4 w-4" />
         {{ $t('dns.rules.reorder.start') }}
       </Button>
 
@@ -633,15 +636,16 @@ onMounted(() => {
         @click="showParallelModal = true"
         variant="secondary"
       >
-        <BoltIcon class="h-5 w-5 mr-2" />
+        <BoltIcon class="h-4 w-4" />
         {{ $t('dns.rules.parallel.add') }}
       </Button>
 
       <Button @click="openAddRuleModal" variant="primary">
-        <PlusIcon class="h-5 w-5 mr-2" />
+        <PlusIcon class="h-4 w-4" />
         {{ $t('dns.rules.add') }}
       </Button>
-    </div>
+      </div>
+    </header>
 
     <p v-if="reorder.enabled.value" class="mb-2 text-xs text-gray-500 dark:text-gray-400">
       {{ $t('dns.rules.reorder.hint') }}
@@ -651,7 +655,7 @@ onMounted(() => {
     </p>
 
     <!-- DNS Rules Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-surface shadow-surface overflow-hidden">
+    <div class="table-surface">
       <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0" transition>
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.rules.empty') }}</p>
@@ -708,14 +712,13 @@ onMounted(() => {
               <!-- A respond with nothing to answer from does not fall through:
                    sing-box fails the query. Worth a loud marker, because the
                    symptom appears nowhere near this list. -->
-              <span
+              <StatusIndicator
                 v-if="orphanRespondIndices.has(index)"
-                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-pill bg-red-100 dark:bg-red-900/40 text-[10px] font-medium text-red-700 dark:text-red-300"
+                variant="danger"
                 :title="$t('dns.rules.parallel.orphanHint')"
               >
-                <ExclamationTriangleIcon class="h-3 w-3" />
                 {{ $t('dns.rules.parallel.orphan') }}
-              </span>
+              </StatusIndicator>
             </div>
           </td>
           <td>
@@ -730,12 +733,8 @@ onMounted(() => {
             <!-- Hidden in reorder mode on purpose: both are index-addressed,
                  and the indices are exactly what is in motion. -->
             <div v-if="!reorder.enabled.value" class="flex items-center justify-end gap-1">
-              <Button @click="openEditRuleModal(index, rule)" variant="ghost" size="sm" action>
-                <PencilIcon class="h-4 w-4" />
-              </Button>
-              <Button @click="openDeleteConfirm(index)" variant="ghost" size="sm" action class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                <TrashIcon class="h-4 w-4" />
-              </Button>
+              <IconButton action="edit" @click="openEditRuleModal(index, rule)" />
+              <IconButton action="delete" @click="openDeleteConfirm(index)" />
             </div>
           </td>
         </tr>
@@ -743,7 +742,7 @@ onMounted(() => {
     </div>
 
     <!-- Add/Edit DNS Rule Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showRuleModal"
       @update:visible="(v: boolean) => { if (!v) closeRuleModal() }"
       :header="isEditMode ? $t('dns.rules.modal.edit') : $t('dns.rules.modal.add')"
@@ -850,7 +849,7 @@ onMounted(() => {
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
-    </Dialog>
+    </ContextPanel>
 
     <DNSParallelGroupDialog
       v-model:visible="showParallelModal"
@@ -861,7 +860,7 @@ onMounted(() => {
     />
 
     <!-- Delete Confirmation Modal -->
-    <Dialog
+    <ContextPanel
       :visible="showDeleteConfirm"
       @update:visible="(v: boolean) => { if (!v) closeDeleteConfirm() }"
       :header="$t('dns.rules.del.title')"
@@ -874,10 +873,8 @@ onMounted(() => {
 
       <template #footer>
         <Button @click="closeDeleteConfirm" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleDeleteRule" variant="danger" :disabled="loading">
-          {{ $t('common.delete') }}
-        </Button>
+        <IconButton action="delete" @click="handleDeleteRule" :disabled="loading" />
       </template>
-    </Dialog>
+    </ContextPanel>
   </div>
 </template>

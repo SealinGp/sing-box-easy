@@ -10,13 +10,14 @@
  * mouse and is unavailable on touch and to a keyboard, so each chip also
  * carries ‹ › buttons.
  */
-import { computed, ref } from 'vue'
-import { Dialog } from '../volt'
+import { computed, nextTick, ref, watch } from 'vue'
+import { Popover } from '../volt'
 import Button from './Button.vue'
 import { ALL_COLUMNS, moveColumn, placeColumn, type ColumnKey, type TableSettings } from '../utils/connectionsTable'
 
 const props = defineProps<{
   visible: boolean
+  anchor: HTMLElement | null
   settings: TableSettings
   /** Source IPs seen this session, for the label editor. */
   sources: string[]
@@ -31,6 +32,12 @@ const emit = defineEmits<{
 const shown = computed({
   get: () => props.visible,
   set: (value: boolean) => emit('update:visible', value),
+})
+const panel = ref<InstanceType<typeof Popover> | null>(null)
+watch(shown, async (visible) => {
+  if (!visible) { panel.value?.hide(); return }
+  await nextTick()
+  if (shown.value && props.anchor) panel.value?.showAt(props.anchor)
 })
 
 const available = computed(() => ALL_COLUMNS.filter((key) => !props.settings.columns.includes(key)))
@@ -60,7 +67,8 @@ const setLabel = (ip: string, value: string) => {
 </script>
 
 <template>
-  <Dialog v-model:visible="shown" :header="$t('connections.settings.title')" modal class="w-full max-w-xl">
+  <Popover ref="panel" :aria-label="$t('connections.settings.title')" class="connection-settings-popover" @hide="shown = false">
+    <h3 class="mb-4 text-lg font-semibold">{{ $t('connections.settings.title') }}</h3>
     <div class="space-y-4 text-sm">
       <section>
         <h4 class="mb-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">{{ $t('connections.settings.shown') }}</h4>
@@ -131,14 +139,15 @@ const setLabel = (ip: string, value: string) => {
       </section>
     </div>
 
-    <template #footer>
+    <div class="mt-4 flex justify-end gap-2 border-t border-border pt-3">
       <Button variant="secondary" @click="emit('reset')">{{ $t('connections.settings.reset') }}</Button>
       <Button @click="shown = false">{{ $t('connections.settings.done') }}</Button>
-    </template>
-  </Dialog>
+    </div>
+  </Popover>
 </template>
 
 <style scoped>
+.connection-settings-popover { width: min(36rem, calc(100vw - 2rem)); }
 .chip-btn {
   border-radius: 4px;
   padding: 2px 6px;
