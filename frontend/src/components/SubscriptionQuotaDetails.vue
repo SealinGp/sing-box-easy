@@ -27,10 +27,10 @@ const usagePercent = computed(() =>
 /** Quota turns amber past 75% and red past 90%, before it runs out. */
 const usageBarClass = computed(() => {
   const ratio = plan.usedRatio
-  if (ratio === null) return 'bg-primary-600'
+  if (ratio === null) return 'bg-teal-500 dark:bg-teal-400'
   if (ratio >= 0.9) return 'bg-red-500'
   if (ratio >= 0.75) return 'bg-amber-500'
-  return 'bg-primary-600'
+  return 'bg-teal-500 dark:bg-teal-400'
 })
 
 const extrasText = computed(() => formatPlanExtras(plan.extras))
@@ -123,7 +123,7 @@ onBeforeUnmount(hideTooltip)
         :aria-describedby="activeTooltip === 'quota' ? quotaTooltipId : undefined"
       >
         <div
-          class="quota-fill absolute inset-y-0 left-0 overflow-hidden opacity-25 transition-[width] duration-300 dark:opacity-35"
+          class="quota-fill absolute inset-y-0 left-0 overflow-hidden opacity-40 transition-[width] duration-300 dark:opacity-45"
           :class="usageBarClass"
           :style="{ width: `${usagePercent}%` }"
           aria-hidden="true"

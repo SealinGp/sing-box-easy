@@ -11,6 +11,8 @@ interface Tab {
 
 const props = defineProps<{
   tabs: Tab[]
+  /** The sidebar already exposes these section routes on desktop. */
+  sidebarNavigation?: boolean
 }>()
 
 const route = useRoute()
@@ -30,7 +32,7 @@ const isActiveTab = (path: string) => {
 <template>
   <div class="page-shell space-y-5">
     <!-- Keep the navigation separate from the page's heading and actions. -->
-    <div class="border-b border-gray-200 dark:border-gray-700">
+    <div class="border-b border-gray-200 dark:border-gray-700" :class="{ 'sidebar-section-tabs': sidebarNavigation }">
       <nav ref="nav" class="tab-navigation -mb-px flex gap-4 overflow-x-auto">
         <span ref="indicator" class="nav-active-indicator tab-active-indicator" aria-hidden="true" />
         <RouterLink
@@ -56,3 +58,11 @@ const isActiveTab = (path: string) => {
     </RouterView>
   </div>
 </template>
+
+<style scoped>
+/* Follow the shell's actual layout, including mobile and forced topbar mode.
+ * Keep the RouterView mounted when the viewport/layout changes. */
+:global(.dashboard-shell:not(.horizontal-shell) .sidebar-section-tabs) {
+  display: none;
+}
+</style>

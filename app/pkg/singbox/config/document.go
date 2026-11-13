@@ -198,6 +198,15 @@ func (m *Manager) SaveDocument(ctx context.Context, document ConfigDocument) err
 }
 
 func (m *Manager) saveDocumentLocked(ctx context.Context, document ConfigDocument) error {
+	if m.writeBarrier != nil {
+		current, err := os.ReadFile(m.configPath)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if err := m.writeBarrier(current); err != nil {
+			return err
+		}
+	}
 	validated, err := NewConfigDocument(document.Raw)
 	if err != nil {
 		return err

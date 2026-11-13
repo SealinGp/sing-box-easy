@@ -54,7 +54,8 @@ type Manager struct {
 	// mutationMu protects the single staging path and serializes atomic config
 	// replacement. Validation also uses that path, so it participates in the
 	// same lock even though it does not modify the active file.
-	mutationMu sync.Mutex
+	mutationMu   sync.Mutex
+	writeBarrier func([]byte) error
 
 	// keepVersions (how many historical versions to retain) is read by
 	// snapshotCurrent on config-save goroutines and written by SetKeepVersions

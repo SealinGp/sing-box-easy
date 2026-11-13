@@ -141,6 +141,13 @@ watch(() => props.loading, (loading) => {
   const heights = [...region.value.querySelectorAll('tbody tr')].slice(0, 12).map(row => row.getBoundingClientRect().height)
   if (heights.length) loadingRows.value = heights
 }, { flush: 'pre' })
+// On an initial load there was no region to measure in the pre-update watcher.
+// Read the rendered custom header as soon as its ref exists, before first paint,
+// so a six-column table does not start with the four-column fallback skeleton.
+watch(region, (element) => {
+  if (!interfaceMotion || !element || !props.loading) return
+  loadingWidths.value = [...element.querySelectorAll('thead th')].map(cell => cell.getBoundingClientRect().width)
+}, { flush: 'post' })
 const skeletonColumns = computed(() => loadingWidths.value.length || props.columns?.length || 4)
 </script>
 

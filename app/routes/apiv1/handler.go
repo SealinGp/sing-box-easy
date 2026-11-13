@@ -5,11 +5,12 @@ import (
 
 	"github.com/SealinGp/sing-box-easy/app/bootstrap"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
+	"github.com/SealinGp/sing-box-easy/app/pkg/proxies"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
-	"github.com/SealinGp/sing-box-easy/app/pkg/proxies"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
+	"github.com/SealinGp/sing-box-easy/app/pkg/trafficpolicy"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
 	"github.com/SealinGp/sing-box-easy/app/pkg/githubauth"
@@ -27,6 +28,7 @@ import (
 
 // Handler holds all dependencies for v1.12.12 API handlers
 type Handler struct {
+	trafficPolicies       *trafficpolicy.Service
 	system                *system.Service
 	installationModule    *install.Service
 	trafficServiceModule  *traffic.Service
@@ -53,6 +55,7 @@ type Handler struct {
 
 func NewHandler(m *bootstrap.Modules) *Handler {
 	return &Handler{
+		trafficPolicies:       m.TrafficPolicies,
 		system:                m.System,
 		installationModule:    m.Installation,
 		trafficServiceModule:  m.TrafficService,

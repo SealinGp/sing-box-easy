@@ -31,6 +31,11 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	admin.POST("/users", handler.CreateUser)
 	admin.DELETE("/users/:id", handler.DeleteUser)
 
+	auth.GET("/traffic-policies", handler.GetTrafficPolicies)
+	auth.POST("/traffic-policies/plan", handler.PlanTrafficPolicies)
+	auth.POST("/traffic-policies/commit", handler.CommitTrafficPolicies)
+	auth.POST("/traffic-policies/impact", handler.TrafficPolicyImpact)
+
 	// Configuration Management APIs
 	auth.GET("/config", handler.GetConfig)
 	auth.GET("/config/raw", handler.GetRawConfig)

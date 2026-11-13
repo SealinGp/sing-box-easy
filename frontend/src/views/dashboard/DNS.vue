@@ -10,6 +10,7 @@ const { t } = useI18n()
 // different tab bar — reads as a bug. The old path still redirects, so
 // bookmarks keep working.
 const tabs = computed(() => [
+ { path: '/dashboard/dns/groups', label: t('lab.resolverGroups') },
   { path: '/dashboard/dns/servers', label: t('dns.tabs.servers') },
   { path: '/dashboard/dns/rules', label: t('dns.tabs.rules') },
   { path: '/dashboard/dns/settings', label: t('dns.tabs.settings') },
@@ -17,5 +18,5 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <TabNav :tabs="tabs" />
+  <TabNav :tabs="tabs" sidebar-navigation />
 </template>

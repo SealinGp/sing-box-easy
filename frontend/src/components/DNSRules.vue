@@ -6,6 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSRule } from '../types/api'
 import Button from './Button.vue'
+import Card from './Card.vue'
 import { ContextPanel, Select } from '../volt'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
@@ -602,7 +603,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="space-y-4 pt-2">
+    <Card>
     <header class="section-toolbar">
       <h1>{{ $t('dns.rules.heading') }}</h1>
       <div class="section-toolbar-actions">
@@ -655,7 +657,7 @@ onMounted(() => {
     </p>
 
     <!-- DNS Rules Table -->
-    <div class="table-surface">
+    <div class="overflow-hidden rounded-table">
       <Table :loading="loading && dnsRules.length === 0" :empty="dnsRules.length === 0" transition>
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.rules.empty') }}</p>
@@ -740,6 +742,8 @@ onMounted(() => {
         </tr>
       </Table>
     </div>
+
+    </Card>
 
     <!-- Add/Edit DNS Rule Modal -->
     <ContextPanel

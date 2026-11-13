@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Popover from '../../volt/Popover.vue'
+import { trafficPolicyService, type ManagedPolicy } from '../../services/trafficPolicy'
 import StatusIndicator from '../../components/StatusIndicator.vue'
 import IconButton from '../../components/IconButton.vue'
 import { ref, onMounted, computed, onUnmounted } from 'vue'
@@ -18,6 +20,20 @@ const configContent = ref('')
 const originalContent = ref('')
 const loading = ref(false)
 const saving = ref(false)
+const rawImpactPanel = ref<InstanceType<typeof Popover>>()
+const saveAnchor = ref<HTMLElement>()
+const rawReview = ref<{revision:string;policies:ManagedPolicy[];content:string}>()
+async function saveReviewed() {
+ if (!rawReview.value || saving.value) return
+ if (rawReview.value.content !== configContent.value) { rawImpactPanel.value?.hide();rawReview.value=undefined;await saveConfig();return }
+ saving.value=true
+ try {
+ await configService.saveConfig(JSON.parse(rawReview.value.content),rawReview.value.revision)
+ originalContent.value=rawReview.value.content;hasChanges.value=false;rawImpactPanel.value?.hide();rawReview.value=undefined
+ notify.success(t('config.toast.savedOk'))
+ } catch(e){notify.apiError(e,t('config.toast.saveFailed'));rawReview.value=undefined;rawImpactPanel.value?.hide()}
+ finally {saving.value=false}
+}
 const validating = ref(false)
 const restarting = ref(false)
 const hasChanges = ref(false)
@@ -102,7 +118,13 @@ const saveConfig = async () => {
   saving.value = true
   try {
     const config = JSON.parse(configContent.value) as SingBoxConfig
-    await configService.saveConfig(config)
+    const impact = await trafficPolicyService.impact(config)
+    if (impact.policies.length) {
+      rawReview.value={...impact,content:configContent.value}
+      if (saveAnchor.value) rawImpactPanel.value?.showAt(saveAnchor.value)
+      return
+    }
+    await configService.saveConfig(config,impact.revision)
     originalContent.value = configContent.value
     hasChanges.value = false
     notify.success(t('config.toast.savedOk'))
@@ -382,6 +404,16 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <Popover ref="rawImpactPanel" panel-class="w-[min(34rem,calc(100vw-2rem))]">
+    <div v-if="rawReview" class="space-y-4">
+      <h2 class="font-semibold">{{ t('managed.rawImpact') }}</h2>
+      <p class="text-sm text-text-secondary">{{ t('managed.rawImpactHelp') }}</p>
+      <ul class="space-y-2 text-sm"><li v-for="p in rawReview.policies" :key="p.id">{{ p.name }} · {{ t('managed.'+p.status) }}</li></ul>
+      <RouterLink to="/dashboard/route/policies" class="text-sm text-primary underline">{{ t('lab.trafficPolicies') }}</RouterLink>
+      <div class="flex justify-end gap-3"><button type="button" :disabled="saving" @click="rawImpactPanel?.hide()">{{ t('managed.cancel') }}</button><button type="button" class="rounded-control bg-primary px-3 py-2 text-on-primary" :disabled="saving" @click="saveReviewed">{{ t('managed.saveRaw') }}</button></div>
+    </div>
+  </Popover>
+
   <!--
     Outer wrapper is pinned to 100vh and laid out as a single flex column so
     the editor child can claim all the leftover viewport height instead of
@@ -484,6 +516,7 @@ onUnmounted(() => {
           </button>
 
           <button
+            ref="saveAnchor"
             @click="saveConfig"
             :disabled="loading || saving || !hasChanges"
             class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-control hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center gap-2"

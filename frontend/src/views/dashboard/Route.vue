@@ -7,6 +7,7 @@ const { t } = useI18n()
 
 // Tabs configuration
 const tabs = computed(() => [
+ { path: '/dashboard/route/policies', label: t('lab.trafficPolicies') },
   { path: '/dashboard/route/rules', label: t('route.tabs.rules') },
   { path: '/dashboard/route/rule-sets', label: t('route.tabs.ruleSets') },
   { path: '/dashboard/route/final-policy', label: t('route.tabs.finalPolicy') },
@@ -14,5 +15,5 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <TabNav :tabs="tabs" />
+  <TabNav :tabs="tabs" sidebar-navigation />
 </template>

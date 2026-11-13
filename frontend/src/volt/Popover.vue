@@ -121,7 +121,11 @@ function alignWithinViewport() {
   if (!root) return
   const bounds = root.getBoundingClientRect()
   const left = Math.max(16, Math.min(bounds.left, window.innerWidth - bounds.width - 16))
+  // A tab switch can make an already-open panel taller. PrimeVue aligns to
+  // the anchor again, but may leave its new bottom outside the viewport.
+  const top = Math.max(16, Math.min(bounds.top, window.innerHeight - bounds.height - 16))
   root.style.left = `${left + window.scrollX}px`
+  root.style.top = `${top + window.scrollY}px`
 }
 defineExpose({ toggle, showAt, hide })
 </script>

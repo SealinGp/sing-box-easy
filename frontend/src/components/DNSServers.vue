@@ -6,6 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSServer } from '../types/api'
 import Button from './Button.vue'
+import Card from './Card.vue'
 import Input from './Input.vue'
 import Badge from './Badge.vue'
 import Table from './Table.vue'
@@ -256,7 +257,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="space-y-4 pt-2">
+    <Card>
     <header class="section-toolbar">
       <h1>{{ $t('dns.servers.heading') }}</h1>
       <div class="section-toolbar-actions">
@@ -269,7 +271,7 @@ onMounted(() => {
     </header>
 
     <!-- DNS Servers Table -->
-    <div class="table-surface">
+    <div class="overflow-hidden rounded-table">
       <Table :loading="loading && dnsServers.length === 0" :empty="dnsServers.length === 0">
         <template #empty>
           <p class="text-gray-500 dark:text-gray-500 mb-3">{{ $t('dns.servers.empty') }}</p>
@@ -328,6 +330,8 @@ onMounted(() => {
         </tr>
       </Table>
     </div>
+
+    </Card>
 
     <!-- Add/Edit DNS Server Modal -->
     <ContextPanel

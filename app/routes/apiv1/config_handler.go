@@ -34,7 +34,13 @@ func (h *Handler) GetRawConfig(ctx context.Context, c *app.RequestContext) {
 
 // UpdateConfig saves the provided configuration
 func (h *Handler) UpdateConfig(ctx context.Context, c *app.RequestContext) {
-	if err := h.configDocument().Save(ctx, c.Request.Body()); err != nil {
+	save := func() error {
+		if h.trafficPolicies != nil {
+			return h.trafficPolicies.SaveRaw(ctx, c.Request.Body(), string(c.GetHeader("X-Managed-Revision")))
+		}
+		return h.configDocument().Save(ctx, c.Request.Body())
+	}
+	if err := save(); err != nil {
 		respondOperationError(ctx, c, err)
 		return
 	}

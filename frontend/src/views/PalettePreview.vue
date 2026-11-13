@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t, locale } = useI18n()
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChartBarIcon, ArrowsRightLeftIcon, GlobeAltIcon, Cog6ToothIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
@@ -28,8 +31,8 @@ const rows = ref([
 ])
 const visibleRows = computed(() => rows.value.filter(row => row.name.toLowerCase().includes(query.value.toLowerCase()) && (scope.value !== 'Ready only' || row.ready)))
 const navigation = [
-  { label: 'Overview', icon: ChartBarIcon }, { label: 'Outbounds', icon: ArrowsRightLeftIcon },
-  { label: 'DNS', icon: GlobeAltIcon }, { label: 'Settings', icon: Cog6ToothIcon },
+  { value: 'Overview', get label() { return t('lab.overview') }, icon: ChartBarIcon }, { value: 'Outbounds', get label() { return t('lab.outbounds') }, icon: ArrowsRightLeftIcon },
+  { value: 'DNS', label: 'DNS', icon: GlobeAltIcon }, { value: 'Settings', get label() { return t('lab.settings') }, icon: Cog6ToothIcon },
 ]
 let timer: ReturnType<typeof setTimeout> | undefined
 const previousStyles = new Map<string, string>()
@@ -48,18 +51,19 @@ function applyPalette() {
 watch(palette, applyPalette, { immediate: true })
 function onMessage(event: MessageEvent) {
   if (event.source !== window.parent || event.origin !== window.location.origin) return
+  if (event.data?.locale === 'en' || event.data?.locale === 'zh') locale.value = event.data.locale
   if (event.data?.type === 'sbe:palette' && labPalettes.some(option => option.id === event.data.id)) palette.value = getLabPalette(event.data.id)
 }
 function refresh() {
   loading.value = true
   clearTimeout(timer)
-  timer = setTimeout(() => { loading.value = false; feedback.value = 'Sample nodes refreshed' }, 1000)
+  timer = setTimeout(() => { loading.value = false; feedback.value = t('lab.sampleNodesRefreshed') }, 1000)
 }
 function save() {
   if (!tag.value.trim()) return
   if (editing.value) rows.value = rows.value.map(row => row.name === originalName.value ? { ...row, name: tag.value.trim(), type: protocol.value } : row)
   else rows.value = [...rows.value, { name: tag.value.trim(), type: protocol.value, endpoint: 'new.example.com', delay: 52, ready: true }]
-  feedback.value = editing.value ? 'Sample changes saved' : 'Sample node added'
+  feedback.value = editing.value ? t('lab.sampleChangesSaved') : t('lab.sampleNodeAdded')
   editor.value?.hide()
 }
 onMounted(() => {
@@ -78,33 +82,34 @@ onBeforeUnmount(() => {
   if (previousMarker === null) document.documentElement.removeAttribute('data-palette-preview')
   else document.documentElement.setAttribute('data-palette-preview', previousMarker)
 })
+
 </script>
 
 <template>
   <div class="palette-workspace liquid-app" :data-palette="palette.id">
     <aside class="preview-navigation">
-      <div class="preview-brand"><img src="/logo.svg" alt="" width="32" height="32" /><span>Sing Box Easy<small>Network workspace</small></span></div>
-      <p class="preview-group-label">Workspace</p>
-      <nav aria-label="Sample workspace">
-        <button v-for="item in navigation" :key="item.label" type="button" :aria-current="page === item.label ? 'page' : undefined" @click="page = item.label; feedback = ''">
+      <div class="preview-brand"><img src="/logo.svg" alt="" width="32" height="32" /><span>Sing Box Easy<small>{{ t('lab.networkWorkspace') }}</small></span></div>
+      <p class="preview-group-label">{{ t('lab.workspace') }}</p>
+      <nav :aria-label="t('lab.sampleWorkspace')">
+        <button v-for="item in navigation" :key="item.label" type="button" :aria-current="page === item.value ? 'page' : undefined" @click="page = item.value; feedback = ''">
           <component :is="item.icon" class="h-4 w-4 shrink-0" aria-hidden="true" /><span>{{ item.label }}</span>
         </button>
       </nav>
-      <div class="preview-nav-footer"><span class="preview-online-dot" /> sing-box <span class="ml-auto">Running</span></div>
+      <div class="preview-nav-footer"><span class="preview-online-dot" /> sing-box <span class="ml-auto">{{ t('lab.running') }}</span></div>
     </aside>
     <main class="preview-main">
       <header class="preview-toolbar">
-        <div><p class="preview-eyebrow">Network / {{ page }}</p><h1>{{ page }}</h1></div>
-        <Select v-model="scope" aria-label="Node scope" :options="['All nodes', 'Ready only']" class="w-32" />
+        <div><p class="preview-eyebrow">{{ t('lab.network') }} {{ navigation.find(item => item.value === page)?.label }}</p><h1>{{ navigation.find(item => item.value === page)?.label }}</h1></div>
+        <Select v-model="scope" :aria-label="t('lab.nodeScope')" :options="[{ label:t('lab.allNodes'), value:'All nodes' }, { label:t('lab.readyOnly'), value:'Ready only' }]" option-label="label" option-value="value" class="w-32" />
       </header>
       <div class="preview-metrics">
-        <Card><span class="metric-label">Active connections</span><p class="metric-value">128 <span class="metric-trend">+12</span></p><p class="metric-caption">Across 3 sample nodes</p></Card>
-        <Card><span class="metric-label">Average latency</span><p class="metric-value">46 <span class="metric-unit">ms</span></p><p class="metric-caption">Stable over the last hour</p></Card>
-        <Card><span class="metric-label">Traffic today</span><p class="metric-value">8.4 <span class="metric-unit">GB</span></p><p class="metric-caption">6.2 GB down · 2.2 GB up</p></Card>
+        <Card><span class="metric-label">{{ t('lab.activeConnections') }}</span><p class="metric-value">128 <span class="metric-trend">+12</span></p><p class="metric-caption">{{ t('lab.across3SampleNodes') }}</p></Card>
+        <Card><span class="metric-label">{{ t('lab.averageLatency') }}</span><p class="metric-value">46 <span class="metric-unit">ms</span></p><p class="metric-caption">{{ t('lab.stableOverTheLastHour') }}</p></Card>
+        <Card><span class="metric-label">{{ t('lab.trafficToday') }}</span><p class="metric-value">8.4 <span class="metric-unit">GB</span></p><p class="metric-caption">{{ t('lab.62GbDown22GbUp') }}</p></Card>
       </div>
       <Card class="traffic-card">
-        <div class="traffic-heading"><h2>Traffic</h2><span><i class="chart-key" />Download <i class="chart-key secondary" />Upload</span><strong>38 MB/s</strong></div>
-        <svg viewBox="0 0 800 90" preserveAspectRatio="none" class="traffic-chart" role="img" aria-label="Sample download and upload traffic over one hour">
+        <div class="traffic-heading"><h2>{{ t('lab.traffic') }}</h2><span><i class="chart-key" />{{ t('lab.download') }} <i class="chart-key secondary" />{{ t('lab.upload') }}</span><strong>38 MB/s</strong></div>
+        <svg viewBox="0 0 800 90" preserveAspectRatio="none" class="traffic-chart" role="img" :aria-label="t('lab.sampleDownloadAndUploadTrafficOverOneHour')">
           <path d="M0 20H800M0 45H800M0 70H800" stroke="var(--color-border)" stroke-width=".7" />
           <path d="M0 62 30 59 60 64 90 45 120 49 150 37 180 44 210 31 240 36 270 20 300 30 330 25 360 47 390 41 420 45 450 29 480 34 510 15 540 23 570 18 600 35 630 29 660 14 690 20 720 9 750 19 800 13" fill="none" stroke="var(--color-primary)" stroke-width="2.5" stroke-linejoin="round" />
           <path d="M0 78 40 74 80 77 120 65 160 71 200 59 240 65 280 51 320 60 360 67 400 59 440 64 480 51 520 56 560 47 600 61 640 48 680 55 720 43 760 51 800 45" fill="none" stroke="var(--palette-warm)" stroke-width="2" stroke-linejoin="round" />
@@ -112,27 +117,27 @@ onBeforeUnmount(() => {
         <div class="chart-times"><span>09:00</span><span>09:30</span><span>10:00</span></div>
       </Card>
       <Card class="nodes-card" padding="none">
-        <div class="nodes-heading"><div><h2>{{ page === 'DNS' ? 'Resolver connections' : 'Outbounds' }}</h2><p>Routes available to this workspace</p></div>
-          <Button size="sm" @click="editing = false; tag = ''; editor?.toggle($event)"><PlusIcon class="h-4 w-4" aria-hidden="true" /> Add node</Button>
+        <div class="nodes-heading"><div><h2>{{ page === 'DNS' ? t('lab.resolverConnections') : t('lab.outbounds') }}</h2><p>{{ t('lab.routesAvailableToThisWorkspace') }}</p></div>
+          <Button size="sm" @click="editing = false; tag = ''; editor?.toggle($event)"><PlusIcon class="h-4 w-4" aria-hidden="true" /> {{ t('lab.addNode') }}</Button>
         </div>
-        <div class="nodes-filter"><Input v-model="query" label="Search nodes" placeholder="Name or region" /><Button variant="ghost" size="sm" :loading="loading" @click="refresh"><ArrowPathIcon class="h-4 w-4" aria-hidden="true" /><span class="sr-only">Refresh sample nodes</span></Button></div>
+        <div class="nodes-filter"><Input v-model="query" :label="t('lab.searchNodes')" :placeholder="t('lab.nameOrRegion')" /><Button variant="ghost" size="sm" :loading="loading" @click="refresh"><ArrowPathIcon class="h-4 w-4" aria-hidden="true" /><span class="sr-only">{{ t('lab.refreshSampleNodes') }}</span></Button></div>
         <Table max-height="none" :loading="loading" :empty="visibleRows.length === 0" table-class="min-w-[38rem]">
-          <template #head><th class="col-select"><label class="table-checkbox"><input type="checkbox" aria-label="Select all sample nodes" :checked="selected.length === rows.length && rows.length > 0" :indeterminate="selected.length > 0 && selected.length < rows.length" @change="selected = ($event.target as HTMLInputElement).checked ? rows.map(row => row.name) : []" /></label></th><th>Name</th><th>Status</th><th>Latency</th><th class="col-actions">Actions</th></template>
-          <template #empty><p>No matching sample nodes</p><Button variant="ghost" size="sm" @click="query = ''; scope = 'All nodes'">Clear filters</Button></template>
+          <template #head><th class="col-select"><label class="table-checkbox"><input type="checkbox" :aria-label="t('lab.selectAllSampleNodes')" :checked="selected.length === rows.length && rows.length > 0" :indeterminate="selected.length > 0 && selected.length < rows.length" @change="selected = ($event.target as HTMLInputElement).checked ? rows.map(row => row.name) : []" /></label></th><th>{{ t('lab.name') }}</th><th>{{ t('lab.status') }}</th><th>{{ t('lab.latency') }}</th><th class="col-actions">{{ t('lab.actions') }}</th></template>
+          <template #empty><p>{{ t('lab.noMatchingSampleNodes') }}</p><Button variant="ghost" size="sm" @click="query = ''; scope = 'All nodes'">{{ t('lab.clearFilters') }}</Button></template>
           <tr v-for="row in visibleRows" :key="row.name" :data-selected="selected.includes(row.name)">
             <td class="col-select"><label class="table-checkbox"><input v-model="selected" type="checkbox" :value="row.name" :aria-label="`Select ${row.name}`" /></label></td>
             <td><p class="node-name">{{ row.name }}</p><span class="node-detail">{{ row.type }} · {{ row.endpoint }}</span></td>
-            <td><StatusIndicator :variant="row.ready ? 'success' : 'warning'">{{ row.ready ? 'Ready' : 'Pending' }}</StatusIndicator></td>
+            <td><StatusIndicator :variant="row.ready ? 'success' : 'warning'">{{ row.ready ? t('lab.ready') : t('lab.pending') }}</StatusIndicator></td>
             <td class="font-mono">{{ row.delay === null ? '—' : `${row.delay} ms` }}</td>
-            <td class="col-actions"><div class="flex items-center justify-end gap-1"><IconButton action="edit" :label="`Edit ${row.name}`" @click="editing = true; originalName = row.name; tag = row.name; protocol = row.type; editor?.toggle($event)" /><PopConfirm message="Remove this sample node?" :target="row.name" confirm-label="Remove sample" @confirm="rows = rows.filter(item => item !== row); feedback = 'Sample node removed'" /></div></td>
+            <td class="col-actions"><div class="flex items-center justify-end gap-1"><IconButton action="edit" :label="t('lab.editNamed', { name: row.name })" @click="editing = true; originalName = row.name; tag = row.name; protocol = row.type; editor?.toggle($event)" /><PopConfirm message="Remove this sample node?" :target="row.name" :confirm-label="t('lab.removeSample')" @confirm="rows = rows.filter(item => item !== row); feedback = t('lab.sampleNodeRemoved')" /></div></td>
           </tr>
         </Table>
-        <div class="nodes-footer"><StatusIndicator variant="success">Configuration valid</StatusIndicator><span>Last checked just now</span></div>
+        <div class="nodes-footer"><StatusIndicator variant="success">{{ t('lab.configurationValid') }}</StatusIndicator><span>{{ t('lab.lastCheckedJustNow') }}</span></div>
       </Card>
-      <div class="preview-bottom"><p role="status">{{ feedback || 'Sample workspace · Changes stay in this preview' }}</p><span>{{ palette.name }} / {{ palette.mode }}</span></div>
+      <div class="preview-bottom"><p role="status">{{ feedback || t('lab.sampleWorkspaceChangesStayInThisPreview') }}</p><span>{{ palette.name }} / {{ t('lab.' + palette.mode) }}</span></div>
     </main>
-    <Popover ref="editor" :aria-label="editing ? 'Edit sample node' : 'Add sample node'">
-      <form class="space-y-4" @submit.prevent="save"><h2 class="font-semibold">{{ editing ? 'Edit sample node' : 'Add sample node' }}</h2><Input v-model="tag" label="Node name" required /><div><label id="palette-protocol-label" for="palette-protocol" class="mb-1 block text-sm font-medium">Protocol</label><Select v-model="protocol" input-id="palette-protocol" aria-labelledby="palette-protocol-label" :options="['VLESS', 'Trojan', 'SOCKS', 'Shadowsocks']" filter filter-placeholder="Search protocols" class="w-full" /></div><div class="flex justify-end gap-2"><Button variant="ghost" @click="editor?.hide()">Cancel</Button><Button type="submit">Save sample</Button></div></form>
+    <Popover ref="editor" :aria-label="editing ? t('lab.editSampleNode') : t('lab.addSampleNode')">
+      <form class="space-y-4" @submit.prevent="save"><h2 class="font-semibold">{{ editing ? t('lab.editSampleNode') : t('lab.addSampleNode') }}</h2><Input v-model="tag" :label="t('lab.nodeName')" required /><div><label id="palette-protocol-label" for="palette-protocol" class="mb-1 block text-sm font-medium">{{ t('lab.protocol') }}</label><Select v-model="protocol" input-id="palette-protocol" aria-labelledby="palette-protocol-label" :options="['VLESS', 'Trojan', 'SOCKS', 'Shadowsocks']" filter :filter-placeholder="t('lab.searchProtocols')" class="w-full" /></div><div class="flex justify-end gap-2"><Button variant="ghost" @click="editor?.hide()">{{ t('lab.cancel') }}</Button><Button type="submit">{{ t('lab.saveSample') }}</Button></div></form>
     </Popover>
   </div>
 </template>

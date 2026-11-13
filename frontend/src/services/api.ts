@@ -141,8 +141,8 @@ export class ApiService {
     return this.client.post<T>(url, data, config)
   }
 
-  put<T>(url: string, data?: unknown): Promise<{ data: T }> {
-    return this.client.put<T>(url, data)
+  put<T>(url: string, data?: unknown, config?: { headers?: Record<string, string> }): Promise<{ data: T }> {
+    return this.client.put<T>(url, data, config)
   }
 
   delete<T>(url: string, data?: unknown): Promise<{ data: T }> {

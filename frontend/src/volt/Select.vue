@@ -1,5 +1,6 @@
 <template>
     <Select
+        ref="select"
         unstyled
         :pt="theme"
         :ptOptions="{
@@ -15,11 +16,31 @@
 <script setup lang="ts">
 import Select, { type SelectPassThroughOptions, type SelectProps } from 'primevue/select';
 import { ptViewMerge } from './utils';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
-interface Props extends /* @vue-ignore */ SelectProps {}
-defineProps<Props>();
+interface Props extends /* @vue-ignore */ SelectProps {
+    filterInputId?: string;
+    filterInputLabel?: string;
+    filterKeydown?: (event: KeyboardEvent) => void;
+}
+const props = defineProps<Props>();
+const select = ref<InstanceType<typeof Select>>();
+// Allows footer actions to dismiss the picker before opening a contextual form.
+let overlayActive = false;
+let closeWaiters: (() => void)[] = [];
+function afterLeave() {
+    overlayActive = false;
+    closeWaiters.splice(0).forEach(resolve => resolve());
+}
+function hideAndWait(): Promise<void> {
+    if (!overlayActive) { select.value?.hide(); return Promise.resolve(); }
+    const closed = new Promise<void>(resolve => closeWaiters.push(resolve));
+    select.value?.hide();
+    return closed;
+}
+onBeforeUnmount(afterLeave);
+defineExpose({ hide: () => select.value?.hide(), hideAndWait });
 
 const interfaceMotion = useInterfaceMotion();
 const baseTheme: SelectPassThroughOptions = {
@@ -63,7 +84,11 @@ const baseTheme: SelectPassThroughOptions = {
         root: `relative`
     },
     pcFilter: {
-        root: `w-full px-3 py-1.5 pr-9 text-sm
+        root: () => ({
+            id: props.filterInputId,
+            "aria-label": props.filterInputLabel,
+            onKeydownCapture: props.filterKeydown,
+            class: `w-full px-3 py-1.5 pr-9 text-sm
             bg-black/[0.03] dark:bg-white/5
             border border-transparent
             rounded-control
@@ -71,6 +96,7 @@ const baseTheme: SelectPassThroughOptions = {
             placeholder:text-gray-400 dark:placeholder:text-gray-500
             focus:outline-none focus:border-[var(--color-primary)]
             transition-colors duration-200`
+        })
     },
     pcFilterIconContainer: {
         root: `absolute top-1/2 right-3 -translate-y-1/2`
@@ -118,6 +144,10 @@ const baseTheme: SelectPassThroughOptions = {
 };
 const theme = computed<SelectPassThroughOptions>(() => ({
     ...baseTheme,
-    transition: interfaceMotion ? popoverMotion : baseTheme.transition,
+    transition: {
+        ...(interfaceMotion ? popoverMotion : baseTheme.transition as object),
+        onBeforeEnter: () => { overlayActive = true; },
+        onAfterLeave: afterLeave,
+    },
 }));
 </script>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t, locale } = useI18n()
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowTopRightOnSquareIcon, MoonIcon, SunIcon } from '@heroicons/vue/24/outline'
@@ -16,22 +19,23 @@ const ready = ref(false)
 const previewUrl = `/lab/palette-preview?palette=${encodeURIComponent(chosen.value)}`
 const colorList = computed(() => palette.value.colors.join(', '))
 const roles = computed(() => [
-  { name: 'Canvas', color: palette.value.canvas }, { name: 'Card', color: palette.value.surface },
-  { name: 'Action', color: palette.value.primary }, { name: 'Accent', color: palette.value.accent },
-  { name: 'Text', color: palette.value.ink },
+  { get name() { return t('lab.canvas') }, color: palette.value.canvas }, { get name() { return t('lab.card') }, color: palette.value.surface },
+  { get name() { return t('lab.action') }, color: palette.value.primary }, { get name() { return t('lab.accent') }, color: palette.value.accent },
+  { get name() { return t('lab.text') }, color: palette.value.ink },
 ])
 const contrast = computed(() => [
-  { name: 'Body / card', value: contrastRatio(palette.value.ink, palette.value.surface) },
-  { name: 'Muted / card', value: contrastRatio(palette.value.muted, palette.value.surface) },
-  { name: 'Button label', value: contrastRatio(palette.value.onPrimary, palette.value.primary) },
+  { get name() { return t('lab.bodyCard') }, value: contrastRatio(palette.value.ink, palette.value.surface) },
+  { get name() { return t('lab.mutedCard') }, value: contrastRatio(palette.value.muted, palette.value.surface) },
+  { get name() { return t('lab.buttonLabel') }, value: contrastRatio(palette.value.onPrimary, palette.value.primary) },
 ])
 function sendPalette() {
-  iframe.value?.contentWindow?.postMessage({ type: 'sbe:palette', id: chosen.value }, window.location.origin)
+  iframe.value?.contentWindow?.postMessage({ type: 'sbe:palette', id: chosen.value, locale: locale.value }, window.location.origin)
 }
 function onMessage(event: MessageEvent) {
   if (event.origin !== window.location.origin || event.source !== iframe.value?.contentWindow) return
   if (event.data?.type === 'sbe:palette-ready') { ready.value = true; sendPalette() }
 }
+watch(locale, sendPalette)
 watch(chosen, () => {
   sendPalette()
   if (route.query.palette !== chosen.value) void router.replace({ query: { ...route.query, palette: chosen.value }, hash: route.hash })
@@ -39,41 +43,42 @@ watch(chosen, () => {
 watch(() => route.query.palette, id => { chosen.value = getLabPalette(id).id })
 onMounted(() => window.addEventListener('message', onMessage))
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
+
 </script>
 
 <template>
   <section id="palettes" aria-labelledby="palette-title" class="palette-studio scroll-mt-4 space-y-4">
     <header class="palette-section-heading">
-      <div><h2 id="palette-title" class="text-lg font-semibold">Color directions</h2><p class="mt-1 text-sm text-text-secondary">One brand, four ways to work. Choose a direction and try the same sample workspace.</p></div>
-      <div class="brand-anchors" aria-label="Fixed logo colors"><span v-for="color in LOGO_COLORS" :key="color"><i :style="{ background: color }" />{{ color }}</span></div>
+      <div><h2 id="palette-title" class="text-lg font-semibold">{{ t('lab.colorDirections') }}</h2><p class="mt-1 text-sm text-text-secondary">{{ t('lab.oneBrandFourWaysToWorkChooseADirectionAnd') }}</p></div>
+      <div class="brand-anchors" :aria-label="t('lab.fixedLogoColors')"><span v-for="color in LOGO_COLORS" :key="color"><i :style="{ background: color }" />{{ color }}</span></div>
     </header>
     <fieldset class="direction-grid">
-      <legend class="sr-only">Choose a palette</legend>
+      <legend class="sr-only">{{ t('lab.chooseAPalette') }}</legend>
       <label v-for="option in labPalettes" :key="option.id" class="direction-card" :class="{ 'is-current': option.id === chosen }"
         :style="{ background: option.surface, color: option.ink, borderColor: option.border, colorScheme: option.mode, '--direction-focus': option.primary }">
-        <div class="direction-heading"><span class="flex items-center gap-2"><input v-model="chosen" type="radio" name="lab-palette" :value="option.id" :aria-label="`${option.name} ${option.mode}`" :style="{ accentColor: option.primary }" /><strong>{{ option.name }}</strong></span><span class="direction-mode" :style="{ color: option.muted }"><SunIcon v-if="option.mode === 'light'" class="h-3.5 w-3.5" aria-hidden="true" /><MoonIcon v-else class="h-3.5 w-3.5" aria-hidden="true" />{{ option.mode }}</span></div>
+        <div class="direction-heading"><span class="flex items-center gap-2"><input v-model="chosen" type="radio" name="lab-palette" :value="option.id" :aria-label="`${option.name} ${option.mode}`" :style="{ accentColor: option.primary }" /><strong>{{ option.name }}</strong></span><span class="direction-mode" :style="{ color: option.muted }"><SunIcon v-if="option.mode === 'light'" class="h-3.5 w-3.5" aria-hidden="true" /><MoonIcon v-else class="h-3.5 w-3.5" aria-hidden="true" />{{ t('lab.' + option.mode) }}</span></div>
         <div class="direction-swatches" aria-hidden="true"><span v-for="color in option.colors" :key="color" :style="{ background: color }" /></div>
-        <p :style="{ color: option.muted }">{{ option.description }}</p>
-        <span v-if="option.recommended" class="direction-recommendation" :style="{ color: option.muted }">Selected for the dashboard</span>
+        <p :style="{ color: option.muted }">{{ t('lab.paletteDescription.' + option.id) }}</p>
+        <span v-if="option.recommended" class="direction-recommendation" :style="{ color: option.muted }">{{ t('lab.selectedForTheDashboard') }}</span>
       </label>
     </fieldset>
     <div class="palette-review-bar">
-      <div aria-live="polite"><strong>{{ palette.name }}</strong><span class="ml-2 text-xs text-text-secondary">{{ palette.mode }} preview</span></div>
-      <div class="flex items-center gap-3"><span class="inline-flex items-center gap-1 text-xs text-text-secondary"><CopyIcon :text="colorList" label="Copy palette hex colors" />Copy colors</span><a :href="coolorsUrl(palette)" target="_blank" rel="noopener noreferrer" class="coolors-link">Open in Coolors<ArrowTopRightOnSquareIcon class="h-3.5 w-3.5" aria-hidden="true" /><span class="sr-only">(opens in a new tab)</span></a></div>
+      <div aria-live="polite"><strong>{{ palette.name }}</strong><span class="ml-2 text-xs text-text-secondary">{{ t('lab.' + palette.mode) }} {{ t('lab.preview') }}</span></div>
+      <div class="flex items-center gap-3"><span class="inline-flex items-center gap-1 text-xs text-text-secondary"><CopyIcon :text="colorList" :label="t('lab.copyPaletteHexColors')" />{{ t('lab.copyColors') }}</span><a :href="coolorsUrl(palette)" target="_blank" rel="noopener noreferrer" class="coolors-link">{{ t('lab.openInCoolors') }}<ArrowTopRightOnSquareIcon class="h-3.5 w-3.5" aria-hidden="true" /><span class="sr-only">{{ t('lab.opensInANewTab') }}</span></a></div>
     </div>
     <div class="palette-frame-wrap">
       <iframe ref="iframe" :src="previewUrl" :title="`${palette.name} ${palette.mode} — interactive sample workspace`"
         class="palette-frame" :class="{ 'is-ready': ready }" :style="{ colorScheme: palette.mode, background: palette.canvas }" @load="sendPalette" />
-      <div v-if="!ready" class="palette-frame-placeholder" role="status" aria-label="Loading palette preview"><Skeleton class="h-8 w-48" /><div class="grid grid-cols-3 gap-3"><Skeleton v-for="n in 3" :key="n" class="h-28 w-full" /></div><Skeleton class="h-40 w-full" /><Skeleton class="h-48 w-full" /></div>
+      <div v-if="!ready" class="palette-frame-placeholder" role="status" :aria-label="t('lab.loadingPalettePreview')"><Skeleton class="h-8 w-48" /><div class="grid grid-cols-3 gap-3"><Skeleton v-for="n in 3" :key="n" class="h-28 w-full" /></div><Skeleton class="h-40 w-full" /><Skeleton class="h-48 w-full" /></div>
     </div>
     <div class="palette-detail-grid">
       <div>
-        <h3 class="text-sm font-semibold">Applied color roles</h3>
+        <h3 class="text-sm font-semibold">{{ t('lab.appliedColorRoles') }}</h3>
         <div class="palette-role-grid"><div v-for="role in roles" :key="role.name" class="palette-role"><span class="palette-role-chip" :style="{ background: role.color }" /><div><span>{{ role.name }}</span><code>{{ role.color }}</code></div></div></div>
       </div>
-      <div><h3 class="text-sm font-semibold">Text contrast</h3><dl class="contrast-list"><div v-for="item in contrast" :key="item.name"><dt>{{ item.name }}</dt><dd>{{ item.value.toFixed(1) }}:1 <span>AA</span></dd></div></dl></div>
+      <div><h3 class="text-sm font-semibold">{{ t('lab.textContrast') }}</h3><dl class="contrast-list"><div v-for="item in contrast" :key="item.name"><dt>{{ item.name }}</dt><dd>{{ item.value.toFixed(1) }}:1 <span>AA</span></dd></div></dl></div>
     </div>
-    <p class="text-xs leading-relaxed text-text-secondary">Sandstone is the selected dashboard palette: warm mineral surfaces, ink blue and muted sage. The other directions remain available here for comparison.</p>
+    <p class="text-xs leading-relaxed text-text-secondary">{{ t('lab.sandstoneIsTheSelectedDashboardPaletteWarmMineralSurfacesInk') }}</p>
   </section>
 </template>
 

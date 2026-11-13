@@ -157,6 +157,15 @@ func (m *Manager) RollbackToVersion(id int64) error {
 		return fmt.Errorf("version %d is not a valid config: %w", id, err)
 	}
 
+	if m.writeBarrier != nil {
+		current, err := os.ReadFile(m.configPath)
+		if err != nil {
+			return err
+		}
+		if err = m.writeBarrier(current); err != nil {
+			return err
+		}
+	}
 	// Snapshot current so the user can undo the rollback.
 	m.snapshotCurrent()
 

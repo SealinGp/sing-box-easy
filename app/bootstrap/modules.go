@@ -11,6 +11,7 @@ import (
 	"github.com/SealinGp/sing-box-easy/app/pkg/subscription/repo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/system"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
+	"github.com/SealinGp/sing-box-easy/app/pkg/trafficpolicy"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/appconfig"
 	"github.com/SealinGp/sing-box-easy/app/pkg/appupdate"
@@ -30,6 +31,7 @@ import (
 
 // Modules contains application-owned dependencies and background lifecycles.
 type Modules struct {
+	TrafficPolicies     *trafficpolicy.Service
 	System              *system.Service
 	Installation        *install.Service
 	TrafficService      *traffic.Service
@@ -74,6 +76,10 @@ func New(
 	}
 	configManager := config.NewManager(configPath, singBoxPath, "") // Use default template path
 	serviceController := singbox.NewController(configManager, singBoxPath)
+	trafficPolicies, err := trafficpolicy.New(e, configManager)
+	if err != nil {
+		return nil, err
+	}
 
 	initStateManager := state.NewManagerXORM(e)
 
@@ -136,6 +142,7 @@ func New(
 	}
 
 	return &Modules{
+		TrafficPolicies:     trafficPolicies,
 		System:              system.New(configManager.GetConfigPath(), database.Path(), serviceController),
 		Installation:        install.NewService(installerManager, dashboardManager, configManager, initStateManager),
 		TrafficService:      traffic.NewService(configManager),

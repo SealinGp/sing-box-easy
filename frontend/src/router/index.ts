@@ -36,14 +36,13 @@ const Users = () => import(/* webpackChunkName: "users" */ '../views/dashboard/U
 const Settings = () => import(/* webpackChunkName: "settings" */ '../views/dashboard/Settings.vue')
 const Login = () => import(/* webpackChunkName: "login" */ '../views/Login.vue')
 const Profile = () => import(/* webpackChunkName: "profile" */ '../views/dashboard/Profile.vue')
-const Lab = () => import('../views/Lab.vue')
+const Lab = () => import('../views/LabLayout.vue')
 const PalettePreview = () => import('../views/PalettePreview.vue')
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/lab',
-    name: 'Lab',
-    component: Lab,
+    redirect: to => ({ path: '/dashboard/lab', query: to.query, hash: to.hash }),
   },
   {
     path: '/lab/palette-preview',
@@ -74,6 +73,15 @@ const routes: RouteRecordRaw[] = [
     name: 'Dashboard',
     component: Dashboard,
     children: [
+      {
+        path: 'lab',
+        component: Lab,
+        children: [
+          { path: '', redirect: to => ({ name: ['#palettes', '#workspace', '#components', '#motion', '#feedback', '#foundations'].includes(to.hash) || to.query.palette ? 'LabTheme' : 'Lab', query: to.query, hash: to.hash }) },
+          { path: 'functionality', name: 'Lab', component: () => import('../views/LabFunctionality.vue') },
+          { path: 'theme', name: 'LabTheme', component: () => import('../views/Lab.vue') },
+        ],
+      },
       {
         path: '',
         redirect: '/dashboard/overview',
@@ -117,6 +125,7 @@ const routes: RouteRecordRaw[] = [
         component: DNS,
         redirect: '/dashboard/dns/servers',
         children: [
+ { path: 'groups', name: 'ManagedDNSGroups', component: () => import('../views/dashboard/ManagedTraffic.vue') },
           {
             path: 'servers',
             name: 'DNSServers',
@@ -147,6 +156,7 @@ const routes: RouteRecordRaw[] = [
         component: Route,
         redirect: '/dashboard/route/rules',
         children: [
+ { path: 'policies', name: 'ManagedTrafficPolicies', component: () => import('../views/dashboard/ManagedTraffic.vue') },
           {
             path: 'rules',
             name: 'RoutingRules',
@@ -278,12 +288,11 @@ router.beforeEach(async (to, _, next) => {
   // Palette previews are isolated documents controlled by the lab reviewer.
   // Direct visits open that reviewer with the requested palette.
   if (to.name === 'PalettePreview' && window.self === window.top) {
-    next({ name: 'Lab', query: { palette: to.query.palette }, hash: '#palettes' })
+    next({ name: 'LabTheme', query: { palette: to.query.palette }, hash: '#palettes' })
     return
   }
-  // The design lab contains only local fixtures. Keep it usable without a
-  // backend, account, or initialized sing-box configuration.
-  if (to.name === 'Lab' || to.name === 'LoginLab' || to.name === 'PalettePreview') {
+  // Isolated visual previews do not mount the dashboard or access its APIs.
+  if (to.name === 'LoginLab' || to.name === 'PalettePreview') {
     next()
     return
   }

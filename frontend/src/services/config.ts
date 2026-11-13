@@ -36,14 +36,14 @@ export class ConfigService {
     return response.data
   }
 
-  async updateConfig(config: SingBoxConfig): Promise<BasicResponse<{ message: string }>> {
-    const response = await this.api.put<BasicResponse<{ message: string }>>('/config', config)
+  async updateConfig(config: SingBoxConfig, managedRevision?: string): Promise<BasicResponse<{ message: string }>> {
+    const response = await this.api.put<BasicResponse<{ message: string }>>('/config', config, managedRevision ? { headers: { 'X-Managed-Revision': managedRevision } } : undefined)
     return response.data
   }
 
   // Alias for updateConfig for backwards compatibility
-  async saveConfig(config: SingBoxConfig): Promise<BasicResponse<{ message: string }>> {
-    return this.updateConfig(config)
+  async saveConfig(config: SingBoxConfig, managedRevision?: string): Promise<BasicResponse<{ message: string }>> {
+    return this.updateConfig(config, managedRevision)
   }
 
   // --- Config version history ---

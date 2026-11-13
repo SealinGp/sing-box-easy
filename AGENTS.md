@@ -20,6 +20,10 @@ The frontend uses **bun**, not npm — `bun.lock` is the lockfile and there is n
 
 ## Coding Style & Naming Conventions
 
+For frontend interaction work, follow `frontend/INTERACTION_GUIDELINES.md`.
+When a workflow requires a missing entity, provide creation at its selector and
+preserve the originating draft through creation, cancellation, and return.
+
 Format Go code with `gofmt`; keep package names short, lowercase, and domain-focused. Go tests should use `_test.go` files beside the code they exercise. Vue components use PascalCase filenames such as `NodeList.vue`; composables use `useX.ts`; stores and service modules use lowercase domain names such as `stores/route.ts` and `services/subscription.ts`. Prefer TypeScript interfaces and typed service wrappers for API calls.
 
 ## Testing Guidelines
