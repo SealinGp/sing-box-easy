@@ -113,7 +113,7 @@ onBeforeUnmount(hideTooltip)
       @keydown.esc="hideTooltip"
     >
       <div
-        class="relative w-full min-w-36 cursor-default overflow-hidden rounded-md bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-gray-700"
+        class="relative w-full min-w-36 cursor-default overflow-hidden rounded-md border border-border bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         role="progressbar"
         tabindex="0"
         :aria-valuenow="usagePercent ?? undefined"
