@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * Build a "race several resolvers, take the first good answer" group.
  *
@@ -195,11 +196,9 @@ watch(
           class="w-full"
         />
 
-        <div class="grid grid-cols-1 @md:grid-cols-2 gap-3">
+        <div class="form-pair">
           <label class="block">
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ $t('dns.rules.parallel.groupName') }}
-            </span>
+            <span class="flex items-center gap-1 text-sm font-medium text-text-secondary mb-1">{{ $t('dns.rules.parallel.groupName') }}<FieldHelp :label="$t('dns.rules.parallel.groupName')" :text="$t('dns.rules.parallel.groupNameHint')" /></span>
             <input
               v-model="group"
               type="text"
@@ -207,15 +206,11 @@ watch(
               class="block w-full px-2.5 py-1.5 text-sm font-mono"
               @input="groupTouched = true"
             />
-            <span class="block mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ $t('dns.rules.parallel.groupNameHint') }}
-            </span>
+
           </label>
 
           <label class="block">
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ $t('dns.rules.parallel.timeout') }}
-            </span>
+            <span class="flex items-center gap-1 text-sm font-medium text-text-secondary mb-1">{{ $t('dns.rules.parallel.timeout') }}<FieldHelp :label="$t('dns.rules.parallel.timeout')" :text="$t('dns.rules.parallel.timeoutHint')" /></span>
             <input
               v-model="timeout"
               type="text"
@@ -223,9 +218,7 @@ watch(
               placeholder="3s"
               class="block w-full px-2.5 py-1.5 text-sm font-mono"
             />
-            <span class="block mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ $t('dns.rules.parallel.timeoutHint') }}
-            </span>
+
           </label>
         </div>
       </section>

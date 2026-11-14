@@ -42,8 +42,7 @@ export default {
     officialUrlHint: '机场自己的站点——充值、续费、公告。下次更新时若订阅中带有该信息会自动填入；手动填写后更新不会覆盖。',
     autoUpdate: '自动更新',
     updateInterval: '更新间隔',
-    updateIntervalHint:
-      '时长格式：数字 + 单位，如 1h、24h、7d、2w（h=小时，d=天，w=周），最小 1 小时',
+    updateIntervalHint: '1h、24h、7d、2w（周）',
     fetchMode: '更新方式',
     fetchModeDirect: '直连（默认）',
     fetchModeCleanDns: '纯净 DNS（通过 DoH 解析后直连）',

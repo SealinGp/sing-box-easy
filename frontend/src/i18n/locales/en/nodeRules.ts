@@ -1,5 +1,16 @@
 // Outbound Node Rules page strings.
 export default {
+  form: {
+    basics: "Basic settings",
+    name: "Filter name",
+    outboundType: "Outbound type",
+    priority: "Priority",
+    priorityHint: "Higher-priority filters run first.",
+    healthCheck: "Health checks",
+    testUrl: "Test URL",
+    interval: "Test interval",
+    tolerance: "Tolerance (ms)",
+  },
   title: 'Outbound Node Rules',
   subtitle: 'Auto-organize subscription nodes into Filters (keyword-matched buckets) and Groups (sets of Filters).',
   preview: 'Preview',

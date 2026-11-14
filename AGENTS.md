@@ -41,6 +41,26 @@ The frontend uses **bun**, not npm — `bun.lock` is the lockfile and there is n
 - Before finishing a code change, check the line counts of all added or modified
   non-test code files and resolve any file exceeding 500 lines.
 
+### Reveal dependent fields only when relevant (required)
+
+- Hide dependent fields until their controlling option is enabled. For example,
+  show Update Interval only when Auto-update is selected; proximity and reveal
+  should communicate the relationship without an explanatory paragraph.
+- Preserve draft values when toggled off and back on. Validate dependent fields
+  only while relevant, and keep hidden values from activating disabled behavior.
+- Keep the revealed fields near their controller, preserve keyboard order, and
+  avoid moving focus automatically. Respect reduced-motion preferences.
+
+### Concise guidance and on-demand help (required)
+
+- Prefer clear labels and short, valid examples over explanatory paragraphs.
+  For example: `1h, 24h, 7d, 2w (weeks)`.
+- When a field needs further explanation, place an information icon beside its
+  label and reveal the explanation only on request. Support hover, keyboard
+  focus, and touch; allow dismissal with Escape or an outside interaction.
+- Keep validation errors next to the field. Do not hide errors or essential
+  consequences behind a tooltip. Reuse shared field-help components.
+
 For frontend interaction work, follow `frontend/INTERACTION_GUIDELINES.md`.
 When a workflow requires a missing entity, provide creation at its selector and
 preserve the originating draft through creation, cancellation, and return.

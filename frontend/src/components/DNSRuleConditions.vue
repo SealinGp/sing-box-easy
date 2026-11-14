@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * The "conditions" half of the DNS rule editor.
  *
@@ -130,9 +131,9 @@ const {
     <!-- Query type: ANDed with everything else, so it stands apart from the
          rule-set / domain group whose either-or the warning below is about. -->
     <div v-if="queryType !== undefined">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
         {{ $t('dns.rules.form.queryType') }}
-      </label>
+      </label><FieldHelp :label="$t('dns.rules.form.queryType')" :text="$t('dns.rules.form.queryTypeHelp')" /></div>
       <MultiSelect
         class="w-full"
         optionLabel="label"
@@ -143,7 +144,7 @@ const {
         filter
         :placeholder="$t('dns.rules.form.queryTypePlaceholder')"
       />
-      <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.queryTypeHelp') }}</p>
+
     </div>
 
     <Alert v-if="showMixWarning" type="warning" :title="$t('dns.rules.form.mixing.title')">
@@ -153,9 +154,9 @@ const {
     <!-- Rule set -->
     <div v-if="showRuleSet">
       <div class="flex items-center justify-between mb-1">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {{ $t('dns.rules.form.ruleSet') }}
-        </label>
+        </label><FieldHelp :label="$t('dns.rules.form.ruleSet')" :text="$t('dns.rules.form.ruleSetHelp')" /></div>
         <button
           v-if="canHideRuleSet"
           type="button"
@@ -178,7 +179,7 @@ const {
         :emptyFilterMessage="$t('dns.rules.form.ruleSetNoOptions')"
         :emptyMessage="$t('dns.rules.form.ruleSetEmpty')"
       />
-      <p class="mt-1 text-xs text-gray-500">{{ $t('dns.rules.form.ruleSetHelp') }}</p>
+
     </div>
 
     <button

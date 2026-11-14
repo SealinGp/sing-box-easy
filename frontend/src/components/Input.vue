@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
+import FieldHelp from './FieldHelp.vue'
 import { useInterfaceMotion } from '../composables/useInterfaceMotion'
 
 const interfaceMotion = useInterfaceMotion()
@@ -11,13 +12,15 @@ interface Props {
   disabled?: boolean
   error?: string
   /**
-   * Helper text shown under the input when there is no error,
-   * e.g. format examples for duration fields.
+   * Optional explanation, shown on demand next to the label.
+   * Use hintDisplay="inline" for concise examples that should remain visible.
    */
   hint?: string
+  hintDisplay?: 'tooltip' | 'inline'
   label?: string
   required?: boolean
   fullWidth?: boolean
+  fieldSize?: 'normal' | 'compact' | 'wide'
   /**
    * Numeric bounds, declared rather than left to fall through: this component's
    * root is the wrapper <div>, so an undeclared `min` would land on the wrapper
@@ -32,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   required: false,
   fullWidth: true,
+  hintDisplay: 'tooltip',
 })
 
 const emit = defineEmits<{
@@ -41,8 +45,12 @@ const emit = defineEmits<{
 // Ties <label>, the error/hint text, and the control together so the field is
 // announced correctly and clicking the label focuses the input.
 const inputId = useId()
+const fieldSize = computed(() => props.fieldSize ?? (
+  props.type === 'number' || /^\d+(ms|s|m|h|d)$/.test(props.placeholder ?? '') ? 'compact'
+    : props.type === 'url' || (props.placeholder ?? '').includes('://') ? 'wide' : 'normal'
+))
 const describedById = computed(() =>
-  props.error || props.hint ? `${inputId}-desc` : undefined,
+  props.error || (props.hint && props.hintDisplay === 'inline') ? `${inputId}-desc` : undefined,
 )
 
 /*
@@ -61,15 +69,13 @@ const inputClasses = computed(() =>
 </script>
 
 <template>
-  <div :class="[fullWidth ? 'w-full' : '', interfaceMotion ? 'ui-field relative' : '']">
-    <label
-      v-if="label"
-      :for="inputId"
-      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-    >
-      {{ label }}
-      <span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>
-    </label>
+  <div class="form-field" :class="[`field-${fieldSize}`, fullWidth ? 'w-full' : '', interfaceMotion ? 'ui-field relative' : '']">
+    <div v-if="label || hint" class="mb-1 flex items-center gap-1">
+      <label v-if="label" :for="inputId" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ label }}<span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>
+      </label>
+      <FieldHelp v-if="hint && hintDisplay === 'tooltip'" :label="label || placeholder || ''" :text="hint" />
+    </div>
     <input
       :id="inputId"
       :type="type"
@@ -96,7 +102,7 @@ const inputClasses = computed(() =>
       {{ error }}
     </p>
     <p
-      v-else-if="hint"
+      v-else-if="hint && hintDisplay === 'inline'"
       key="hint"
       :id="describedById"
       class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"

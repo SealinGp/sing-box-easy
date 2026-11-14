@@ -156,16 +156,23 @@ function removeField(key: string) {
   optional.remove(key)
   model.value = withoutField(model.value, key)
 }
+function fieldLayout(field: ResolvedField) {
+  if (['number', 'switch'].includes(field.control) || /(?:timeout|interval|tolerance|port)$/.test(field.key)) return 'field-compact'
+  if (['chips', 'users', 'hosts', 'outbound-list', 'json'].includes(field.control) || /(?:url|path|certificate|private_key|password)$/.test(field.key)) return 'field-wide'
+  return 'field-normal'
+}
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div class="form-grid space-y-3">
     <!-- Core: the type cannot work without these, so no remove control. -->
     <LabeledField
       v-for="field in coreFields"
       :key="field.key"
+      :class="fieldLayout(field)"
       :label="label(field)"
       :hint="hint(field)"
+      :hint-display="retired(field) || isDeprecatedIn(field, singBoxVersion) || field.deprecated ? 'inline' : 'tooltip'"
     >
       <SchemaFieldControl
         :field="field"
@@ -179,8 +186,10 @@ function removeField(key: string) {
     <LabeledField
       v-for="field in shownOptional"
       :key="field.key"
+      :class="fieldLayout(field)"
       :label="label(field)"
       :hint="hint(field)"
+      :hint-display="retired(field) || isDeprecatedIn(field, singBoxVersion) || field.deprecated ? 'inline' : 'tooltip'"
       :removable="optional.isRemovable(field.key)"
       @remove="removeField(field.key)"
     >

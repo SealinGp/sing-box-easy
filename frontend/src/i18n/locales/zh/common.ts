@@ -1,5 +1,6 @@
 // 通用、可复用的文案（按钮、通用状态词）。
 export default {
+  fieldHelp: "{name}的说明",
   save: '保存',
   // 每个多值（标签）输入框下方的提示 —— 见 components/ChipsField.vue。
   chipsHint: '输入或粘贴内容，编辑完成后按回车添加。',

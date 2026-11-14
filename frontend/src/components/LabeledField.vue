@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * Label + optional hint + optional "remove this field" action, wrapped around
  * whatever control the caller slots in.
@@ -13,6 +14,7 @@ defineProps<{
   label?: string
   /** Explanation rendered under the control. */
   hint?: string
+  hintDisplay?: 'tooltip' | 'inline'
   /**
    * Show a "remove" action next to the label. Call sites offer this only for a
    * field the operator opted into and has not filled in — removing a field that
@@ -25,11 +27,11 @@ const emit = defineEmits<{ remove: [] }>()
 </script>
 
 <template>
-  <div>
+  <div class="form-field">
     <div v-if="label || removable" class="flex items-center justify-between mb-1">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}
-      </label>
+      </label><FieldHelp v-if="hint && hintDisplay !== 'inline'" :label="label || ''" :text="hint" /></div>
       <button
         v-if="removable"
         type="button"
@@ -45,6 +47,6 @@ const emit = defineEmits<{ remove: [] }>()
 
     <slot />
 
-    <p v-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
+    <p v-if="hint && hintDisplay === 'inline'" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
   </div>
 </template>

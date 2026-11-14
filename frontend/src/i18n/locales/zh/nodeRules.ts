@@ -1,5 +1,16 @@
 // 出站节点规则页面文案。
 export default {
+  form: {
+    basics: "基本设置",
+    name: "过滤器名称",
+    outboundType: "出站类型",
+    priority: "优先级",
+    priorityHint: "优先级数值越大，越先执行。",
+    healthCheck: "健康检查",
+    testUrl: "测试 URL",
+    interval: "测试间隔",
+    tolerance: "容差（毫秒）",
+  },
   title: '出站节点规则',
   subtitle: '将订阅节点自动归类到「过滤器」(按关键词匹配的集合)与「分组」(过滤器的集合)。',
   preview: '预览',

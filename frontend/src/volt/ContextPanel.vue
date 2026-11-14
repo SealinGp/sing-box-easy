@@ -54,13 +54,14 @@ watch(() => props.visible, async (visible) => {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="h-4 w-4" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
       </button>
     </div>
-    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-text-primary"><slot /></div>
+    <div class="panel-form-body min-h-0 flex-1 overflow-y-auto px-4 py-3 text-text-primary"><slot /></div>
     <div v-if="$slots.footer" class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3"><slot name="footer" /></div>
   </Popover>
   <Dialog v-else v-bind="$attrs" :visible="visible" :header="header" :closable="closable"
     @update:visible="emit('update:visible', $event)" @hide="emit('hide')" @show="emit('show')">
     <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
-      <slot :name="slotName" v-bind="slotProps ?? {}" />
+      <div v-if="slotName === 'default'" class="panel-form-body"><slot v-bind="slotProps ?? {}" /></div>
+      <slot v-else :name="slotName" v-bind="slotProps ?? {}" />
     </template>
   </Dialog>
 </template>

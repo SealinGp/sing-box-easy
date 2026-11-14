@@ -43,8 +43,7 @@ export default {
       "The provider's own page — top up, renew, read notices. Filled in automatically on the next update when the feed reports one; set it yourself and updates leave it alone.",
     autoUpdate: 'Auto Update',
     updateInterval: 'Update Interval',
-    updateIntervalHint:
-      'Duration format: number + unit, e.g. 1h, 24h, 7d, 2w (h=hour, d=day, w=week). Minimum 1 hour.',
+    updateIntervalHint: '1h, 24h, 7d, 2w (weeks)',
     fetchMode: 'Update method',
     fetchModeDirect: 'Direct (default)',
     fetchModeCleanDns: 'Clean DNS (resolve via DoH, then connect)',

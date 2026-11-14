@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import { ref, computed, onMounted } from 'vue'
 import type { ClashAPI } from '../types/api'
 import Button from './Button.vue'
@@ -145,7 +146,7 @@ onMounted(() => {
         <label class="flex items-center gap-2 text-sm font-medium text-text-primary"><input v-model="enabled" type="checkbox" class="h-4 w-4 accent-primary" />{{ $t('workspace.clashEnabled') }}</label>
         <!-- External Controller -->
         <div>
-          <label class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div class="flex items-center gap-1"><label class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ $t('experimental.clash.externalController') }}
             <a
               v-if="externalControllerHref"
@@ -161,7 +162,7 @@ onMounted(() => {
             >
               <LinkIcon class="h-5 w-5" />
             </a>
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.externalController')" :text="$t('experimental.clash.externalControllerHelp')" /></div>
           <Input
             v-model="settings.external_controller"
             placeholder="127.0.0.1:9090"
@@ -177,30 +178,26 @@ onMounted(() => {
           >
             {{ $t('experimental.clash.secretBlocksDirectLink') }}
           </p>
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.externalControllerHelp') }}
-          </p>
+
         </div>
 
         <!-- External UI -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.externalUi') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.externalUi')" :text="$t('experimental.clash.externalUiHelp')" /></div>
           <Input
             v-model="settings.external_ui"
             placeholder="/usr/share/sing-box/ui"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.externalUiHelp') }}
-          </p>
+
         </div>
 
         <!-- External UI Download URL -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.externalUiDownloadUrl') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.externalUiDownloadUrl')" :text="$t('experimental.clash.externalUiDownloadUrlHelp')" /></div>
           <DashboardUrlSelect v-model="settings.external_ui_download_url" />
           <!-- Fetch the chosen dashboard into `external_ui` without leaving the page. -->
           <!-- The download writes `external_ui` server-side; mirror that back
@@ -212,49 +209,41 @@ onMounted(() => {
             :download-url="settings.external_ui_download_url"
             @installed="settings.external_ui = $event"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.externalUiDownloadUrlHelp') }}
-          </p>
+
         </div>
 
         <!-- External UI Download Detour -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.externalUiDownloadDetour') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.externalUiDownloadDetour')" :text="$t('experimental.clash.externalUiDownloadDetourHelp')" /></div>
           <Input
             v-model="settings.external_ui_download_detour"
             placeholder="proxy"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.externalUiDownloadDetourHelp') }}
-          </p>
+
         </div>
 
         <!-- Secret -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.secret') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.secret')" :text="$t('experimental.clash.secretHelp')" /></div>
           <Input
             v-model="settings.secret"
             type="password"
             :placeholder="$t('experimental.clash.secretPlaceholder')"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.secretHelp') }}
-          </p>
+
         </div>
 
         <!-- Default Mode -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.defaultMode') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.clash.defaultMode')" :text="$t('experimental.clash.defaultModeHelp')" /></div>
           <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.default_mode" :options="modeOptions" />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.clash.defaultModeHelp') }}
-          </p>
+
         </div>
 
         <!-- CORS Settings -->
@@ -264,16 +253,14 @@ onMounted(() => {
           <div class="space-y-4">
             <!-- Access Control Allow Origin -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.clash.cors.allowOrigin') }}
-              </label>
+              </label><FieldHelp :label="$t('experimental.clash.cors.allowOrigin')" :text="$t('experimental.clash.cors.allowOriginHelp')" /></div>
               <Input
                 v-model="allowOriginText"
                 :placeholder="$t('experimental.clash.cors.allowOriginPlaceholder')"
               />
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {{ $t('experimental.clash.cors.allowOriginHelp') }}
-              </p>
+
             </div>
 
             <!-- Access Control Allow Private Network -->
@@ -287,12 +274,10 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-3">
-                <label for="allow_private_network" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="allow_private_network" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('experimental.clash.cors.allowPrivateNetwork') }}
-                </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ $t('experimental.clash.cors.allowPrivateNetworkHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('experimental.clash.cors.allowPrivateNetwork')" :text="$t('experimental.clash.cors.allowPrivateNetworkHelp')" /></div>
+
               </div>
             </div>
           </div>

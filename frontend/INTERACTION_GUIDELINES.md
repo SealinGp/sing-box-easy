@@ -79,3 +79,37 @@ form or losing their draft.
   review. Avoid exposing unrelated credentials or private configuration fields.
 - Keep the technical view optional, accessible by keyboard, and usable on narrow
   screens. Trust comes from accurate, inspectable behavior rather than assurances.
+
+## Size form fields for their content
+
+- Base columns on the available panel width, not the browser viewport. A wide
+  page can still contain a narrow popover or nested editor.
+- Group related settings. Keep ports, priorities, durations, and tolerances
+  compact; give names and selectors moderate width and URLs, paths, lists,
+  and structured editors full rows when needed.
+- Keep toggle/interval pairs together. Allow descriptions to wrap independently
+  of the input width, without squeezing the input or its adjacent label.
+- Use shared Input fieldSize hints and schema field layouts before adding local
+  width overrides. Keep existing values, validation, and keyboard order intact.
+- Check desktop and phone panel widths. Long labels, selected options, matcher
+  values, and helper text must not force horizontal scrolling. Vertical scrolling
+  remains appropriate for long forms; keep submit controls reachable.
+
+- Prefer short, valid examples for familiar input formats instead of explaining
+  their syntax in prose (for example, `1h, 24h, 7d, 2w (weeks)`). Keep important
+  behavioral consequences visible; report constraints beside the field when
+  validation fails. Do not repeat information already clear from its label.
+
+- Put additional field explanations behind an information icon beside the label.
+  Reveal help on hover, keyboard focus, or tap, and support Escape/outside
+  dismissal. Keep errors and essential consequences visible. Shared Input hints
+  use this pattern by default; use inline hints only for brief examples that
+  need to remain visible.
+
+## Reveal dependent fields when their option is enabled
+
+Show fields only when their controlling choice makes them relevant. For example,
+Auto-update reveals Update Interval beside it. Preserve its draft value when
+disabled and re-enabled; skip irrelevant validation and do not let hidden values
+activate disabled behavior. Keep the controller and dependent fields together,
+with natural keyboard order and no automatic focus jump.

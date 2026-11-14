@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * GitHub account dialog, opened from the release picker (OAuth device flow).
  *
@@ -253,9 +254,9 @@ async function copyCode() {
       <!-- Saved to the database, not app.yml: no file edit, no restart. The
            client ID is public by design (device flow has no client secret),
            so a plain text input is appropriate here. -->
-      <label for="github-client-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div class="flex items-center gap-1"><label for="github-client-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ $t('settings.githubAuth.clientIdLabel') }}
-      </label>
+      </label><FieldHelp :label="$t('settings.githubAuth.clientIdLabel')" :text="$t('settings.githubAuth.clientIdHelp')" /></div>
       <div class="mt-2 flex items-stretch gap-2">
         <input
           id="github-client-id"
@@ -275,9 +276,7 @@ async function copyCode() {
           {{ savingClientId ? $t('common.saving') : $t('common.save') }}
         </button>
       </div>
-      <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        {{ $t('settings.githubAuth.clientIdHelp') }}
-      </p>
+
     </div>
     <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400 mt-3">{{ error }}</p>
   </ContextPanel>

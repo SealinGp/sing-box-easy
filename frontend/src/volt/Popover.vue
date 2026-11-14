@@ -4,8 +4,8 @@ import PrimePopover, { type PopoverPassThroughOptions, type PopoverProps } from 
 import { popoverMotion } from '../composables/useInterfaceMotion'
 import { ptViewMerge } from './utils'
 import { twMerge } from 'tailwind-merge'
-import { overlayOrigin } from '../composables/useOverlayAnchor'
-import { popoverPlacement, type PopoverOrigin } from '../utils/popoverPlacement'
+import '../style/panel-forms.css'
+import { popoverPlacement, type PopoverSide } from '../utils/popoverPlacement'
 
 interface Props extends /* @vue-ignore */ PopoverProps {
   dismissable?: boolean
@@ -18,7 +18,7 @@ const attrs = useAttrs()
 const autoId = useId()
 const id = computed(() => String(attrs.id ?? autoId))
 const panel = ref<InstanceType<typeof PrimePopover> | null>(null)
-let origin: PopoverOrigin | undefined
+let side: PopoverSide | undefined
 let trigger: HTMLElement | null = null
 let returnFocus = false
 let resizeObserver: ResizeObserver | null = null
@@ -71,14 +71,14 @@ const theme = computed<PopoverPassThroughOptions>(() => ({
     'aria-modal': 'false',
 
   },
-  content: twMerge('p-4', props.contentClass),
+  content: twMerge('panel-form-body p-4', props.contentClass),
   transition: popoverMotion,
 }))
 
 function toggle(event: Event) {
   const target = event.currentTarget as HTMLElement | null
   if (shown || openingFrame) hide()
-  else if (target) showAt(target, event instanceof MouseEvent && event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined)
+  else if (target) showAt(target)
 }
 function hide() {
   cancelAnimationFrame(openingFrame)
@@ -125,9 +125,9 @@ function onHide() {
   if (returnFocus) trigger?.focus({ preventScroll: true })
   emit('hide')
 }
-function showAt(target: HTMLElement, point?: PopoverOrigin) {
+function showAt(target: HTMLElement) {
   trigger = target
-  origin = point ?? overlayOrigin(target)
+  side = undefined
   // PrimeVue uses currentTarget to ignore the opening click in its document
   // listener. Preserve that anchor when opening after a reactive update too.
   const event = new Event('open')
@@ -149,19 +149,19 @@ function alignWithinViewport() {
   const root = document.getElementById(id.value)
   if (!root || !trigger) return
   const anchor = trigger.getBoundingClientRect()
-  const point = origin ?? { x: anchor.left + anchor.width / 2, y: anchor.top + anchor.height / 2 }
   // Measure untransformed dimensions: entry animation scales the bounding rect.
   root.style.maxWidth = ''
   root.style.maxHeight = ''
-  const placement = popoverPlacement(point, { width: window.innerWidth, height: window.innerHeight }, {
+  const placement = popoverPlacement(anchor, { width: window.innerWidth, height: window.innerHeight }, {
     width: root.offsetWidth, height: root.offsetHeight,
-  })
-  root.style.maxWidth = `${placement.maxWidth}px`
+  }, side)
+  side = placement.side
+  root.style.maxWidth = `${Math.min(root.offsetWidth, placement.maxWidth)}px`
   root.style.maxHeight = `${placement.maxHeight}px`
   // Width constraints can wrap content and change height. Measure once more.
-  const final = popoverPlacement(point, { width: window.innerWidth, height: window.innerHeight }, {
+  const final = popoverPlacement(anchor, { width: window.innerWidth, height: window.innerHeight }, {
     width: root.offsetWidth, height: root.offsetHeight,
-  })
+  }, side)
   root.style.left = `${final.left + window.scrollX}px`
   root.style.top = `${final.top + window.scrollY}px`
   root.style.marginTop = '0'

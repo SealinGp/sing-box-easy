@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * Labelled multi-value field (domains, keywords, geosite codes, ...).
  *
@@ -42,8 +43,7 @@ const value = computed({
   set: (next: string[]) => emit('update:modelValue', next),
 })
 
-// The shared hint always appears; a field-specific one is prefixed to it so the
-// two never fight over the same line.
+// Combine field-specific help and entry instructions in one on-demand tooltip.
 const hintText = computed(() =>
   props.hint ? `${props.hint} ${t('common.chipsHint')}` : t('common.chipsHint'),
 )
@@ -51,10 +51,10 @@ const hintText = computed(() =>
 
 <template>
   <div>
-    <div v-if="label || removable" class="flex items-center justify-between mb-1">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+    <div v-if="label || removable || hintText" class="flex items-center justify-between mb-1">
+      <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}
-      </label>
+      </label><FieldHelp :label="label || placeholder || ''" :text="hintText" /></div>
       <button
         v-if="removable"
         type="button"
@@ -71,6 +71,6 @@ const hintText = computed(() =>
       :disabled="disabled"
       class="w-full"
     />
-    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hintText }}</p>
+
   </div>
 </template>

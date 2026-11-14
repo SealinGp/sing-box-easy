@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import { ref, onMounted } from 'vue'
 import type { CacheFile } from '../types/api'
 import Button from './Button.vue'
@@ -93,43 +94,37 @@ onMounted(() => {
             />
           </div>
           <div class="ml-3">
-            <label for="cache_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div class="flex items-center gap-1"><label for="cache_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ $t('experimental.cache.enable') }}
-            </label>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ $t('experimental.cache.enableHelp') }}
-            </p>
+            </label><FieldHelp :label="$t('experimental.cache.enable')" :text="$t('experimental.cache.enableHelp')" /></div>
+
           </div>
         </div>
 
         <!-- Cache Path -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.cache.path') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.cache.path')" :text="$t('experimental.cache.pathHelp')" /></div>
           <Input
             v-model="settings.path"
             placeholder="/etc/sing-box/cache.db"
             :disabled="!settings.enabled"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.cache.pathHelp') }}
-          </p>
+
         </div>
 
         <!-- Cache ID -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.cache.cacheId') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.cache.cacheId')" :text="$t('experimental.cache.cacheIdHelp')" /></div>
           <Input
             v-model="settings.cache_id"
             :placeholder="$t('experimental.cache.cacheIdPlaceholder')"
             :disabled="!settings.enabled"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.cache.cacheIdHelp') }}
-          </p>
+
         </div>
 
         <!-- Advanced Settings -->
@@ -149,12 +144,10 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-3">
-                <label for="store_fakeip" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="store_fakeip" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('experimental.cache.advanced.storeFakeip') }}
-                </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ $t('experimental.cache.advanced.storeFakeipHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('experimental.cache.advanced.storeFakeip')" :text="$t('experimental.cache.advanced.storeFakeipHelp')" /></div>
+
               </div>
             </div>
 
@@ -170,28 +163,24 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-3">
-                <label for="store_rdrc" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="store_rdrc" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('experimental.cache.advanced.storeRdrc') }}
-                </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ $t('experimental.cache.advanced.storeRdrcHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('experimental.cache.advanced.storeRdrc')" :text="$t('experimental.cache.advanced.storeRdrcHelp')" /></div>
+
               </div>
             </div>
 
             <!-- RDRC Timeout -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.cache.advanced.rdrcTimeout') }}
-              </label>
+              </label><FieldHelp :label="$t('experimental.cache.advanced.rdrcTimeout')" :text="$t('experimental.cache.advanced.rdrcTimeoutHelp')" /></div>
               <Input
                 v-model="settings.rdrc_timeout"
                 placeholder="7d"
                 :disabled="!settings.enabled || !settings.store_rdrc"
               />
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {{ $t('experimental.cache.advanced.rdrcTimeoutHelp') }}
-              </p>
+
             </div>
           </div>
         </div>

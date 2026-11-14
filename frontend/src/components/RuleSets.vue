@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import ModulePresets from './ModulePresets.vue'
 import IconButton from './IconButton.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -45,12 +46,6 @@ const typeOptions = computed(() => [
   { label: t('route.ruleSets.types.local'), value: 'local' },
 ])
 
-// formatOptions removed - not currently used
-// const formatOptions = [
-//   { label: 'Source', value: 'source' },
-//   { label: 'Binary', value: 'binary' },
-// ]
-
 // Computed properties for v-model
 const currentRuleSetTag = computed({
   get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.tag : ruleSetForm.value.tag,
@@ -73,18 +68,6 @@ const currentRuleSetType = computed({
     }
   }
 })
-
-// currentRuleSetFormat removed - not currently used
-// const currentRuleSetFormat = computed({
-//   get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.format : ruleSetForm.value.format,
-//   set: (val) => {
-//     if (editingRuleSet.value) {
-//       editingRuleSet.value.ruleSet.format = val
-//     } else {
-//       ruleSetForm.value.format = val
-//     }
-//   }
-// })
 
 const currentRuleSetUrl = computed({
   get: () => editingRuleSet.value ? editingRuleSet.value.ruleSet.url : ruleSetForm.value.url,
@@ -445,23 +428,12 @@ onMounted(() => {
           />
         </div>
 
-        <!-- <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Format *
-          </label>
-          <Select
-            v-model="currentRuleSetFormat"
-            :options="formatOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select format"
-            class="w-full"
-          />
-        </div> -->
+
 
         <Input
           v-if="currentRuleSetType === 'remote'"
           v-model="currentRuleSetUrl"
+          field-size="wide"
           :label="$t('route.ruleSets.form.url')"
           :placeholder="$t('route.ruleSets.form.urlPlaceholder')"
         />
@@ -472,9 +444,9 @@ onMounted(() => {
           a box ends up in a startup crash loop — hence the warning below.
         -->
         <div v-if="currentRuleSetType === 'remote'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('route.ruleSets.form.downloadDetour') }}
-          </label>
+          </label><FieldHelp :label="$t('route.ruleSets.form.downloadDetour')" :text="$t('route.ruleSets.form.detourHint')" /></div>
           <Select
             v-model="currentRuleSetDownloadDetour"
             :options="detourOptions"
@@ -492,13 +464,12 @@ onMounted(() => {
           >
             {{ detourWarning }}
           </p>
-          <p v-else class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('route.ruleSets.form.detourHint') }}
-          </p>
+
         </div>
 
         <Input
           v-model="currentRuleSetUpdateInterval"
+          field-size="compact"
           :label="$t('route.ruleSets.form.updateInterval')"
           :placeholder="$t('route.ruleSets.form.updateIntervalPlaceholder')"
         />

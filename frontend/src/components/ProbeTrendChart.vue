@@ -10,7 +10,7 @@
  * All geometry comes from `utils/probeChart` — a pure, tested module — so this
  * file is markup. Same split as the route flow diagram.
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import Skeleton from './Skeleton.vue'
 import { useI18n } from 'vue-i18n'
 import type { ProbePoint } from '../types/subprobe'
@@ -73,6 +73,26 @@ const latencyGrid = computed(() => {
  * comparison the two panels exist to support.
  */
 const hovered = ref<PlacedPoint | null>(null)
+const tooltip = ref<HTMLElement>()
+const tooltipPosition = ref({ left: '0px', top: '0px' })
+let cursor = { x: 0, y: 0 }
+function clearHover() { hovered.value = null }
+async function positionTooltip() {
+  await nextTick()
+  if (!hovered.value || !tooltip.value) return
+  const { width, height } = tooltip.value.getBoundingClientRect()
+  const gap = 14, margin = 12
+  const left = cursor.x + gap + width <= innerWidth - margin ? cursor.x + gap : cursor.x - gap - width
+  const top = cursor.y + gap + height <= innerHeight - margin ? cursor.y + gap : cursor.y - gap - height
+  tooltipPosition.value = { left: `${Math.max(margin, left)}px`, top: `${Math.max(margin, top)}px` }
+}
+watch(() => [props.points, props.loading], clearHover)
+window.addEventListener('scroll', clearHover, true)
+window.addEventListener('resize', clearHover)
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', clearHover, true)
+  window.removeEventListener('resize', clearHover)
+})
 
 function onPointerMove(event: PointerEvent) {
   const layout = availabilityLayout.value
@@ -97,6 +117,8 @@ function onPointerMove(event: PointerEvent) {
     }
   }
   hovered.value = nearest
+  cursor = { x: event.clientX, y: event.clientY }
+  void positionTooltip()
 }
 
 /** The latency point matching the hovered moment, if that run had one. */
@@ -161,7 +183,9 @@ function availabilityClass(point: ProbePoint): string {
           role="img"
           :aria-label="$t('subProbe.chart.availabilityAria')"
           @pointermove="onPointerMove"
-          @pointerleave="hovered = null"
+          @pointerleave="clearHover"
+          @pointercancel="clearHover"
+          @pointerdown="onPointerMove"
         >
           <line
             v-for="line in availabilityGrid"
@@ -231,7 +255,9 @@ function availabilityClass(point: ProbePoint): string {
           role="img"
           :aria-label="$t('subProbe.chart.latencyAria')"
           @pointermove="onPointerMove"
-          @pointerleave="hovered = null"
+          @pointerleave="clearHover"
+          @pointercancel="clearHover"
+          @pointerdown="onPointerMove"
         >
           <line
             v-for="line in latencyGrid"
@@ -305,16 +331,11 @@ function availabilityClass(point: ProbePoint): string {
         </svg>
       </div>
 
-      <!--
-        The readout is a fixed row rather than a floating tooltip: it never
-        covers the line it describes, and it keeps the last hovered values on
-        screen after the pointer leaves the chart, which is what makes two
-        moments comparable at all.
-      -->
-      <div
-        class="flex min-h-[2rem] flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-100 pt-1.5 text-xs dark:border-gray-700"
-      >
-        <template v-if="hovered">
+      <Teleport to="body">
+      <div v-if="hovered && !loading" ref="tooltip" role="tooltip" data-probe-tooltip
+        class="pointer-events-none fixed z-[10000] max-w-[calc(100vw-1.5rem)] space-y-1 rounded-control border border-border bg-bg-secondary px-3 py-2 text-xs text-text-primary shadow-surface"
+        :style="tooltipPosition">
+        <div class="flex flex-col gap-1">
           <span class="font-mono text-gray-500 dark:text-gray-400">{{ hoveredTime }}</span>
           <span :class="availabilityClass(hovered.point)">
             <span class="font-semibold">{{ formatAvailability(hovered.point) }}</span>
@@ -331,9 +352,9 @@ function availabilityClass(point: ProbePoint): string {
           >
             {{ formatLatency(hovered.point.min_ms) }} – {{ formatLatency(hovered.point.max_ms) }}
           </span>
-        </template>
-        <span v-else class="text-gray-400 dark:text-gray-500">{{ $t('subProbe.chart.hoverHint') }}</span>
+        </div>
       </div>
+      </Teleport>
     </div>
   </div>
 </template>

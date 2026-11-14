@@ -1,24 +1,22 @@
-export interface PopoverOrigin { x: number; y: number }
+export type PopoverSide = 'top' | 'bottom'
+export interface PopoverAnchor { left: number; right: number; top: number; bottom: number }
 
-/** Select the quadrant with the largest usable area, not the longest diagonal. */
-export function popoverPlacement(origin: PopoverOrigin, viewport: { width: number; height: number }, size: { width: number; height: number }) {
+/** Stay attached to the control; flip only when the preferred side cannot fit. */
+export function popoverPlacement(anchor: PopoverAnchor, viewport: { width: number; height: number }, size: { width: number; height: number }, preferred?: PopoverSide) {
   const margin = 16, gap = 8
-  const x = Math.max(margin + gap, Math.min(origin.x, viewport.width - margin - gap))
-  const y = Math.max(margin + gap, Math.min(origin.y, viewport.height - margin - gap))
-  const candidates = [
-    { horizontal: 'right', vertical: 'bottom', width: viewport.width - margin - x - gap, height: viewport.height - margin - y - gap },
-    { horizontal: 'left', vertical: 'bottom', width: x - margin - gap, height: viewport.height - margin - y - gap },
-    { horizontal: 'right', vertical: 'top', width: viewport.width - margin - x - gap, height: y - margin - gap },
-    { horizontal: 'left', vertical: 'top', width: x - margin - gap, height: y - margin - gap },
-  ]
-  const best = candidates.sort((a, b) => b.width * b.height - a.width * a.height)[0]!
-  const width = Math.min(size.width, best.width)
-  const height = Math.min(size.height, best.height)
+  const below = Math.max(0, viewport.height - margin - anchor.bottom - gap)
+  const above = Math.max(0, anchor.top - margin - gap)
+  const side = preferred ?? (size.height <= below || below >= above ? 'bottom' : 'top')
+  const maxWidth = Math.max(0, viewport.width - margin * 2)
+  const maxHeight = side === 'bottom' ? below : above
+  const width = Math.min(size.width, maxWidth)
+  const height = Math.min(size.height, maxHeight)
+  const center = (anchor.left + anchor.right) / 2
+  const left = Math.max(margin, Math.min(center - width / 2, viewport.width - width - margin))
   return {
-    left: best.horizontal === 'right' ? x + gap : x - gap - width,
-    top: best.vertical === 'bottom' ? y + gap : y - gap - height,
-    maxWidth: best.width,
-    maxHeight: best.height,
-    origin: `${best.horizontal === 'right' ? 'left' : 'right'} ${best.vertical === 'bottom' ? 'top' : 'bottom'}`,
+    left,
+    top: side === 'bottom' ? anchor.bottom + gap : anchor.top - gap - height,
+    maxWidth, maxHeight, side,
+    origin: `${Math.max(0, Math.min(width, center - left))}px ${side === 'bottom' ? 'top' : 'bottom'}`,
   }
 }

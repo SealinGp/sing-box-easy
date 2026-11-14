@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNS } from '../types/api'
@@ -126,20 +127,18 @@ onMounted(() => {
       <div v-else class="space-y-3">
         <!-- Domain Strategy -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.strategy') }}
-          </label>
+          </label><FieldHelp :label="$t('dns.settings.strategy')" :text="$t('dns.settings.strategyHelp')" /></div>
           <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.strategy" :options="strategyOptions" />
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('dns.settings.strategyHelp') }}
-          </p>
+
         </div>
 
         <!-- Final DNS Server -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.finalServer') }}
-          </label>
+          </label><FieldHelp :label="$t('dns.settings.finalServer')" :text="$t('dns.settings.finalServerHelp')" /></div>
           <Select
             class="w-full"
             optionLabel="label"
@@ -150,9 +149,7 @@ onMounted(() => {
             :filterPlaceholder="$t('common.search')"
             :emptyFilterMessage="$t('common.noMatch')"
           />
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('dns.settings.finalServerHelp') }}
-          </p>
+
         </div>
 
         <!-- Cache Settings -->
@@ -170,12 +167,10 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-2">
-                <label for="disable_cache" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="disable_cache" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('dns.settings.disableCache') }}
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ $t('dns.settings.disableCacheHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('dns.settings.disableCache')" :text="$t('dns.settings.disableCacheHelp')" /></div>
+
               </div>
             </div>
 
@@ -189,12 +184,10 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-2">
-                <label for="disable_expire" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="disable_expire" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('dns.settings.disableExpire') }}
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ $t('dns.settings.disableExpireHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('dns.settings.disableExpire')" :text="$t('dns.settings.disableExpireHelp')" /></div>
+
               </div>
             </div>
           </div>

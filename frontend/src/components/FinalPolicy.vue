@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
@@ -157,9 +158,9 @@ onMounted(() => {
 
         <!-- Auto-detect interface -->
         <div class="flex items-center gap-4">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
+          <div class="flex items-center gap-1"><label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
             {{ $t('route.finalPolicy.autoDetectInterface') }}
-          </label>
+          </label><FieldHelp :label="$t('route.finalPolicy.autoDetectInterface')" :text="$t('route.finalPolicy.autoDetectInterfaceHint')" /></div>
           <div class="flex items-center gap-3">
             <input
               v-model="autoDetectInterface"
@@ -168,15 +169,15 @@ onMounted(() => {
               :disabled="loading"
               @change="onAutoDetectChange"
             />
-            <span class="text-xs text-gray-400">{{ $t('route.finalPolicy.autoDetectInterfaceHint') }}</span>
+
           </div>
         </div>
 
         <!-- Default domain resolver -->
         <div class="flex items-center gap-4">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
+          <div class="flex items-center gap-1"><label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
             {{ $t('route.finalPolicy.defaultDomainResolver') }}
-          </label>
+          </label><FieldHelp :label="$t('route.finalPolicy.defaultDomainResolver')" :text="$t('route.finalPolicy.defaultDomainResolverHint')" /></div>
           <div class="flex items-center gap-3">
             <Select
               v-model="defaultDomainResolver"
@@ -191,7 +192,7 @@ onMounted(() => {
               :disabled="loading"
               @change="onResolverChange"
             />
-            <span class="text-xs text-gray-400 hidden sm:inline">{{ $t('route.finalPolicy.defaultDomainResolverHint') }}</span>
+
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 // Shared, reusable strings (buttons, generic status words).
 export default {
+  fieldHelp: "Help for {name}",
   save: 'Save',
   // Shown under every multi-value (chips) field — see components/ChipsField.vue.
   chipsHint: 'Type or paste a value, edit it, then press Enter to add it.',

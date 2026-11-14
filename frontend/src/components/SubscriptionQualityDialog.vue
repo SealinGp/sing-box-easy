@@ -12,9 +12,8 @@ import { ArrowPathIcon, BoltIcon, CheckCircleIcon, MinusCircleIcon, XCircleIcon 
 import Button from './Button.vue'
 import Skeleton from './Skeleton.vue'
 import ProbeTrendChart from './ProbeTrendChart.vue'
-import { ContextPanel } from '../volt'
+import QualityPanelShell from './QualityPanelShell.vue'
 import { subProbeService } from '../services'
-import { useNotify } from '../composables/useNotify'
 import type { Subscription } from '../types/api'
 import type { ProbeNodeResult, ProbePoint, ProbeRange } from '../types/subprobe'
 import { availabilityRatio, formatAvailability, formatLatency } from '../utils/probeChart'
@@ -28,7 +27,11 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 
 const { t, locale } = useI18n()
-const notify = useNotify()
+const historyError = ref('')
+const nodesError = ref('')
+const probeError = ref('')
+const probeMessage = ref('')
+const errorText = (err: unknown, fallback: string) => err instanceof Error ? err.message : fallback
 
 const visible = computed({
   get: () => props.modelValue,
@@ -59,11 +62,12 @@ async function loadHistory() {
   const subscription = props.subscription
   if (!subscription) return
   loadingHistory.value = true
+  historyError.value = ''
   try {
     const { data } = await subProbeService.getHistory(subscription.id, range.value)
     points.value = data.points ?? []
   } catch (err) {
-    notify.apiError(err, t('subProbe.notify.historyFailed'))
+    historyError.value = errorText(err, t('subProbe.notify.historyFailed'))
   } finally {
     loadingHistory.value = false
   }
@@ -73,6 +77,7 @@ async function loadNodes() {
   const subscription = props.subscription
   if (!subscription) return
   loadingNodes.value = true
+  nodesError.value = ''
   try {
     const { data } = await subProbeService.getNodes(subscription.id)
     nodesAvailable.value = data.available
@@ -80,7 +85,7 @@ async function loadNodes() {
     nodesAt.value = data.at ?? ''
     nodesSample.value = data.sample ?? null
   } catch (err) {
-    notify.apiError(err, t('subProbe.notify.nodesFailed'))
+    nodesError.value = errorText(err, t('subProbe.notify.nodesFailed'))
   } finally {
     loadingNodes.value = false
   }
@@ -114,18 +119,18 @@ async function probeNow() {
   const subscription = props.subscription
   if (!subscription || probing.value) return
   probing.value = true
+  probeError.value = ''
+  probeMessage.value = ''
   try {
     const { data } = await subProbeService.run(subscription.id)
-    notify.success(
-      t('subProbe.notify.probed', {
+    probeMessage.value = t('subProbe.notify.probed', {
         reachable: data.sample.reachable,
         total: data.sample.total,
         latency: data.sample.reachable > 0 ? formatLatency(data.sample.avg_ms) : '—',
-      }),
-    )
+      })
     await Promise.all([loadHistory(), loadNodes()])
   } catch (err) {
-    notify.apiError(err, t('subProbe.notify.probeFailed'))
+    probeError.value = errorText(err, t('subProbe.notify.probeFailed'))
   } finally {
     probing.value = false
   }
@@ -176,11 +181,9 @@ const probeTarget = computed(
 </script>
 
 <template>
-  <ContextPanel
+  <QualityPanelShell
     v-model:visible="visible"
     :header="$t('subProbe.dialog.title', { name: subscription?.name ?? '' })"
-    modal
-    class="w-full max-w-4xl"
   >
     <div class="space-y-4">
       <!-- Headline + controls -->
@@ -203,12 +206,13 @@ const probeTarget = computed(
               {{ latest.reachable }}/{{ latest.total }} · {{ latest.reachable > 0 ? formatLatency(latest.avg_ms) : '—' }}
             </span>
           </template>
+          <Skeleton v-else-if="loadingHistory || loadingNodes" class="h-8 w-40" />
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">
             {{ $t('subProbe.dialog.noData') }}
           </span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <!--
             Named ranges, not a date picker: the server chooses the bucket
             alongside the window, and a client picking one without the other is
@@ -238,6 +242,9 @@ const probeTarget = computed(
         </div>
       </div>
 
+      <p v-if="probeError" role="alert" class="text-sm text-red-600">{{ probeError }}</p>
+      <p v-if="probeMessage" role="status" class="text-sm text-text-secondary">{{ probeMessage }}</p>
+      <p v-if="historyError" role="alert" class="text-sm text-red-600">{{ historyError }}</p>
       <ProbeTrendChart :points="points" :loading="loadingHistory" />
 
       <!-- What is actually being measured, so the numbers can be interpreted. -->
@@ -247,12 +254,13 @@ const probeTarget = computed(
       </p>
 
       <!-- Latest run, per node -->
-      <div>
-        <div class="mb-2 flex items-center justify-between gap-2">
+      <details class="group rounded-control border border-border p-3">
+        <summary class="cursor-pointer text-sm font-semibold">{{ $t('subProbe.dialog.nodes') }}</summary>
+        <div class="mt-3 mb-2 flex items-center justify-between gap-2">
           <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
             {{ $t('subProbe.dialog.nodes') }}
           </h4>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span v-if="nodesAtLabel" class="text-xs text-gray-400 dark:text-gray-500">
               {{ nodesAtLabel }}
             </span>
@@ -261,6 +269,7 @@ const probeTarget = computed(
               class="cursor-pointer rounded p-0.5 text-gray-400 transition hover:text-primary-600 dark:hover:text-primary-400"
               :title="$t('common.refresh')"
               :aria-label="$t('common.refresh')"
+              :disabled="loadingNodes"
               @click="loadNodes"
             >
               <ArrowPathIcon class="h-4 w-4" :class="{ 'animate-spin': loadingNodes }" />
@@ -273,6 +282,7 @@ const probeTarget = computed(
           absent until the first sweep after a restart. Saying so beats an
           empty table, which reads as "all nodes fine".
         -->
+        <p v-if="nodesError" role="alert" class="mb-2 text-sm text-red-600">{{ nodesError }}</p>
         <p v-if="!nodesAvailable && !loadingNodes" class="text-xs text-gray-400 dark:text-gray-500">
           {{ $t('subProbe.dialog.nodesUnavailable') }}
         </p>
@@ -323,11 +333,7 @@ const probeTarget = computed(
             </tbody>
           </table>
         </div>
-      </div>
+      </details>
     </div>
-
-    <template #footer>
-      <Button variant="secondary" @click="visible = false">{{ $t('common.close') }}</Button>
-    </template>
-  </ContextPanel>
+  </QualityPanelShell>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 /**
  * How often subscription nodes are URL-tested, and how much history is kept.
  *
@@ -160,9 +161,9 @@ const inputClass =
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('subProbe.settings.maxPoints') }}
-          </label>
+          </label><FieldHelp :label="$t('subProbe.settings.maxPoints')" :text="$t('subProbe.settings.maxPointsHint')" /></div>
           <input
             v-model.number="maxPoints"
             type="number"
@@ -173,9 +174,7 @@ const inputClass =
         </div>
       </div>
 
-      <p class="text-xs text-gray-400 dark:text-gray-500">
-        {{ $t('subProbe.settings.maxPointsHint') }}
-      </p>
+
 
       <!-- The disk question, answered with a measured number. -->
       <p class="text-sm text-gray-500 dark:text-gray-400">

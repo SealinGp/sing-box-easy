@@ -1,0 +1,61 @@
+/* Contextual forms size themselves to the panel, never to the page behind it.
+   Existing form stacks opt in when they contain direct field wrappers. Rows of
+   actions, prose, previews, and nested editors keep their full width. */
+.panel-form-body { container: panel-fields / inline-size; min-width: 0; }
+.panel-form-body :where(input:not([type=checkbox]):not([type=radio]), textarea, select, .form-field, .volt-select, [data-pc-name=multiselect]) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.panel-form-body :where(.grid, .flex) > :where(div, label, section, input) { min-width: 0; }
+.panel-form-body :where(label, p) { overflow-wrap: anywhere; }
+.panel-form-body :where(.form-grid, .space-y-3, .space-y-4, .space-y-6):where(:has(> .form-field, > div > label + .form-field, > div > label + [data-pc-name=select], > div > label + input)) {
+  container: panel-fields / inline-size;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: .75rem;
+  align-items: start;
+}
+.panel-form-body :where(.form-grid, .space-y-3, .space-y-4, .space-y-6):where(:has(> .form-field, > div > label + .form-field, > div > label + [data-pc-name=select], > div > label + input)) > * {
+  grid-column: 1 / -1;
+  margin-block: 0;
+  min-width: 0;
+}
+@container panel-fields (min-width: 25rem) {
+  .panel-form-body :where(.form-grid, .space-y-3, .space-y-4, .space-y-6) > :where(.form-field, div:has(> label + .form-field), div:has(> label + [data-pc-name=select]), div:has(> label + input)) {
+    grid-column: span 6;
+  }
+  .panel-form-body :where(.form-grid, .space-y-3, .space-y-4, .space-y-6) > :where(.field-compact, div:has(> .field-compact)) { grid-column: span 4; }
+  .panel-form-body :where(.form-grid, .space-y-3, .space-y-4, .space-y-6) > :where(.field-wide, div:has(> .field-wide)) { grid-column: 1 / -1; }
+}
+@container panel-fields (min-width: 25rem) {
+  .panel-form-body .form-grid > .field-normal:has(+ .field-compact) { grid-column: span 8; }
+}
+/* Numeric inputs need a compact control, while hints can use the field width. */
+.panel-form-body .field-compact :where(input, [data-pc-name=select]) { max-width: 10rem; }
+.panel-form-body :where(.grid) > :where(div, label):has(> input[type=number]) input { max-width: 10rem; }
+/* Legacy viewport-based grids must not squeeze two columns into a phone panel. */
+@container panel-fields (max-width: 24.99rem) {
+  .panel-form-body :where(.grid[class*="grid-cols-"]) { grid-template-columns: minmax(0, 1fr); }
+  .panel-form-body :where(.grid[class*="grid-cols-"]) > * { grid-column: auto; }
+  .panel-form-body :where(.flex):has(> label > input[type=checkbox]):has(> .form-field) { flex-wrap: wrap; }
+}
+/* Explicit short-field pairs remain useful even on phones. */
+.panel-form-body .form-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 9rem); gap: .75rem; align-items: start; }
+.panel-form-body .form-pair > * { min-width: 0; }
+/* A toggle and its dependent interval are one full-width row, not one field. */
+.panel-form-body .flex:has(> label > input[type=checkbox]):has(> .form-field) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem);
+  align-items: start;
+}
+/* URL-focused forms (such as subscriptions) read as one vertical sequence.
+   A lone name or fetch selector should not leave half an empty row. The
+   toggle/interval pair retains its compact internal two-column layout. */
+.panel-form-body form:has(input[type=url]) > :where(.space-y-3, .space-y-4) > * {
+  grid-column: 1 / -1;
+}
+.panel-form-body form:has(input[type=url]) .flex:has(> label > input[type=checkbox]):has(> .form-field) > label {
+  padding-top: 1.75rem;
+}

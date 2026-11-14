@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FieldHelp from './FieldHelp.vue'
 import { ref, onMounted } from 'vue'
 import type { V2RayAPI } from '../types/api'
 import Button from './Button.vue'
@@ -140,16 +141,14 @@ onMounted(() => {
       <div v-else class="space-y-4">
         <!-- API Listen Address -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.v2ray.listen') }}
-          </label>
+          </label><FieldHelp :label="$t('experimental.v2ray.listen')" :text="$t('experimental.v2ray.listenHelp')" /></div>
           <Input
             v-model="settings.listen"
             placeholder="127.0.0.1:8080"
           />
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('experimental.v2ray.listenHelp') }}
-          </p>
+
         </div>
 
         <!-- Stats Service -->
@@ -168,58 +167,50 @@ onMounted(() => {
                 />
               </div>
               <div class="ml-3">
-                <label for="stats_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="flex items-center gap-1"><label for="stats_enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ $t('experimental.v2ray.stats.enable') }}
-                </label>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ $t('experimental.v2ray.stats.enableHelp') }}
-                </p>
+                </label><FieldHelp :label="$t('experimental.v2ray.stats.enable')" :text="$t('experimental.v2ray.stats.enableHelp')" /></div>
+
               </div>
             </div>
 
             <!-- Monitored Inbounds -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.v2ray.stats.inbounds') }}
-              </label>
+              </label><FieldHelp :label="$t('experimental.v2ray.stats.inbounds')" :text="$t('experimental.v2ray.stats.inboundsHelp')" /></div>
               <Input
                 v-model="inboundsText"
                 :placeholder="$t('experimental.v2ray.stats.inboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {{ $t('experimental.v2ray.stats.inboundsHelp') }}
-              </p>
+
             </div>
 
             <!-- Monitored Outbounds -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.v2ray.stats.outbounds') }}
-              </label>
+              </label><FieldHelp :label="$t('experimental.v2ray.stats.outbounds')" :text="$t('experimental.v2ray.stats.outboundsHelp')" /></div>
               <Input
                 v-model="outboundsText"
                 :placeholder="$t('experimental.v2ray.stats.outboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {{ $t('experimental.v2ray.stats.outboundsHelp') }}
-              </p>
+
             </div>
 
             <!-- Monitored Users -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.v2ray.stats.users') }}
-              </label>
+              </label><FieldHelp :label="$t('experimental.v2ray.stats.users')" :text="$t('experimental.v2ray.stats.usersHelp')" /></div>
               <Input
                 v-model="usersText"
                 :placeholder="$t('experimental.v2ray.stats.usersPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {{ $t('experimental.v2ray.stats.usersHelp') }}
-              </p>
+
             </div>
           </div>
         </div>
