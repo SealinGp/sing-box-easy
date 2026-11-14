@@ -3,6 +3,7 @@ import type { User, LoginResponse, AuthStatus, BasicResponse } from '../types/ap
 
 export interface UserPreferences {
   overview_order: string[]
+  overview_hidden?: string[]
 }
 
 export class UserService {

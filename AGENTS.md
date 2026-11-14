@@ -20,6 +20,27 @@ The frontend uses **bun**, not npm — `bun.lock` is the lockfile and there is n
 
 ## Coding Style & Naming Conventions
 
+### File size and reusable design (required)
+
+- No project code file may exceed **500 physical lines**, including comments
+  and blank lines. For Vue single-file components, count the entire file
+  (template, script, and styles together). Test files are exempt, including
+  `*_test.go`, `*.test.*`, and `*.spec.*`.
+- Keep every new or modified non-test code file within this limit. When working
+  on an existing oversized file, split it into cohesive modules as part of the
+  change. Do not hide excess code by compressing formatting or moving production
+  logic into test files. Unrelated legacy files can be addressed in separate
+  work; their existence does not waive the rule for files being changed.
+- Group related functions by responsibility and extract reusable components,
+  composables, services, utilities, or Go packages whenever practical. Reuse
+  existing abstractions before introducing another implementation of the same
+  behavior. Keep public interfaces small and dependencies explicit.
+- Split at meaningful responsibility boundaries, not arbitrary line numbers.
+  Avoid speculative abstractions or tiny wrappers that only add indirection.
+  Preserve behavior and run the relevant checks after extraction.
+- Before finishing a code change, check the line counts of all added or modified
+  non-test code files and resolve any file exceeding 500 lines.
+
 For frontend interaction work, follow `frontend/INTERACTION_GUIDELINES.md`.
 When a workflow requires a missing entity, provide creation at its selector and
 preserve the originating draft through creation, cancellation, and return.

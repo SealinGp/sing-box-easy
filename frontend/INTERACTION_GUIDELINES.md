@@ -1,5 +1,23 @@
 # Frontend interaction guidelines
 
+## Design interactions from first principles
+
+Start with the user’s goal, the object they are acting on, the information they
+need, and their likely next action. Choose controls and layout from those needs
+rather than copying a familiar component or exposing the implementation model.
+
+- Put actions on the objects they affect and show the result where the action
+  was triggered. Keep validation, request errors, loading, and completion
+  feedback beside the submitting control or inside its active panel. A toast
+  must not be the only feedback for an operation inside a panel.
+- Prefer direct, reversible manipulation. For example, remove an overview card
+  with × on the card; turn its vacant slot into an Add card entry point listing
+  only cards not already included. Preserve the draft until Save or Cancel.
+- Reduce navigation, memory burden, and unnecessary confirmations. Preserve
+  spatial context, keyboard focus, and layout while showing progress or errors.
+- Validate the complete flow: discovery, action, visible result, failure, retry,
+  cancellation, and recovery, including keyboard and narrow-screen use.
+
 ## Create missing dependencies where they are selected
 
 When operation A depends on an entity B, the selector for B must provide a path

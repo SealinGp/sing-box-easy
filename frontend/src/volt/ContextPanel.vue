@@ -13,9 +13,10 @@ interface Props extends /* @vue-ignore */ DialogProps {
   visible?: boolean
   header?: string
   closable?: boolean
+  dismissable?: boolean
 }
 defineOptions({ inheritAttrs: false })
-const props = withDefaults(defineProps<Props>(), { visible: false, closable: true })
+const props = withDefaults(defineProps<Props>(), { visible: false, closable: true, dismissable: true })
 const emit = defineEmits<{ 'update:visible': [boolean]; hide: []; show: [] }>()
 const attrs = useAttrs()
 const titleId = useId()
@@ -45,7 +46,7 @@ watch(() => props.visible, async (visible) => {
 </script>
 
 <template>
-  <Popover v-if="anchored" ref="popover" :panel-class="panelClass" content-class="flex min-h-0 flex-col p-0"
+  <Popover v-if="anchored" ref="popover" :dismissable="dismissable" :panel-class="panelClass" content-class="flex min-h-0 flex-col p-0"
     :aria-labelledby="header || $slots.header ? titleId : undefined" @hide="onPopoverHide" @show="emit('show')">
     <div v-if="header || $slots.header" class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
       <div :id="titleId" class="min-w-0 text-base font-semibold text-text-primary"><slot name="header">{{ header }}</slot></div>

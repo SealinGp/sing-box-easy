@@ -201,8 +201,10 @@ const ruleSummary = computed(() => {
 
 <template>
   <ListRow v-bind="rowAttrs">
-    <template v-if="reorderable" #leading>
+    <template #leading>
+      <span class="inline-flex min-w-8 justify-center text-sm font-semibold tabular-nums text-gray-500 dark:text-gray-400" :aria-label="$t('route.rules.priority.position', { position: index + 1 })" :title="$t('route.rules.priority.position', { position: index + 1 })">{{ index + 1 }}</span>
       <button
+        v-if="reorderable"
         v-bind="handleAttrs"
         class="list-drag-handle"
         :aria-label="$t('route.rules.reorder.handle', { position: index + 1 })"

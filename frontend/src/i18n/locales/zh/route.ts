@@ -7,6 +7,12 @@ export default {
     finalPolicy: '默认策略',
   },
   rules: {
+    priority: {
+      title: '匹配顺序 · 从上到下',
+      hint: '序号越小，越先匹配。命中 route、reject 或 hijack-dns 后终止匹配；sniff、resolve 和 route-options 执行后继续。请将具体规则放在宽泛规则之前。新增规则追加到末尾，可通过排序调整优先级。',
+      position: '优先级 {position}，按列表顺序匹配',
+    },
+
     title: '路由规则',
     add: '添加规则',
     empty: '尚未配置路由规则',

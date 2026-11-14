@@ -184,7 +184,11 @@ const memberOptions = computed(() => {
 })
 
 const outboundOptions = computed(() => {
-  const options = [{ value: '', label: t('common.direct') }]
+  // Omitting a dialer's detour means direct dialing. A route's outbound
+  // must instead name a real outbound; an empty 'Direct' option is invalid.
+  const options: { value: string; label: string }[] = props.field.key === 'detour'
+    ? [{ value: '', label: t('common.direct') }]
+    : []
   for (const outbound of outbounds.value) {
     if (outbound.tag) options.push({ value: outbound.tag, label: outbound.tag })
   }
@@ -348,6 +352,7 @@ function onNumber(raw: string | number) {
   <Select
     v-else-if="field.control === 'outbound'"
     class="w-full"
+    :placeholder="t('route.rules.placeholders.outbound')"
     :modelValue="value ?? ''"
     :options="outboundOptions"
     optionLabel="label"

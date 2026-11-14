@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ModulePresets from './ModulePresets.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
 import Card from './Card.vue'
@@ -74,6 +74,8 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const submitting = ref(false)
+const formError = ref('')
 const rules = ref<RouteRule[]>([])
 const outbounds = ref<Outbound[]>([])
 const endpoints = ref<EndpointRef[]>([])
@@ -153,7 +155,9 @@ const fetchOutbounds = async () => {
 
 // Handlers
 const handleAddRule = async (rule: RouteRule) => {
-  loading.value = true
+  if (submitting.value) return
+  submitting.value = true
+  formError.value = ''
   try {
     await routeService.addRouteRule(rule)
     toast.add({
@@ -166,19 +170,16 @@ const handleAddRule = async (rule: RouteRule) => {
     showAddRuleDialog.value = false
     ruleForm.value = { action: 'route', outbound: '' }
   } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('route.rules.toast.addFailed'),
-      life: 3000
-    })
+    formError.value = err.message || t('route.rules.toast.addFailed')
   } finally {
-    loading.value = false
+    submitting.value = false
   }
 }
 
 const handleEditRule = async (index: number, rule: RouteRule) => {
-  loading.value = true
+  if (submitting.value) return
+  submitting.value = true
+  formError.value = ''
   try {
     await routeService.updateRouteRule(index, rule)
     toast.add({
@@ -190,14 +191,9 @@ const handleEditRule = async (index: number, rule: RouteRule) => {
     await fetchRouteRules()
     editingRule.value = null
   } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('route.rules.toast.updateFailed'),
-      life: 3000
-    })
+    formError.value = err.message || t('route.rules.toast.updateFailed')
   } finally {
-    loading.value = false
+    submitting.value = false
   }
 }
 
@@ -385,6 +381,8 @@ const dialogVisible = computed({
   }
 })
 
+watch(dialogVisible, visible => { if (visible) formError.value = '' })
+
 // Functions
 function startEditRule(index: number, rule: RouteRule) {
   // Ensure add dialog is closed
@@ -411,21 +409,20 @@ function guardAction(rule: RouteRule): boolean {
   )
   if (!invalid) return true
 
-  toast.add({
-    severity: 'error',
-    summary: t('common.error'),
-    detail: t(invalid),
-    life: 4000,
-  })
+  formError.value = t(invalid)
   return false
 }
 
 function submitAddRule() {
+  if (submitting.value) return
+  formError.value = ''
   if (!guardAction(ruleForm.value)) return
   handleAddRule(ruleForm.value)
 }
 
 function submitUpdateRule() {
+  if (submitting.value) return
+  formError.value = ''
   if (!editingRule.value) return
   if (!guardAction(editingRule.value.rule)) return
   handleEditRule(editingRule.value.index, editingRule.value.rule)
@@ -559,6 +556,11 @@ onMounted(() => {
         </span>
       </p>
 
+      <div class="mb-4 rounded-control bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-sm">
+        <p class="font-medium text-gray-800 dark:text-gray-200">{{ $t('route.rules.priority.title') }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $t('route.rules.priority.hint') }}</p>
+      </div>
+
       <List :loading="loading" :empty="rules.length === 0" transition>
         <template #empty>{{ $t('route.rules.empty') }}</template>
 
@@ -583,10 +585,12 @@ onMounted(() => {
     <ContextPanel
       v-model:visible="dialogVisible"
       modal
+      :closable="!submitting"
+      :dismissable="!submitting"
       :header="editingRule ? $t('route.rules.modal.edit') : $t('route.rules.modal.add')"
       class="w-full max-w-2xl"
     >
-      <div :key="editingRule ? `edit-${editingRule.index}` : 'add'" class="space-y-4">
+      <div :key="editingRule ? `edit-${editingRule.index}` : 'add'" class="space-y-4" :inert="submitting" :aria-busy="submitting">
         <!--
           The rule restated as sing-box will run it. The form below shows which
           fields exist; this says what they DO. Kept at the top so it reads as a
@@ -683,13 +687,17 @@ onMounted(() => {
       </div>
 
       <template #footer>
+        <p v-if="formError" role="alert" class="w-full rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{{ formError }}</p>
         <Button
           :label="$t('common.cancel')"
           severity="secondary"
+          :disabled="submitting"
           @click="dialogVisible = false"
         />
         <Button
           :label="editingRule ? $t('common.update') : $t('common.add')"
+          :loading="submitting"
+          :disabled="submitting"
           @click="editingRule ? submitUpdateRule() : submitAddRule()"
         />
       </template>

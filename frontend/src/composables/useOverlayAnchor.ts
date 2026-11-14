@@ -1,5 +1,8 @@
 import { onBeforeUnmount } from 'vue'
 
+const points = new WeakMap<HTMLElement, { x: number; y: number }>()
+export function overlayOrigin(target: HTMLElement) { return points.get(target) }
+
 let users = 0
 let lastTrigger: HTMLElement | null = null
 let triggeredAt = 0
@@ -8,6 +11,10 @@ function rememberTrigger(event: Event) {
   lastTrigger = event.target instanceof Element
     ? event.target.closest<HTMLElement>('button, [role="button"], [data-overlay-anchor]')
     : null
+  if (lastTrigger) {
+    if (event instanceof MouseEvent && event.detail > 0) points.set(lastTrigger, { x: event.clientX, y: event.clientY })
+    else points.delete(lastTrigger)
+  }
   triggeredAt = performance.now()
 }
 

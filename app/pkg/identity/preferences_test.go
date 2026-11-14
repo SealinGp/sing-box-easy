@@ -22,8 +22,8 @@ func TestPreferencesIsolationAndPersistence(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(initial.OverviewOrder, overviewCards) {
 		t.Fatalf("defaults: %+v, %v", initial, err)
 	}
-	// Submit the full layout sent by the overview, including the connections card.
-	wanted := []string{"connections", "api-endpoints", "dns-probe", "route-topology", "subscriptions", "route-probe", "service-status"}
+	// Submit the full overview layout, including browser network measurements.
+	wanted := []string{"network-info", "connections", "latency", "api-endpoints", "dns-probe", "route-topology", "subscriptions", "route-probe", "service-status"}
 	if _, err := m.UpdatePreferences(first.ID, Preferences{OverviewOrder: wanted}); err != nil {
 		t.Fatal(err)
 	}
@@ -93,5 +93,48 @@ func TestNormalizeRetiredCards(t *testing.T) {
 	got := normalizeOverviewOrder([]string{"retired", "dns-probe", "dns-probe"})
 	if got[0] != "dns-probe" || len(got) != len(overviewCards) {
 		t.Fatalf("unexpected normalized order: %v", got)
+	}
+}
+
+func TestPreferencesAddsNetworkCardsToSavedLayout(t *testing.T) {
+	legacy := []string{"dns-probe", "route-topology", "service-status", "connections", "subscriptions", "route-probe", "api-endpoints"}
+	want := append(append([]string{}, legacy...), "latency", "network-info")
+	if got := normalizeOverviewOrder(legacy); !reflect.DeepEqual(got, want) {
+		t.Fatalf("existing order must be preserved with new cards appended: %v", got)
+	}
+}
+
+func TestHiddenOverviewCards(t *testing.T) {
+	m := newTestManager(t)
+	u, err := m.CreateUser("hidden-cards", "password", "viewer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wanted := []string{"latency", "network-info"}
+	_, err = m.UpdatePreferences(u.ID, Preferences{OverviewOrder: overviewCards, OverviewHidden: wanted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := m.GetPreferences(u.ID)
+	if err != nil || !reflect.DeepEqual(got.OverviewHidden, wanted) {
+		t.Fatalf("hidden cards not persisted: %+v %v", got, err)
+	}
+	// Older clients updating only order must not reset visibility.
+	got, err = m.UpdatePreferences(u.ID, Preferences{OverviewOrder: overviewCards})
+	if err != nil || !reflect.DeepEqual(got.OverviewHidden, wanted) {
+		t.Fatalf("visibility lost: %+v %v", got, err)
+	}
+	for _, invalid := range [][]string{{"unknown"}, {"latency", "latency"}} {
+		if _, err := m.UpdatePreferences(u.ID, Preferences{OverviewOrder: overviewCards, OverviewHidden: invalid}); !errors.Is(err, ErrInvalidPreferences) {
+			t.Fatalf("invalid hidden IDs accepted: %v", err)
+		}
+	}
+	got, err = m.UpdatePreferences(u.ID, Preferences{OverviewOrder: overviewCards, OverviewHidden: overviewCards})
+	if err != nil || len(got.OverviewHidden) != len(overviewCards) {
+		t.Fatalf("hide all failed: %+v %v", got, err)
+	}
+	got, err = m.UpdatePreferences(u.ID, Preferences{OverviewOrder: overviewCards, OverviewHidden: []string{}})
+	if err != nil || len(got.OverviewHidden) != 0 {
+		t.Fatalf("restore failed: %+v %v", got, err)
 	}
 }

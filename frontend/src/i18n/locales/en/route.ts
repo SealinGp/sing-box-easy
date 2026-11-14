@@ -7,6 +7,12 @@ export default {
     finalPolicy: 'Final Policy',
   },
   rules: {
+    priority: {
+      title: 'Matching order · top to bottom',
+      hint: 'Lower numbers run first. A matching route, reject or hijack-dns action ends evaluation; sniff, resolve and route-options continue. Put specific rules before broad rules. New rules are appended; use Reorder to change their priority.',
+      position: 'Priority {position} — evaluated in list order',
+    },
+
     title: 'Routing Rules',
     add: 'Add Rule',
     empty: 'No routing rules configured',

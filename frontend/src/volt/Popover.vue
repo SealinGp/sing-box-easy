@@ -4,8 +4,11 @@ import PrimePopover, { type PopoverPassThroughOptions, type PopoverProps } from 
 import { popoverMotion } from '../composables/useInterfaceMotion'
 import { ptViewMerge } from './utils'
 import { twMerge } from 'tailwind-merge'
+import { overlayOrigin } from '../composables/useOverlayAnchor'
+import { popoverPlacement, type PopoverOrigin } from '../utils/popoverPlacement'
 
 interface Props extends /* @vue-ignore */ PopoverProps {
+  dismissable?: boolean
   panelClass?: string
   contentClass?: string
 }
@@ -15,20 +18,47 @@ const attrs = useAttrs()
 const autoId = useId()
 const id = computed(() => String(attrs.id ?? autoId))
 const panel = ref<InstanceType<typeof PrimePopover> | null>(null)
-const availableHeight = ref<number>()
+let origin: PopoverOrigin | undefined
 let trigger: HTMLElement | null = null
 let returnFocus = false
 let resizeObserver: ResizeObserver | null = null
 let alignmentFrame = 0
 let openingFrame = 0
 let shown = false
+let pointerStartedInside = false
+
+// Select menus are teleported to body. Selection happens on mousedown and may
+// remove the option before click, so remember where the gesture began.
+function ownsTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Node)) return false
+  const root = document.getElementById(id.value)
+  if (root?.contains(target) || trigger?.contains(target)) return true
+  return [...(root?.querySelectorAll('[aria-controls]') ?? [])].some(control =>
+    (control.getAttribute('aria-controls') ?? '').split(/\s+/).some(controlledId => {
+      const controlled = document.getElementById(controlledId)
+      const overlay = controlled?.closest('[data-pc-section="overlay"]') ?? controlled
+      return overlay?.contains(target)
+    }),
+  )
+}
+function onPointerDown(event: PointerEvent) {
+  pointerStartedInside = ownsTarget(event.target)
+  returnFocus = pointerStartedInside
+}
+function onOutsideClick(event: MouseEvent) {
+  const inside = ownsTarget(event.target) || (event.detail > 0 && pointerStartedInside)
+  pointerStartedInside = false
+  if (!inside && props.dismissable !== false) hide()
+}
 
 function trackFocus(event: Event) {
-  returnFocus = !!document.getElementById(id.value)?.contains(event.target as Node)
+  returnFocus = ownsTarget(event.target)
 }
 function removeListeners() {
   document.removeEventListener('focusin', trackFocus, true)
-  document.removeEventListener('pointerdown', trackFocus, true)
+  document.removeEventListener('pointerdown', onPointerDown, true)
+  document.removeEventListener('click', onOutsideClick)
+  window.removeEventListener('resize', alignWithinViewport)
   resizeObserver?.disconnect()
   cancelAnimationFrame(alignmentFrame)
 }
@@ -37,9 +67,9 @@ onBeforeUnmount(() => cancelAnimationFrame(openingFrame))
 
 const theme = computed<PopoverPassThroughOptions>(() => ({
   root: {
-    class: twMerge('liquid-glass-float rounded-surface mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[70dvh] overflow-y-auto', props.panelClass),
+    class: twMerge('liquid-glass-float rounded-surface w-80 max-w-[calc(100vw-2rem)] max-h-[70dvh] overflow-y-auto', props.panelClass),
     'aria-modal': 'false',
-    style: availableHeight.value ? { maxHeight: `${availableHeight.value}px` } : undefined,
+
   },
   content: twMerge('p-4', props.contentClass),
   transition: popoverMotion,
@@ -48,7 +78,7 @@ const theme = computed<PopoverPassThroughOptions>(() => ({
 function toggle(event: Event) {
   const target = event.currentTarget as HTMLElement | null
   if (shown || openingFrame) hide()
-  else if (target) showAt(target)
+  else if (target) showAt(target, event instanceof MouseEvent && event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined)
 }
 function hide() {
   cancelAnimationFrame(openingFrame)
@@ -68,6 +98,8 @@ function onKeydown(event: KeyboardEvent) {
   hide()
 }
 function onShow() {
+  alignWithinViewport()
+  window.addEventListener('resize', alignWithinViewport)
   const root = document.getElementById(id.value)
   const first = root?.querySelector<HTMLElement>('[autofocus]')
     ?? root?.querySelector<HTMLElement>('input:not(:disabled):not([type="hidden"]), textarea:not(:disabled)')
@@ -75,7 +107,8 @@ function onShow() {
   first?.focus({ preventScroll: true })
   returnFocus = true
   document.addEventListener('focusin', trackFocus, true)
-  document.addEventListener('pointerdown', trackFocus, true)
+  document.addEventListener('pointerdown', onPointerDown, true)
+  document.addEventListener('click', onOutsideClick)
   // Async details and expandable fields can resize a panel after it opens.
   // Reposition at its anchor so growing content stays within the viewport.
   resizeObserver = new ResizeObserver(() => {
@@ -92,8 +125,9 @@ function onHide() {
   if (returnFocus) trigger?.focus({ preventScroll: true })
   emit('hide')
 }
-function showAt(target: HTMLElement) {
+function showAt(target: HTMLElement, point?: PopoverOrigin) {
   trigger = target
+  origin = point ?? overlayOrigin(target)
   // PrimeVue uses currentTarget to ignore the opening click in its document
   // listener. Preserve that anchor when opening after a reactive update too.
   const event = new Event('open')
@@ -106,32 +140,38 @@ function showAt(target: HTMLElement) {
     openingFrame = requestAnimationFrame(() => {
       openingFrame = 0
       if (!target.isConnected) return
-      const bounds = target.getBoundingClientRect()
-      const above = bounds.top - 24
-      const below = window.innerHeight - bounds.bottom - 24
-      availableHeight.value = Math.min(window.innerHeight * .8, Math.max(above, below))
       shown = true
       panel.value?.show(event, target)
     })
   })
 }
 function alignWithinViewport() {
-  panel.value?.alignOverlay()
   const root = document.getElementById(id.value)
-  if (!root) return
-  const bounds = root.getBoundingClientRect()
-  const left = Math.max(16, Math.min(bounds.left, window.innerWidth - bounds.width - 16))
-  // A tab switch can make an already-open panel taller. PrimeVue aligns to
-  // the anchor again, but may leave its new bottom outside the viewport.
-  const top = Math.max(16, Math.min(bounds.top, window.innerHeight - bounds.height - 16))
-  root.style.left = `${left + window.scrollX}px`
-  root.style.top = `${top + window.scrollY}px`
+  if (!root || !trigger) return
+  const anchor = trigger.getBoundingClientRect()
+  const point = origin ?? { x: anchor.left + anchor.width / 2, y: anchor.top + anchor.height / 2 }
+  // Measure untransformed dimensions: entry animation scales the bounding rect.
+  root.style.maxWidth = ''
+  root.style.maxHeight = ''
+  const placement = popoverPlacement(point, { width: window.innerWidth, height: window.innerHeight }, {
+    width: root.offsetWidth, height: root.offsetHeight,
+  })
+  root.style.maxWidth = `${placement.maxWidth}px`
+  root.style.maxHeight = `${placement.maxHeight}px`
+  // Width constraints can wrap content and change height. Measure once more.
+  const final = popoverPlacement(point, { width: window.innerWidth, height: window.innerHeight }, {
+    width: root.offsetWidth, height: root.offsetHeight,
+  })
+  root.style.left = `${final.left + window.scrollX}px`
+  root.style.top = `${final.top + window.scrollY}px`
+  root.style.marginTop = '0'
+  root.style.transformOrigin = final.origin
 }
 defineExpose({ toggle, showAt, hide })
 </script>
 
 <template>
-  <PrimePopover ref="panel" :id="id" unstyled :pt="theme" :pt-options="{mergeProps: ptViewMerge}"
+  <PrimePopover ref="panel" :id="id" :dismissable="false" unstyled :pt="theme" :pt-options="{mergeProps: ptViewMerge}"
     @show="onShow" @hide="onHide" @keydown.capture="onKeydown">
     <slot />
   </PrimePopover>
