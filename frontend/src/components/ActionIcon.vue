@@ -1,15 +1,22 @@
 <script setup lang="ts">
-defineProps<{ action: 'edit' | 'delete' }>()
+/** Compact 20-unit action glyphs, with consistent weight and rounded joins. */
+defineProps<{ action: 'copy' | 'edit' | 'delete' | 'check' | 'close' }>()
 </script>
 
 <template>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65"
-    stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0" aria-hidden="true">
-    <template v-if="action === 'delete'">
-      <path d="M4 7h16M9 7V4h6v3M6.5 7l.8 13h9.4l.8-13M10 10.5v6M14 10.5v6" />
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 shrink-0" aria-hidden="true">
+    <template v-if="action === 'copy'">
+      <rect x="7" y="6.5" width="9" height="10" rx="2" />
+      <path d="M12.5 6.5V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1" />
     </template>
-    <template v-else>
-      <path d="m14.5 5.5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z" />
+    <template v-else-if="action === 'delete'">
+      <path d="M4 6h12M8 6V4.75a1.25 1.25 0 0 1 1.25-1.25h1.5A1.25 1.25 0 0 1 12 4.75V6M5.5 6v8.5a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2V6M8.5 9v4.5M11.5 9v4.5" />
     </template>
+    <template v-else-if="action === 'edit'">
+      <path d="m11.75 4.75 3.5 3.5M4 16l3.75-.75 8-8a2.47 2.47 0 0 0-3.5-3.5l-8 8L4 16Z" />
+    </template>
+    <path v-else-if="action === 'check'" d="m4.5 10 3.5 3.5 7.5-7.5" />
+    <path v-else d="m5.5 5.5 9 9m0-9-9 9" />
   </svg>
 </template>

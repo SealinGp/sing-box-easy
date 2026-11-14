@@ -126,7 +126,7 @@ const classes = computed(() =>
 </script>
 
 <template>
-  <button :type="type" :class="classes" :disabled="disabled || loading" :aria-busy="loading">
+  <button data-text-button :type="type" :class="classes" :disabled="disabled || loading" :aria-busy="loading">
     <svg
       v-if="loading"
       class="h-4 w-4 animate-spin"

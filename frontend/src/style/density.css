@@ -444,8 +444,10 @@
     transition: color 140ms, background-color 140ms, transform 140ms;
   }
   .icon-action:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
+  .icon-action-danger { color: var(--color-danger); }
   .icon-action-danger:hover { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 9%, transparent); }
   .icon-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .icon-action-danger:focus-visible { outline-color: var(--color-danger); }
   .icon-action:disabled { opacity: .4; cursor: not-allowed; }
   .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 20px; color: var(--color-text-secondary); }
   .status-indicator-mark { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: currentColor; }

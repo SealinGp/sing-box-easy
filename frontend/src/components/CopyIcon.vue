@@ -15,7 +15,7 @@
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CheckIcon, ClipboardDocumentIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import ActionIcon from './ActionIcon.vue'
 import { useNotify } from '../composables/useNotify'
 import { writeTextToClipboard } from '../utils/clipboard'
 
@@ -50,16 +50,10 @@ let timer: ReturnType<typeof setTimeout> | undefined
 // instance, and in tests it keeps the process alive.
 onBeforeUnmount(() => clearTimeout(timer))
 
-const iconClass = computed(() => {
-  switch (props.size) {
-    case 'xs':
-      return 'h-3 w-3'
-    case 'md':
-      return 'h-4.5 w-4.5'
-    default:
-      return 'h-3.5 w-3.5'
-  }
-})
+const iconStyle = computed(() => ({
+  width: props.size === 'xs' ? '16px' : '20px',
+  height: props.size === 'xs' ? '16px' : '20px',
+}))
 
 const title = computed(() => {
   if (state.value === 'copied') return t('common.copied')
@@ -91,28 +85,24 @@ async function copy() {
 <template>
   <button
     type="button"
-    class="shrink-0 p-0.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-    :class="
-      state === 'copied'
-        ? 'text-green-600 dark:text-green-400'
-        : state === 'failed'
-          ? 'text-red-600 dark:text-red-400'
-          : 'text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
-    "
+    class="icon-action copy-action"
+    :class="{ 'copy-action-small': size === 'xs' }"
+    :data-state="state"
     :title="title"
     :aria-label="title"
     @click.stop.prevent="copy"
   >
-    <!--
-      One <span> per state rather than a :is= swap, so the check inherits the
-      button's own box and the row cannot reflow by a pixel as it changes.
-    -->
-    <CheckIcon v-if="state === 'copied'" :class="iconClass" />
-    <XMarkIcon v-else-if="state === 'failed'" :class="iconClass" />
-    <ClipboardDocumentIcon v-else :class="iconClass" />
+    <ActionIcon :action="state === 'copied' ? 'check' : state === 'failed' ? 'close' : 'copy'" :style="iconStyle" />
     <!-- Announced to screen readers, which cannot see the icon swap. -->
     <span class="sr-only" aria-live="polite">
       {{ state === 'idle' ? '' : title }}
     </span>
   </button>
 </template>
+
+<style scoped>
+.copy-action { width: 26px; height: 26px; }
+.copy-action-small { width: 24px; height: 24px; }
+.copy-action[data-state="copied"] { color: var(--color-success); }
+.copy-action[data-state="failed"] { color: var(--color-danger); }
+</style>
