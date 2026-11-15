@@ -1,28 +1,22 @@
 <script setup lang="ts">
+import { reactive } from 'vue'
+import SubscriptionCollection from '../../components/SubscriptionCollection.vue'
 import FieldHelp from '../../components/FieldHelp.vue'
-import IconButton from '../../components/IconButton.vue'
 import Button from "../../components/Button.vue";
 import Input from "../../components/Input.vue";
-import StatusIndicator from "../../components/StatusIndicator.vue";
-import Table from "../../components/Table.vue";
-import CopyIcon from "../../components/CopyIcon.vue";
-import PopConfirm from "../../components/PopConfirm.vue";
 import SubscriptionInfoKeywords from "../../components/SubscriptionInfoKeywords.vue";
-import SubscriptionQualityCell from "../../components/SubscriptionQualityCell.vue";
-import SubscriptionQuotaDetails from "../../components/SubscriptionQuotaDetails.vue";
 import {
   PlusIcon,
   ArrowPathIcon,
   CloudArrowDownIcon,
-  ServerIcon,
-  ClockIcon,
   TagIcon,
-  ArrowTopRightOnSquareIcon,
 } from "@heroicons/vue/24/outline";
 import { Select } from "../../volt";
 import { ContextPanel } from '../../volt'
 import { useSubscriptionsPage } from '../../composables/useSubscriptionsPage'
-const { summarizePlan, subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, openEditModal, saveSubscription, officialLink, deleteSubscription, updateSubscription, updateAllSubscriptions, formatDate, getSubscriptionStatus, probeLatest, loadProbeStatus } = useSubscriptionsPage()
+const page = useSubscriptionsPage()
+const collection = reactive(page)
+const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, saveSubscription, updateAllSubscriptions, } = page
 </script>
 <template>
   <div>
@@ -81,199 +75,7 @@ const { summarizePlan, subscriptions, isLoading, isUpdating, showModal, showInfo
       </div>
     </div>
 
-    <!-- Subscriptions List -->
-    <div
-      class="table-surface"
-    >
-      <Table table-class="table-fixed min-w-[68rem]"
-        :loading="isLoading && subscriptions.length === 0"
-        :empty="subscriptions.length === 0"
-      >
-        <template #empty>
-          <div
-            class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-pill mb-4"
-          >
-            <ServerIcon class="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            {{ $t("subscriptions.empty.title") }}
-          </h3>
-          <p class="text-gray-500 dark:text-gray-400 mb-3">
-            {{ $t("subscriptions.empty.desc") }}
-          </p>
-          <Button @click="openAddModal">
-            <PlusIcon class="h-5 w-5" />
-            {{ $t("subscriptions.add") }}
-          </Button>
-        </template>
-
-        <template #head>
-          <th class="w-[28%]">
-            {{ $t("subscriptions.table.subscription") }}
-          </th>
-          <th class="w-56">
-            {{ $t("subscriptions.table.status") }}
-          </th>
-          <th class="w-28">
-            {{ $t("subProbe.column") }}
-          </th>
-          <th>
-            {{ $t("subscriptions.table.info") }}
-          </th>
-          <th class="col-actions w-36">
-            {{ $t("subscriptions.table.actions") }}
-          </th>
-        </template>
-
-        <tr
-          v-for="subscription in subscriptions"
-          :key="subscription.id"
-        >
-          <!-- Subscription: name (→ provider site) + id + feed URL, stacked -->
-          <td class="align-top cell-wrap">
-            <div class="flex flex-col gap-1 max-w-[18rem]">
-              <!--
-                The name links to the provider's own site when the feed gave us
-                one, because that is where every question this page raises gets
-                answered — out of traffic, expired, plan changed. Falls back to
-                plain text rather than a dead link when it did not.
-
-                rel="noopener noreferrer": the href is provider-controlled, so
-                the opened page must get neither window.opener nor a Referer
-                naming this panel's LAN address.
-              -->
-              <a
-                v-if="officialLink(subscription)"
-                :href="officialLink(subscription)!"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="group inline-flex items-center gap-1 min-w-0 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
-                :title="$t('subscriptions.tooltip.openSite', { name: subscription.name })"
-              >
-                <span class="truncate">{{ subscription.name }}</span>
-                <ArrowTopRightOnSquareIcon class="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
-              </a>
-              <span
-                v-else
-                class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                :title="subscription.name"
-              >
-                {{ subscription.name }}
-              </span>
-
-              <!--
-                The id is the string that ties an outbound back to its
-                subscription: node tags carry it, so pasting it into the config
-                editor's search answers "which subscription is this node from".
-                Monospace because it is meant to be read character by character.
-              -->
-              <div class="flex items-center gap-1 min-w-0">
-                <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                  {{ $t("subscriptions.table.id") }}
-                </span>
-                <span
-                  class="font-mono text-xs text-gray-500 dark:text-gray-400 truncate"
-                  :title="subscription.id"
-                >
-                  {{ subscription.id }}
-                </span>
-                <CopyIcon
-                  :text="subscription.id"
-                  size="xs"
-                  :label="$t('subscriptions.tooltip.copyId')"
-                />
-              </div>
-
-              <div class="flex items-center gap-1 min-w-0">
-                <span
-                  class="text-xs text-gray-500 dark:text-gray-400 truncate"
-                  :title="subscription.url"
-                >
-                  {{ subscription.url }}
-                </span>
-                <CopyIcon
-                  :text="subscription.url"
-                  :label="$t('subscriptions.tooltip.copy')"
-                />
-              </div>
-            </div>
-          </td>
-          <!-- State uses plain indicators; descriptive labels remain badges. -->
-          <td class="align-top">
-            <div class="flex flex-col items-start gap-1.5">
-              <StatusIndicator :variant="getSubscriptionStatus(subscription).type" :busy="isUpdating.includes(subscription.id)">
-                {{ getSubscriptionStatus(subscription).text }}
-              </StatusIndicator>
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs text-text-secondary">{{ $t('subscriptions.form.autoUpdate') }}:</span>
-                <StatusIndicator :variant="subscription.auto_update ? 'success' : 'secondary'">
-                  {{ subscription.auto_update ? $t('subscriptions.enabled') : $t('subscriptions.disabled') }}
-                </StatusIndicator>
-                <span v-if="subscription.auto_update && subscription.update_interval" class="inline-flex items-center gap-1 text-xs text-text-secondary" :title="$t('subscriptions.form.updateInterval')">
-                  <ClockIcon class="h-3 w-3" />{{ subscription.update_interval }}
-                </span>
-              </div>
-              <span
-                class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap"
-                :title="$t('subscriptions.table.lastUpdate')"
-              >
-                {{ $t("subscriptions.table.lastUpdate") }}: {{ formatDate(subscription.last_update) }}
-              </span>
-            </div>
-          </td>
-          <!-- Quality: newest sample + a way into the trend. -->
-          <td class="align-top">
-            <SubscriptionQualityCell
-              :point="probeLatest[subscription.id]"
-              :subscription="subscription"
-              @refresh="loadProbeStatus"
-            />
-          </td>
-
-          <!-- The same quota interpretation and tooltip used by Overview. -->
-          <td class="align-top">
-            <SubscriptionQuotaDetails
-              :plan="summarizePlan(subscription)"
-              :subscription-name="subscription.name"
-            />
-          </td>
-          <td class="align-top col-actions font-medium">
-            <div class="flex items-center justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                action
-                :loading="isUpdating.includes(subscription.id)"
-                @click="updateSubscription(subscription)"
-                :disabled="isUpdating.includes(subscription.id)"
-                :title="$t('subscriptions.tooltip.update')"
-                :aria-label="$t('subscriptions.tooltip.update')"
-              >
-                <!-- Hide the icon while updating: the Button shows only its
-                     spinner and is disabled, so the row can't be re-triggered.
-                     Shares CloudArrowDownIcon with the header's "update all",
-                     which is this same operation across every row. -->
-                <CloudArrowDownIcon
-                  v-if="!isUpdating.includes(subscription.id)"
-                  class="h-4 w-4"
-                />
-              </Button>
-              <IconButton action="edit" @click="openEditModal(subscription)" :label="$t('subscriptions.tooltip.edit')" />
-              <!-- Keep the confirmation attached to the named subscription. -->
-              <PopConfirm
-                :message="$t('subscriptions.del.confirmHeading')"
-                :target="subscription.name"
-                :details="$t('subscriptions.del.confirmDesc')"
-                :confirm-label="$t('common.delete')"
-                tone="danger"
-                align="right"
-                @confirm="deleteSubscription(subscription)"
-              />
-            </div>
-          </td>
-        </tr>
-      </Table>
-    </div>
+    <SubscriptionCollection :page="collection" />
 
     <!-- Info-label keywords editor -->
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />

@@ -34,37 +34,17 @@ import { computed, ref, watch, type VNode } from 'vue'
 import { useFillHeight } from '../composables/useFillHeight'
 import { useInterfaceMotion } from '../composables/useInterfaceMotion'
 import Skeleton from './Skeleton.vue'
+import TableRecords from './TableRecords'
+import '../style/collections.css'
 import { useI18n } from 'vue-i18n'
 
 const interfaceMotion = useInterfaceMotion()
 const { t } = useI18n()
 
-// Freeze only departing rows so the remaining rows can slide into place.
-// Cell widths are captured before leaving table layout; no heights animate.
-function prepareLeave(element: Element) {
-  if (!interfaceMotion || !(element instanceof HTMLElement)) return
-  const box = element.getBoundingClientRect()
-  const parent = element.parentElement?.getBoundingClientRect()
-  const cells = [...element.children] as HTMLElement[]
-  const widths = cells.map(cell => cell.getBoundingClientRect().width)
-  cells.forEach((cell, index) => { cell.style.width = `${widths[index]}px` })
-  Object.assign(element.style, {
-    position: 'absolute', top: `${box.top - (parent?.top ?? box.top)}px`,
-    left: '0', width: `${box.width}px`,
-  })
-  element.setAttribute('inert', '')
-}
-
-function cancelLeave(element: Element) {
-  if (!interfaceMotion || !(element instanceof HTMLElement)) return
-  for (const key of ['position', 'top', 'left', 'width']) element.style.removeProperty(key)
-  for (const cell of element.children) (cell as HTMLElement).style.removeProperty('width')
-  element.removeAttribute('inert')
-}
-
 export interface TableColumn {
   /** Stable identity for the `v-for` key. */
   key: string
+  minWidth?: number
   /** Header text. Omit for columns that need no label (checkbox, index). */
   label?: string
   /** `right` adds `col-actions`, which right-aligns the header AND its cells. */
@@ -76,6 +56,10 @@ export interface TableColumn {
 interface Props {
   /** Table layout utilities; the scroll wrapper stays independent. */
   tableClass?: string
+  presentation?: boolean
+  selectable?: boolean
+  resizable?: boolean
+  columnStorageKey?: string
   /** Header definition. Omit and use the `#head` slot for bespoke headers. */
   columns?: TableColumn[]
   /** Shows the spinner instead of the table. */
@@ -109,6 +93,8 @@ const props = withDefaults(defineProps<Props>(), {
   empty: false,
   scroll: true,
   transition: false,
+  presentation: true,
+  selectable: true,
 })
 
 defineSlots<{
@@ -116,6 +102,7 @@ defineSlots<{
   default: () => VNode[]
   /** Replaces the generated `<th>`s. Provide `<th>` elements, not a `<tr>`. */
   head?: () => VNode[]
+  cards?: (state: { selected: Set<string>; toggle: (key: string) => void }) => VNode[]
   /** Shown when `empty` and not `loading`. */
   empty?: () => VNode[]
   /** Replaces the default spinner. */
@@ -179,52 +166,24 @@ const skeletonColumns = computed(() => loadingWidths.value.length || props.colum
     }"
   >
     <span v-if="props.loading && interfaceMotion" class="sr-only" role="status">{{ t('common.loading') }}</span>
-    <table class="data-table" :class="props.tableClass">
-      <thead v-if="$slots.head || props.columns?.length">
-        <tr>
-          <slot name="head">
-            <th
-              v-for="(col, index) in props.columns"
-              :key="col.key"
-              :class="[col.align === 'right' ? 'col-actions' : undefined, col.class]"
-              :style="props.loading && loadingWidths[index] ? { width: `${loadingWidths[index]}px` } : undefined"
-            >
-              {{ col.label }}
-            </th>
-          </slot>
+    <TableRecords :columns="props.columns" :table-class="props.tableClass"
+      :transition="props.transition" :presentation="props.presentation" :selectable="props.selectable"
+      :storage-key="props.columnStorageKey" :loading="props.loading">
+      <template v-if="$slots.head" #head><slot name="head" /></template>
+      <template v-if="$slots.cards" #cards="state"><slot name="cards" v-bind="state" /></template>
+      <template #default>
+        <tr v-if="props.loading" v-for="(height, row) in loadingRows" :key="`skeleton-${row}`" :style="{ height: `${height}px` }">
+          <td v-for="column in skeletonColumns" :key="column"><Skeleton class="h-3 w-3/4" /></td>
         </tr>
-      </thead>
-      <!--
-        Two branches rather than a dynamic `<component :is>`: `<TransitionGroup>`
-        adds a per-child FLIP bookkeeping pass on every patch, and eight of the
-        nine tables never reorder. See `<List>` for why there is no leave
-        transition.
-      -->
-      <tbody v-if="props.loading && interfaceMotion" aria-hidden="true">
-        <tr v-for="(height, row) in loadingRows" :key="row" :style="{height: `${height}px`}">
-          <td v-for="column in skeletonColumns" :key="column">
-            <Skeleton class="h-3" :class="column === 1 ? 'w-3/4' : 'w-2/3'" />
-          </td>
-        </tr>
-      </tbody>
-      <TransitionGroup
-        v-else-if="props.transition || interfaceMotion"
-        tag="tbody"
-        :class="interfaceMotion ? 'ui-table-body' : undefined"
-        :move-class="interfaceMotion ? 'ui-row-move' : 'row-move'"
-        :enter-active-class="interfaceMotion ? 'ui-row-enter-active' : 'row-enter-active'"
-        :enter-from-class="interfaceMotion ? 'ui-row-enter-from' : 'row-enter-from'"
-        :leave-active-class="interfaceMotion ? 'ui-row-leave-active' : undefined"
-        :leave-to-class="interfaceMotion ? 'ui-row-leave-to' : undefined"
-        @before-leave="prepareLeave"
-        @leave-cancelled="cancelLeave"
-      >
-        <slot />
-      </TransitionGroup>
-
-      <tbody v-else>
-        <slot />
-      </tbody>
-    </table>
+        <slot v-else />
+      </template>
+    </TableRecords>
   </div>
 </template>
+
+<style>
+.table-column-resizer { position: absolute; inset: 0 -5px 0 auto; width: 10px; cursor: col-resize; touch-action: none; z-index: 2; }
+.table-column-resizer::after { content: ''; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 2px; background: var(--color-border); }
+.table-column-resizer:hover::after, .table-column-resizer:focus-visible::after { background: var(--color-primary-500); }
+.table-column-resizer:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: -2px; }
+</style>

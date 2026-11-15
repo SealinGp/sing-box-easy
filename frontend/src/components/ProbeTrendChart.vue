@@ -10,7 +10,8 @@
  * All geometry comes from `utils/probeChart` — a pure, tested module — so this
  * file is markup. Same split as the route flow diagram.
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import Tooltip from './Tooltip.vue'
 import Skeleton from './Skeleton.vue'
 import { useI18n } from 'vue-i18n'
 import type { ProbePoint } from '../types/subprobe'
@@ -73,26 +74,9 @@ const latencyGrid = computed(() => {
  * comparison the two panels exist to support.
  */
 const hovered = ref<PlacedPoint | null>(null)
-const tooltip = ref<HTMLElement>()
-const tooltipPosition = ref({ left: '0px', top: '0px' })
-let cursor = { x: 0, y: 0 }
+const cursor = ref({ x: 0, y: 0 })
 function clearHover() { hovered.value = null }
-async function positionTooltip() {
-  await nextTick()
-  if (!hovered.value || !tooltip.value) return
-  const { width, height } = tooltip.value.getBoundingClientRect()
-  const gap = 14, margin = 12
-  const left = cursor.x + gap + width <= innerWidth - margin ? cursor.x + gap : cursor.x - gap - width
-  const top = cursor.y + gap + height <= innerHeight - margin ? cursor.y + gap : cursor.y - gap - height
-  tooltipPosition.value = { left: `${Math.max(margin, left)}px`, top: `${Math.max(margin, top)}px` }
-}
 watch(() => [props.points, props.loading], clearHover)
-window.addEventListener('scroll', clearHover, true)
-window.addEventListener('resize', clearHover)
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', clearHover, true)
-  window.removeEventListener('resize', clearHover)
-})
 
 function onPointerMove(event: PointerEvent) {
   const layout = availabilityLayout.value
@@ -117,8 +101,7 @@ function onPointerMove(event: PointerEvent) {
     }
   }
   hovered.value = nearest
-  cursor = { x: event.clientX, y: event.clientY }
-  void positionTooltip()
+  cursor.value = { x: event.clientX, y: event.clientY }
 }
 
 /** The latency point matching the hovered moment, if that run had one. */
@@ -331,10 +314,8 @@ function availabilityClass(point: ProbePoint): string {
         </svg>
       </div>
 
-      <Teleport to="body">
-      <div v-if="hovered && !loading" ref="tooltip" role="tooltip" data-probe-tooltip
-        class="pointer-events-none fixed z-[10000] max-w-[calc(100vw-1.5rem)] space-y-1 rounded-control border border-border bg-bg-secondary px-3 py-2 text-xs text-text-primary shadow-surface"
-        :style="tooltipPosition">
+      <Tooltip :visible="!!hovered && !loading" :point="cursor" :width="240" @dismiss="clearHover">
+        <template #content><div v-if="hovered" data-probe-tooltip>
         <div class="flex flex-col gap-1">
           <span class="font-mono text-gray-500 dark:text-gray-400">{{ hoveredTime }}</span>
           <span :class="availabilityClass(hovered.point)">
@@ -353,8 +334,8 @@ function availabilityClass(point: ProbePoint): string {
             {{ formatLatency(hovered.point.min_ms) }} – {{ formatLatency(hovered.point.max_ms) }}
           </span>
         </div>
-      </div>
-      </Teleport>
+        </div></template>
+      </Tooltip>
     </div>
   </div>
 </template>

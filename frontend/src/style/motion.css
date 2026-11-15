@@ -6,7 +6,7 @@
   --motion-feedback: 140ms;
   --motion-panel: 220ms;
   --motion-page: 260ms;
-  --motion-view: 160ms;
+  --motion-view: 140ms;
   --motion-enter: cubic-bezier(.22, .8, .3, 1);
   /* Time reverse of (.22, .8, .3, 1). */
   --motion-exit: cubic-bezier(.7, 0, .78, .2);
@@ -44,11 +44,11 @@
 }
 .ui-page-stack { display: grid; min-width: 0; align-items: start; }
 .ui-page-view { grid-area: 1 / 1; min-width: 0; }
-/* Sequential route exits and entries stay brief: 320ms for the whole switch. */
-.ui-page-stack > .ui-page-view.ui-page-enter-active,
-.ui-page-stack > .ui-page-view.ui-page-leave-active {
-  transition-duration: var(--motion-view);
-}
+/* Navigation responds immediately; no full-page slide or blank fade midpoint.
+ * Keep panel/disclosure motion separate from replacing an entire route. */
+.ui-route-enter-active { transition: opacity var(--motion-view) var(--motion-enter); }
+.ui-route-enter-from { opacity: .65; }
+.ui-route-enter-to { opacity: 1; }
 .ui-page-enter-from, .ui-page-leave-to,
 .ui-row-enter-from, .ui-row-leave-to {
   opacity: 0;
@@ -114,10 +114,12 @@ tr.ui-row-leave-active { display: table; table-layout: fixed; }
   .ui-popover-enter-active, .ui-popover-leave-active,
   .ui-dialog-enter-active, .ui-dialog-leave-active,
   .ui-page-enter-active, .ui-page-leave-active,
+  .ui-route-enter-active,
   .ui-row-enter-active, .ui-row-leave-active, .ui-row-move,
   .ui-field-enter-active, .ui-field-leave-active, .ui-control,
   .ui-field input, .ui-field textarea, .ui-disclosure {
     transition: none !important;
     transform: none !important;
   }
+  .ui-route-enter-from { opacity: 1; }
 }

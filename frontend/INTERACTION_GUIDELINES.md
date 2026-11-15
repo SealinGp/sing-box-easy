@@ -113,3 +113,18 @@ Auto-update reveals Update Interval beside it. Preserve its draft value when
 disabled and re-enabled; skip irrelevant validation and do not let hidden values
 activate disabled behavior. Keep the controller and dependent fields together,
 with natural keyboard order and no automatic focus jump.
+
+## Present records as compact lists or detail cards
+
+- Use the shared table collection's icon switch for list and card views. List
+  cells present a single primary value on one line; full details belong in the
+  card view or an accessible overflow tooltip, rather than stacked table rows.
+- Preserve sorting, filtering, row identity and selection when changing views.
+  Allow column resizing with pointer and keyboard, and remember widths per table.
+- Support selecting records individually and all visible records, with a mixed
+  checkbox state for partial selection. Show the selection count and available
+  bulk actions beside the collection. Keep existing business selection and bulk
+  actions connected in both views; never add a second independent selection.
+- Bulk actions must identify their targets and show loading, failures and partial
+  results where submitted. Destructive business operations must retain their
+  existing permission, dependency and confirmation checks.

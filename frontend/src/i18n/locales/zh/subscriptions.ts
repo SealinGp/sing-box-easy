@@ -1,5 +1,6 @@
 // 订阅页（Subscriptions.vue）。
 export default {
+  view: { label: '视图', list: '列表', cards: '卡片' },
   title: '订阅',
   subtitle: '管理和更新节点订阅',
   refresh: '刷新列表',

@@ -1,5 +1,6 @@
 // Subscriptions page (Subscriptions.vue).
 export default {
+  view: { label: 'View', list: 'List', cards: 'Cards' },
   title: 'Subscriptions',
   subtitle: 'Manage and update node subscriptions',
   refresh: 'Reload list',

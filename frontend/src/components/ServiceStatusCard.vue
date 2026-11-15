@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "./TooltipTarget.vue"
 /**
  * sing-box's process state, and the controls for it, for the Overview page.
  *
@@ -156,7 +157,7 @@ onMounted(fetchStatus)
       <div v-if="lastStartedRelative" class="text-xs text-gray-600 dark:text-gray-400">
         <p>
           <span class="font-semibold">{{ $t('overview.lastStarted') }}:</span>
-          <span :title="lastStartedAbsolute"> {{ lastStartedRelative }}</span>
+          <TooltipTarget as="span" :text="lastStartedAbsolute"> {{ lastStartedRelative }}</TooltipTarget>
         </p>
       </div>
 

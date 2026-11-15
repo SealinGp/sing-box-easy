@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "./TooltipTarget.vue"
 import FieldHelp from './FieldHelp.vue'
 /**
  * Labelled multi-value field (domains, keywords, geosite codes, ...).
@@ -55,15 +56,15 @@ const hintText = computed(() =>
       <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}
       </label><FieldHelp :label="label || placeholder || ''" :text="hintText" /></div>
-      <button
+      <TooltipTarget as="button"
         v-if="removable"
         type="button"
         class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-        :title="$t('common.remove')"
+        :text="$t('common.remove')"
         @click="emit('remove')"
       >
         <XMarkIcon class="h-4 w-4" />
-      </button>
+      </TooltipTarget>
     </div>
     <Chips
       v-model="value"

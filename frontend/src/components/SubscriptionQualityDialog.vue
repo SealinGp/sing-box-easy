@@ -9,6 +9,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowPathIcon, BoltIcon, CheckCircleIcon, MinusCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import Table from './Table.vue'
 import Button from './Button.vue'
 import Skeleton from './Skeleton.vue'
 import ProbeTrendChart from './ProbeTrendChart.vue'
@@ -291,8 +292,12 @@ const probeTarget = computed(
           <div v-for="row in 5" :key="row" class="flex items-center gap-3"><Skeleton class="h-3 w-3" /><Skeleton class="h-3 flex-1" /><Skeleton class="h-3 w-16" /></div>
         </div>
         <div v-else class="max-h-64 overflow-y-auto rounded-control border border-gray-100 dark:border-gray-700">
-          <table class="w-full text-xs">
-            <tbody>
+          <Table :scroll="false" column-storage-key="subscription-quality-nodes">
+            <template #head>
+              <th>{{ $t('subscriptions.table.status') }}</th>
+              <th>{{ $t('subscriptions.table.subscription') }}</th>
+              <th>{{ $t('subProbe.column') }}</th>
+            </template>
               <tr
                 v-for="node in sortedNodes"
                 :key="node.tag"
@@ -330,8 +335,7 @@ const probeTarget = computed(
                   </span>
                 </td>
               </tr>
-            </tbody>
-          </table>
+          </Table>
         </div>
       </details>
     </div>

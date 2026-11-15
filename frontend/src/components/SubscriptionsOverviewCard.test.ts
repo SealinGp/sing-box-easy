@@ -22,7 +22,7 @@ describe('shared subscription quality interaction', () => {
   })
 
   test('the subscriptions table passes its subscription through the shared interface', async () => {
-    expect(await sourceOf('../views/dashboard/Subscriptions.vue')).toMatch(
+    expect(await sourceOf('./SubscriptionCollection.vue')).toMatch(
       /<SubscriptionQualityCell[\s\S]*?:subscription="subscription"/,
     )
   })
@@ -59,9 +59,10 @@ describe('shared subscription quota details', () => {
   test('the quota module owns the progress bar and its accessible tooltip', async () => {
     const quota = await sourceOf('./SubscriptionQuotaDetails.vue')
     expect(quota).toContain('role="progressbar"')
-    expect(quota).toContain('@mouseenter="showTooltip($event, \'quota\')"')
-    expect(quota).toContain('@focusin="showTooltip($event, \'quota\')"')
-    expect(quota).toMatch(/<Teleport to="body">[\s\S]*?role="tooltip"/)
+    expect(quota).toContain('<Tooltip')
+    expect(quota).toContain(':aria-describedby="describedBy"')
+    const tooltip = await sourceOf('./Tooltip.vue')
+    expect(tooltip).toMatch(/<Teleport to="body">[\s\S]*?role="tooltip"/)
   })
 
   test('the quota module owns fallback, expiry, and ellipsized plan extras', async () => {
@@ -69,7 +70,7 @@ describe('shared subscription quota details', () => {
     expect(quota).toContain('showExpiry?: boolean')
     expect(quota).toMatch(/plan\.extras\.length[\s\S]*?class="[^"]*truncate[^"]*"/)
     expect(quota).toContain("formatPlanExtras(plan.extras)")
-    expect(quota).toContain("activeTooltip === 'extras'")
+    expect(quota).toContain('<Tooltip v-if="plan.extras.length"')
     expect(quota).toContain("$t('overview.subscriptions.noPlanInfo')")
   })
 
@@ -80,7 +81,7 @@ describe('shared subscription quota details', () => {
   })
 
   test('the subscriptions table uses the same quota module', async () => {
-    expect(await sourceOf('../views/dashboard/Subscriptions.vue')).toMatch(
+    expect(await sourceOf('./SubscriptionCollection.vue')).toMatch(
       /<SubscriptionQuotaDetails[\s\S]*?:plan="summarizePlan\(subscription\)"[\s\S]*?:subscription-name="subscription\.name"/,
     )
   })

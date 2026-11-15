@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "./TooltipTarget.vue"
 /**
  * A search box that drops a filtered list under itself and emits one pick.
  *
@@ -112,7 +113,7 @@ function pick(option: PickerOption) {
         blur wins the race against click. Preventing default on mousedown also
         keeps focus in the input, so the box stays open for a second pick.
       -->
-      <button
+      <TooltipTarget as="button"
         v-for="option in filtered"
         :key="option.value"
         type="button"
@@ -122,7 +123,7 @@ function pick(option: PickerOption) {
             ? 'hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400'
             : 'hover:bg-primary-50 dark:hover:bg-primary-950/30 hover:text-primary-600 dark:hover:text-primary-400',
         ]"
-        :title="option.title ?? option.label ?? option.value"
+        :text="option.title ?? option.label ?? option.value"
         @mousedown.prevent="pick(option)"
       >
         <span class="truncate">{{ option.label ?? option.value }}</span>
@@ -132,7 +133,7 @@ function pick(option: PickerOption) {
         >
           {{ option.badge }}
         </span>
-      </button>
+      </TooltipTarget>
 
       <div v-if="!filtered.length" class="px-3 py-2 text-gray-400 text-center">
         {{ emptyMessage }}

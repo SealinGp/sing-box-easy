@@ -11,7 +11,8 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Table from '../../components/Table.vue'
 import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
-import { PlusIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import CopyIcon from '../../components/CopyIcon.vue'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
 import {
@@ -29,7 +30,6 @@ import { ContextPanel, Select } from '../../volt'
 
 const inbounds = ref<Inbound[]>([])
 const loading = ref(false)
-const copiedTag = ref<string | null>(null)
 const toast = useToast()
 const { t, te } = useI18n()
 
@@ -239,7 +239,7 @@ watch(showDeleteConfirm, (newValue) => {
   }
 })
 
-const copyClientConfig = async (inbound: Inbound) => {
+const clientConfigText = (inbound: Inbound): string => {
   const anyInbound = inbound as any
   const server = !anyInbound.listen || anyInbound.listen === '0.0.0.0' || anyInbound.listen === '::' || anyInbound.listen === '127.0.0.1'
     ? window.location.hostname || 'YOUR_SERVER_IP'
@@ -284,19 +284,7 @@ const copyClientConfig = async (inbound: Inbound) => {
     outbound.transport = (inbound as any).transport
   }
 
-  const jsonText = JSON.stringify(outbound, null, 2)
-
-  try {
-    await navigator.clipboard.writeText(jsonText)
-    copiedTag.value = inbound.tag
-    setTimeout(() => {
-      if (copiedTag.value === inbound.tag) {
-        copiedTag.value = null
-      }
-    }, 2000)
-  } catch (err: any) {
-    console.error('Failed to copy client config:', err)
-  }
+  return JSON.stringify(outbound, null, 2)
 }
 
 onMounted(fetchInbounds)
@@ -346,10 +334,7 @@ onMounted(fetchInbounds)
           </td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
-              <Button @click="copyClientConfig(inbound)" variant="ghost" size="sm" action :title="$t('inbounds.tooltip.copyConfig')">
-                <CheckIcon v-if="copiedTag === inbound.tag" class="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
-                <DocumentDuplicateIcon v-else class="h-4.5 w-4.5 text-primary-600 dark:text-primary-400" />
-              </Button>
+              <CopyIcon :text="clientConfigText(inbound)" :label="$t('inbounds.tooltip.copyConfig')" />
               <IconButton action="edit" @click="openEditModal(inbound)" />
               <IconButton action="delete" @click="openDeleteConfirm(inbound)" />
             </div>

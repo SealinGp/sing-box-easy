@@ -13,12 +13,16 @@
  * copied". It shows a red cross AND raises the notification, because the
  * recovery ("select the text and press Ctrl+C") is more than an icon can say.
  */
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, useAttrs } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Tooltip from './Tooltip.vue'
 import ActionIcon from './ActionIcon.vue'
 import { useNotify } from '../composables/useNotify'
 import { writeTextToClipboard } from '../utils/clipboard'
 
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const trigger = ref<HTMLElement>()
 const props = withDefaults(defineProps<Props>(), {
   size: 'sm',
   label: '',
@@ -84,11 +88,12 @@ async function copy() {
 
 <template>
   <button
+    ref="trigger"
+    v-bind="{ ...attrs, title: undefined }"
     type="button"
     class="icon-action copy-action"
     :class="{ 'copy-action-small': size === 'xs' }"
     :data-state="state"
-    :title="title"
     :aria-label="title"
     @click.stop.prevent="copy"
   >
@@ -98,6 +103,7 @@ async function copy() {
       {{ state === 'idle' ? '' : title }}
     </span>
   </button>
+  <Tooltip :target="trigger"><template #content>{{ title }}</template></Tooltip>
 </template>
 
 <style scoped>

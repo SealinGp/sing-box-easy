@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "../../components/TooltipTarget.vue"
 /**
  * Live connections of the running sing-box: who is talking to what, through
  * which rule and exit, and how fast — with the means to end one.
@@ -11,6 +12,7 @@
  * this is the same data one connection at a time, for chasing a single device
  * or a single site.
  */
+import Tooltip from '../../components/Tooltip.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { InformationCircleIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
@@ -235,14 +237,16 @@ const tipTone = computed<TipTone>(() =>
         something that needs reading (stopped, stream dropped), because a
         tooltip nobody thinks to open is not a warning.
       -->
-      <span class="tips" :class="`is-${tipTone}`">
-        <button type="button" class="tips-icon" :aria-label="$t('connections.tips.label')" aria-describedby="connections-tips">
-          <InformationCircleIcon class="h-[18px] w-[18px]" />
-        </button>
-        <span id="connections-tips" role="tooltip" class="tips-panel">
+      <Tooltip class="tips" :class="`is-${tipTone}`" :width="352">
+        <template #default="{ describedBy }">
+          <button type="button" class="tips-icon" :aria-label="$t('connections.tips.label')" :aria-describedby="describedBy">
+            <InformationCircleIcon class="h-[18px] w-[18px]" />
+          </button>
+        </template>
+        <template #content><div class="flex flex-col gap-1.5">
           <span v-for="tip in tips" :key="tip.text" class="tips-line" :class="`is-${tip.tone}`">{{ tip.text }}</span>
-        </span>
-      </span>
+        </div></template>
+      </Tooltip>
       <input
         v-model="query"
         type="search"
@@ -251,15 +255,15 @@ const tipTone = computed<TipTone>(() =>
         class="h-8 min-w-0 flex-[1_1_200px] rounded-control border border-gray-300 bg-white px-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
       />
       <ConnectionSourcePicker v-model="source" :options="devices" :total="pool.length" />
-      <button
+      <TooltipTarget as="button"
         type="button"
         class="inline-flex h-8 w-8 items-center justify-center rounded-control border border-gray-300 bg-white text-gray-700 hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
         :aria-label="$t('connections.settings.title')"
-        :title="$t('connections.settings.title')"
-        @click="event => { settingsAnchor = event.currentTarget as HTMLElement; settingsOpen = !settingsOpen }"
+        :text="$t('connections.settings.title')"
+        @click="(event: MouseEvent) => { settingsAnchor = event.currentTarget as HTMLElement; settingsOpen = !settingsOpen }"
       >
         <WrenchScrewdriverIcon class="h-4 w-4" />
-      </button>
+      </TooltipTarget>
       <button
         type="button"
         class="h-8 rounded-control border px-3 text-sm font-medium"
@@ -359,44 +363,6 @@ const tipTone = computed<TipTone>(() =>
   color: var(--color-danger);
 }
 
-/*
- * Opens on hover AND on keyboard focus. Opaque on purpose: it floats over the
- * table, and the app's translucent glass would let the rows show through.
- */
-.tips-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
-  display: flex;
-  width: max-content;
-  max-width: min(22rem, calc(100vw - 3rem));
-  flex-direction: column;
-  gap: 6px;
-  border: 1px solid var(--color-border-dark);
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 8px 10px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-text-primary);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-2px);
-  pointer-events: none;
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease,
-    visibility 0s linear 0.15s;
-}
-.tips:hover .tips-panel,
-.tips:focus-within .tips-panel {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition-delay: 0s;
-}
 .tips-line.is-warn {
   color: var(--color-warning);
   font-weight: 600;
@@ -404,15 +370,5 @@ const tipTone = computed<TipTone>(() =>
 .tips-line.is-error {
   color: var(--color-danger);
   font-weight: 600;
-}
-@media (prefers-color-scheme: dark) {
-  .tips-panel {
-    background: #131a23;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tips-panel {
-    transition: none;
-  }
 }
 </style>

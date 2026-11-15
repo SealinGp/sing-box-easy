@@ -61,6 +61,21 @@ The frontend uses **bun**, not npm — `bun.lock` is the lockfile and there is n
 - Keep validation errors next to the field. Do not hide errors or essential
   consequences behind a tooltip. Reuse shared field-help components.
 
+### Familiar icons and shared mental models (required)
+
+- Prefer icons for actions and view controls when their meaning is readily
+  recognizable. Add visible text when an icon alone cannot identify the action
+  accurately; do not make users guess an unfamiliar symbol.
+- Choose icons grounded in users' everyday objects and established conventions:
+  a recognizable wastebasket for deletion, rows for a list, and tiles for cards.
+  Like the macOS Trash, the visual should resemble the familiar real-world
+  object where applicable. Build understanding and trust through existing human
+  knowledge rather than requiring users to learn arbitrary symbols.
+- Reuse the project's icon family and consistent meanings. Every icon-only
+  control must have a localized accessible name and tooltip, a visible focus
+  state, and a comfortable click/touch target. Expose selected/toggled states
+  programmatically as well as visually.
+
 For frontend interaction work, follow `frontend/INTERACTION_GUIDELINES.md`.
 When a workflow requires a missing entity, provide creation at its selector and
 preserve the originating draft through creation, cancellation, and return.

@@ -1,0 +1,114 @@
+/*
+ * One curve for everything that eases. The shell's own, so a
+ * ribbon settling and a menu opening feel like one system. CSS's keyword
+ * `ease` is too shallow to read as a settle at these durations.
+ */
+svg {
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+ * Two paces for the same properties. Opacity, width and colour are what
+ * "lit" means here, so all three ease together — a width that snaps while
+ * the colour fades reads as a glitch.
+ *
+ * Asymmetric on purpose. A live change is a fact arriving once a second:
+ * lighting up is the system RESPONDING and takes 200ms; going quiet is a
+ * decay and takes the base 300ms. `is-lit` is on the element by the time the
+ * new duration is read, which is what makes the direction distinguishable
+ * with one transition declaration.
+ */
+.fade-live {
+  transition:
+    opacity 300ms var(--ease-out),
+    stroke-width 300ms var(--ease-out),
+    stroke 300ms var(--ease-out),
+    fill 300ms var(--ease-out);
+}
+.fade-live.is-lit {
+  transition-duration: 200ms;
+}
+/* Hover is direct manipulation; 150ms is the floor below which motion reads as flicker. */
+.fade-hover {
+  transition:
+    opacity 150ms var(--ease-out),
+    stroke-width 150ms var(--ease-out),
+    stroke 150ms var(--ease-out),
+    fill 150ms var(--ease-out);
+}
+
+/*
+ * The comet. With `pathLength="100"` the tail is an 18-unit dash and the
+ * head a 5-unit one; both slide the same distance in the same time, the
+ * head's offsets shifted by 13 so it rides the tail's leading edge. The tail
+ * starts fully off the path (offset = its own length) and ends fully past
+ * it, so the loop restarts with nothing on screen and there is no seam.
+ *
+ * LINEAR. The pulse is a rate made visible, and a rate is constant along the
+ * path; an ease would show the flow slowing as it nears the outbound.
+ * Opacity is ramped over the first and last stretch so the comet is born and
+ * dies softly rather than being cut by the path's ends. Duration is set
+ * inline per ribbon from its bytes/s.
+ */
+.flow-tail,
+.flow-head {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  stroke-linecap: round;
+}
+.flow-tail {
+  animation-name: comet-tail;
+  opacity: 0.4;
+}
+.flow-head {
+  animation-name: comet-head;
+}
+@keyframes comet-tail {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+@keyframes comet-head {
+  0% {
+    stroke-dashoffset: 5;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -113;
+    opacity: 0;
+  }
+}
+
+/*
+ * A ribbon entering or leaving the top N fades its comet in or out. In at
+ * 200ms — the system answering — out at 300ms, a decay.
+ */
+.pulse-enter-active {
+  transition: opacity 200ms var(--ease-out);
+}
+.pulse-leave-active {
+  transition: opacity 300ms var(--ease-out);
+}
+.pulse-enter-from,
+.pulse-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The comet becomes a steady brighter core. */
+  .flow-tail,
+  .flow-head {
+    animation: none;
+    stroke-dasharray: none;
+    opacity: 0.5;
+  }
+}

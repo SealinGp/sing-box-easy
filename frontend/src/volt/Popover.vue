@@ -9,10 +9,15 @@ import { popoverPlacement, type PopoverSide } from '../utils/popoverPlacement'
 
 interface Props extends /* @vue-ignore */ PopoverProps {
   dismissable?: boolean
+  /** Action menus dismiss even when the outside control stops click bubbling. */
+  interaction?: 'form' | 'menu'
   panelClass?: string
   contentClass?: string
 }
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  dismissable: true,
+  interaction: 'form',
+})
 const emit = defineEmits<{ show: []; hide: [] }>()
 const attrs = useAttrs()
 const autoId = useId()
@@ -57,7 +62,7 @@ function trackFocus(event: Event) {
 function removeListeners() {
   document.removeEventListener('focusin', trackFocus, true)
   document.removeEventListener('pointerdown', onPointerDown, true)
-  document.removeEventListener('click', onOutsideClick)
+  document.removeEventListener('click', onOutsideClick, props.interaction === 'menu')
   window.removeEventListener('resize', alignWithinViewport)
   resizeObserver?.disconnect()
   cancelAnimationFrame(alignmentFrame)
@@ -108,7 +113,10 @@ function onShow() {
   returnFocus = true
   document.addEventListener('focusin', trackFocus, true)
   document.addEventListener('pointerdown', onPointerDown, true)
-  document.addEventListener('click', onOutsideClick)
+  // A simple action menu must also dismiss when an outside button uses
+  // click.stop (copy controls and other contextual triggers do this).
+  // Forms retain the existing bubbling listener and nested-picker protection.
+  document.addEventListener('click', onOutsideClick, props.interaction === 'menu')
   // Async details and expandable fields can resize a panel after it opens.
   // Reposition at its anchor so growing content stays within the viewport.
   resizeObserver = new ResizeObserver(() => {

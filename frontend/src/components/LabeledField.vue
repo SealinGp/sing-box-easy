@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "./TooltipTarget.vue"
 import FieldHelp from './FieldHelp.vue'
 /**
  * Label + optional hint + optional "remove this field" action, wrapped around
@@ -32,17 +33,17 @@ const emit = defineEmits<{ remove: [] }>()
       <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}
       </label><FieldHelp v-if="hint && hintDisplay !== 'inline'" :label="label || ''" :text="hint" /></div>
-      <button
+      <TooltipTarget as="button"
         v-if="removable"
         type="button"
         class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-        :title="$t('common.remove')"
+        :text="$t('common.remove')"
         @click="emit('remove')"
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
         </svg>
-      </button>
+      </TooltipTarget>
     </div>
 
     <slot />

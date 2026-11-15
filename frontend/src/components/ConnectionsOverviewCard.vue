@@ -22,6 +22,7 @@
  * width. Text is NOT in the SVG for that reason — stretched glyphs — and sits
  * in HTML over the plot instead.
  */
+import Tooltip from './Tooltip.vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -70,6 +71,7 @@ const onMove = (event: PointerEvent) => {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   if (rect.width <= 0) return
   hoverIndex.value = sampleIndexAt((event.clientX - rect.left) / rect.width, history.value.length)
+  tipPoint.value = { x: rect.left + sampleX(hoverIndex.value, history.value.length, WIDTH) / WIDTH * rect.width, y: rect.top + 12 }
 }
 const onLeave = () => {
   hoverIndex.value = -1
@@ -83,7 +85,7 @@ const latest = computed(() => history.value[history.value.length - 1] ?? null)
  * so it never runs off the card's edge — and since data fills from the right,
  * that also keeps it over the older part of the line, not the newest.
  */
-const tipFlipped = computed(() => hoverX.value > WIDTH / 2)
+const tipPoint = ref({ x: 0, y: 0 })
 
 const hoverX = computed(() =>
   hovered.value ? sampleX(hoverIndex.value, history.value.length, WIDTH) : 0)
@@ -197,7 +199,7 @@ const summary = computed(() => {
           as the crosshair, so it tracks the sample, not the raw pointer: it
           steps with the data and does not jitter with every pixel of movement.
         -->
-        <div v-if="hovered && marker" class="tip" :class="{ 'is-flipped': tipFlipped }" :style="{ left: marker.left }" role="status">
+        <Tooltip :visible="!!hovered && !!marker" :point="tipPoint" :width="200" @dismiss="onLeave"><template #content><div v-if="hovered" class="tip">
           <span class="tip-when">{{ when }}</span>
           <span class="tip-row">
             <i class="swatch swatch-down" aria-hidden="true"></i>
@@ -214,7 +216,7 @@ const summary = computed(() => {
             <span class="tip-label">{{ $t('overview.connections.active') }}</span>
             <b>{{ hovered.connections }}</b>
           </span>
-        </div>
+        </div></template></Tooltip>
 
         <div class="time-axis">
           <span>{{ $t('overview.connections.windowStart', { n: WINDOW_SAMPLES }) }}</span>
@@ -367,28 +369,7 @@ const summary = computed(() => {
  * glass would let them show through the numbers. `pointer-events: none` so it
  * can never come between the pointer and the plot it is describing.
  */
-.tip {
-  position: absolute;
-  top: 6px;
-  z-index: 2;
-  display: flex;
-  min-width: 132px;
-  flex-direction: column;
-  gap: 3px;
-  border: 1px solid var(--color-border-dark);
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 6px 9px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
-  font-size: 12px;
-  white-space: nowrap;
-  color: var(--color-text-primary);
-  transform: translateX(10px);
-  pointer-events: none;
-}
-.tip.is-flipped {
-  transform: translateX(calc(-100% - 10px));
-}
+.tip { display: flex; flex-direction: column; gap: 3px; }
 .tip-when {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
@@ -407,11 +388,6 @@ const summary = computed(() => {
   padding-left: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-@media (prefers-color-scheme: dark) {
-  .tip {
-    background: #131a23;
-  }
 }
 .time-axis {
   display: flex;

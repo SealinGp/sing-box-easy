@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, useAttrs } from 'vue'
+import Tooltip from './Tooltip.vue'
 import { useInterfaceMotion } from '../composables/useInterfaceMotion'
 
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const trigger = ref<HTMLElement>()
 const interfaceMotion = useInterfaceMotion()
 
 /**
@@ -126,7 +130,7 @@ const classes = computed(() =>
 </script>
 
 <template>
-  <button data-text-button :type="type" :class="classes" :disabled="disabled || loading" :aria-busy="loading">
+  <button ref="trigger" v-bind="{ ...attrs, title: undefined }" data-text-button :type="type" :class="classes" :disabled="disabled || loading" :aria-busy="loading">
     <svg
       v-if="loading"
       class="h-4 w-4 animate-spin"
@@ -153,4 +157,5 @@ const classes = computed(() =>
     <span v-if="interfaceMotion" class="ui-control-content" :class="loading ? 'opacity-0' : ''"><slot>{{ label }}</slot></span>
     <slot v-else>{{ label }}</slot>
   </button>
+  <Tooltip :target="attrs.title ? trigger : null"><template #content>{{ attrs.title }}</template></Tooltip>
 </template>

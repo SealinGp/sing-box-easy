@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TooltipTarget from "./TooltipTarget.vue"
 /**
  * One group of the running sing-box: its current node, and its members either
  * as a strip of latency blocks (collapsed) or as cards (expanded).
@@ -191,35 +192,35 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             @keydown.enter.stop
             @keydown.space.stop
           />
-          <button
+          <TooltipTarget as="button"
             type="button"
             class="group-search-toggle"
             :aria-expanded="searching"
             :aria-label="searching ? $t('proxies.closeSearch') : $t('proxies.searchInGroup', { group: group.name })"
-            :title="searching ? $t('proxies.closeSearch') : $t('proxies.searchInGroup', { group: group.name })"
+            :text="searching ? $t('proxies.closeSearch') : $t('proxies.searchInGroup', { group: group.name })"
             @click="toggleSearch"
           >
             <MagnifyingGlassIcon class="group-search-glyph glyph-search h-3.5 w-3.5" />
             <XMarkIcon class="group-search-glyph glyph-close h-3.5 w-3.5" />
-          </button>
+          </TooltipTarget>
         </span>
-        <button
+        <TooltipTarget as="button"
           type="button"
           class="lat-badge lat-button"
           :class="[TIER_BADGE[groupTier], { 'animate-pulse': testing }]"
           :disabled="testing"
           :aria-label="$t('proxies.testGroup', { group: group.name })"
-          :title="$t('proxies.testGroup', { group: group.name })"
+          :text="$t('proxies.testGroup', { group: group.name })"
           @click.stop="emit('test')"
         >
           {{ testing ? $t('proxies.testing') : group.delay > 0 ? $t('proxies.ms', { n: group.delay }) : $t('proxies.noResult') }}
-        </button>
+        </TooltipTarget>
       </span>
       <span class="flex min-w-0 basis-full items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
         {{ $t('proxies.current') }}
-        <span class="truncate text-gray-900 dark:text-gray-100" :title="group.now">
+        <TooltipTarget as="span" class="truncate text-gray-900 dark:text-gray-100" :text="group.now">
           {{ group.now ? displayName(group.now) : $t('proxies.noneSelected') }}
-        </span>
+        </TooltipTarget>
       </span>
     </div>
 
@@ -230,17 +231,17 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     <div class="fold fold-strip" :inert="open">
       <div>
         <div ref="strip" class="mx-3 mb-3 flex h-[15px] items-center gap-1 pt-0.5">
-          <div v-if="!asBlocks" class="tier-bar" role="img" :aria-label="sharesSummary" :title="sharesSummary">
-            <span
+          <TooltipTarget as="div" v-if="!asBlocks" class="tier-bar" role="img" :aria-label="sharesSummary" :text="sharesSummary">
+            <TooltipTarget as="span"
               v-for="share in shares"
               :key="share.tier"
               :class="TIER_BLOCK[share.tier]"
               :style="{ flexGrow: share.count }"
-              :title="$t('proxies.tierCount', { tier: $t(`proxies.tier.${share.tier}`), n: share.count })"
+              :text="$t('proxies.tierCount', { tier: $t(`proxies.tier.${share.tier}`), n: share.count })"
             />
-          </div>
+          </TooltipTarget>
           <template v-else>
-          <i
+          <TooltipTarget as="i"
             v-for="member in shownMembers"
             :key="member.name"
             class="h-[11px] w-[11px] flex-none rounded-[3px]"
@@ -248,7 +249,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
               TIER_BLOCK[latencyTier(member.delay)],
               member.name === group.now ? 'outline outline-2 outline-offset-1 outline-primary-500' : '',
             ]"
-            :title="`${displayName(member.name)} · ${member.delay > 0 ? $t('proxies.ms', { n: member.delay }) : $t('proxies.noResult')}`"
+            :text="`${displayName(member.name)} · ${member.delay > 0 ? $t('proxies.ms', { n: member.delay }) : $t('proxies.noResult')}`"
           />
           </template>
           <span v-if="shownMembers.length === 0" class="text-xs text-gray-400">{{ query ? $t('proxies.noMatchInGroup') : $t('proxies.emptyGroup') }}</span>
@@ -267,15 +268,15 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     <div class="fold fold-nodes" :inert="!open">
       <div>
         <div class="group-scroll quiet-scrollbar grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
-          <component
-            :is="group.switchable ? 'button' : 'div'"
+          <TooltipTarget
+            :as="group.switchable ? 'button' : 'div'"
             v-for="member in shownMembers"
             :key="member.name"
             :type="group.switchable ? 'button' : undefined"
             :aria-pressed="group.switchable ? member.name === group.now : undefined"
             :disabled="group.switchable ? switchingTo !== '' : undefined"
             :aria-disabled="group.switchable ? undefined : true"
-            :title="group.switchable ? undefined : $t('proxies.hintAutomatic')"
+            :text="group.switchable ? undefined : $t('proxies.hintAutomatic')"
             class="flex min-w-0 flex-col gap-1 rounded-control border px-2.5 py-2 text-left transition-colors"
             :class="[
               member.name === group.now
@@ -292,9 +293,9 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             ]"
             @click="group.switchable && member.name !== group.now && emit('select', member.name)"
           >
-            <span class="truncate text-xs font-medium text-gray-900 dark:text-gray-100" :title="member.name">
+            <TooltipTarget as="span" class="truncate text-xs font-medium text-gray-900 dark:text-gray-100" :text="member.name">
               {{ displayName(member.name) }}
-            </span>
+            </TooltipTarget>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
               <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
               <!--
@@ -304,22 +305,22 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
                 parser hands to the outer one. It stops its own click and keys
                 so testing a node never also switches to it.
               -->
-              <span
+              <TooltipTarget as="span"
                 role="button"
                 tabindex="0"
                 class="lat-badge lat-button"
                 :class="[TIER_BADGE[latencyTier(member.delay)], { 'animate-pulse': testingNodes.has(member.name) }]"
                 :aria-disabled="testingNodes.has(member.name)"
                 :aria-label="$t('proxies.testNode', { node: displayName(member.name) })"
-                :title="$t('proxies.testNode', { node: displayName(member.name) })"
+                :text="$t('proxies.testNode', { node: displayName(member.name) })"
                 @click.stop="testNode(member.name)"
                 @keydown.enter.stop.prevent="testNode(member.name)"
                 @keydown.space.stop.prevent="testNode(member.name)"
               >
                 {{ testingNodes.has(member.name) ? $t('proxies.testing') : member.delay > 0 ? $t('proxies.ms', { n: member.delay }) : $t('proxies.noResult') }}
-              </span>
+              </TooltipTarget>
             </span>
-          </component>
+          </TooltipTarget>
           <span v-if="shownMembers.length === 0" class="col-span-full py-2 text-xs text-gray-400">
             {{ query ? $t('proxies.noMatchInGroup') : $t('proxies.emptyGroup') }}
           </span>
@@ -332,192 +333,4 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
   </article>
 </template>
 
-<style scoped>
-/*
- * In-place search: [ field ][ button ], right-anchored. Opening animates the
- * field's WIDTH from zero, so it reads as one control growing rather than one
- * control being swapped for another, and the button keeps its position
- * throughout. The two glyphs are stacked in the button and cross-fade with a
- * quarter turn, which is what says "this is the same button, now meaning
- * close" rather than "a different button appeared here".
- */
-.group-search {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
-}
-.group-search.is-open {
-  border-color: var(--color-border-dark);
-  background: color-mix(in srgb, var(--color-bg-primary) 60%, transparent);
-}
-.group-search.is-open:focus-within {
-  border-color: var(--color-primary);
-}
-.group-search-toggle {
-  position: relative;
-  display: inline-flex;
-  width: 24px;
-  height: 22px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-  color: var(--color-text-secondary);
-  transition: color 0.15s ease;
-}
-.group-search-toggle:hover {
-  color: var(--color-primary);
-}
-.group-search-toggle:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-.group-search-glyph {
-  position: absolute;
-  transition:
-    opacity 0.18s ease,
-    transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
-}
-.glyph-close {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.6);
-}
-.group-search.is-open .glyph-search {
-  opacity: 0;
-  transform: rotate(90deg) scale(0.6);
-}
-.group-search.is-open .glyph-close {
-  opacity: 1;
-  transform: none;
-}
-.group-search-input {
-  width: 0;
-  min-width: 0;
-  /*
-   * `!important` on these three only. The app's glass theme styles every text
-   * input (border, tinted fill, inset highlight) with selectors that outrank a
-   * scoped class, which drew a second pill inside this control's own border.
-   * The field here is deliberately chromeless: the surrounding box is the
-   * control.
-   */
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0;
-  font-size: 12px;
-  color: var(--color-text-primary);
-  outline: none;
-  opacity: 0;
-  transition:
-    width 0.26s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.16s ease,
-    padding 0.26s cubic-bezier(0.32, 0.72, 0, 1);
-}
-.group-search.is-open .group-search-input {
-  width: 136px;
-  padding-left: 8px;
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .group-search-input,
-  .group-search-glyph {
-    transition: none;
-  }
-}
-
-/*
- * The proportional bar. Segments grow by member count (`flex-grow`), so their
- * widths are the tiers' shares with no arithmetic here to drift from the data.
- * A 2px surface gap separates them — adjacent fills need a break to read as
- * parts — and a 6px floor keeps a tier with one node in ninety-four visible:
- * a dead node rounded out of the bar is the one the bar was opened to find.
- */
-.tier-bar {
-  display: flex;
-  height: 8px;
-  flex: 1;
-  gap: 2px;
-  overflow: hidden;
-  border-radius: 999px;
-}
-.tier-bar > span {
-  min-width: 6px;
-  flex-basis: 0;
-  flex-shrink: 1;
-}
-
-/* The badge is the test button: it has to look pressable, not like a label. */
-.lat-button {
-  cursor: pointer;
-  transition: box-shadow 0.15s ease, filter 0.15s ease;
-}
-.lat-button:hover:not(:disabled):not([aria-disabled='true']) {
-  box-shadow: 0 0 0 1.5px currentColor;
-}
-.lat-button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-.lat-button:disabled,
-.lat-button[aria-disabled='true'] {
-  cursor: wait;
-}
-
-.lat-badge {
-  display: inline-block;
-  min-width: 46px;
-  flex: none;
-  border-radius: 999px;
-  padding: 1px 7px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/*
- * A group's members scroll INSIDE the card past this height. A 94-node group
- * expanded in full is taller than the screen and pushes every other group out
- * of reach; capped, the page stays a page of groups. Same 26rem ceiling the
- * Overview cards use, less the header and hint that stay in normal flow.
- * `.quiet-scrollbar` (style/scrollbars.css) shows the thumb only on hover or
- * focus — fading it in and out — so a column of idle cards is not a column of
- * scrollbars, and moving the pointer across them is not a row of blinks.
- */
-.group-scroll {
-  max-height: 20rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  /* Room for the current member's focus/selection outline at the edges. */
-  padding-bottom: 2px;
-}
-
-/* The shell's easing, so the card moves like the rest of the app. */
-.fold {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition:
-    grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.2s ease;
-}
-.fold > div {
-  min-height: 0;
-  overflow: hidden;
-}
-.proxy-group:not(.is-open) .fold-strip,
-.proxy-group.is-open .fold-nodes {
-  grid-template-rows: 1fr;
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .fold {
-    transition: none;
-  }
-}
-</style>
+<style scoped src="../style/proxy-group-card.css"></style>

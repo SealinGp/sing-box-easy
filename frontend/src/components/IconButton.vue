@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, useAttrs } from 'vue'
+import Tooltip from './Tooltip.vue'
 import { useI18n } from 'vue-i18n'
 import ActionIcon from './ActionIcon.vue'
 withDefaults(defineProps<{
@@ -8,17 +10,21 @@ withDefaults(defineProps<{
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
 }>(), { type: 'button' })
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const trigger = ref<HTMLElement>()
 const { t } = useI18n()
 </script>
 
 <template>
-  <button :type="type" class="icon-action semantic-action ui-control" :class="{ 'icon-action-danger': action === 'delete' }"
+  <button ref="trigger" v-bind="{ ...attrs, title: undefined }" :type="type" class="icon-action semantic-action ui-control" :class="{ 'icon-action-danger': action === 'delete' }"
     :disabled="disabled || loading" :aria-busy="loading || undefined"
-    :aria-label="label || t(`common.${action}`)" :title="label || t(`common.${action}`)">
+    :aria-label="label || t(`common.${action}`)">
     <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" aria-hidden="true" />
     <ActionIcon v-else :action="action" />
     <span class="semantic-action-label" aria-hidden="true">{{ label || t(`common.${action}`) }}</span>
   </button>
+  <Tooltip :target="trigger"><template #content>{{ label || t(`common.${action}`) }}</template></Tooltip>
 </template>
 
 <style>

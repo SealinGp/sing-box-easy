@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Table from './Table.vue'
 import StatusIndicator from './StatusIndicator.vue'
 /**
  * The connection rows. Markup only: what is shown, searched and sorted is
@@ -80,18 +81,16 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
 </script>
 
 <template>
-  <table class="w-full border-collapse text-sm" :class="{ dense: settings.dense }" :style="{ minWidth: `${90 + settings.columns.length * 104}px` }">
-    <thead>
-      <tr>
+  <Table :scroll="false" :column-storage-key="`connections:${settings.columns.join(',')}`" :table-class="settings.dense ? 'dense' : ''">
+    <template #head>
         <th class="w-px">{{ $t('connections.columns.close') }}</th>
         <th v-for="key in settings.columns" :key="key" :class="{ 'text-right': NUMERIC_COLUMNS.has(key) }" :aria-sort="sortKey === key ? (ascending ? 'ascending' : 'descending') : undefined">
           <button type="button" class="font-semibold hover:text-primary-700 dark:hover:text-primary-300" @click="emit('sort', key)">
             {{ $t(`connections.columns.${key}`) }}<span v-if="sortKey === key" class="text-primary-600 dark:text-primary-400" aria-hidden="true">{{ ascending ? ' ↑' : ' ↓' }}</span>
           </button>
         </th>
-      </tr>
-    </thead>
-    <tbody>
+    </template>
+
       <template v-for="row in rows" :key="row.id">
       <tr
         class="cursor-pointer"
@@ -167,8 +166,8 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
         </td>
       </tr>
       </template>
-    </tbody>
-  </table>
+
+  </Table>
 </template>
 
 <style scoped>

@@ -1,0 +1,28 @@
+.collection-records { min-width: 0; }
+.table-surface:has(.collection-cards, .subscription-cards) { border: 0; border-radius: 0; background: transparent; }
+.collection-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 0; margin-inline-start: auto; }
+.collection-selection { display: flex; align-items: center; gap: 8px; margin-right: auto; font-size: 12px; color: var(--color-text-secondary); }
+.collection-tool { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; border-radius: var(--radius-control); cursor: pointer; }
+.collection-tool svg { width: 18px; height: 18px; }
+.collection-tool:hover { background: var(--color-bg-tertiary); }
+.collection-checkbox { width: 16px; height: 16px; accent-color: var(--color-primary); cursor: pointer; }
+.collection-checkbox:focus-visible, .collection-tool:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.collection-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; padding: 12px; align-items: start; }
+.collection-card { position: relative; min-width: 0; padding: 20px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-bg-secondary); display: flex; flex-direction: column; gap: 16px; }
+.collection-card-field { min-width: 0; }
+.collection-card > .col-select { align-self: flex-start; }
+.collection-card > .col-select .table-checkbox { margin-inline: 0; }
+.collection-field-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.collection-field-content { min-width: 0; overflow-wrap: anywhere; }
+.collection-card .truncate { white-space: normal; overflow: visible; }
+.collection-card [class*="max-w-"] { max-width: 100%; }
+
+[data-collection-selected="true"] { background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-secondary)); }
+.collection-compact { table-layout: fixed; }
+.collection-compact td:not([colspan]) { height: 48px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.collection-compact td:not([colspan]) > :is(div, span):not(.collection-selection) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collection-compact td > .flex-col { flex-direction: row; flex-wrap: nowrap; align-items: center; }
+.collection-compact td > .flex-col > :not(:first-child) { display: none; }
+.collection-view { animation: collection-appear 200ms var(--motion-enter); }
+@keyframes collection-appear { from { opacity: .65; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .collection-view { animation: none; } }
