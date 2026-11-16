@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -38,6 +39,7 @@ func (h *Service) GetSettings(ctx context.Context) (any, error) {
 	return map[string]any{
 		"settings":             safe,
 		"config_versions_keep": h.settingsManager.GetConfigVersionsKeep(),
+		"node_quality":         h.settingsManager.GetNodeQuality(),
 		// Surfaced explicitly rather than left for the caller to dig out of
 		// `settings`, because "" is meaningful here: it means the deployment
 		// is falling back to app.yml / GITHUB_OAUTH_CLIENT_ID, which the UI
@@ -48,7 +50,8 @@ func (h *Service) GetSettings(ctx context.Context) (any, error) {
 }
 
 type UpdateSettingsCommand struct {
-	ConfigVersionsKeep *int `json:"config_versions_keep"`
+	NodeQuality        *NodeQuality `json:"node_quality"`
+	ConfigVersionsKeep *int         `json:"config_versions_keep"`
 	// The OAuth *client ID* is writable here — unlike the token. The device
 	// flow has no client secret, so this value is public by construction
 	// and carries no privilege on its own. Empty clears the override.
@@ -61,6 +64,16 @@ func (h *Service) UpdateSettings(ctx context.Context, req UpdateSettingsCommand)
 	// no path that accepts a raw token from a client.
 
 	values := make(map[string]string)
+	if req.NodeQuality != nil {
+		if err := req.NodeQuality.Validate(); err != nil {
+			return nil, fault.New(fault.Invalid, err.Error())
+		}
+		raw, err := json.Marshal(req.NodeQuality)
+		if err != nil {
+			return nil, fault.New(fault.Internal, err.Error())
+		}
+		values[KeyNodeQuality] = string(raw)
+	}
 	if req.ConfigVersionsKeep != nil {
 		n := *req.ConfigVersionsKeep
 		if n < MinConfigVersionsKeep || n > MaxConfigVersionsKeep {
@@ -86,6 +99,7 @@ func (h *Service) UpdateSettings(ctx context.Context, req UpdateSettingsCommand)
 
 	return map[string]any{
 		"config_versions_keep":    h.settingsManager.GetConfigVersionsKeep(),
+		"node_quality":            h.settingsManager.GetNodeQuality(),
 		"github_oauth_client_id":  h.settingsManager.GetGitHubOAuthClientID(),
 		"github_oauth_configured": h.configured(),
 		"limits": map[string]int{

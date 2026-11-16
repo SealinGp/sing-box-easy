@@ -7,7 +7,8 @@
  * groups ARE; this page shows and steers what sing-box is DOING with them. A
  * switch here is never written to config.json.
  */
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useNodeQualityStore } from '../../stores/nodeQuality'
 import { useI18n } from 'vue-i18n'
 import ProxyGroupCard from '../../components/ProxyGroupCard.vue'
 import { useRuntimeProxies } from '../../composables/useRuntimeProxies'
@@ -18,6 +19,8 @@ import { useFocusTarget } from '../../composables/useFocusTarget'
 import { columnCount, dealIntoColumns, visibleGroups, type MemberSort } from '../../utils/proxyGroups'
 
 const { t } = useI18n()
+const qualityStore = useNodeQualityStore()
+onMounted(() => qualityStore.load())
 const notify = useNotify()
 const serviceStore = useServiceStore()
 const running = computed(() => serviceStore.status?.status === 'running')

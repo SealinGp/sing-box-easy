@@ -43,6 +43,13 @@ type Proxy struct {
 	// the history entry on failure).
 	Delay    int
 	TestedAt time.Time
+	History  []DelaySample
+}
+
+// DelaySample is one observation retained by the running sing-box controller.
+type DelaySample struct {
+	Time  time.Time `json:"time"`
+	Delay int       `json:"delay"`
 }
 
 // IsGroup reports whether the entry is a selector/urltest-style group.
@@ -51,15 +58,12 @@ func (p Proxy) IsGroup() bool {
 }
 
 type proxyWire struct {
-	Type    string `json:"type"`
-	Name    string `json:"name"`
-	UDP     bool   `json:"udp"`
-	History []struct {
-		Time  time.Time `json:"time"`
-		Delay int       `json:"delay"`
-	} `json:"history"`
-	Now string   `json:"now"`
-	All []string `json:"all"`
+	Type    string        `json:"type"`
+	Name    string        `json:"name"`
+	UDP     bool          `json:"udp"`
+	History []DelaySample `json:"history"`
+	Now     string        `json:"now"`
+	All     []string      `json:"all"`
 }
 
 // Proxies lists the running outbounds IN CONFIG ORDER.
@@ -103,6 +107,7 @@ func decodeProxies(raw json.RawMessage) ([]Proxy, error) {
 		}
 
 		proxy := Proxy{Name: name, Type: wire.Type, UDP: wire.UDP, Now: wire.Now, All: wire.All}
+		proxy.History = wire.History
 		if last := len(wire.History) - 1; last >= 0 {
 			proxy.Delay = wire.History[last].Delay
 			proxy.TestedAt = wire.History[last].Time

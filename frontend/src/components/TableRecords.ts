@@ -118,7 +118,9 @@ export default defineComponent({
           const detail = cells.some(cell => Number(cell.props?.colspan) > 1)
           return h('tr', { ...row.props, key: row.key ?? undefined, 'data-collection-selected': selected.value.has(identity(row)) }, [
             selectable && !detail ? h('td', { class: 'col-select' }, [checkbox(selected.value.has(identity(row)), t('common.collection.select'), () => toggle(identity(row)), false, !visible.includes(identity(row)))]) : null,
-            ...cells.map(cell => detail ? cloneVNode(cell, { colspan: Number(cell.props?.colspan) + (selectable ? 1 : 0) }) : h('td', cell.props ?? {}, [h(CollectionCell, {}, { default: () => cell.children })])),
+            // Rich cells own their detail interactions; a second tooltip would
+            // compete with their controls and mask the component's content.
+            ...cells.map(cell => detail ? cloneVNode(cell, { colspan: Number(cell.props?.colspan) + (selectable ? 1 : 0) }) : h('td', cell.props ?? {}, cell.props?.['data-cell-tooltip'] === 'false' ? cell.children as VNode[] : [h(CollectionCell, {}, { default: () => cell.children })])),
           ])
         })
       const content = showCards && slots.cards ? slots.cards({ selected: selected.value, toggle }) : showCards ? h('div', { class: 'collection-cards', role: 'list' }, rows.map(row => {

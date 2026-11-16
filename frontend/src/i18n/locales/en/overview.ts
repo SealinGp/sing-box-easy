@@ -70,6 +70,7 @@ export default {
     loadFailed: 'Failed to load subscriptions',
     noPlanInfo: 'No plan information reported by this provider',
     used: 'Used',
+    total: 'Total',
     remaining: 'Remaining',
     expires: 'Expires',
     expired: 'Expired',

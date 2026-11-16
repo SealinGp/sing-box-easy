@@ -68,6 +68,7 @@ export default {
     loadFailed: '加载订阅失败',
     noPlanInfo: '该机场未提供套餐信息',
     used: '已用',
+    total: '总量',
     remaining: '剩余',
     expires: '到期',
     expired: '已过期',

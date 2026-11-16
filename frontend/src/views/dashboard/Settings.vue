@@ -6,6 +6,7 @@ import { useNotify } from '../../composables/useNotify'
 import CoreSettingsCard from '../../components/CoreSettingsCard.vue'
 import AboutCard from '../../components/AboutCard.vue'
 import ProbeSettingsCard from '../../components/ProbeSettingsCard.vue'
+import NodeQualitySettingsCard from '../../components/NodeQualitySettingsCard.vue'
 
 const notify = useNotify()
 const { t } = useI18n()
@@ -18,6 +19,7 @@ const limits = ref({ min: 1, max: 100 })
 onMounted(async () => {
   await loadSettings()
   if (window.location.hash === '#sing-box-core') document.getElementById('sing-box-core')?.scrollIntoView({ block: 'start' })
+  if (window.location.hash === '#node-quality') document.getElementById('node-quality')?.scrollIntoView({ block: 'start' })
 })
 
 const loadSettings = async () => {
@@ -77,6 +79,7 @@ const saveSettings = async () => {
 
         <!-- Subscription node quality probing -->
         <ProbeSettingsCard />
+        <NodeQualitySettingsCard />
 
         <!-- Config version retention -->
         <div class="bg-white dark:bg-gray-800 rounded-surface shadow p-4">

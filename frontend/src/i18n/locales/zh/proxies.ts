@@ -1,5 +1,19 @@
 // 运行时代理页（Proxies.vue）：正在运行的 sing-box 的分组与节点。
 export default {
+  quality: {
+    good: '良好', fair: '一般', poor: '较差', unknown: '暂无探测记录，不评级',
+    unavailable: '无法读取节点质量标准，请到设置页重试。',
+    summary: '{level} · {passed}/{count} 次达标（{percent}%）· 延迟 ≤ {ms}ms，超时不达标',
+  },
+  history: {
+    latency: '延迟',
+    open: '查看 {node} 的延迟历史',
+    title: '延迟历史',
+    empty: '此节点暂无延迟记录。',
+    retained: 'sing-box 保留的 {n} 条记录',
+    single: '目前只有一次采样，尚无趋势。',
+    samples: '采样记录',
+  },
   searchPlaceholder: '搜索分组或节点',
   sort: {
     label: '节点排序',

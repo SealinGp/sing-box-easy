@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import TooltipTarget from "./TooltipTarget.vue"
+import ProxyNodeHistory from './ProxyNodeHistory.vue'
+import NodeQualityBadge from './NodeQualityBadge.vue'
 /**
  * One group of the running sing-box: its current node, and its members either
  * as a strip of latency blocks (collapsed) or as cards (expanded).
@@ -299,10 +301,12 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
               <TooltipTarget as="span" class="min-w-0 flex-1 truncate text-xs font-medium" :class="group.switchable || member.name === group.now ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'" :text="member.name">
                 {{ displayName(member.name) }}
               </TooltipTarget>
+              <NodeQualityBadge v-if="!member.group" :history="member.history" />
               <LockClosedIcon v-if="!group.switchable" class="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </span>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
               <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
+              <ProxyNodeHistory v-if="!member.group" :name="member.name" :history="member.history" />
               <!--
                 The badge tests THIS node. A span with a button role, not a
                 <button>: in a selector the card around it already is one, and

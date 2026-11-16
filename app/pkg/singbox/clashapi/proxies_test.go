@@ -43,6 +43,19 @@ func TestProxiesKeepsConfigOrderAndDropsGlobal(t *testing.T) {
 	}
 }
 
+func TestProxiesPreservesEveryHistoryObservation(t *testing.T) {
+	list, err := decodeProxies([]byte(`{"node":{"type":"VLESS","history":[{"time":"2026-11-16T12:00:00Z","delay":80},{"time":"2026-11-16T12:01:00Z","delay":0},{"time":"2026-11-16T12:02:00Z","delay":110}]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || len(list[0].History) != 3 {
+		t.Fatalf("lost history: %+v", list)
+	}
+	if list[0].History[1].Delay != 0 || list[0].Delay != 110 || !list[0].TestedAt.Equal(list[0].History[2].Time) {
+		t.Fatalf("history/latest mismatch: %+v", list[0])
+	}
+}
+
 func TestProxiesTellsGroupsFromNodesByAll(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(proxiesBody))

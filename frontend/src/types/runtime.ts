@@ -3,6 +3,11 @@
  * as opposed to what the config document says.
  */
 
+export interface NodeDelaySample {
+  time: string
+  delay: number
+}
+
 export interface RuntimeMember {
   name: string
   /** sing-box's display name: "VLESS", "URLTest", … Empty when the running config has no such outbound. */
@@ -11,6 +16,8 @@ export interface RuntimeMember {
   delay: number
   /** True when the member is itself a group. */
   group: boolean
+  /** Observations retained by sing-box, not the subscription's aggregate. */
+  history?: NodeDelaySample[]
 }
 
 export interface RuntimeGroup {

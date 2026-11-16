@@ -5,9 +5,16 @@ import router from './router'
 import { loadPlugins } from './plugins/plugins'
 import './plugins/monaco' // Initialize Monaco Editor workers
 
-const app = createApp(App)
+async function bootstrap() {
+  if (import.meta.env.DEV && new URLSearchParams(location.search).get('mock') === 'node-quality') {
+    const { installNodeQualityPreview } = await import('./lab/nodeQualityPreview')
+    installNodeQualityPreview()
+  }
+  const app = createApp(App)
 
-app.use(router)
-loadPlugins(app)
+  app.use(router)
+  loadPlugins(app)
 
-app.mount('#app')
+  app.mount('#app')
+}
+void bootstrap()

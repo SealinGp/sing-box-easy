@@ -1,5 +1,18 @@
 // Settings page (Settings.vue).
 export default {
+  nodeQuality: {
+    title: 'Node quality criteria',
+    help: 'Use the latest N observations. A positive delay at or below the limit passes; timeouts fail. Fewer than N observations use the actual count; no observations means unrated. These criteria apply to all nodes. Saving recalculates ratings without starting probes.',
+    samples: 'Recent observations',
+    delay: 'Passing delay limit (ms)',
+    good: '👍 Good pass rate ≥ (%)',
+    fair: '🟡 Fair pass rate ≥ (%)',
+    poor: 'Below the fair threshold means 👎 Poor. Smaller samples use their actual count.',
+    samplesError: 'Enter an integer from 1 to 100.',
+    delayError: 'Enter an integer from 1 to 60000.',
+    percentError: 'Enter integers with 1 ≤ Fair < Good ≤ 100.',
+    defaults: 'Restore defaults',
+  },
   versionHistory: {
     title: 'Config version history',
     desc: 'How many historical configurations to keep. Older versions beyond this count are pruned automatically after each save. Range {min}–{max}.',

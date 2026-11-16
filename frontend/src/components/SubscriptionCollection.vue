@@ -7,7 +7,6 @@ import SubscriptionActions from './SubscriptionActions.vue'
 import { computed, type UnwrapRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { useSubscriptionsPage } from '../composables/useSubscriptionsPage'
-import { formatAvailability } from '../utils/probeChart'
 import Button from "./Button.vue";
 import StatusIndicator from "./StatusIndicator.vue";
 import Table from "./Table.vue";
@@ -25,8 +24,8 @@ const { loadProbeStatus, openAddModal, openEditModal, deleteSubscription, update
 const columns = computed(() => [
   { key: 'name', label: t('subscriptions.table.subscription'), class: 'w-56' },
   { key: 'status', label: t('subscriptions.table.status'), class: 'w-36' },
-  { key: 'quality', label: t('subProbe.column'), class: 'w-28' },
-  { key: 'remaining', label: t('overview.subscriptions.remaining'), class: 'w-32' },
+  { key: 'quality', label: t('subProbe.column'), class: 'w-64' },
+  { key: 'quota', label: t('subscriptions.table.info'), class: 'w-56' },
   { key: 'expiry', label: t('overview.subscriptions.expires'), class: 'w-36' },
   { key: 'updated', label: t('subscriptions.table.lastUpdate'), class: 'w-44' },
   { key: 'actions', minWidth: 144, label: t('subscriptions.table.actions'), class: 'w-36' },
@@ -38,8 +37,8 @@ const columns = computed(() => [
 <tr v-for="subscription in subscriptions" :key="subscription.id">
 <td><TruncatedText :text="subscription.name" /></td>
 <td><StatusIndicator :variant="getSubscriptionStatus(subscription).type" :busy="isUpdating.includes(subscription.id)"><TruncatedText :text="getSubscriptionStatus(subscription).text" /></StatusIndicator></td>
-<td><span class="subscription-value">{{ probeLatest[subscription.id] ? formatAvailability(probeLatest[subscription.id]!) : '—' }}</span></td>
-<td><TruncatedText :text="summarizePlan(subscription).remainingLabel ?? '—'" /></td>
+<td data-cell-tooltip="false"><SubscriptionQualityCell size="list" :point="probeLatest[subscription.id]" :subscription="subscription" @refresh="loadProbeStatus" /></td>
+<td data-cell-tooltip="false"><SubscriptionQuotaDetails compact :show-expiry="false" :plan="summarizePlan(subscription)" :subscription-name="subscription.name" /></td>
 <td><TruncatedText :text="summarizePlan(subscription).expiresLabel ?? '—'" /></td>
 <td><TruncatedText :text="formatDate(subscription.last_update)" /></td>
 <td class="col-actions">

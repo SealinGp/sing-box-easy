@@ -39,9 +39,9 @@ describe('shared subscription quality interaction', () => {
 
   test('the quality cell offers a compact original-style probe alongside its default size', async () => {
     const qualityCell = await sourceOf('./SubscriptionQualityCell.vue')
-    expect(qualityCell).toContain("size?: 'small' | 'default'")
+    expect(qualityCell).toContain("size?: 'small' | 'default' | 'list'")
     expect(qualityCell).toContain("size: 'default'")
-    expect(qualityCell).toContain(`v-if="size === 'small'"`)
+    expect(qualityCell).toContain(`v-if="size !== 'default'"`)
     expect(qualityCell).toContain('size="xs"')
     expect(qualityCell).toContain('size="sm"')
     expect(qualityCell).toContain("$t('subProbe.column')")
@@ -51,6 +51,11 @@ describe('shared subscription quality interaction', () => {
     expect(await sourceOf('./SubscriptionsOverviewCard.vue')).toMatch(
       /<SubscriptionQualityCell\s+v-if="row\.probe"[\s\S]*?size="small"/,
     )
+  })
+
+  test('list rows retain the quality detail action, node counts, and latency', async () => {
+    const list = (await sourceOf('./SubscriptionCollection.vue')).split('<template #cards=')[0]!
+    expect(list).toMatch(/<SubscriptionQualityCell size="list" :point="probeLatest\[subscription\.id\]" :subscription="subscription" @refresh="loadProbeStatus"/)
   })
 
 })
@@ -70,7 +75,7 @@ describe('shared subscription quota details', () => {
     expect(quota).toContain('showExpiry?: boolean')
     expect(quota).toMatch(/plan\.extras\.length[\s\S]*?class="[^"]*truncate[^"]*"/)
     expect(quota).toContain("formatPlanExtras(plan.extras)")
-    expect(quota).toContain('<Tooltip v-if="plan.extras.length"')
+    expect(quota).toContain('<Tooltip v-if="plan.extras.length && !compact"')
     expect(quota).toContain("$t('overview.subscriptions.noPlanInfo')")
   })
 
@@ -81,7 +86,13 @@ describe('shared subscription quota details', () => {
   })
 
   test('the subscriptions table uses the same quota module', async () => {
-    expect(await sourceOf('./SubscriptionCollection.vue')).toMatch(
+    const collection = await sourceOf('./SubscriptionCollection.vue')
+    // A card-only match missed the regression where list rows lost quota.
+    const list = collection.split('<template #cards=')[0]!
+    expect(list).toMatch(
+      /<SubscriptionQuotaDetails compact :show-expiry="false" :plan="summarizePlan\(subscription\)" :subscription-name="subscription\.name"/,
+    )
+    expect(collection).toMatch(
       /<SubscriptionQuotaDetails[\s\S]*?:plan="summarizePlan\(subscription\)"[\s\S]*?:subscription-name="subscription\.name"/,
     )
   })

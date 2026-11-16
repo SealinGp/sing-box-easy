@@ -32,6 +32,8 @@ type Member struct {
 	Delay int `json:"delay"`
 	// Group marks a member that is another group.
 	Group bool `json:"group"`
+	// History belongs to this node only; group observations can mix nodes.
+	History []clashapi.DelaySample `json:"history,omitempty"`
 }
 
 // Group is one selector/urltest-style group of the running sing-box.
@@ -75,11 +77,16 @@ func BuildView(list []clashapi.Proxy, selectionPersisted bool) View {
 		members := make([]Member, 0, len(proxy.All))
 		for _, name := range proxy.All {
 			member := byName[name]
+			var history []clashapi.DelaySample
+			if !member.IsGroup() {
+				history = member.History
+			}
 			members = append(members, Member{
-				Name:  name,
-				Type:  member.Type,
-				Delay: resolveDelay(byName, name),
-				Group: member.IsGroup(),
+				Name:    name,
+				Type:    member.Type,
+				Delay:   resolveDelay(byName, name),
+				Group:   member.IsGroup(),
+				History: history,
 			})
 		}
 		groups = append(groups, Group{

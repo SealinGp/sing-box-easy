@@ -20,7 +20,7 @@ import SubscriptionQualityDialog from './SubscriptionQualityDialog.vue'
 const props = withDefaults(defineProps<{
   point?: ProbePoint
   subscription: Subscription
-  size?: 'small' | 'default'
+  size?: 'small' | 'default' | 'list'
 }>(), {
   size: 'default',
 })
@@ -68,24 +68,25 @@ const stepColors = computed(() =>
     type="button"
     class="-m-1 cursor-pointer rounded-control p-1 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
     :class="
-      size === 'small'
-        ? 'flex flex-wrap items-center gap-1 text-xs text-gray-500 hover:bg-primary-50 hover:text-primary-700 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-400'
+      size !== 'default'
+        ? ['flex items-center gap-1 text-xs text-gray-500 hover:bg-primary-50 hover:text-primary-700 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-400', size === 'list' ? 'w-full min-w-0' : 'flex-wrap']
         : 'flex flex-col items-start gap-0.5 hover:bg-gray-50 dark:hover:bg-gray-700/40'
     "
     :title="$t('subProbe.openDetail', { name: subscription.name })"
     :aria-label="$t('subProbe.openDetail', { name: subscription.name })"
     @click="openQuality"
   >
-    <template v-if="size === 'small'">
-      <span>{{ $t('subProbe.column') }}:</span>
+    <template v-if="size !== 'default'">
+      <span v-if="size === 'small'">{{ $t('subProbe.column') }}:</span>
       <SegmentedProgress
         :percent="100"
         :steps="5"
         :stroke-color="stepColors"
         size="xs"
+        class="shrink-0"
         :aria-label="$t('subProbe.nodesTested', { reachable: point.reachable, total: point.total })"
       />
-      <span>
+      <span :class="size === 'list' ? 'truncate' : ''">
         <span class="font-medium" :class="toneClass">
           {{ formatAvailability(point) }}
         </span>

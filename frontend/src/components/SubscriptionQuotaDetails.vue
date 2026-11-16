@@ -13,10 +13,11 @@ import { useI18n } from 'vue-i18n'
 import { ClockIcon } from '@heroicons/vue/24/outline'
 import { formatPlanExtras, type PlanSummary } from '../utils/subscriptionInfo'
 
-const { plan, subscriptionName, showExpiry = true } = defineProps<{
+const { plan, subscriptionName, showExpiry = true, compact = false } = defineProps<{
   plan: PlanSummary
   subscriptionName: string
   showExpiry?: boolean
+  compact?: boolean
 }>()
 
 const { t } = useI18n()
@@ -35,6 +36,10 @@ const usageBarClass = computed(() => {
 })
 
 const extrasText = computed(() => formatPlanExtras(plan.extras))
+const compactLabel = computed(() =>
+  plan.remainingLabel ?? plan.usedLabel ?? plan.totalLabel ??
+  (extrasText.value || t('overview.subscriptions.noPlanInfo')),
+)
 
 const expiryLabel = computed(() => {
   const days = plan.daysUntilExpiry
@@ -62,7 +67,7 @@ const expiryTitle = computed(() =>
     <Tooltip v-if="plan.usedRatio !== null" :width="192" match-anchor-width>
       <template #default="{ describedBy }">
       <div
-        class="relative w-full min-w-36 cursor-default overflow-hidden rounded-md border border-border bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        class="relative w-full min-w-0 cursor-default overflow-hidden rounded-md border border-border bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         role="progressbar"
         tabindex="0"
         :aria-valuenow="usagePercent ?? undefined"
@@ -92,6 +97,20 @@ const expiryTitle = computed(() =>
           {{ $t('overview.subscriptions.remaining') }}:
           <span class="font-medium">{{ plan.remainingLabel }}</span>
         </p>
+        <p v-if="compact && extrasText" class="break-words">{{ extrasText }}</p>
+      </template>
+    </Tooltip>
+
+    <Tooltip v-else-if="compact" :width="320">
+      <template #default="{ describedBy }">
+        <span tabindex="0" class="block truncate text-xs focus-visible:outline-2 focus-visible:outline-primary-500" :aria-describedby="describedBy">{{ compactLabel }}</span>
+      </template>
+      <template #content>
+        <p v-if="plan.usedLabel">{{ $t('overview.subscriptions.used') }}: {{ plan.usedLabel }}</p>
+        <p v-if="plan.totalLabel">{{ $t('overview.subscriptions.total') }}: {{ plan.totalLabel }}</p>
+        <p v-if="plan.remainingLabel">{{ $t('overview.subscriptions.remaining') }}: {{ plan.remainingLabel }}</p>
+        <p v-if="extrasText" class="break-words">{{ extrasText }}</p>
+        <p v-if="!plan.usedLabel && !plan.totalLabel && !plan.remainingLabel && !extrasText">{{ $t('overview.subscriptions.noPlanInfo') }}</p>
       </template>
     </Tooltip>
 
@@ -111,7 +130,7 @@ const expiryTitle = computed(() =>
     </p>
 
     <TooltipTarget as="p"
-      v-if="showExpiry && plan.expiresLabel"
+      v-if="!compact && showExpiry && plan.expiresLabel"
       class="inline-flex items-center gap-1 text-xs"
       :class="
         expiryIsUrgent
@@ -125,7 +144,7 @@ const expiryTitle = computed(() =>
     </TooltipTarget>
 
     <!-- Provider-defined fields stay one line; the tooltip contains all text. -->
-    <Tooltip v-if="plan.extras.length" :width="384">
+    <Tooltip v-if="plan.extras.length && !compact" :width="384">
       <template #default="{ describedBy }">
       <p
         class="truncate rounded-pill bg-gray-100 px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-gray-700 dark:text-gray-300"
@@ -147,7 +166,7 @@ const expiryTitle = computed(() =>
       </template>
     </Tooltip>
 
-    <p v-if="!plan.hasAny" class="text-xs text-gray-400 dark:text-gray-500">
+    <p v-if="!compact && !plan.hasAny" class="text-xs text-gray-400 dark:text-gray-500">
       {{ $t('overview.subscriptions.noPlanInfo') }}
     </p>
 

@@ -1,5 +1,19 @@
 // Runtime proxies page (Proxies.vue): groups and nodes of the running sing-box.
 export default {
+  quality: {
+    good: 'Good', fair: 'Fair', poor: 'Poor', unknown: 'No observations; unrated',
+    unavailable: 'Quality criteria could not be loaded. Retry in Settings.',
+    summary: '{level} · {passed}/{count} passed ({percent}%) · delay ≤ {ms}ms; timeouts fail',
+  },
+  history: {
+    latency: 'Latency',
+    open: 'Latency history for {node}',
+    title: 'Latency history',
+    empty: 'No latency records available for this node.',
+    retained: '{n} records retained by sing-box',
+    single: 'Only one observation is available; no trend yet.',
+    samples: 'Measurements',
+  },
   searchPlaceholder: 'Search groups or nodes',
   sort: {
     label: 'Sort nodes',
