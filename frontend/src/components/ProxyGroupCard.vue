@@ -19,7 +19,7 @@ import TooltipTarget from "./TooltipTarget.vue"
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { AdjustmentsHorizontalIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { AdjustmentsHorizontalIcon, LockClosedIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 import { displayName, latencyTier, stripFitsOneLine, tierShares, type LatencyTier } from '../utils/proxyGroups'
 import type { RuntimeGroup, RuntimeMember } from '../types/runtime'
@@ -153,6 +153,10 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
       <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {{ group.type }} · {{ group.members.length }}
       </span>
+      <span v-if="!group.switchable" class="inline-flex items-center gap-1 rounded-pill bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+        <LockClosedIcon class="h-3 w-3" aria-hidden="true" />
+        {{ $t('proxies.automaticSelection') }}
+      </span>
       <!--
         Where this group comes from. It stops its own click like the other
         controls in the header — the row is the expand toggle.
@@ -260,10 +264,8 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     <!--
       Expanded: member cards. Buttons only where a click does something.
 
-      In an automatic group (urltest, fallback) the cards look the same as a
-      selector's, so the pointer has to say they are not: `not-allowed` over
-      each one, with the reason as its tooltip. A plain default cursor left the
-      operator clicking a node and wondering why nothing switched.
+      Automatic members use dashed outlines and a persistent lock, while
+      their latency badges remain independent, available test controls.
     -->
     <div class="fold fold-nodes" :inert="!open">
       <div>
@@ -275,14 +277,14 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             :type="group.switchable ? 'button' : undefined"
             :aria-pressed="group.switchable ? member.name === group.now : undefined"
             :disabled="group.switchable ? switchingTo !== '' : undefined"
-            :aria-disabled="group.switchable ? undefined : true"
+            :aria-description="group.switchable ? undefined : $t('proxies.hintAutomatic')"
             :text="group.switchable ? undefined : $t('proxies.hintAutomatic')"
             class="flex min-w-0 flex-col gap-1 rounded-control border px-2.5 py-2 text-left transition-colors"
             :class="[
               member.name === group.now
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
                 : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40',
-              group.switchable ? 'cursor-pointer hover:border-primary-500 disabled:cursor-wait' : 'cursor-not-allowed',
+              group.switchable ? 'cursor-pointer hover:border-primary-500 disabled:cursor-wait' : 'cursor-default border-dashed',
               // A lighter wash of the SELECTED look, so hovering previews the
               // result of the click. Not on the current node (clicking it does
               // nothing) and not while a switch is already in flight.
@@ -293,9 +295,12 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             ]"
             @click="group.switchable && member.name !== group.now && emit('select', member.name)"
           >
-            <TooltipTarget as="span" class="truncate text-xs font-medium text-gray-900 dark:text-gray-100" :text="member.name">
-              {{ displayName(member.name) }}
-            </TooltipTarget>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <TooltipTarget as="span" class="min-w-0 flex-1 truncate text-xs font-medium" :class="group.switchable || member.name === group.now ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'" :text="member.name">
+                {{ displayName(member.name) }}
+              </TooltipTarget>
+              <LockClosedIcon v-if="!group.switchable" class="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            </span>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
               <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
               <!--
@@ -325,9 +330,6 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             {{ query ? $t('proxies.noMatchInGroup') : $t('proxies.emptyGroup') }}
           </span>
         </div>
-        <p class="px-3 pb-2.5 pt-2 text-[11px] text-gray-400 dark:text-gray-500">
-          {{ group.switchable ? $t('proxies.hintSwitchable') : $t('proxies.hintAutomatic') }}
-        </p>
       </div>
     </div>
   </article>

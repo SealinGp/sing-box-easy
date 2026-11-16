@@ -20,6 +20,7 @@ export default {
   emptyGroup: '该分组没有成员',
   hintSwitchable: '点击节点即可切换',
   hintAutomatic: '由 sing-box 自动选择，不能手动切换',
+  automaticSelection: '自动选择',
   persisted: '切换结果由 sing-box 的 cache_file 保存，重启后仍然有效。',
   notPersisted: '未启用 experimental.cache_file：手动切换只在本次运行中有效，sing-box 重启（包括每次保存配置）后会恢复默认。',
   stopped: 'sing-box 未运行。启动后这里会显示各分组当前使用的节点。',

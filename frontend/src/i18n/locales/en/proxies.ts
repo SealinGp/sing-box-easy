@@ -20,6 +20,7 @@ export default {
   emptyGroup: 'This group has no members',
   hintSwitchable: 'Click a node to switch to it',
   hintAutomatic: 'Chosen by sing-box automatically; cannot be switched by hand',
+  automaticSelection: 'Auto-select',
   persisted: 'Your selection is saved by sing-box\'s cache_file and survives a restart.',
   notPersisted: 'experimental.cache_file is off: a manual selection lasts only until sing-box restarts, which happens on every config save.',
   stopped: 'sing-box is not running. Start it to see which node each group is using.',
