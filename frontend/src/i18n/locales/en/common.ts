@@ -1,7 +1,8 @@
 // Shared, reusable strings (buttons, generic status words).
 export default {
+  actions: 'Actions',
   moreActions: 'More actions',
-  collection: { view: 'View', list: 'List', cards: 'Cards', select: 'Select record', selectAll: 'Select all visible records', clear: 'Clear selection', selected: '{count} selected' },
+  collection: { actions: 'Bulk actions', view: 'View', list: 'List', cards: 'Cards', select: 'Select record', selectAll: 'Select all visible records', clear: 'Clear selection', selected: '{count} selected' },
   fieldHelp: "Help for {name}",
   save: 'Save',
   // Shown under every multi-value (chips) field — see components/ChipsField.vue.

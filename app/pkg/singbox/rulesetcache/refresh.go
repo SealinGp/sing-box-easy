@@ -15,19 +15,32 @@ import (
 // Evict preserves the exact wire bytes for rollback, including fields introduced
 // by newer cores. Callers must stop sing-box first; a held lock fails closed.
 func Evict(path, id, tag string) ([]byte, error) {
-	var previous []byte
+	previous, err := EvictMany(path, id, []string{tag})
+	return previous[tag], err
+}
+
+// EvictMany validates every selected entry before atomically deleting any.
+func EvictMany(path, id string, tags []string) (map[string][]byte, error) {
+	previous := make(map[string][]byte, len(tags))
 	err := edit(path, id, func(b *bbolt.Bucket) error {
 		if b == nil {
 			return fmt.Errorf("rule-set cache is empty")
 		}
-		previous = append([]byte(nil), b.Get([]byte(tag))...)
-		if len(previous) == 0 {
-			return fmt.Errorf("rule set %q has no cached content to refresh", tag)
+		for _, tag := range tags {
+			previous[tag] = append([]byte(nil), b.Get([]byte(tag))...)
+			if len(previous[tag]) == 0 {
+				return fmt.Errorf("rule set %q has no cached content to refresh", tag)
+			}
+			if _, err := content(previous[tag]); err != nil {
+				return err
+			}
 		}
-		if _, err := content(previous); err != nil {
-			return err
+		for _, tag := range tags {
+			if err := b.Delete([]byte(tag)); err != nil {
+				return err
+			}
 		}
-		return b.Delete([]byte(tag))
+		return nil
 	})
 	return previous, err
 }
@@ -51,11 +64,20 @@ func content(raw []byte) ([]byte, error) {
 
 // Restore replaces only this entry; every other cache bucket stays untouched.
 func Restore(path, id, tag string, previous []byte) error {
+	return RestoreMany(path, id, map[string][]byte{tag: previous})
+}
+
+func RestoreMany(path, id string, previous map[string][]byte) error {
 	return edit(path, id, func(b *bbolt.Bucket) error {
 		if b == nil {
 			return fmt.Errorf("rule-set cache bucket disappeared")
 		}
-		return b.Put([]byte(tag), previous)
+		for tag, raw := range previous {
+			if err := b.Put([]byte(tag), raw); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

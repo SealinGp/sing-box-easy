@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
 import ModulePresets from './ModulePresets.vue'
-import IconButton from './IconButton.vue'
-import RuleSetRefreshAction from './RuleSetRefreshAction.vue'
+import RuleSetCollection from './RuleSetCollection.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
 import Input from './Input.vue'
 import { ContextPanel, Select } from '../volt'
 import Button from './Button.vue'
-import PopConfirm from './PopConfirm.vue'
-import List from './List.vue'
-import ListRow from './ListRow.vue'
-import ListField from './ListField.vue'
 import type { RuleSet } from '../types/api'
 import { routeService } from '../services'
 import { useToast } from 'primevue'
@@ -356,49 +351,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <List :loading="loading" :empty="ruleSets.length === 0">
-        <template #empty>{{ $t('route.ruleSets.empty') }}</template>
-
-        <ListRow
-          v-for="ruleSet in ruleSets"
-          :key="ruleSet.tag"
-          :class="{ 'focus-target': isFocused(ruleSet.tag) }"
-        >
-          <ListField :label="$t('route.ruleSets.fields.tag')" :value="ruleSet.tag" />
-          <ListField :label="$t('route.ruleSets.fields.type')" :value="ruleSet.type" />
-          <ListField :label="$t('route.ruleSets.fields.format')" :value="ruleSet.format" />
-          <ListField :label="$t('route.ruleSets.fields.url')" :value="ruleSet.url" />
-          <ListField
-            :label="$t('route.ruleSets.fields.downloadDetour')"
-            :value="ruleSet.download_detour"
-          />
-          <ListField
-            :label="$t('route.ruleSets.fields.updateInterval')"
-            :value="ruleSet.update_interval"
-          />
-
-          <template #actions>
-            <RuleSetRefreshAction v-if="ruleSet.type === 'remote'" :tag="ruleSet.tag" />
-            <IconButton action="edit" @click="startEditRuleSet(ruleSet)" />
-            <PopConfirm
-              :message="$t('route.ruleSets.confirm.delete')"
-              :target="ruleSet.tag"
-              :details="referenceInfo[ruleSet.tag]?.details"
-              :loading="referenceInfo[ruleSet.tag]?.loading ?? false"
-              :loading-label="$t('route.ruleSets.cascade.checking')"
-              :confirm-label="
-                referenceInfo[ruleSet.tag]?.cascade
-                ? $t('route.ruleSets.cascade.confirm')
-                : $t('common.delete')
-                "
-              tone="danger"
-              align="right"
-              @open="loadRuleSetReferences(ruleSet.tag)"
-              @confirm="handleDeleteRuleSet(ruleSet.tag)"
-            />
-          </template>
-        </ListRow>
-      </List>
+      <RuleSetCollection :rule-sets="ruleSets" :loading="loading" :is-focused="isFocused" :references="referenceInfo"
+        @edit="startEditRuleSet" @delete="handleDeleteRuleSet" @references="loadRuleSetReferences" />
     </Card>
 
     <!-- Add/Edit Rule Set Dialog -->

@@ -43,6 +43,10 @@ func (b *refreshBackend) Start() error {
 }
 
 func saveRefreshCache(t *testing.T, path, body string) []byte {
+	return saveRefreshCacheTag(t, path, "ai", body)
+}
+
+func saveRefreshCacheTag(t *testing.T, path, tag, body string) []byte {
 	t.Helper()
 	var raw bytes.Buffer
 	raw.WriteByte(1)
@@ -62,13 +66,86 @@ func saveRefreshCache(t *testing.T, path, body string) []byte {
 		if e != nil {
 			return e
 		}
-		return b.Put([]byte("ai"), data)
+		return b.Put([]byte(tag), data)
 	})
 	_ = db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
 	return data
+}
+
+func TestBatchRefreshUsesOneRestartAndRecoversAllSelectedEntries(t *testing.T) {
+	for _, mode := range []string{"success", "second download fails", "missing cache", "local set"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "cache.db")
+			old := map[string][]byte{"ai": saveRefreshCacheTag(t, path, "ai", "old ai"), "other": saveRefreshCacheTag(t, path, "other", "untouched")}
+			if mode != "missing cache" {
+				old["second"] = saveRefreshCacheTag(t, path, "second", "old second")
+			}
+			kind := "remote"
+			if mode == "local set" {
+				kind = "local"
+			}
+			raw, _ := json.Marshal(map[string]any{"route": map[string]any{"rule_set": []any{map[string]any{"type": "remote", "tag": "ai"}, map[string]any{"type": kind, "tag": "second"}}}, "experimental": map[string]any{"cache_file": map[string]any{"enabled": true, "path": path}}})
+			configPath := filepath.Join(dir, "config.json")
+			if err := os.WriteFile(configPath, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			backend := &refreshBackend{running: true}
+			backend.start = func(n int) error {
+				if n > 1 {
+					return nil
+				}
+				saveRefreshCacheTag(t, path, "ai", "new ai")
+				if mode == "second download fails" {
+					return errors.New("second download failed")
+				}
+				saveRefreshCacheTag(t, path, "second", "new second")
+				return nil
+			}
+			controller := &Controller{backend: backend, configManager: config.NewManagerWithCore(configPath, refreshCore{})}
+			results, err := controller.RefreshRuleSets(context.Background(), []string{"ai", "second", "ai"})
+			if mode == "success" {
+				if err != nil || len(results) != 2 || !results[0].Changed || !results[1].Changed {
+					t.Fatalf("results=%+v err=%v", results, err)
+				}
+				if backend.starts != 1 || backend.stops != 1 {
+					t.Fatalf("batch caused %d starts and %d stops", backend.starts, backend.stops)
+				}
+			} else {
+				if err == nil {
+					t.Fatal("failure reported success")
+				}
+				expected := 0
+				if mode == "second download fails" {
+					expected = 2
+				}
+				if backend.stops != expected || backend.starts != expected {
+					t.Fatalf("wrong recovery/preflight lifecycle: %+v", backend)
+				}
+			}
+			if !backend.running {
+				t.Fatal("left core stopped")
+			}
+			db, _ := bbolt.Open(path, 0600, &bbolt.Options{ReadOnly: true})
+			defer db.Close()
+			_ = db.View(func(tx *bbolt.Tx) error {
+				b := tx.Bucket([]byte("rule_set"))
+				for tag, previous := range old {
+					if (mode != "success" || tag == "other") && !bytes.Equal(b.Get([]byte(tag)), previous) {
+						t.Fatalf("%s cache changed unexpectedly", tag)
+					}
+				}
+				return nil
+			})
+			current, _ := os.ReadFile(configPath)
+			if !bytes.Equal(raw, current) {
+				t.Fatal("configuration changed")
+			}
+		})
+	}
 }
 
 func TestRefreshRuleSetAppliesOrRestoresWithoutChangingConfig(t *testing.T) {
@@ -104,7 +181,11 @@ func TestRefreshRuleSetAppliesOrRestoresWithoutChangingConfig(t *testing.T) {
 			// Exercise the coordinator with a short deadline for the missing-write path.
 			ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
 			defer cancel()
-			result, err := c.refreshRuleSet(ctx, ruleSetRefreshPlan{path: path, tag: "ai"})
+			results, err := c.refreshRuleSets(ctx, []ruleSetRefreshPlan{{path: path, tag: "ai"}})
+			result := RuleSetRefreshResult{}
+			if len(results) > 0 {
+				result = results[0]
+			}
 			failure := mode == "download failure" || mode == "missing cache write"
 			if (err != nil) != failure {
 				t.Fatalf("result=%+v error=%v", result, err)

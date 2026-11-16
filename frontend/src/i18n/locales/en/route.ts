@@ -285,6 +285,8 @@ export default {
   },
   ruleSets: {
     refresh: {
+      batchLabel: 'Update selected',
+      batchNotice: 'Successful batches restart once. If an update fails, the entire batch returns to its previous content.',
       label: 'Update now',
       notice: 'Updating briefly restarts sing-box and may interrupt existing connections.',
       running: 'Downloading and applying…',

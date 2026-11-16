@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics/ruleset"
@@ -23,7 +24,31 @@ type RuleSetRefreshResult struct {
 // Both locks are held through recovery: edits and lifecycle actions cannot race
 // cache invalidation. No configuration or historical version is written.
 func (c *Controller) RefreshRuleSet(ctx context.Context, tag string) (RuleSetRefreshResult, error) {
-	var result RuleSetRefreshResult
+	results, err := c.RefreshRuleSets(ctx, []string{tag})
+	if err != nil {
+		return RuleSetRefreshResult{}, err
+	}
+	return results[0], nil
+}
+
+// RefreshRuleSets refreshes one batch with a single stop/start cycle. A failed
+// download restores the entire batch; no partial application is reported.
+func (c *Controller) RefreshRuleSets(ctx context.Context, tags []string) ([]RuleSetRefreshResult, error) {
+	var result []RuleSetRefreshResult
+	unique := make([]string, 0, len(tags))
+	seen := make(map[string]bool)
+	if len(tags) == 0 || len(tags) > 100 {
+		return nil, fault.New(fault.Invalid, "select between 1 and 100 rule sets")
+	}
+	for _, tag := range tags {
+		if strings.TrimSpace(tag) == "" {
+			return nil, fault.New(fault.Invalid, "rule-set tag is required")
+		}
+		if !seen[tag] {
+			seen[tag] = true
+			unique = append(unique, tag)
+		}
+	}
 	if !c.lifecycleMu.TryLock() {
 		return result, fault.New(fault.Conflict, "another service operation is in progress")
 	}
@@ -47,69 +72,73 @@ func (c *Controller) RefreshRuleSet(ctx context.Context, tag string) (RuleSetRef
 		if !running {
 			return fault.New(fault.Conflict, "start sing-box before refreshing rule sets")
 		}
-		plan, err := planRuleSetRefresh(doc.Raw, tag, pid, c.backend.Kind() == BackendProcess)
-		if err != nil {
-			return fault.New(fault.Invalid, err.Error())
+		plans := make([]ruleSetRefreshPlan, 0, len(unique))
+		for _, tag := range unique {
+			plan, err := planRuleSetRefresh(doc.Raw, tag, pid, c.backend.Kind() == BackendProcess)
+			if err != nil {
+				return fault.New(fault.Invalid, err.Error())
+			}
+			plans = append(plans, plan)
 		}
-		// Detect absent/misconfigured caches before interrupting traffic.
-		id := plan.id
+		// Open one cache snapshot for the entire batch before interrupting traffic.
+		id := plans[0].id
 		if id != "" {
 			id = "\x00" + id
 		}
-		cache, err := ruleset.OpenCacheFile(plan.path, id)
+		cache, err := ruleset.OpenCacheFile(plans[0].path, id)
 		if err != nil {
 			return fault.New(fault.Unavailable, "could not read rule-set cache: "+err.Error())
 		}
-		entry := cache.LoadRuleSet(tag)
-		cache.Close()
-		if entry == nil || len(entry.Content) == 0 {
-			return fault.New(fault.Unavailable, "rule set has no cached content to refresh")
+		for _, p := range plans {
+			entry := cache.LoadRuleSet(p.tag)
+			if entry == nil || len(entry.Content) == 0 {
+				cache.Close()
+				return fault.New(fault.Unavailable, "rule set has no cached content to refresh: "+p.tag)
+			}
 		}
-		result, err = c.refreshRuleSet(ctx, plan)
+		cache.Close()
+		result, err = c.refreshRuleSets(ctx, plans)
 		return err
 	})
 	return result, err
 }
 
-func (c *Controller) refreshRuleSet(ctx context.Context, p ruleSetRefreshPlan) (RuleSetRefreshResult, error) {
-	result := RuleSetRefreshResult{Tag: p.tag}
+func (c *Controller) refreshRuleSets(ctx context.Context, plans []ruleSetRefreshPlan) ([]RuleSetRefreshResult, error) {
+	p := plans[0]
+	tags := make([]string, 0, len(plans))
+	for _, item := range plans {
+		tags = append(tags, item.tag)
+	}
 	if err := c.backend.Stop(); err != nil {
-		return result, err
+		return nil, err
 	}
-	previous, err := rulesetcache.Evict(p.path, p.id, p.tag)
+	previous, err := rulesetcache.EvictMany(p.path, p.id, tags)
 	if err != nil {
-		return result, errors.Join(fmt.Errorf("could not prepare rule-set refresh: %w", err), c.backend.Start())
+		return nil, errors.Join(fmt.Errorf("could not prepare rule-set refresh: %w", err), c.backend.Start())
 	}
-	// Capture the old content hash independently of the cache wire format.
-	// The entry was evicted already, so use its length-prefixed content field.
-	before := rulesetcache.ContentHash(previous)
 	started := time.Now().Unix()
 	if err = c.backend.Start(); err == nil {
-		var updated time.Time
-		var after [32]byte
-		updated, after, err = c.waitRuleSetRefresh(ctx, p, started)
+		var results []RuleSetRefreshResult
+		results, err = c.waitRuleSetRefresh(ctx, p, tags, previous, started)
 		if err == nil {
-			result.UpdatedAt = updated.Unix()
-			result.Changed = before != after
-			return result, nil
+			return results, nil
 		}
 	}
-	// Never write a cache held by a running core. Preserve the old opaque bytes.
+	// All selected entries are restored together, including ones downloaded before
+	// a later member failed. Never mutate a cache held by the running core.
 	if stopErr := c.backend.Stop(); stopErr != nil {
-		return result, errors.Join(err, fmt.Errorf("could not stop core for recovery: %w", stopErr))
+		return nil, errors.Join(err, fmt.Errorf("could not stop core for recovery: %w", stopErr))
 	}
-	if restoreErr := rulesetcache.Restore(p.path, p.id, p.tag, previous); restoreErr != nil {
-		return result, errors.Join(err, fmt.Errorf("could not restore previous rule set: %w", restoreErr), c.backend.Start())
+	if restoreErr := rulesetcache.RestoreMany(p.path, p.id, previous); restoreErr != nil {
+		return nil, errors.Join(err, fmt.Errorf("could not restore previous rule sets: %w", restoreErr), c.backend.Start())
 	}
 	if startErr := c.backend.Start(); startErr != nil {
-		return result, errors.Join(err, fmt.Errorf("could not restart with previous rule set: %w", startErr))
+		return nil, errors.Join(err, fmt.Errorf("could not restart with previous rule sets: %w", startErr))
 	}
-	return result, fmt.Errorf("rule-set refresh failed; previous content restored: %w", err)
+	return nil, fmt.Errorf("rule-set refresh failed; previous content restored for the entire batch: %w", err)
 }
 
-func (c *Controller) waitRuleSetRefresh(ctx context.Context, p ruleSetRefreshPlan, started int64) (time.Time, [32]byte, error) {
-	// Initial downloads finish before the core starts serving. Require both a
-	// newly saved cache entry and a live core, never just a successful restart.
+func (c *Controller) waitRuleSetRefresh(ctx context.Context, p ruleSetRefreshPlan, tags []string, previous map[string][]byte, started int64) ([]RuleSetRefreshResult, error) {
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	id := p.id
@@ -119,22 +148,29 @@ func (c *Controller) waitRuleSetRefresh(ctx context.Context, p ruleSetRefreshPla
 	for {
 		running, _, err := c.backend.ActiveAndPID()
 		if err != nil {
-			return time.Time{}, [32]byte{}, err
+			return nil, err
 		}
 		if !running {
-			return time.Time{}, [32]byte{}, fmt.Errorf("sing-box did not remain running after refresh")
+			return nil, fmt.Errorf("sing-box did not remain running after refresh")
 		}
 		cache, openErr := ruleset.OpenCacheFile(p.path, id)
 		if openErr == nil {
-			entry := cache.LoadRuleSet(p.tag)
+			results := make([]RuleSetRefreshResult, 0, len(tags))
+			for _, tag := range tags {
+				entry := cache.LoadRuleSet(tag)
+				if entry == nil || len(entry.Content) == 0 || entry.LastUpdated.Unix() < started {
+					break
+				}
+				results = append(results, RuleSetRefreshResult{Tag: tag, UpdatedAt: entry.LastUpdated.Unix(), Changed: rulesetcache.ContentHash(previous[tag]) != sha256.Sum256(entry.Content)})
+			}
 			cache.Close()
-			if entry != nil && len(entry.Content) > 0 && entry.LastUpdated.Unix() >= started {
-				return entry.LastUpdated, sha256.Sum256(entry.Content), nil
+			if len(results) == len(tags) {
+				return results, nil
 			}
 		}
 		select {
 		case <-ctx.Done():
-			return time.Time{}, [32]byte{}, fmt.Errorf("timed out waiting for refreshed rule set: %w", ctx.Err())
+			return nil, fmt.Errorf("timed out waiting for refreshed rule sets: %w", ctx.Err())
 		case <-ticker.C:
 		}
 	}

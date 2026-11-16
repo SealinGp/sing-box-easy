@@ -1,7 +1,8 @@
 // 通用、可复用的文案（按钮、通用状态词）。
 export default {
+  actions: '操作',
   moreActions: '更多操作',
-  collection: { view: '视图', list: '列表', cards: '卡片', select: '选择记录', selectAll: '选择所有可见记录', clear: '取消选择', selected: '已选择 {count} 项' },
+  collection: { actions: '批量操作', view: '视图', list: '列表', cards: '卡片', select: '选择记录', selectAll: '选择所有可见记录', clear: '取消选择', selected: '已选择 {count} 项' },
   fieldHelp: "{name}的说明",
   save: '保存',
   // 每个多值（标签）输入框下方的提示 —— 见 components/ChipsField.vue。

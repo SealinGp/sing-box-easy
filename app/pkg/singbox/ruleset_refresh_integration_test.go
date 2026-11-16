@@ -28,7 +28,13 @@ func TestRefreshWithInstalledCore(t *testing.T) {
 	var version atomic.Int32
 	version.Store(1)
 	var otherDownloads atomic.Int32
+	var untouchedDownloads atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/untouched.json" {
+			untouchedDownloads.Add(1)
+			fmt.Fprint(w, `{"version":3,"rules":[{"domain_suffix":"untouched.test"}]}`)
+			return
+		}
 		if r.URL.Path == "/other.json" {
 			otherDownloads.Add(1)
 			fmt.Fprint(w, `{"version":3,"rules":[{"domain_suffix":"other.test"}]}`)
@@ -50,6 +56,7 @@ func TestRefreshWithInstalledCore(t *testing.T) {
 		"route": map[string]any{"final": "direct", "rule_set": []any{
 			map[string]any{"type": "remote", "tag": "ai", "url": server.URL + "/ai.json", "format": "source", "download_detour": "direct", "update_interval": "1d"},
 			map[string]any{"type": "remote", "tag": "other", "url": server.URL + "/other.json", "format": "source", "download_detour": "direct", "update_interval": "1d"},
+			map[string]any{"type": "remote", "tag": "untouched", "url": server.URL + "/untouched.json", "format": "source", "download_detour": "direct", "update_interval": "1d"},
 		}},
 		"experimental": map[string]any{"cache_file": map[string]any{"enabled": true, "path": cachePath, "cache_id": "refresh-test"}},
 	})
@@ -90,16 +97,27 @@ func TestRefreshWithInstalledCore(t *testing.T) {
 		}
 	}
 	check()
+	starts, stops := backend.starts, backend.stops
+	batch, err := controller.RefreshRuleSets(context.Background(), []string{"ai", "other", "ai"})
+	if err != nil || len(batch) != 2 || batch[0].Changed || batch[1].Changed {
+		t.Fatalf("unchanged batch=%+v err=%v", batch, err)
+	}
+	if backend.starts != starts+1 || backend.stops != stops+1 {
+		t.Fatal("batch did not use exactly one stop/start")
+	}
+	if otherDownloads.Load() != 2 {
+		t.Fatal("selected second rule set was not downloaded")
+	}
 	version.Store(3)
-	if _, err = controller.RefreshRuleSet(context.Background(), "ai"); err == nil {
+	if _, err = controller.RefreshRuleSets(context.Background(), []string{"ai", "other"}); err == nil {
 		t.Fatal("download failure reported success")
 	}
 	check()
 	if running, _, _ := backend.ActiveAndPID(); !running {
 		t.Fatal("rollback did not restore running core")
 	}
-	if otherDownloads.Load() != 1 {
-		t.Fatalf("unrelated rule set downloaded %d times", otherDownloads.Load())
+	if untouchedDownloads.Load() != 1 {
+		t.Fatalf("unrelated rule set downloaded %d times", untouchedDownloads.Load())
 	}
 	current, _ := os.ReadFile(configPath)
 	if string(current) != string(raw) {
@@ -109,13 +127,15 @@ func TestRefreshWithInstalledCore(t *testing.T) {
 
 type installedRefreshBackend struct {
 	Backend
-	binary, path string
-	cmd          *exec.Cmd
-	done         chan error
+	binary, path  string
+	cmd           *exec.Cmd
+	done          chan error
+	starts, stops int
 }
 
 func (b *installedRefreshBackend) Kind() string { return BackendProcess }
 func (b *installedRefreshBackend) Start() error {
+	b.starts++
 	b.cmd = exec.Command(b.binary, "run", "-c", b.path)
 	b.cmd.Env = append(os.Environ(), "ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true")
 	if err := b.cmd.Start(); err != nil {
@@ -134,6 +154,7 @@ func (b *installedRefreshBackend) Start() error {
 	}
 }
 func (b *installedRefreshBackend) Stop() error {
+	b.stops++
 	if b.cmd == nil {
 		return nil
 	}

@@ -58,6 +58,10 @@ interface Props {
   tableClass?: string
   presentation?: boolean
   selectable?: boolean
+  /** Optional controlled selection shared with the page's business actions. */
+  selectedKeys?: string[]
+  selectionDisabled?: boolean
+  isRowSelectable?: (key: string) => boolean
   resizable?: boolean
   columnStorageKey?: string
   /** Header definition. Omit and use the `#head` slot for bespoke headers. */
@@ -97,12 +101,16 @@ const props = withDefaults(defineProps<Props>(), {
   selectable: true,
 })
 
+const emit = defineEmits<{ 'update:selectedKeys': [keys: string[]] }>()
+
 defineSlots<{
   /** Body rows — `<tr>` elements. */
   default: () => VNode[]
   /** Replaces the generated `<th>`s. Provide `<th>` elements, not a `<tr>`. */
   head?: () => VNode[]
   cards?: (state: { selected: Set<string>; toggle: (key: string) => void }) => VNode[]
+  /** Replaces the Dock's default copy action with page-specific bulk actions. */
+  selectionActions?: (state: { selectedKeys: string[]; clear: () => void }) => VNode[]
   /** Shown when `empty` and not `loading`. */
   empty?: () => VNode[]
   /** Replaces the default spinner. */
@@ -168,9 +176,12 @@ const skeletonColumns = computed(() => loadingWidths.value.length || props.colum
     <span v-if="props.loading && interfaceMotion" class="sr-only" role="status">{{ t('common.loading') }}</span>
     <TableRecords :columns="props.columns" :table-class="props.tableClass"
       :transition="props.transition" :presentation="props.presentation" :selectable="props.selectable"
+      :selected-keys="props.selectedKeys" :selection-disabled="props.selectionDisabled" :is-row-selectable="props.isRowSelectable"
+      @update:selected-keys="emit('update:selectedKeys', $event)"
       :storage-key="props.columnStorageKey" :loading="props.loading">
       <template v-if="$slots.head" #head><slot name="head" /></template>
       <template v-if="$slots.cards" #cards="state"><slot name="cards" v-bind="state" /></template>
+      <template v-if="$slots.selectionActions" #selectionActions="state"><slot name="selectionActions" v-bind="state" /></template>
       <template #default>
         <tr v-if="props.loading" v-for="(height, row) in loadingRows" :key="`skeleton-${row}`" :style="{ height: `${height}px` }">
           <td v-for="column in skeletonColumns" :key="column"><Skeleton class="h-3 w-3/4" /></td>

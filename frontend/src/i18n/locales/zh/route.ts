@@ -269,6 +269,8 @@ export default {
   },
   ruleSets: {
     refresh: {
+      batchLabel: '批量更新',
+      batchNotice: '正常更新只重启一次；失败时整批恢复原内容。',
       label: '立即更新',
       notice: '更新时会短暂重启 sing-box，现有连接可能中断。',
       running: '正在下载并应用，请稍候…',

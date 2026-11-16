@@ -74,6 +74,13 @@ export class RouteService {
     return response.data.data
   }
 
+  async refreshRuleSets(tags: string[]): Promise<RuleSetRefreshResult[]> {
+    const response = await this.api.post<BasicResponse<{ results: RuleSetRefreshResult[] }>>(
+      '/route/rule-sets/refresh', { tags }, { timeout: 120_000 },
+    )
+    return response.data.data.results
+  }
+
   async addRuleSet(ruleSet: RuleSet): Promise<BasicResponse<{ message: string; tag: string }>> {
     const response = await this.api.post<BasicResponse<{ message: string; tag: string }>>('/route/rule-sets', ruleSet)
     return response.data

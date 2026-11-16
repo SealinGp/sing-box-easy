@@ -105,3 +105,23 @@ func TestContentHashIgnoresMetadata(t *testing.T) {
 		t.Fatal("missed content change")
 	}
 }
+
+func TestBatchEvictionIsAtomicWhenLaterTagIsMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	db, _ := bbolt.Open(path, 0600, nil)
+	original := record("old")
+	_ = db.Update(func(tx *bbolt.Tx) error {
+		b, _ := tx.CreateBucket([]byte("rule_set"))
+		return b.Put([]byte("ai"), original)
+	})
+	_ = db.Close()
+	if _, err := EvictMany(path, "", []string{"ai", "missing"}); err == nil {
+		t.Fatal("missing member accepted")
+	}
+	_ = edit(path, "", func(b *bbolt.Bucket) error {
+		if !bytes.Equal(b.Get([]byte("ai")), original) {
+			t.Fatal("earlier member evicted despite failed batch")
+		}
+		return nil
+	})
+}
