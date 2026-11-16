@@ -2,6 +2,7 @@
 import FieldHelp from './FieldHelp.vue'
 import ModulePresets from './ModulePresets.vue'
 import IconButton from './IconButton.vue'
+import RuleSetRefreshAction from './RuleSetRefreshAction.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
@@ -377,6 +378,7 @@ onMounted(() => {
           />
 
           <template #actions>
+            <RuleSetRefreshAction v-if="ruleSet.type === 'remote'" :tag="ruleSet.tag" />
             <IconButton action="edit" @click="startEditRuleSet(ruleSet)" />
             <PopConfirm
               :message="$t('route.ruleSets.confirm.delete')"

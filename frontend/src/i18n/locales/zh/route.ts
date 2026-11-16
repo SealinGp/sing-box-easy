@@ -268,6 +268,14 @@ export default {
     action: '动作：',
   },
   ruleSets: {
+    refresh: {
+      label: '立即更新',
+      notice: '更新时会短暂重启 sing-box，现有连接可能中断。',
+      running: '正在下载并应用，请稍候…',
+      updated: '已更新并生效',
+      unchanged: '已检查并应用，内容没有变化',
+      failed: '更新失败，请重试',
+    },
     title: '规则集',
     add: '添加规则集',
     empty: '尚未配置规则集',

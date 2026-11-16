@@ -284,6 +284,14 @@ export default {
     action: 'Action:',
   },
   ruleSets: {
+    refresh: {
+      label: 'Update now',
+      notice: 'Updating briefly restarts sing-box and may interrupt existing connections.',
+      running: 'Downloading and applying…',
+      updated: 'Updated and applied',
+      unchanged: 'Checked and applied; content is unchanged',
+      failed: 'Update failed. Please try again.',
+    },
     title: 'Rule Sets',
     add: 'Add Rule Set',
     empty: 'No rule sets configured',

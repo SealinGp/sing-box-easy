@@ -97,6 +97,7 @@ declare module 'vue' {
     RuleLadder: typeof import('./src/components/RuleLadder.vue')['default']
     RuleSetIssues: typeof import('./src/components/RuleSetIssues.vue')['default']
     RuleSetPresets: typeof import('./src/components/presets/RuleSetPresets.vue')['default']
+    RuleSetRefreshAction: typeof import('./src/components/RuleSetRefreshAction.vue')['default']
     RuleSets: typeof import('./src/components/RuleSets.vue')['default']
     SchemaFieldControl: typeof import('./src/components/SchemaFieldControl.vue')['default']
     SchemaFieldsEditor: typeof import('./src/components/SchemaFieldsEditor.vue')['default']

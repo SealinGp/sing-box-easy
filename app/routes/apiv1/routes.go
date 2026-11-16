@@ -161,6 +161,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Route Rule-sets
 	auth.GET("/route/rule-sets", handler.GetRuleSets)
+	admin.POST("/route/rule-sets/refresh", handler.RefreshRuleSet)
 	auth.POST("/route/rule-sets", handler.AddRuleSet)
 	auth.GET("/route/rule-sets/:tag", handler.GetRuleSetByTag)
 	auth.GET("/route/rule-sets/:tag/references", handler.GetRuleSetReferences)

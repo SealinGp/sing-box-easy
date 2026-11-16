@@ -10,6 +10,12 @@ export interface RuleSetReference {
   rule_set: string[]
 }
 
+export interface RuleSetRefreshResult {
+  tag: string
+  updated_at_unix: number
+  changed: boolean
+}
+
 export class RouteService {
   private api: ApiService
 
@@ -59,6 +65,13 @@ export class RouteService {
   async getRuleSets(): Promise<BasicResponse<{ rule_sets: RuleSet[] }>> {
     const response = await this.api.get<BasicResponse<{ rule_sets: RuleSet[] }>>('/route/rule-sets')
     return response.data
+  }
+
+  async refreshRuleSet(tag: string): Promise<RuleSetRefreshResult> {
+    const response = await this.api.post<BasicResponse<RuleSetRefreshResult>>(
+      '/route/rule-sets/refresh', { tag }, { timeout: 120_000 },
+    )
+    return response.data.data
   }
 
   async addRuleSet(ruleSet: RuleSet): Promise<BasicResponse<{ message: string; tag: string }>> {
