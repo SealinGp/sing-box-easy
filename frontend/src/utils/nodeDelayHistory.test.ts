@@ -2,6 +2,14 @@ import { expect, test } from 'bun:test'
 import { nodeDelayPoints } from './nodeDelayHistory'
 import { layoutProbeChart } from './probeChart'
 
+test('explicit outcome distinguishes a sub-millisecond success from a failure', () => {
+  const points = nodeDelayPoints([
+    { time: '2026-11-16T12:00:00Z', delay: 0, success: true },
+    { time: '2026-11-16T12:01:00Z', delay: 0, success: false },
+  ])
+  expect(points.map(point => point.reachable)).toEqual([1, 0])
+})
+
 test('node history orders timestamps and keeps failures as chart gaps', () => {
   const points = nodeDelayPoints([
     { time: '2026-11-16T12:02:00Z', delay: 150 },

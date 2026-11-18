@@ -9,10 +9,11 @@ export default {
     latency: '延迟',
     open: '查看 {node} 的延迟历史',
     title: '延迟历史',
-    empty: '此节点暂无延迟记录。',
-    retained: 'sing-box 保留的 {n} 条记录',
+    empty: '此节点暂无已保存的延迟记录，下次自动或手动测速后开始积累。',
+    retained: '已保存 {n} 条节点探测记录（自动与手动测速）',
     single: '目前只有一次采样，尚无趋势。',
     samples: '采样记录',
+    sources: { subscription: '订阅探测', manual: '手动测速', 'manual-group': '分组测速', runtime: '运行时缓存' },
   },
   searchPlaceholder: '搜索分组或节点',
   sort: {

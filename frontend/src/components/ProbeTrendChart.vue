@@ -353,7 +353,7 @@ function availabilityClass(point: ProbePoint): string {
             </span>
           </span>
           <span class="text-gray-600 dark:text-gray-300">
-            {{ latencyOnly ? $t('proxies.history.latency') + ': ' : '' }}{{ hovered.point.reachable > 0 ? formatLatency(hovered.point.avg_ms) : $t(latencyOnly ? 'proxies.noResult' : 'subProbe.chart.noLatency') }}
+            {{ latencyOnly ? $t('proxies.history.latency') + ': ' : '' }}{{ hovered.point.reachable > 0 ? (hovered.point.avg_ms === 0 ? '0 ms' : formatLatency(hovered.point.avg_ms)) : $t(latencyOnly ? 'proxies.noResult' : 'subProbe.chart.noLatency') }}
           </span>
           <span
             v-if="hovered.point.reachable > 0 && hovered.point.max_ms > hovered.point.min_ms"

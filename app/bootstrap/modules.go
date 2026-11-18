@@ -1,7 +1,9 @@
 package bootstrap
 
 import (
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"strings"
+	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
@@ -87,6 +89,12 @@ func New(
 	versionStore := history.NewStoreXORM(e)
 	versionCleaner := history.NewCleaner(versionStore, history.DefaultMaxAge)
 	settingsManager := settings.NewManagerXORM(e)
+	nodeHistory := nodehistory.NewStore(e, func() (time.Duration, int) {
+		return time.Duration(settingsManager.GetProbeRetentionDays()) * 24 * time.Hour, settingsManager.GetProbeMaxPoints()
+	})
+	if err := nodeHistory.Init(); err != nil {
+		return nil, err
+	}
 	configManager.SetVersionStore(versionStore)
 
 	// Pass initStateManager and configManager to installer
@@ -101,7 +109,7 @@ func New(
 	if err := subscriptionManager.Init(); err != nil {
 		return nil, err
 	}
-	if err := subscriptionManager.ConfigureProbes(e, settingsManager); err != nil {
+	if err := subscriptionManager.ConfigureProbes(e, settingsManager, nodeHistory); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +154,7 @@ func New(
 		System:              system.New(configManager.GetConfigPath(), database.Path(), serviceController),
 		Installation:        install.NewService(installerManager, dashboardManager, configManager, initStateManager),
 		TrafficService:      traffic.NewService(configManager),
-		Proxies:             proxies.NewService(configManager),
+		Proxies:             proxies.NewService(configManager, nodeHistory),
 		SettingsService:     settings.NewService(settingsManager, configManager, githubAuth.Configured),
 		Diagnostics:         diagnostics.New(configManager, serviceController),
 		Outbounds:           outbounds.New(configManager, nodeRulesManager),

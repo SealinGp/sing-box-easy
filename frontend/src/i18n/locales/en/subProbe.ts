@@ -55,10 +55,10 @@ export default {
     timeoutHint: 'Milliseconds. Capped at {max} by the Clash API request timeout.',
     retention: 'Keep history for',
     retentionDays: '{days} days',
-    maxPoints: 'Max samples per subscription',
+    maxPoints: 'Max samples per subscription / node',
     maxPointsHint: 'Whichever bound is reached first applies.',
     stored: 'Currently stored',
-    storedValue: '{count} samples (~{size})',
+    storedValue: '{count} subscription aggregates + {nodes} node observations (~{size})',
     requiresClashApi:
       'Probing uses sing-box\'s own URL test, so it needs experimental.clash_api.external_controller set and sing-box running.',
     save: 'Save',

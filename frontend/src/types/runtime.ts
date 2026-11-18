@@ -6,6 +6,9 @@
 export interface NodeDelaySample {
   time: string
   delay: number
+  success?: boolean
+  source?: string
+  test_url?: string
 }
 
 export interface RuntimeMember {

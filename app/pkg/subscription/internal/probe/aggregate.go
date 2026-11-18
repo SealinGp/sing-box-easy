@@ -12,9 +12,8 @@
 // here would mean re-implementing six protocols to get a number that would then
 // describe a connection nobody makes.
 //
-// Storage is deliberately small: ONE aggregate row per subscription per run,
-// bounded by both an age and a count (see store_xorm.go). This runs on home
-// routers; a metrics feature that fills the overlay is worse than no metrics.
+// Each complete run stores one subscription aggregate and its measured node
+// observations. Both histories are bounded by age and per-entity sample count.
 package probe
 
 import "github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"

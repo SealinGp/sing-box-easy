@@ -81,6 +81,7 @@ declare module 'vue' {
     PageTransition: typeof import('./src/components/PageTransition.vue')['default']
     PaletteStudio: typeof import('./src/components/PaletteStudio.vue')['default']
     PopConfirm: typeof import('./src/components/PopConfirm.vue')['default']
+    ProbeNodeResults: typeof import('./src/components/ProbeNodeResults.vue')['default']
     ProbeSettingsCard: typeof import('./src/components/ProbeSettingsCard.vue')['default']
     ProbeTrendChart: typeof import('./src/components/ProbeTrendChart.vue')['default']
     ProxyGroupCard: typeof import('./src/components/ProxyGroupCard.vue')['default']

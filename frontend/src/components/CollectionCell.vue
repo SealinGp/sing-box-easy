@@ -3,12 +3,15 @@ import { ref } from 'vue'
 import Tooltip from './Tooltip.vue'
 const content = ref<HTMLElement>()
 const text = ref('')
-function read() { text.value = content.value?.innerText.trim() ?? '' }
+function read() {
+  text.value = content.value?.innerText.trim() ?? ''
+  return text.value.length > 0
+}
 </script>
 <template>
-  <Tooltip @mouseenter="read" @focusin="read" @click="read">
+  <Tooltip :should-show="read">
     <template #default="{ describedBy }">
-      <div ref="content" class="collection-cell-content" tabindex="0" :aria-describedby="describedBy"><slot /></div>
+      <div ref="content" class="collection-cell-content" tabindex="0" :aria-describedby="describedBy" @mouseenter="read" @focusin="read" @click="read"><slot /></div>
     </template>
     <template #content><span class="whitespace-pre-wrap">{{ text }}</span></template>
   </Tooltip>

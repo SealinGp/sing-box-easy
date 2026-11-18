@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config"
 )
@@ -45,18 +46,23 @@ type Settings interface {
 // Service serves the runtime proxies page.
 type Service struct {
 	settings Settings
+	history  *nodehistory.Store
 	// connect builds the Clash API client. A field so tests can substitute it.
 	connect func(externalController, secret string) (Runtime, error)
 }
 
 // NewService builds the service over the config manager.
-func NewService(settings Settings) *Service {
-	return &Service{
+func NewService(settings Settings, history ...*nodehistory.Store) *Service {
+	service := &Service{
 		settings: settings,
 		connect: func(externalController, secret string) (Runtime, error) {
 			return clashapi.NewFromValues(externalController, secret)
 		},
 	}
+	if len(history) > 0 {
+		service.history = history[0]
+	}
+	return service
 }
 
 // SelectCommand is the body of `PUT /runtime/proxies/selection`.
@@ -98,7 +104,11 @@ func (s *Service) View(ctx context.Context) (View, error) {
 	if err != nil {
 		return View{}, unavailable(err)
 	}
-	return BuildView(list, s.selectionPersisted()), nil
+	view := BuildView(list, s.selectionPersisted())
+	if err := s.attachHistory(&view); err != nil {
+		return View{}, fault.New(fault.Failed, err.Error())
+	}
+	return view, nil
 }
 
 // Select switches a selector to one of its members, in the running process.
@@ -137,8 +147,14 @@ func (s *Service) TestNode(ctx context.Context, command TestCommand) (NodeDelay,
 	delay, err := runtime.Delay(ctx, name, clashapi.DefaultDelayURL, testTimeout)
 	switch {
 	case err == nil:
+		if err := s.recordNode(name, delay, true, "manual"); err != nil {
+			return NodeDelay{}, err
+		}
 		return NodeDelay{Name: name, Delay: delay}, nil
 	case errors.Is(err, clashapi.ErrDelayFailed):
+		if err := s.recordNode(name, 0, false, "manual"); err != nil {
+			return NodeDelay{}, err
+		}
 		return NodeDelay{Name: name}, nil
 	case errors.Is(err, clashapi.ErrProxyNotFound):
 		return NodeDelay{}, notRunning(name, err)
@@ -182,9 +198,10 @@ func (s *Service) TestGroup(ctx context.Context, command TestCommand) (GroupDela
 	defer cancel()
 
 	var (
-		mutex   sync.Mutex
-		delays  = make(map[string]int, len(nodes))
-		failure error
+		mutex        sync.Mutex
+		delays       = make(map[string]int, len(nodes))
+		failure      error
+		observations []nodehistory.Measurement
 	)
 	queue := make(chan string)
 	var workers sync.WaitGroup
@@ -198,7 +215,10 @@ func (s *Service) TestGroup(ctx context.Context, command TestCommand) (GroupDela
 				switch {
 				case err == nil:
 					delays[node] = delay
-				case errors.Is(err, clashapi.ErrDelayFailed), errors.Is(err, clashapi.ErrProxyNotFound):
+					observations = append(observations, nodeMeasurement(node, delay, true, "manual-group"))
+				case errors.Is(err, clashapi.ErrDelayFailed):
+					observations = append(observations, nodeMeasurement(node, 0, false, "manual-group"))
+				case errors.Is(err, clashapi.ErrProxyNotFound):
 					// Down, or gone from the running config: absent from the
 					// result, which is how "no answer" is reported.
 				default:
@@ -224,6 +244,11 @@ feed:
 	}
 	close(queue)
 	workers.Wait()
+	if s.history != nil {
+		if err := s.history.RecordBatch(observations); err != nil {
+			return GroupDelays{}, fault.New(fault.Failed, err.Error())
+		}
+	}
 
 	if failure != nil {
 		return GroupDelays{}, unavailable(failure)

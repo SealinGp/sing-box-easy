@@ -8,8 +8,8 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowPathIcon, BoltIcon, CheckCircleIcon, MinusCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
-import Table from './Table.vue'
+import { ArrowPathIcon, BoltIcon } from '@heroicons/vue/24/outline'
+import ProbeNodeResults from './ProbeNodeResults.vue'
 import Button from './Button.vue'
 import Skeleton from './Skeleton.vue'
 import ProbeTrendChart from './ProbeTrendChart.vue'
@@ -158,20 +158,6 @@ const latestClass = computed(() => {
   return 'text-red-600 dark:text-red-400'
 })
 
-/**
- * Nodes worst-first: the reason anyone opens this table is to find what broke,
- * and a table sorted by tag makes them read all 103 rows to find the three.
- * Within a group, slowest first for the same reason.
- */
-const sortedNodes = computed(() =>
-  [...nodes.value].sort((a, b) => {
-    const rank = (n: ProbeNodeResult) => (n.skipped ? 1 : n.error ? 0 : 2)
-    const diff = rank(a) - rank(b)
-    if (diff !== 0) return diff
-    return (b.delay_ms ?? 0) - (a.delay_ms ?? 0)
-  }),
-)
-
 const nodesAtLabel = computed(() =>
   nodesAt.value ? new Date(nodesAt.value).toLocaleString(locale.value) : '',
 )
@@ -258,9 +244,6 @@ const probeTarget = computed(
       <details class="group rounded-control border border-border p-3">
         <summary class="cursor-pointer text-sm font-semibold">{{ $t('subProbe.dialog.nodes') }}</summary>
         <div class="mt-3 mb-2 flex items-center justify-between gap-2">
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {{ $t('subProbe.dialog.nodes') }}
-          </h4>
           <div class="flex flex-wrap items-center gap-2">
             <span v-if="nodesAtLabel" class="text-xs text-gray-400 dark:text-gray-500">
               {{ nodesAtLabel }}
@@ -292,50 +275,7 @@ const probeTarget = computed(
           <div v-for="row in 5" :key="row" class="flex items-center gap-3"><Skeleton class="h-3 w-3" /><Skeleton class="h-3 flex-1" /><Skeleton class="h-3 w-16" /></div>
         </div>
         <div v-else class="max-h-64 overflow-y-auto rounded-control border border-gray-100 dark:border-gray-700">
-          <Table :scroll="false" column-storage-key="subscription-quality-nodes">
-            <template #head>
-              <th>{{ $t('subscriptions.table.status') }}</th>
-              <th>{{ $t('subscriptions.table.subscription') }}</th>
-              <th>{{ $t('subProbe.column') }}</th>
-            </template>
-              <tr
-                v-for="node in sortedNodes"
-                :key="node.tag"
-                class="border-b border-gray-50 last:border-b-0 dark:border-gray-700/50"
-              >
-                <td class="w-6 py-1 pl-2">
-                  <CheckCircleIcon
-                    v-if="!node.error && !node.skipped"
-                    class="h-3.5 w-3.5 text-green-500"
-                  />
-                  <MinusCircleIcon v-else-if="node.skipped" class="h-3.5 w-3.5 text-gray-400" />
-                  <XCircleIcon v-else class="h-3.5 w-3.5 text-red-500" />
-                </td>
-                <td class="py-1 pr-2">
-                  <span class="block truncate text-gray-700 dark:text-gray-300" :title="node.tag">
-                    {{ node.tag }}
-                  </span>
-                </td>
-                <td class="w-32 py-1 pr-2 text-right">
-                  <span v-if="!node.error && !node.skipped" class="font-mono text-gray-600 dark:text-gray-300">
-                    {{ formatLatency(node.delay_ms ?? 0) }}
-                  </span>
-                  <!--
-                    A node the panel could not test is labelled as such, not as
-                    down: it is in the config but absent from the running
-                    sing-box, which is an unapplied config rather than a
-                    provider failure — and it is excluded from the percentage
-                    above for the same reason.
-                  -->
-                  <span v-else-if="node.skipped" class="text-gray-400 dark:text-gray-500">
-                    {{ $t('subProbe.dialog.untestable') }}
-                  </span>
-                  <span v-else class="text-red-500 dark:text-red-400">
-                    {{ $t('subProbe.dialog.unreachable') }}
-                  </span>
-                </td>
-              </tr>
-          </Table>
+          <ProbeNodeResults :nodes="nodes" />
         </div>
       </details>
     </div>

@@ -64,15 +64,20 @@ func (h *Service) GetProbeStatus(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, fault.New(fault.Failed, err.Error())
 	}
+	nodeCount, err := h.nodeSampleCount()
+	if err != nil {
+		return nil, fault.New(fault.Failed, err.Error())
+	}
 
 	return map[string]any{
-		"status":        h.probeRunner.Status(),
-		"latest":        latest,
-		"sample_count":  count,
-		"retention":     h.settingsManager.GetProbeRetentionDays(),
-		"max_points":    h.settingsManager.GetProbeMaxPoints(),
-		"timeout_ms":    h.settingsManager.GetProbeTimeout().Milliseconds(),
-		"interval_secs": int(h.settingsManager.GetProbeInterval().Seconds()),
+		"status":            h.probeRunner.Status(),
+		"latest":            latest,
+		"sample_count":      count,
+		"node_sample_count": nodeCount,
+		"retention":         h.settingsManager.GetProbeRetentionDays(),
+		"max_points":        h.settingsManager.GetProbeMaxPoints(),
+		"timeout_ms":        h.settingsManager.GetProbeTimeout().Milliseconds(),
+		"interval_secs":     int(h.settingsManager.GetProbeInterval().Seconds()),
 	}, nil
 }
 
@@ -261,13 +266,18 @@ func (h *Service) UpdateProbeSettings(ctx context.Context, req ProbeSettingsComm
 	if err != nil {
 		return nil, fault.New(fault.Failed, err.Error())
 	}
+	nodeCount, err := h.nodeSampleCount()
+	if err != nil {
+		return nil, fault.New(fault.Failed, err.Error())
+	}
 
 	return map[string]any{
-		"interval_secs": int(h.settingsManager.GetProbeInterval().Seconds()),
-		"timeout_ms":    h.settingsManager.GetProbeTimeout().Milliseconds(),
-		"retention":     h.settingsManager.GetProbeRetentionDays(),
-		"max_points":    h.settingsManager.GetProbeMaxPoints(),
-		"sample_count":  count,
+		"interval_secs":     int(h.settingsManager.GetProbeInterval().Seconds()),
+		"timeout_ms":        h.settingsManager.GetProbeTimeout().Milliseconds(),
+		"retention":         h.settingsManager.GetProbeRetentionDays(),
+		"max_points":        h.settingsManager.GetProbeMaxPoints(),
+		"sample_count":      count,
+		"node_sample_count": nodeCount,
 	}, nil
 }
 
@@ -275,6 +285,9 @@ func (h *Service) UpdateProbeSettings(ctx context.Context, req ProbeSettingsComm
 // subscription. Best-effort: a failure here leaves rows in place, which is
 // recoverable, and must not fail the settings write that caused it.
 func (h *Service) trimAllProbeHistory() {
+	if h.nodeHistory != nil {
+		_ = h.nodeHistory.TrimAll()
+	}
 	if h.probeStore == nil {
 		return
 	}
@@ -287,6 +300,13 @@ func (h *Service) trimAllProbeHistory() {
 	for _, sub := range subs {
 		_, _ = h.probeStore.Trim(sub.ID, maxAge, maxPoints)
 	}
+}
+
+func (h *Service) nodeSampleCount() (int64, error) {
+	if h.nodeHistory == nil {
+		return 0, nil
+	}
+	return h.nodeHistory.Count()
 }
 
 func probeFailure(err error) error {

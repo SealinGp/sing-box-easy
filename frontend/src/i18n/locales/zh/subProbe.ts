@@ -53,10 +53,10 @@ export default {
     timeoutHint: '单位毫秒。受 Clash API 请求超时限制，上限为 {max}。',
     retention: '历史保留时长',
     retentionDays: '{days} 天',
-    maxPoints: '每个订阅最多保留',
+    maxPoints: '每个订阅／节点最多保留',
     maxPointsHint: '两个上限中先达到的那个生效。',
     stored: '当前已存储',
-    storedValue: '{count} 条采样（约 {size}）',
+    storedValue: '{count} 条订阅汇总 + {nodes} 条节点采样（约 {size}）',
     requiresClashApi:
       '探测使用 sing-box 自带的 URL 测试，因此需要设置 experimental.clash_api.external_controller 并保持 sing-box 运行。',
     save: '保存',

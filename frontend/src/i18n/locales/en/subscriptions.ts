@@ -4,6 +4,7 @@ export default {
   title: 'Subscriptions',
   subtitle: 'Manage and update node subscriptions',
   refresh: 'Reload list',
+  update: 'Update subscription now',
   updateAll: 'Update All',
   add: 'Add Subscription',
   loading: 'Loading subscriptions...',

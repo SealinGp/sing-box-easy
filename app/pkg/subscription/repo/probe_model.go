@@ -3,12 +3,8 @@ package repo
 // ProbeSample is ONE subscription's aggregate result for ONE probe run: how
 // many of its nodes answered a URL test, and how fast the ones that did were.
 //
-// Deliberately one row per (subscription, run) rather than one per node. The
-// question this feature answers — "is this provider any good?" — is a property
-// of the feed, and the per-node breakdown that would justify ~60x the rows is
-// only ever asked about the LATEST run (which the runner keeps in memory). On
-// the config this was sized against, 4 subscriptions at the default 10-minute
-// cadence produce ~4k rows a week; per-node storage would have made that 240k.
+// This table remains one row per (subscription, run). Individual observations
+// live in node_probe_samples; single-node clicks do not create aggregate rows.
 //
 // `At` is a unix timestamp rather than a time.Time so the bucketing the history
 // endpoint does (integer division into fixed-width buckets) is expressible in

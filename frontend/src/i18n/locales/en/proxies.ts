@@ -9,10 +9,11 @@ export default {
     latency: 'Latency',
     open: 'Latency history for {node}',
     title: 'Latency history',
-    empty: 'No latency records available for this node.',
-    retained: '{n} records retained by sing-box',
+    empty: 'No saved observations yet. Scheduled and manual tests will add history.',
+    retained: '{n} saved node observations (scheduled and manual tests)',
     single: 'Only one observation is available; no trend yet.',
     samples: 'Measurements',
+    sources: { subscription: 'Subscription probe', manual: 'Manual test', 'manual-group': 'Group test', runtime: 'Runtime cache' },
   },
   searchPlaceholder: 'Search groups or nodes',
   sort: {

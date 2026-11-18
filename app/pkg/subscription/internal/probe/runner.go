@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	"go.uber.org/zap"
 )
@@ -69,9 +70,8 @@ type Environment interface {
 }
 
 // Snapshot is the per-node detail of the most recent run for one subscription.
-// Kept in memory only: the aggregate is the thing worth keeping over time, and
-// per-node history would be ~60x the rows to answer a question ("which node is
-// down?") that is only ever asked about right now.
+// The latest drill-down is cached in memory. Measured node observations are
+// also persisted separately for node charts and quality ratings.
 type Snapshot struct {
 	At      time.Time    `json:"at"`
 	Sample  Sample       `json:"sample"`
@@ -80,11 +80,12 @@ type Snapshot struct {
 
 // Runner owns the probe schedule.
 type Runner struct {
-	targetsMu  sync.Mutex
-	targetRuns map[string]*targetRun
-	blocked    map[string]bool
-	store      HistoryStore
-	env        Environment
+	targetsMu   sync.Mutex
+	targetRuns  map[string]*targetRun
+	blocked     map[string]bool
+	store       HistoryStore
+	nodeHistory *nodehistory.Store
+	env         Environment
 
 	mu       sync.RWMutex
 	running  bool
@@ -116,15 +117,19 @@ type Runner struct {
 }
 
 // NewRunner builds a runner. Nothing is scheduled until Start.
-func NewRunner(store HistoryStore, env Environment) *Runner {
+func NewRunner(store HistoryStore, env Environment, history ...*nodehistory.Store) *Runner {
 	shutdown, cancelAll := context.WithCancel(context.Background())
-	return &Runner{
+	runner := &Runner{
 		store:     store,
 		env:       env,
 		snapshots: make(map[string]*Snapshot),
 		shutdown:  shutdown,
 		cancelAll: cancelAll,
 	}
+	if len(history) > 0 {
+		runner.nodeHistory = history[0]
+	}
+	return runner
 }
 
 // Start begins the periodic sweep.

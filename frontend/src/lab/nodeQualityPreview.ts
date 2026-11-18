@@ -24,6 +24,7 @@ export function installNodeQualityPreview() {
   const ok = <T>(data: T): BasicResponse<T> => ({ code: Code.Success, data, msg: 'mock' })
   serviceControlService.getServiceStatus = async () => ok({ status: 'running' })
   runtimeService.getProxies = async () => ok(structuredClone(view))
+  runtimeService.getNodeHistory = async name => ok({ points: structuredClone(members.find(item => item.name === name)?.history ?? []) })
   runtimeService.select = async (group, name) => {
     const target = view.groups.find(item => item.name === group)
     if (target) target.now = name

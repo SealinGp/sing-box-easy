@@ -11,7 +11,10 @@
 // across a restart, and the view reports whether that is enabled.
 package proxies
 
-import "github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
+import (
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
+	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
+)
 
 // selectorType is the only group type sing-box lets a client switch
 // (experimental/clashapi/proxies.go answers "Must be a Selector" otherwise).
@@ -33,7 +36,7 @@ type Member struct {
 	// Group marks a member that is another group.
 	Group bool `json:"group"`
 	// History belongs to this node only; group observations can mix nodes.
-	History []clashapi.DelaySample `json:"history,omitempty"`
+	History []nodehistory.Point `json:"history,omitempty"`
 }
 
 // Group is one selector/urltest-style group of the running sing-box.
@@ -77,9 +80,11 @@ func BuildView(list []clashapi.Proxy, selectionPersisted bool) View {
 		members := make([]Member, 0, len(proxy.All))
 		for _, name := range proxy.All {
 			member := byName[name]
-			var history []clashapi.DelaySample
+			var history []nodehistory.Point
 			if !member.IsGroup() {
-				history = member.History
+				for _, point := range member.History {
+					history = append(history, nodehistory.Point{Time: point.Time, Delay: point.Delay, Success: point.Delay > 0, Source: "runtime"})
+				}
 			}
 			members = append(members, Member{
 				Name:    name,

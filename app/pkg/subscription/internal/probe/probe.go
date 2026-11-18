@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/logger"
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 	subscription "github.com/SealinGp/sing-box-easy/app/pkg/subscription/model"
 	"go.uber.org/zap"
@@ -38,8 +39,15 @@ func (r *Runner) runTarget(ctx context.Context, prober Prober, tags []string, ta
 	}
 
 	results, fatal := r.probeAll(ctx, prober, owned, target.URL, settings)
+	now := time.Now()
+	if err := r.recordNodes(results, target, now); err != nil {
+		return err
+	}
 	if fatal != nil {
 		return fatal
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	sample, ok := Aggregate(results)
@@ -47,7 +55,6 @@ func (r *Runner) runTarget(ctx context.Context, prober Prober, tags []string, ta
 	// The snapshot is recorded even when there is no sample to store: the
 	// all-untestable case is exactly when someone opens the node list to find
 	// out what happened, and an empty list there would say nothing.
-	now := time.Now()
 	r.mu.Lock()
 	r.snapshots[target.SubID] = &Snapshot{At: now, Sample: sample, Results: results}
 	r.mu.Unlock()
@@ -83,8 +90,8 @@ func (r *Runner) runTarget(ctx context.Context, prober Prober, tags []string, ta
 // probeAll runs the URL test over one subscription's nodes with a bounded pool.
 //
 // The second return value is a condition that invalidates the whole run rather
-// than describing any node — today only an authentication failure, which fails
-// every node identically and is the panel's fault, not the provider's.
+// than describing any node: authentication, controller transport failures, or
+// cancellation. These must not become a provider outage in the aggregate.
 func (r *Runner) probeAll(ctx context.Context, prober Prober, tags []string, testURL string, settings Settings) ([]NodeResult, error) {
 	results := make([]NodeResult, len(tags))
 	var fatalOnce sync.Once
@@ -102,12 +109,12 @@ func (r *Runner) probeAll(ctx context.Context, prober Prober, tags []string, tes
 		go func() {
 			defer wg.Done()
 			for i := range jobs {
-				result, isFatal := probeOne(ctx, prober, tags[i], testURL, settings.Timeout)
+				result, fatalErr := probeOne(ctx, prober, tags[i], testURL, settings.Timeout)
 				results[i] = result
-				if isFatal {
+				if fatalErr != nil {
 					// First one wins; the rest of the pool drains rather than
 					// being torn down mid-request.
-					fatalOnce.Do(func() { fatal = clashapi.ErrUnauthorized })
+					fatalOnce.Do(func() { fatal = fatalErr })
 				}
 			}
 		}()
@@ -117,9 +124,9 @@ func (r *Runner) probeAll(ctx context.Context, prober Prober, tags []string, tes
 		select {
 		case <-ctx.Done():
 			// Abandon the rest; already-dispatched jobs finish on their own
-			// short timeouts. The partial results still aggregate correctly —
-			// unfilled entries carry the zero NodeResult, which is why the
-			// cancellation is recorded on them below.
+			// short timeouts. Completed observations can still be saved, but
+			// no subscription aggregate is published for a cancelled run.
+			// Unfilled entries are explicitly marked unmeasured below.
 			close(jobs)
 			wg.Wait()
 			markUnprobed(results, tags, ctx.Err())
@@ -132,9 +139,9 @@ func (r *Runner) probeAll(ctx context.Context, prober Prober, tags []string, tes
 	return results, fatal
 }
 
-// probeOne classifies a single node's outcome. The bool reports a failure that
-// says nothing about this node (see probeAll).
-func probeOne(ctx context.Context, prober Prober, tag, testURL string, timeout time.Duration) (NodeResult, bool) {
+// probeOne returns a separate error for failures that say nothing about this
+// node's connectivity (see probeAll).
+func probeOne(ctx context.Context, prober Prober, tag, testURL string, timeout time.Duration) (NodeResult, error) {
 	// Give the request slightly more room than the URL test itself, so a node
 	// that legitimately takes the whole timeout is reported by sing-box as a
 	// timeout rather than cut off here as a transport error.
@@ -144,16 +151,36 @@ func probeOne(ctx context.Context, prober Prober, tag, testURL string, timeout t
 	delay, err := prober.Delay(callCtx, tag, testURL, timeout)
 	switch {
 	case err == nil:
-		return NodeResult{Tag: tag, DelayMs: delay}, false
+		return NodeResult{Tag: tag, DelayMs: delay}, nil
 	case errors.Is(err, clashapi.ErrUnauthorized):
-		return NodeResult{Tag: tag, Skipped: true, Error: err.Error()}, true
+		return NodeResult{Tag: tag, Skipped: true, Error: err.Error()}, err
 	case errors.Is(err, clashapi.ErrProxyNotFound):
 		// In the config, absent from the running sing-box. Untestable, not
 		// down — see NodeResult.
-		return NodeResult{Tag: tag, Skipped: true, Error: err.Error()}, false
+		return NodeResult{Tag: tag, Skipped: true, Error: err.Error()}, nil
+	case errors.Is(err, clashapi.ErrDelayFailed):
+		return NodeResult{Tag: tag, Error: err.Error()}, nil
 	default:
-		return NodeResult{Tag: tag, Error: err.Error()}, false
+		// A broken controller connection / cancelled request is not evidence
+		// that this node failed its URL test.
+		return NodeResult{Tag: tag, Skipped: true, Error: err.Error()}, err
 	}
+}
+
+func (r *Runner) recordNodes(results []NodeResult, target Target, at time.Time) error {
+	if r.nodeHistory == nil {
+		return nil
+	}
+	observations := make([]nodehistory.Measurement, 0, len(results))
+	for _, result := range results {
+		if result.Tag != "" && !result.Skipped {
+			observations = append(observations, nodehistory.Measurement{Tag: result.Tag, SubID: target.SubID, TestURL: target.URL, Source: "subscription", At: at, Delay: result.DelayMs, Success: result.Reachable()})
+		}
+	}
+	if err := r.nodeHistory.RecordBatch(observations); err != nil {
+		return fmt.Errorf("failed to store node observations: %w", err)
+	}
+	return nil
 }
 
 // markUnprobed labels entries a cancelled sweep never reached, so they are

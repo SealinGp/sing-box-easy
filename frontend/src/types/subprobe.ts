@@ -56,6 +56,7 @@ export interface ProbeStatusResponse {
   latest: Record<string, ProbePoint>
   /** Rows currently stored, across all subscriptions — the disk figure. */
   sample_count: number
+  node_sample_count?: number
   retention: number
   max_points: number
   timeout_ms: number
@@ -94,4 +95,5 @@ export interface ProbeSettings {
   retention: number
   max_points: number
   sample_count: number
+  node_sample_count?: number
 }

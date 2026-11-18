@@ -41,7 +41,7 @@ const columns = computed(() => [
 <td data-cell-tooltip="false"><SubscriptionQuotaDetails compact :show-expiry="false" :plan="summarizePlan(subscription)" :subscription-name="subscription.name" /></td>
 <td><TruncatedText :text="summarizePlan(subscription).expiresLabel ?? '—'" /></td>
 <td><TruncatedText :text="formatDate(subscription.last_update)" /></td>
-<td class="col-actions">
+<td class="col-actions" data-cell-tooltip="false">
             <SubscriptionActions :subscription="subscription" :busy="isUpdating.includes(subscription.id)" @update="updateSubscription(subscription)" @edit="openEditModal(subscription)" @delete="deleteSubscription(subscription)" />
           </td></tr>
 <template #cards="{ selected, toggle }"><div class="subscription-cards">        <article class="subscription-card"

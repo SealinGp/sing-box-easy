@@ -26,6 +26,7 @@ const timeoutMs = ref(5000)
 const retentionDays = ref(7)
 const maxPoints = ref(2016)
 const sampleCount = ref(0)
+const nodeSampleCount = ref(0)
 
 /** Mirrors app/pkg/settings' clamps, which reject anything outside them. */
 const LIMITS = {
@@ -43,7 +44,7 @@ const LIMITS = {
  */
 const BYTES_PER_SAMPLE = 80
 
-const storedSize = computed(() => formatBytes(sampleCount.value * BYTES_PER_SAMPLE))
+const storedSize = computed(() => formatBytes(sampleCount.value * BYTES_PER_SAMPLE + nodeSampleCount.value * 96))
 
 async function load() {
   loading.value = true
@@ -54,6 +55,7 @@ async function load() {
     retentionDays.value = data.retention
     maxPoints.value = data.max_points
     sampleCount.value = data.sample_count
+    nodeSampleCount.value = data.node_sample_count ?? 0
   } catch (err) {
     // The prober's endpoints answer even when sing-box is down, so a failure
     // here is a real panel problem worth reporting.
@@ -82,6 +84,7 @@ async function save() {
     maxPoints.value = data.max_points
     // Tightening retention trims immediately server-side, so this number moves.
     sampleCount.value = data.sample_count
+    nodeSampleCount.value = data.node_sample_count ?? 0
     notify.success(t('subProbe.notify.settingsSaved'))
   } catch (err) {
     notify.apiError(err, t('subProbe.notify.settingsFailed'))
@@ -180,7 +183,7 @@ const inputClass =
       <p class="text-sm text-gray-500 dark:text-gray-400">
         {{ $t('subProbe.settings.stored') }}:
         <span class="font-medium text-gray-700 dark:text-gray-300">
-          {{ $t('subProbe.settings.storedValue', { count: sampleCount, size: storedSize }) }}
+          {{ $t('subProbe.settings.storedValue', { count: sampleCount, nodes: nodeSampleCount, size: storedSize }) }}
         </span>
       </p>
 

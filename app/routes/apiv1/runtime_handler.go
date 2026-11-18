@@ -19,6 +19,15 @@ func (h *Handler) GetRuntimeProxies(ctx context.Context, c *app.RequestContext) 
 	respOK(ctx, c, view)
 }
 
+func (h *Handler) GetRuntimeNodeHistory(ctx context.Context, c *app.RequestContext) {
+	points, err := h.proxiesModule.NodeHistory(string(c.Query("name")))
+	if err != nil {
+		respondOperationError(ctx, c, err)
+		return
+	}
+	respOK(ctx, c, map[string]any{"points": points})
+}
+
 // SelectRuntimeProxy switches a selector group to one of its members.
 func (h *Handler) SelectRuntimeProxy(ctx context.Context, c *app.RequestContext) {
 	var command proxies.SelectCommand

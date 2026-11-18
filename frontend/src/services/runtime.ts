@@ -1,6 +1,6 @@
 import type { ApiService } from './api'
 import type { BasicResponse } from '../types/api'
-import type { ConnectionsFrame, GroupDelays, NodeDelay, RuntimeProxies } from '../types/runtime'
+import type { ConnectionsFrame, GroupDelays, NodeDelay, NodeDelaySample, RuntimeProxies } from '../types/runtime'
 import { openStream, type StreamHandlers } from './stream'
 
 /**
@@ -14,8 +14,8 @@ const GROUP_TEST_TIMEOUT_MS = 100_000
 /**
  * The running sing-box: groups, latency tests, node switching, connections.
  *
- * Outbound tags travel in the request BODY, never the path — a tag is free
- * text with spaces, emoji, "|" and sometimes "/".
+ * Outbound tags travel in write request bodies or encoded read queries, never
+ * path segments — tags can contain spaces, emoji, "|" and "/".
  */
 export class RuntimeService {
   private api: ApiService
@@ -26,6 +26,13 @@ export class RuntimeService {
 
   async getProxies(): Promise<BasicResponse<RuntimeProxies>> {
     const response = await this.api.get<BasicResponse<RuntimeProxies>>('/runtime/proxies')
+    return response.data
+  }
+
+  async getNodeHistory(name: string): Promise<BasicResponse<{ points: NodeDelaySample[] }>> {
+    const response = await this.api.get<BasicResponse<{ points: NodeDelaySample[] }>>(
+      `/runtime/proxies/history?name=${encodeURIComponent(name)}`,
+    )
     return response.data
   }
 

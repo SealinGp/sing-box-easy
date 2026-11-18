@@ -4,6 +4,7 @@ export default {
   title: '订阅',
   subtitle: '管理和更新节点订阅',
   refresh: '刷新列表',
+  update: '立即更新订阅',
   updateAll: '全部更新',
   add: '添加订阅',
   loading: '正在加载订阅...',

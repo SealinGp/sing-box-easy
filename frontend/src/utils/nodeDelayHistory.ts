@@ -8,7 +8,7 @@ export function nodeDelayPoints(history: readonly NodeDelaySample[] = []): Probe
     .map(sample => ({
       at: sample.time,
       total: 1,
-      reachable: sample.delay > 0 ? 1 : 0,
+      reachable: (sample.success ?? sample.delay > 0) ? 1 : 0,
       avg_ms: sample.delay,
       min_ms: sample.delay,
       max_ms: sample.delay,

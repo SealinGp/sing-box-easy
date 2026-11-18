@@ -68,6 +68,11 @@ func (au *Service) Delete(id string) error {
 	if err := au.restartService(); err != nil {
 		return fmt.Errorf("subscription nodes removed but failed to restart sing-box; retry deletion: %w", err)
 	}
+	if au.nodeHistory != nil {
+		if err := au.nodeHistory.SyncSubscription(id, nil); err != nil {
+			return err
+		}
+	}
 	if store, ok := au.repository.(deletionRepository); ok {
 		if err := store.FinishDeletion(id); err != nil {
 			return err

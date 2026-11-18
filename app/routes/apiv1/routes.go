@@ -152,6 +152,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	// operations that change live traffic — switching a node and closing
 	// connections — are admin-only.
 	auth.GET("/runtime/proxies", handler.GetRuntimeProxies)
+	auth.GET("/runtime/proxies/history", handler.GetRuntimeNodeHistory)
 	auth.POST("/runtime/proxies/delay", handler.TestRuntimeProxy)
 	auth.POST("/runtime/proxies/group-delay", handler.TestRuntimeGroup)
 	admin.PUT("/runtime/proxies/selection", handler.SelectRuntimeProxy)
