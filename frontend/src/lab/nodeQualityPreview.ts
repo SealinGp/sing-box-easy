@@ -7,19 +7,22 @@ export function installNodeQualityPreview() {
   const start = Date.now() - 100 * 60000
   const member = (name: string, delays: number[]): RuntimeMember => ({
     name, type: 'VLESS', group: false, delay: delays.at(-1) ?? 0,
-    history: delays.map((delay, i) => ({ time: new Date(start + i * 10 * 60000).toISOString(), delay })),
+    history: delays.map((delay, i) => ({ time: new Date(start + i * 10 * 60000).toISOString(), delay, source: i % 3 ? 'subscription' : 'manual' })),
   })
   const members = [
-    member('香港 A · 8/10 达标', [120, 180, 0, 210, 600, 260, 180, 300, 200, 160]),
-    member('新加坡 B · 6/10 达标', [120, 680, 0, 210, 900, 260, 180, 0, 200, 460]),
-    member('日本 C · 3/10 达标', [900, 680, 0, 210, 900, 760, 180, 0, 800, 460]),
-    member('少样本 D · 3/4 达标', [120, 180, 0, 210]),
-    member('少样本 E · 2/2 达标', [120, 500]),
-    member('新节点 F · 尚无记录', []),
+    member('香港 A', [120, 180, 0, 210, 600, 260, 180, 300, 200, 160]),
+    member('新加坡 B', [120, 680, 0, 210, 900, 260, 180, 0, 200, 460]),
+    member('日本 C', [900, 680, 0, 210, 900, 760, 180, 0, 800, 460]),
+    member('少样本 D', [120, 180, 0, 210]),
+    member('少样本 E', [120, 500]),
+    member('新节点 F', []),
   ]
   const view: RuntimeProxies = {
     selection_persisted: true,
-    groups: [{ name: '演示 · 节点质量', type: 'Selector', now: members[0]!.name, delay: 160, switchable: true, members }],
+    groups: [
+      { name: '演示 · 节点质量', type: 'Selector', now: members[0]!.name, delay: 160, switchable: true, members },
+      { name: '演示 · 自动选择', type: 'URLTest', now: members[0]!.name, delay: 160, switchable: false, members },
+    ],
   }
   const ok = <T>(data: T): BasicResponse<T> => ({ code: Code.Success, data, msg: 'mock' })
   serviceControlService.getServiceStatus = async () => ok({ status: 'running' })
@@ -27,7 +30,7 @@ export function installNodeQualityPreview() {
   runtimeService.getNodeHistory = async name => ok({ points: structuredClone(members.find(item => item.name === name)?.history ?? []) })
   runtimeService.select = async (group, name) => {
     const target = view.groups.find(item => item.name === group)
-    if (target) target.now = name
+    if (target?.switchable) target.now = name
     return ok({})
   }
   runtimeService.testNode = async name => ok({ name, delay: members.find(item => item.name === name)?.delay ?? 0 })

@@ -10,7 +10,7 @@
  * All geometry comes from `utils/probeChart` — a pure, tested module — so this
  * file is markup. Same split as the route flow diagram.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Tooltip from './Tooltip.vue'
 import Skeleton from './Skeleton.vue'
 import { useI18n } from 'vue-i18n'
@@ -29,6 +29,7 @@ const props = defineProps<{
   loading?: boolean
   /** Node history has latency observations rather than subscription totals. */
   latencyOnly?: boolean
+  latencyThreshold?: number
 }>()
 
 const { t, locale } = useI18n()
@@ -42,8 +43,17 @@ const WIDTH = 720
 const PANEL_HEIGHT = 132
 
 const availabilityLayout = computed(() =>
-  layoutProbeChart(props.points, { width: WIDTH, height: PANEL_HEIGHT }),
+  layoutProbeChart(props.points, { width: WIDTH, height: PANEL_HEIGHT, minLatencyMax: props.latencyThreshold }),
 )
+
+const thresholdLine = computed(() => {
+  const value = props.latencyThreshold
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return null
+  const { plot, latency } = availabilityLayout.value
+  if (latency.max <= 0) return null
+  const y = plot.y + plot.height * (1 - value / latency.max)
+  return { value, y, labelY: y < 20 ? y + 11 : y - 4 }
+})
 
 /** Percentage gridlines. 0/50/100 only — more lines than data is noise. */
 const availabilityGrid = computed(() => {
@@ -78,8 +88,25 @@ const latencyGrid = computed(() => {
 const hovered = ref<PlacedPoint | null>(null)
 const cursor = ref({ x: 0, y: 0 })
 const keyboardHover = ref(false)
-function clearHover() { hovered.value = null; keyboardHover.value = false }
-watch(() => [props.points, props.loading], clearHover)
+let leaveTimer: ReturnType<typeof setTimeout> | undefined
+let overTooltip = false
+function cancelLeave() { clearTimeout(leaveTimer) }
+function clearHover() { cancelLeave(); overTooltip = false; hovered.value = null; keyboardHover.value = false }
+function scheduleLeave() { cancelLeave(); if (!overTooltip) leaveTimer = setTimeout(clearHover, 600) }
+function tooltipHover(hovering: boolean) { overTooltip = hovering; hovering ? cancelLeave() : scheduleLeave() }
+onBeforeUnmount(cancelLeave)
+watch(() => [props.points, props.loading], () => {
+  if (props.loading) { clearHover(); return }
+  const previous = hovered.value?.point
+  if (!previous) return
+  const sameSample = (point: ProbePoint) => point.at === previous.at && point.source === previous.source
+    && point.avg_ms === previous.avg_ms && point.min_ms === previous.min_ms && point.max_ms === previous.max_ms
+    && point.total === previous.total && point.reachable === previous.reachable
+  const replacement = availabilityLayout.value.availability.segments
+    .flatMap(segment => segment.points).find(dot => sameSample(dot.point))
+  if (replacement) hovered.value = replacement
+  else clearHover()
+})
 
 const failedPoints = computed(() => availabilityLayout.value.availability.segments
   .flatMap(segment => segment.points).filter(dot => dot.point.reachable === 0))
@@ -90,6 +117,7 @@ function sampleLabel(dot: PlacedPoint) {
 }
 
 function focusPoint(event: FocusEvent, dot: PlacedPoint) {
+  cancelLeave()
   const box = (event.currentTarget as SVGElement).getBoundingClientRect()
   cursor.value = { x: box.left + box.width / 2, y: box.top }
   keyboardHover.value = true
@@ -97,6 +125,7 @@ function focusPoint(event: FocusEvent, dot: PlacedPoint) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  cancelLeave()
   keyboardHover.value = false
   const layout = availabilityLayout.value
   if (layout.isEmpty) return
@@ -119,8 +148,9 @@ function onPointerMove(event: PointerEvent) {
       }
     }
   }
+  // Keep a sample's bubble stationary so the pointer can move into it.
+  if (hovered.value !== nearest) cursor.value = { x: event.clientX, y: event.clientY }
   hovered.value = nearest
-  cursor.value = { x: event.clientX, y: event.clientY }
 }
 
 /** The latency point matching the hovered moment, if that run had one. */
@@ -185,7 +215,7 @@ function availabilityClass(point: ProbePoint): string {
           role="img"
           :aria-label="$t('subProbe.chart.availabilityAria')"
           @pointermove="onPointerMove"
-          @pointerleave="clearHover"
+          @pointerleave="scheduleLeave"
           @pointercancel="clearHover"
           @pointerdown="onPointerMove"
         >
@@ -257,7 +287,7 @@ function availabilityClass(point: ProbePoint): string {
           role="img"
           :aria-label="$t('subProbe.chart.latencyAria')"
           @pointermove="onPointerMove"
-          @pointerleave="clearHover"
+          @pointerleave="scheduleLeave"
           @pointercancel="clearHover"
           @pointerdown="onPointerMove"
         >
@@ -282,11 +312,17 @@ function availabilityClass(point: ProbePoint): string {
             {{ line.label }}
           </text>
 
+          <g v-if="thresholdLine" data-latency-threshold>
+            <line :x1="availabilityLayout.plot.x" :x2="availabilityLayout.plot.x + availabilityLayout.plot.width"
+              :y1="thresholdLine.y" :y2="thresholdLine.y" class="stroke-primary-500" stroke-width="1" stroke-dasharray="5 4" />
+            <text :x="availabilityLayout.plot.x + availabilityLayout.plot.width" :y="thresholdLine.labelY"
+              text-anchor="end" class="fill-primary-600 text-[9px] dark:fill-primary-400">{{ thresholdLine.value }} ms</text>
+          </g>
           <g v-for="(segment, i) in availabilityLayout.latency.segments" :key="`l-${i}`">
             <path
               :d="segment.line"
               fill="none"
-              class="stroke-amber-500 dark:stroke-amber-400"
+              class="stroke-gray-500 dark:stroke-gray-400"
               stroke-width="1.75"
               stroke-linejoin="round"
               stroke-linecap="round"
@@ -297,18 +333,18 @@ function availabilityClass(point: ProbePoint): string {
               :cx="dot.x"
               :cy="dot.y"
               r="2.5"
-              class="fill-amber-500 dark:fill-amber-400"
+              class="fill-gray-500 dark:fill-gray-400"
               :tabindex="latencyOnly ? 0 : undefined"
               :aria-label="latencyOnly ? sampleLabel(dot) : undefined"
               @focus="focusPoint($event, dot)"
-              @blur="clearHover"
+              @blur="scheduleLeave"
             />
           </g>
 
           <circle v-for="(dot, i) in latencyOnly ? failedPoints : []" :key="`failed-${i}`"
             :cx="dot.x" :cy="availabilityLayout.plot.y + availabilityLayout.plot.height"
             r="3" class="fill-red-500" tabindex="0" :aria-label="sampleLabel(dot)"
-            @focus="focusPoint($event, dot)" @blur="clearHover" />
+            @focus="focusPoint($event, dot)" @blur="scheduleLeave" />
 
           <g v-if="hoveredLatency">
             <line
@@ -324,7 +360,7 @@ function availabilityClass(point: ProbePoint): string {
               :cx="hoveredLatency.x"
               :cy="hoveredLatency.y"
               r="3.5"
-              class="fill-amber-500 dark:fill-amber-400"
+              class="fill-gray-500 dark:fill-gray-400"
             />
           </g>
 
@@ -342,7 +378,8 @@ function availabilityClass(point: ProbePoint): string {
         </svg>
       </div>
 
-      <Tooltip :visible="!!hovered && !loading" :point="cursor" :width="240" :hover-delay="keyboardHover ? 0 : 320" @dismiss="clearHover">
+      <Tooltip :visible="!!hovered && !loading" :point="cursor" :width="240" :hover-delay="keyboardHover ? 0 : 320"
+        interactive :hide-delay="600" @hover-change="tooltipHover" @dismiss="clearHover">
         <template #content><div v-if="hovered" data-probe-tooltip>
         <div class="flex flex-col gap-1">
           <span class="font-mono text-gray-500 dark:text-gray-400">{{ hoveredTime }}</span>
@@ -352,15 +389,18 @@ function availabilityClass(point: ProbePoint): string {
               ({{ hovered.point.reachable }}/{{ hovered.point.total }})
             </span>
           </span>
-          <span class="text-gray-600 dark:text-gray-300">
-            {{ latencyOnly ? $t('proxies.history.latency') + ': ' : '' }}{{ hovered.point.reachable > 0 ? (hovered.point.avg_ms === 0 ? '0 ms' : formatLatency(hovered.point.avg_ms)) : $t(latencyOnly ? 'proxies.noResult' : 'subProbe.chart.noLatency') }}
-          </span>
+          <slot name="latency-value" :point="hovered.point">
+            <span class="text-gray-600 dark:text-gray-300">
+              {{ latencyOnly ? $t('proxies.history.latency') + ': ' : '' }}{{ hovered.point.reachable > 0 ? (hovered.point.avg_ms === 0 ? '0 ms' : formatLatency(hovered.point.avg_ms)) : $t(latencyOnly ? 'proxies.noResult' : 'subProbe.chart.noLatency') }}
+            </span>
+          </slot>
           <span
             v-if="hovered.point.reachable > 0 && hovered.point.max_ms > hovered.point.min_ms"
             class="text-gray-400 dark:text-gray-500"
           >
             {{ formatLatency(hovered.point.min_ms) }} – {{ formatLatency(hovered.point.max_ms) }}
           </span>
+          <slot name="point-details" :point="hovered.point" />
         </div>
         </div></template>
       </Tooltip>

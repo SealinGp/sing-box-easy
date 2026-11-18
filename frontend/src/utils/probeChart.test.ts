@@ -18,6 +18,18 @@ const point = (minutesAgo: number, reachable: number, total: number, avg: number
 const SIZE = { width: 600, height: 200 }
 
 describe('layoutProbeChart', () => {
+  it('keeps a latency reference inside the scale without clipping higher observations', () => {
+    const low = layoutProbeChart([point(0, 1, 1, 120)], { ...SIZE, minLatencyMax: 500 })
+    expect(low.latency.max).toBe(500)
+    expect(low.latency.segments[0]!.points[0]!.y).toBeGreaterThan(low.plot.y)
+    const high = layoutProbeChart([point(0, 1, 1, 900)], { ...SIZE, minLatencyMax: 500 })
+    expect(high.latency.max).toBe(900)
+    const failed = layoutProbeChart([point(0, 0, 1, 0)], { ...SIZE, minLatencyMax: 500 })
+    expect(failed.latency.max).toBe(500)
+    expect(failed.latency.segments).toEqual([])
+    const invalid = layoutProbeChart([point(0, 1, 1, 120)], { ...SIZE, minLatencyMax: NaN })
+    expect(invalid.latency.max).toBe(150)
+  })
   it('returns an empty layout for no points rather than NaN geometry', () => {
     const layout = layoutProbeChart([], SIZE)
     expect(layout.isEmpty).toBe(true)

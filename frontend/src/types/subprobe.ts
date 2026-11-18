@@ -23,6 +23,8 @@ export interface ProbePoint {
   min_ms: number
   max_ms: number
   skipped?: number
+  /** Individual node observations retain their origin; aggregates omit it. */
+  source?: string
 }
 
 /** One node's outcome in the most recent run. */

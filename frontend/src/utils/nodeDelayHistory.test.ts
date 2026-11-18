@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { nodeDelayPoints } from './nodeDelayHistory'
+import { nodeDelayPoints, nodeProbeSource } from './nodeDelayHistory'
 import { layoutProbeChart } from './probeChart'
 
 test('explicit outcome distinguishes a sub-millisecond success from a failure', () => {
@@ -30,4 +30,17 @@ test('missing history stays empty and a single sample stays a single point', () 
   const points = nodeDelayPoints([{ time: '2026-11-16T12:00:00Z', delay: 90 }])
   const layout = layoutProbeChart(points, { width: 720, height: 132 })
   expect(layout.latency.segments[0]!.points).toHaveLength(1)
+})
+
+test('chart points retain distinct test sources even at the same timestamp', () => {
+  const points = nodeDelayPoints([
+    { time: '2026-11-16T12:00:00Z', delay: 100, source: 'subscription' },
+    { time: '2026-11-16T12:00:00Z', delay: 0, source: 'manual-group' },
+  ])
+  const layout = layoutProbeChart(points, { width: 720, height: 132 })
+  expect(layout.availability.segments.flatMap(segment => segment.points).map(dot => dot.point.source))
+    .toEqual(['subscription', 'manual-group'])
+  expect(nodeProbeSource('manual')).toBe('manual')
+  expect(nodeProbeSource()).toBe('unknown')
+  expect(nodeProbeSource('future-source')).toBe('unknown')
 })

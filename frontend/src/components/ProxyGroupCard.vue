@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import TooltipTarget from "./TooltipTarget.vue"
 import ProxyNodeHistory from './ProxyNodeHistory.vue'
-import NodeQualityBadge from './NodeQualityBadge.vue'
 /**
  * One group of the running sing-box: its current node, and its members either
  * as a strip of latency blocks (collapsed) or as cards (expanded).
@@ -280,7 +279,6 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             :aria-pressed="group.switchable ? member.name === group.now : undefined"
             :disabled="group.switchable ? switchingTo !== '' : undefined"
             :aria-description="group.switchable ? undefined : $t('proxies.hintAutomatic')"
-            :text="group.switchable ? undefined : $t('proxies.hintAutomatic')"
             class="flex min-w-0 flex-col gap-1 rounded-control border px-2.5 py-2 text-left transition-colors"
             :class="[
               member.name === group.now
@@ -301,12 +299,16 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
               <TooltipTarget as="span" class="min-w-0 flex-1 truncate text-xs font-medium" :class="group.switchable || member.name === group.now ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'" :text="member.name">
                 {{ displayName(member.name) }}
               </TooltipTarget>
-              <NodeQualityBadge v-if="!member.group" :history="member.history" />
-              <LockClosedIcon v-if="!group.switchable" class="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <ProxyNodeHistory v-if="!member.group" :name="member.name" :history="member.history" />
             </span>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
-              <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
-              <ProxyNodeHistory v-if="!member.group" :name="member.name" :history="member.history" />
+              <span class="flex min-w-0 items-center gap-1">
+                <TooltipTarget v-if="!group.switchable" as="span" tabindex="0" :text="$t('proxies.hintAutomatic')"
+                  :aria-label="$t('proxies.hintAutomatic')" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control focus-visible:outline-2 focus-visible:outline-primary-500">
+                  <LockClosedIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                </TooltipTarget>
+                <span class="truncate">{{ member.type || $t('proxies.notRunning') }}</span>
+              </span>
               <!--
                 The badge tests THIS node. A span with a button role, not a
                 <button>: in a selector the card around it already is one, and

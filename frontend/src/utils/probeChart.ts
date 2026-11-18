@@ -16,6 +16,8 @@
 import type { ProbePoint } from '../types/subprobe'
 
 export interface ChartSize {
+  /** Keep a reference value visible even when every observation is below it. */
+  minLatencyMax?: number
   width: number
   height: number
 }
@@ -161,7 +163,8 @@ export function layoutProbeChart(points: ProbePoint[], size: ChartSize): ProbeCh
     span > 0 ? plot.x + ((t - from) / span) * plot.width : plot.x + plot.width / 2
 
   const latencyValues = points.filter((p) => p.reachable > 0).map((p) => p.avg_ms)
-  const latencyMax = niceCeiling(Math.max(...latencyValues, 0))
+  const reference = Number.isFinite(size.minLatencyMax) ? Math.max(size.minLatencyMax ?? 0, 0) : 0
+  const latencyMax = niceCeiling(Math.max(...latencyValues, reference))
 
   const scaleY = (value: number, max: number) =>
     plot.y + plot.height - (max > 0 ? Math.min(value / max, 1) : 0) * plot.height

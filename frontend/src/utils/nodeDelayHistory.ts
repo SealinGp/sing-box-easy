@@ -12,6 +12,12 @@ export function nodeDelayPoints(history: readonly NodeDelaySample[] = []): Probe
       avg_ms: sample.delay,
       min_ms: sample.delay,
       max_ms: sample.delay,
+      ...(sample.source ? { source: sample.source } : {}),
     }))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+}
+
+/** Old runtime cache entries do not always identify how they were measured. */
+export function nodeProbeSource(source?: string): string {
+  return ['subscription', 'manual', 'manual-group', 'runtime'].includes(source ?? '') ? source! : 'unknown'
 }

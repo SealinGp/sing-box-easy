@@ -165,6 +165,28 @@ func (m *Manager) UpdateOutboundsConfig(ctx context.Context, updateFn func(*Sing
 	if err != nil {
 		return err
 	}
+	// Without route.final the first outbound is the default route. Cleaning up
+	// an empty first group must not silently switch traffic to another outbound.
+	var route struct {
+		Final string `json:"final"`
+	}
+	if len(sections["route"]) > 0 {
+		if err := json.Unmarshal(sections["route"], &route); err != nil {
+			return fmt.Errorf("failed to read route final: %w", err)
+		}
+	}
+	if route.Final == "" && len(records) > 0 && records[0].typed != nil &&
+		(records[0].typed.Type == "selector" || records[0].typed.Type == "urltest") {
+		var updated []struct {
+			Tag string `json:"tag"`
+		}
+		if err := json.Unmarshal(sections["outbounds"], &updated); err != nil {
+			return err
+		}
+		if len(updated) == 0 || updated[0].Tag != records[0].typed.Tag {
+			return fmt.Errorf("cannot remove implicit default outbound %q; set route.final to an existing outbound first", records[0].typed.Tag)
+		}
+	}
 	updated, err := json.MarshalIndent(sections, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config document: %w", err)

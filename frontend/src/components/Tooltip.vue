@@ -9,10 +9,12 @@ const props = withDefaults(defineProps<{
   enabled?: boolean
   shouldShow?: () => boolean
   hoverDelay?: number
+  hideDelay?: number
+  interactive?: boolean
   width?: number
   matchAnchorWidth?: boolean
-}>(), { visible: undefined, enabled: true, hoverDelay: 320, matchAnchorWidth: false })
-const emit = defineEmits<{ dismiss: [] }>()
+}>(), { visible: undefined, enabled: true, hoverDelay: 320, hideDelay: 100, interactive: false, matchAnchorWidth: false })
+const emit = defineEmits<{ dismiss: []; hoverChange: [hovering: boolean] }>()
 const id = useId()
 const owner = {}
 const anchor = ref<HTMLElement>()
@@ -94,12 +96,14 @@ function move(event: PointerEvent) {
 function scheduleLeave() {
   cancelTimer()
   timer = setTimeout(() => {
-    if (!overAnchor && !overBubble && !keyboardFocus) close()
-  }, 100)
+    // Interactive controlled tooltips let their owner keep the bubble alive
+    // when the pointer returns to the chart that supplied the current point.
+    if (!overAnchor && !overBubble && !keyboardFocus && !(props.interactive && props.visible)) close()
+  }, props.hideDelay)
 }
 function leave() { overAnchor = false; scheduleLeave() }
-function enterBubble() { overBubble = true; cancelTimer() }
-function leaveBubble() { overBubble = false; scheduleLeave() }
+function enterBubble() { overBubble = true; cancelTimer(); emit('hoverChange', true) }
+function leaveBubble() { overBubble = false; scheduleLeave(); emit('hoverChange', false) }
 function focusIn(event: FocusEvent) {
   const focused = event.target as Element
   keyboardFocus = pointerType !== 'mouse' && pointerType !== 'touch' && focused.matches(':focus-visible')
@@ -178,7 +182,7 @@ onBeforeUnmount(() => { close(); listeners(true) })
   </div>
   <Teleport to="body">
     <Transition name="field-tooltip">
-      <div v-if="open" :id="id" ref="bubble" role="tooltip" class="field-tooltip" :class="{ 'field-tooltip-pointer': point }"
+      <div v-if="open" :id="id" ref="bubble" role="tooltip" class="field-tooltip" :class="{ 'field-tooltip-pointer': point && !interactive, 'select-text': interactive }"
         :style="position" @mouseenter="enterBubble" @mouseleave="leaveBubble">
         <slot name="content" />
       </div>

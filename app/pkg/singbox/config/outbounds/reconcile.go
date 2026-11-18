@@ -130,8 +130,9 @@ func (au *Reconciler) Apply(ctx context.Context, subID string, build func(*confi
 		rebuilt, rerr := au.Rebuild(newOutbounds, subID)
 		if rerr != nil {
 			// A rules failure must not abandon the subscription update; log and
-			// keep the pruned outbounds as-is.
+			// keep the pruned outbounds, removing any now-empty groups.
 			logger.Warn("node-rules rebuild skipped", zap.String("subscription", subID), zap.Error(rerr))
+			newOutbounds = nodegroup.PruneEmptyGroups(nil, newOutbounds)
 		} else {
 			newOutbounds = rebuilt
 		}
@@ -155,12 +156,12 @@ func (au *Reconciler) Apply(ctx context.Context, subID string, build func(*confi
 }
 
 // Rebuild regenerates the rule-managed Filter/Group outbounds from the
-// current rule set and the endpoints present in `outbounds`. Returns the new
-// outbound list. When no rules provider is configured it returns the input
-// unchanged (the legacy path already handled additions).
+// current rule set and the endpoints present in `outbounds`, then removes empty
+// groups and their references. Without a rules provider only cleanup runs;
+// the legacy path already handled additions.
 func (au *Reconciler) Rebuild(outbounds []config.Outbound, subID string) ([]config.Outbound, error) {
 	if au.nodeRules == nil {
-		return outbounds, nil
+		return nodegroup.PruneEmptyGroups(nil, outbounds), nil
 	}
 	filters, err := au.nodeRules.ListFilters()
 	if err != nil {
@@ -177,6 +178,7 @@ func (au *Reconciler) Rebuild(outbounds []config.Outbound, subID string) ([]conf
 	}
 	filterSpecs, groupSpecs, _, others := noderules.BuildSpecs(filters, groups, pool)
 	rebuilt := nodegroup.BuildGroupOutbounds(outbounds, filterSpecs, groupSpecs)
+	rebuilt = nodegroup.PruneEmptyGroups(outbounds, rebuilt)
 
 	logger.Info("Rebuilt node-rules groups",
 		zap.String("subscription", subID),

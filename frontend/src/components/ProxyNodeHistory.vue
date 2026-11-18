@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ClockIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { RouterLink } from 'vue-router'
+import NodeQualityBadge from './NodeQualityBadge.vue'
+import { useNodeQualityStore } from '../stores/nodeQuality'
 import Popover from '../volt/Popover.vue'
-import TooltipTarget from './TooltipTarget.vue'
 import ProbeTrendChart from './ProbeTrendChart.vue'
 import { displayName } from '../utils/proxyGroups'
-import { nodeDelayPoints } from '../utils/nodeDelayHistory'
+import { nodeDelayPoints, nodeProbeSource } from '../utils/nodeDelayHistory'
 import type { NodeDelaySample } from '../types/runtime'
 import { runtimeService } from '../services'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -15,8 +17,10 @@ const props = defineProps<{ name: string; history?: NodeDelaySample[] }>()
 const { t, locale } = useI18n()
 const panel = ref<InstanceType<typeof Popover>>()
 const open = ref(false)
-const label = computed(() => t('proxies.history.open', { node: displayName(props.name) }))
+const label = computed(() => t('proxies.quality.open', { node: displayName(props.name) }))
 const stored = ref<NodeDelaySample[] | null>(null)
+const qualityHistory = computed(() => stored.value ?? props.history)
+const qualityStore = useNodeQualityStore()
 const loading = ref(false)
 const error = ref('')
 let generation = 0
@@ -44,18 +48,14 @@ function close() { open.value = false; generation++; loading.value = false }
 <template>
   <span class="inline-flex shrink-0" @click.stop @keydown.enter.stop @keydown.space.stop>
     <!-- The surrounding selector card is already a button. -->
-    <TooltipTarget as="span" role="button" tabindex="0"
-      class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-control text-text-secondary hover:bg-bg-tertiary hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-primary-500"
-      :text="label" :aria-label="label" :aria-expanded="open" aria-haspopup="dialog"
-      @click.stop="toggle" @keydown.enter.stop.prevent="toggle" @keydown.space.stop.prevent="toggle">
-      <ClockIcon class="h-4 w-4" aria-hidden="true" />
-    </TooltipTarget>
+    <NodeQualityBadge :history="qualityHistory" :action-label="label" :expanded="open"
+      @click.stop="toggle" @keydown.enter.stop.prevent="toggle" @keydown.space.stop.prevent="toggle" />
     <Popover ref="panel" interaction="menu" :aria-label="label" panel-class="w-[32rem]"
       @show="open = true; load()" @hide="close">
       <div class="space-y-3 text-left">
         <div class="flex items-start gap-2">
           <div class="min-w-0 flex-1">
-            <h3 class="text-sm font-semibold text-text-primary">{{ t('proxies.history.title') }}</h3>
+            <h3 class="text-sm font-semibold text-text-primary">{{ t('proxies.quality.title') }}</h3>
             <p class="break-words text-xs text-text-secondary">{{ displayName(name) }}</p>
           </div>
           <button type="button" class="icon-action" :aria-label="t('common.close')" @click="panel?.hide()">
@@ -65,15 +65,43 @@ function close() { open.value = false; generation++; loading.value = false }
         <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }} <button type="button" class="underline" @click="load">{{ t('proxies.retry') }}</button></p>
         <p v-if="!loading && !points.length && !error" class="py-4 text-sm text-text-secondary">{{ t('proxies.history.empty') }}</p>
         <template v-if="loading || points.length">
-          <ProbeTrendChart :points="points" :loading="loading && !points.length" latency-only />
-          <p class="text-xs text-text-secondary">{{ t('proxies.history.retained', { n: points.length }) }}</p>
+          <ProbeTrendChart :points="points" :loading="loading && !points.length" latency-only
+            :latency-threshold="qualityStore.ready ? qualityStore.rules.max_delay_ms : undefined">
+            <template #latency-value="{ point }">
+              <span class="text-base font-semibold"
+                :class="!qualityStore.ready ? 'text-text-primary' : point.reachable > 0 && point.avg_ms <= qualityStore.rules.max_delay_ms ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                {{ point.reachable > 0 ? `${point.avg_ms} ms` : t('proxies.noResult') }}
+                <span v-if="qualityStore.ready && point.reachable > 0" class="ml-1 text-xs font-normal text-text-secondary">{{ point.avg_ms === qualityStore.rules.max_delay_ms ? '=' : point.avg_ms < qualityStore.rules.max_delay_ms ? '<' : '>' }} {{ qualityStore.rules.max_delay_ms }} ms</span>
+              </span>
+            </template>
+            <template #point-details="{ point }">
+              <span class="self-start rounded-control bg-bg-tertiary px-1.5 py-0.5 text-[11px] text-text-secondary">{{ t(`proxies.history.sources.${nodeProbeSource(point.source)}`) }}</span>
+            </template>
+          </ProbeTrendChart>
+        </template>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" :aria-label="t('proxies.history.legend')">
+          <RouterLink to="/dashboard/settings#node-quality" class="inline-flex items-center gap-1.5 rounded-control text-text-secondary focus-visible:outline-2 focus-visible:outline-primary-500" @click="panel?.hide()">
+            <svg v-if="qualityStore.ready" viewBox="0 0 28 12" class="h-3 w-7 shrink-0 text-primary-500" aria-hidden="true">
+              <line x1="0" x2="28" y1="6" y2="6" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" />
+            </svg>
+            <span class="text-primary-600 underline dark:text-primary-400">{{ t('proxies.quality.settings') }}</span>
+            <span v-if="qualityStore.ready">{{ qualityStore.rules.max_delay_ms }} ms</span>
+          </RouterLink>
+          <span class="inline-flex items-center gap-1.5 text-text-secondary">
+            <svg viewBox="0 0 28 12" class="h-3 w-7 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true">
+              <line x1="0" x2="28" y1="6" y2="6" stroke="currentColor" stroke-width="1.75" />
+            </svg>
+            {{ t('proxies.history.actualLatency') }}
+          </span>
+        </div>
+        <template v-if="points.length">
           <p v-if="points.length === 1" class="text-xs text-text-secondary">{{ t('proxies.history.single') }}</p>
           <details>
             <summary class="cursor-pointer text-xs text-primary-600 focus-visible:outline-2 focus-visible:outline-primary-500">{{ t('proxies.history.samples') }}</summary>
             <ul class="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs tabular-nums">
               <li v-for="(point, index) in recent" :key="`${point.time}-${index}`" class="flex flex-wrap justify-between gap-x-3 gap-y-1">
                 <time :datetime="point.time">{{ new Date(point.time).toLocaleString(locale) }}</time>
-                <TooltipTarget v-if="point.source" as="span" tabindex="0" :text="point.test_url" class="text-text-secondary">{{ t(`proxies.history.sources.${point.source}`) }}</TooltipTarget>
+                <span class="rounded-control bg-bg-tertiary px-1.5 py-0.5 text-text-secondary">{{ t(`proxies.history.sources.${nodeProbeSource(point.source)}`) }}</span>
                 <span :class="(point.success ?? point.delay > 0) ? 'text-text-primary' : 'text-red-600'">{{ (point.success ?? point.delay > 0) ? `${point.delay} ms` : t('proxies.noResult') }}</span>
               </li>
             </ul>
