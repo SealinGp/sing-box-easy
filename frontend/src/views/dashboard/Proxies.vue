@@ -93,10 +93,15 @@ const openSet = ref<Set<string> | null>(readOpen())
 // A link from a connection's exit chain lands on one card (`?focus=`). That
 // card opens regardless of what was remembered: arriving at a collapsed strip
 // of latency blocks would answer "which group?" and nothing else.
-const { isFocused } = useFocusTarget(() => (view.value?.groups.length ?? 0) > 0)
+const { focus, isFocused } = useFocusTarget(() => (view.value?.groups.length ?? 0) > 0)
+const focusIsGroup = computed(() => view.value?.groups.some(group => isFocused(group.name)) ?? false)
+const focusedMemberGroups = computed(() => new Set((view.value?.groups ?? [])
+  .filter(group => !focusIsGroup.value && group.members.some(member => isFocused(member.name))).map(group => group.name)))
+const focusUnavailable = computed(() => focus.value && view.value &&
+  !view.value.groups.some(group => isFocused(group.name)) && !focusedMemberGroups.value.size)
 
 const isOpen = (name: string, switchable: boolean) =>
-  isFocused(name) || (openSet.value ? openSet.value.has(name) : switchable)
+  isFocused(name) || focusedMemberGroups.value.has(name) || (openSet.value ? openSet.value.has(name) : switchable)
 
 /**
  * Groups the node-rules engine generates. They are edited on the Node Rules
@@ -238,6 +243,10 @@ const onTestAll = async () => {
 
     <template v-else-if="view">
       <p v-if="error" class="text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+      <p v-if="focusUnavailable" role="status" class="rounded-control border border-border bg-bg-secondary px-3 py-2 text-sm text-text-secondary">
+        {{ $t('proxies.focusUnavailable', { name: focus }) }}
+        <RouterLink to="/dashboard/outbounds/list" class="ml-1 text-primary-600 underline">{{ $t('proxies.viewOutbounds') }}</RouterLink>
+      </p>
       <div
         v-if="visible.length === 0"
         class="rounded-surface border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
@@ -256,6 +265,7 @@ const onTestAll = async () => {
           :testing-nodes="testingNodes"
           :switching-to="switchingTo(entry.group.name)"
           :managed="managed.has(entry.group.name)"
+          :focused-node="focusIsGroup ? '' : focus"
           :class="{ 'focus-target': isFocused(entry.group.name) }"
           @toggle="toggle(entry.group.name)"
           @test="onTest(entry.group.name)"

@@ -37,6 +37,7 @@ const props = defineProps<{
   switchingTo: string
   /** True when the node-rules engine generates this group. */
   managed?: boolean
+  focusedNode?: string
 }>()
 
 const emit = defineEmits<{
@@ -281,6 +282,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
             :aria-description="group.switchable ? undefined : $t('proxies.hintAutomatic')"
             class="flex min-w-0 flex-col gap-1 rounded-control border px-2.5 py-2 text-left transition-colors"
             :class="[
+              member.name === focusedNode ? 'focus-target' : '',
               member.name === group.now
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
                 : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40',

@@ -7,6 +7,17 @@ export default {
     finalPolicy: '默认策略',
   },
   rules: {
+    sentence: {
+      via: '经由', openProxy: '在代理页查看 {outbound}',
+      remaining: '所有剩余流量', noConditions: '没有条件',
+      any: '满足以下任一条件', all: '同时满足以下条件', or: 'OR',
+      continue: '继续匹配下一条', stop: '结束规则匹配',
+      options: '选项 · {count}',
+      and: 'AND', not: 'NOT', is: '=', isAny: 'IN', matches: 'MATCH',
+      configured: '已配置条件',
+      ruleSetCombination: '规则集内的条件可能合并到外层匹配组，组合关系取决于规则集内容。此处保留已配置的字段，不假定它们都是「且」关系。',
+      expand: '展开', collapse: '收起', conditions: '匹配条件', action: '执行动作',
+    },
     priority: {
       title: '匹配顺序 · 从上到下',
       hint: '序号越小，越先匹配。命中 route、reject 或 hijack-dns 后终止匹配；sniff、resolve 和 route-options 执行后继续。请将具体规则放在宽泛规则之前。新增规则追加到末尾，可通过排序调整优先级。',

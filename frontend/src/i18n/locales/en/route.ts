@@ -7,6 +7,17 @@ export default {
     finalPolicy: 'Final Policy',
   },
   rules: {
+    sentence: {
+      via: 'Route via', openProxy: 'View {outbound} in Proxies',
+      remaining: 'All remaining traffic', noConditions: 'No conditions',
+      any: 'Any of these conditions', all: 'All of these conditions', or: 'OR',
+      continue: 'Continue to the next rule', stop: 'Stop evaluating rules',
+      options: 'Options · {count}',
+      and: 'AND', not: 'NOT', is: '=', isAny: 'IN', matches: 'MATCH',
+      configured: 'Configured conditions',
+      ruleSetCombination: 'Rule-set contents can merge with the outer matcher groups. Their Boolean relationship depends on the decoded rule-set; this view preserves the configured fields without assuming AND.',
+      expand: 'Details', collapse: 'Collapse', conditions: 'Matching conditions', action: 'Action',
+    },
     priority: {
       title: 'Matching order · top to bottom',
       hint: 'Lower numbers run first. A matching route, reject or hijack-dns action ends evaluation; sniff, resolve and route-options continue. Put specific rules before broad rules. New rules are appended; use Reorder to change their priority.',

@@ -95,6 +95,8 @@ declare module 'vue' {
     RouteRuleMatchers: typeof import('./src/components/RouteRuleMatchers.vue')['default']
     RouterView: typeof import('vue-router')['RouterView']
     RouteTopologyCard: typeof import('./src/components/RouteTopologyCard.vue')['default']
+    RoutingConditionNode: typeof import('./src/components/RoutingConditionNode.vue')['default']
+    RoutingRuleConditions: typeof import('./src/components/RoutingRuleConditions.vue')['default']
     RoutingRuleItem: typeof import('./src/components/RoutingRuleItem.vue')['default']
     RoutingRules: typeof import('./src/components/RoutingRules.vue')['default']
     RuleFlowPreview: typeof import('./src/components/RuleFlowPreview.vue')['default']

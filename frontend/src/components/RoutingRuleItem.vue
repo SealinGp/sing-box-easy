@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import IconButton from './IconButton.vue'
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { ArrowRightIcon, ChevronDownIcon, Bars3Icon } from '@heroicons/vue/24/outline'
 import type { RouteRule } from '../types/api'
 import PopConfirm from './PopConfirm.vue'
 import ListRow from './ListRow.vue'
 import ListField from './ListField.vue'
-import { ALL_MATCHER_KEYS } from '../schemas/routeRuleMatcherFields'
+import RoutingRuleConditions from './RoutingRuleConditions.vue'
+import { RouterLink } from 'vue-router'
+import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
+import { routeRuleOutcome } from '../utils/routeRulePresentation'
 import { actionOf, resolveRouteRuleActionFields } from '../schemas/routeRuleActionFields'
 import { isFieldFilled } from '../schemas/optionSchema'
 import { humanizeFieldName } from '../utils/fieldLabels'
@@ -38,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
   handleAttrs: () => ({}),
 })
 const emit = defineEmits<Emits>()
+const expanded = ref(false)
 
 const { t, te } = useI18n()
 
@@ -111,24 +115,6 @@ function displayValue(value: unknown): string {
 const record = computed(() => props.rule as Record<string, unknown>)
 
 /**
- * WHEN — every filled matcher, in inventory order.
- *
- * `invert` is pulled out of the chain for the same reason the preview does it:
- * it does not narrow the match, it flips the whole result.
- */
-const conditions = computed<DisplayField[]>(() =>
-  ALL_MATCHER_KEYS.filter((key) => key !== 'invert' && isFieldFilled(record.value[key])).map(
-    (key) => ({
-      key,
-      label: fieldLabel(key),
-      value: displayValue(record.value[key]),
-    }),
-  ),
-)
-
-const inverted = computed(() => isFieldFilled(record.value.invert))
-
-/**
  * THEN — the fields the effective action owns, filled ones only.
  *
  * `actionOf` supplies the "route" default for a rule that omitted `action`, so
@@ -143,6 +129,13 @@ const outcomeFields = computed<DisplayField[]>(() =>
       value: displayValue(record.value[field.key]),
     })),
 )
+
+const outcome = computed(() => routeRuleOutcome(record.value, t))
+const action = computed(() => actionOf(record.value))
+const compactOutcome = computed(() => action.value === 'hijack-dns'
+  ? t('route.rules.actions.hijackDns') : outcome.value)
+const continues = computed(() => ['sniff', 'resolve', 'route-options'].includes(action.value))
+const options = computed(() => outcomeFields.value.filter(field => field.key !== 'outbound'))
 
 /*
  * A routing rule has no user-assigned name, so the delete confirmation would
@@ -213,30 +206,49 @@ const ruleSummary = computed(() => {
       </button>
     </template>
 
-    <!--
-      WHEN … THEN, the same order the dialog's RuleFlowPreview reads in.
-      <ListField> hides anything empty and joins arrays itself; sing-box rules
-      are sparse, so a typical row still renders two or three of these.
-    -->
-    <ListField
-      v-if="inverted"
-      :label="fieldLabel('invert')"
-      :value="BOOLEAN_MARK"
-    />
-    <ListField
-      v-for="condition in conditions"
-      :key="`when-${condition.key}`"
-      :label="condition.label"
-      :value="condition.value"
-    />
-
-    <ListField :label="$t('route.ruleItem.action')" :value="rule.action" />
-    <ListField
-      v-for="field in outcomeFields"
-      :key="`then-${field.key}`"
-      :label="field.label"
-      :value="field.value"
-    />
+    <div class="sentence-shell col-span-2 min-w-0">
+      <details class="rule-details" :open="expanded" @toggle="expanded = ($event.target as HTMLDetailsElement).open">
+        <summary class="rule-summary rounded-control focus-visible:outline-2 focus-visible:outline-primary-500">
+          <span class="condition-summary min-w-0 truncate text-sm" :aria-label="$t('route.rules.sentence.conditions')">
+            <RoutingRuleConditions :rule="record" compact />
+          </span>
+          <span class="outcome-summary flex min-w-0 items-center gap-2 text-sm font-medium text-text-primary" :aria-label="$t('route.rules.sentence.action')">
+            <ArrowRightIcon class="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <template v-if="action === 'route' && rule.outbound">
+              <RouterLink :to="focusLink(FOCUS_PAGES.proxies, rule.outbound)"
+                :aria-label="$t('route.rules.sentence.openProxy', { outbound: rule.outbound })"
+                class="min-w-0 truncate rounded-control text-primary-600 underline decoration-primary-300 underline-offset-2 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-primary-400"
+                @click.stop>
+                {{ $t('route.rules.sentence.via') }} {{ rule.outbound }}
+              </RouterLink>
+            </template>
+            <span v-else class="truncate">{{ compactOutcome }}</span>
+          </span>
+          <span class="expand-control flex items-center justify-end gap-1 text-[11px] text-text-secondary">
+            {{ $t(expanded ? 'route.rules.sentence.collapse' : 'route.rules.sentence.expand') }}
+            <ChevronDownIcon class="h-3.5 w-3.5 shrink-0" :class="{ 'rotate-180': expanded }" aria-hidden="true" />
+          </span>
+        </summary>
+        <div class="mt-2 space-y-3 border-t border-border py-3">
+          <RoutingRuleConditions :rule="record" />
+          <div class="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
+            <ArrowRightIcon class="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <RouterLink v-if="action === 'route' && rule.outbound" :to="focusLink(FOCUS_PAGES.proxies, rule.outbound)"
+              class="break-all rounded-control text-primary-600 underline focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-primary-400">
+              {{ $t('route.rules.sentence.via') }} {{ rule.outbound }}
+            </RouterLink>
+            <span v-else class="break-all">{{ outcome }}</span>
+          </div>
+          <div v-if="options.length" class="space-y-1 text-xs">
+            <p class="font-medium text-text-secondary">{{ $t('route.rules.sentence.options', { count: options.length }) }}</p>
+            <div class="space-y-1 break-all">
+              <ListField v-for="field in options" :key="field.key" :label="field.label" :value="field.value" />
+            </div>
+          </div>
+          <p class="text-[11px] text-text-secondary">{{ $t(continues ? 'route.rules.sentence.continue' : 'route.rules.sentence.stop') }}</p>
+        </div>
+      </details>
+    </div>
 
     <!-- Reorder mode hides edit/delete on purpose: both are index-addressed,
          and the indices are exactly what is in motion. -->
@@ -256,3 +268,23 @@ const ruleSummary = computed(() => {
     </template>
   </ListRow>
 </template>
+
+<style scoped>
+.sentence-shell { container-type: inline-size; }
+.rule-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12rem 3.5rem;
+  align-items: center;
+  gap: 1rem;
+  min-height: 1.75rem;
+  cursor: pointer;
+  list-style: none;
+}
+.rule-summary::-webkit-details-marker { display: none; }
+@container (max-width: 600px) {
+  .rule-summary { grid-template-columns: minmax(0, 1fr) 3.5rem; gap: .375rem .75rem; }
+  .condition-summary { grid-column: 1; }
+  .outcome-summary { grid-column: 1; grid-row: 2; }
+  .expand-control { grid-column: 2; grid-row: 1 / 3; }
+}
+</style>

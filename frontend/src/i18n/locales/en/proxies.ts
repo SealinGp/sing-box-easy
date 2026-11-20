@@ -1,5 +1,7 @@
 // Runtime proxies page (Proxies.vue): groups and nodes of the running sing-box.
 export default {
+  focusUnavailable: '“{name}” is not listed in any running proxy group.',
+  viewOutbounds: 'View outbound configuration',
   quality: {
     open: 'View quality assessment and history for {node}',
     title: 'Quality assessment and history',

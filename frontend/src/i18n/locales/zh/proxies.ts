@@ -1,5 +1,7 @@
 // 运行时代理页（Proxies.vue）：正在运行的 sing-box 的分组与节点。
 export default {
+  focusUnavailable: '当前运行的代理分组中没有「{name}」。',
+  viewOutbounds: '查看出站配置',
   quality: {
     open: '查看 {node} 的质量评估与历史',
     title: '质量评估与历史',
