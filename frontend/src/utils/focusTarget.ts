@@ -17,6 +17,7 @@ export const FOCUS_PAGES = {
   nodeRules: '/dashboard/outbounds/node-rules',
   proxies: '/dashboard/proxies',
   ruleSets: '/dashboard/route/rule-sets',
+  subscriptions: '/dashboard/outbounds/subscriptions',
 } as const
 
 export type FocusPage = (typeof FOCUS_PAGES)[keyof typeof FOCUS_PAGES]

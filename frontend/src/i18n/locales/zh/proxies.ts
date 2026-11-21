@@ -5,6 +5,8 @@ export default {
   quality: {
     open: '查看 {node} 的质量评估与历史',
     title: '质量评估与历史',
+    subscription: '所属订阅',
+    subscriptionLoadFailed: '订阅名称加载失败',
     settings: '质量标准',
     good: '良好', fair: '一般', poor: '较差', unknown: '暂无探测记录，不评级',
     unavailable: '无法读取节点质量标准，请到设置页重试。',

@@ -5,6 +5,7 @@ import CardActions from './CardActions.vue'
 import TruncatedText from './TruncatedText.vue'
 import SubscriptionActions from './SubscriptionActions.vue'
 import { computed, type UnwrapRef } from 'vue'
+import { useFocusTarget } from '../composables/useFocusTarget'
 import { useI18n } from 'vue-i18n'
 import type { useSubscriptionsPage } from '../composables/useSubscriptionsPage'
 import Button from "./Button.vue";
@@ -18,6 +19,7 @@ const { page } = defineProps<{ page: UnwrapRef<ReturnType<typeof useSubscription
 const { t } = useI18n()
 const { summarizePlan, officialLink, formatDate, getSubscriptionStatus } = page
 const subscriptions = computed(() => page.subscriptions)
+const { isFocused } = useFocusTarget(() => subscriptions.value.length > 0)
 const isUpdating = computed(() => page.isUpdating)
 const probeLatest = computed(() => page.probeLatest)
 const { loadProbeStatus, openAddModal, openEditModal, deleteSubscription, updateSubscription } = page
@@ -34,7 +36,7 @@ const columns = computed(() => [
 <template><div>
 <Table class="subscription-list table-surface" table-class="table-fixed" :columns="columns" column-storage-key="subscriptions" :loading="page.isLoading && !subscriptions.length" :empty="!subscriptions.length">
 <template #empty><p>{{ t('subscriptions.empty.title') }}</p><Button class="mt-3" @click="openAddModal">{{ t('subscriptions.add') }}</Button></template>
-<tr v-for="subscription in subscriptions" :key="subscription.id">
+<tr v-for="subscription in subscriptions" :key="subscription.id" :class="{ 'focus-target': isFocused(subscription.id) }">
 <td><TruncatedText :text="subscription.name" /></td>
 <td><StatusIndicator :variant="getSubscriptionStatus(subscription).type" :busy="isUpdating.includes(subscription.id)"><TruncatedText :text="getSubscriptionStatus(subscription).text" /></StatusIndicator></td>
 <td data-cell-tooltip="false"><SubscriptionQualityCell size="list" :point="probeLatest[subscription.id]" :subscription="subscription" @refresh="loadProbeStatus" /></td>
@@ -47,6 +49,7 @@ const columns = computed(() => [
 <template #cards="{ selected, toggle }"><div class="subscription-cards">        <article class="subscription-card"
           v-for="subscription in subscriptions"
           :key="subscription.id"
+          :class="{ 'focus-target': isFocused(subscription.id) }"
           :data-collection-selected="selected.has(subscription.id)"
         >
 <input type="checkbox" class="collection-checkbox" :aria-label="t('common.collection.select')" :checked="selected.has(subscription.id)" @change="toggle(subscription.id)" />

@@ -10,8 +10,10 @@ import ProbeTrendChart from './ProbeTrendChart.vue'
 import { displayName } from '../utils/proxyGroups'
 import { nodeDelayPoints, nodeProbeSource } from '../utils/nodeDelayHistory'
 import type { NodeDelaySample } from '../types/runtime'
-import { runtimeService } from '../services'
+import { runtimeService, subscriptionService } from '../services'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
+import { nodeSubscriptionId } from '../utils/nodeSubscription'
+import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 
 const props = defineProps<{ name: string; history?: NodeDelaySample[] }>()
 const { t, locale } = useI18n()
@@ -23,14 +25,33 @@ const qualityHistory = computed(() => stored.value ?? props.history)
 const qualityStore = useNodeQualityStore()
 const loading = ref(false)
 const error = ref('')
+const subscriptionId = computed(() => nodeSubscriptionId(props.name))
+const subscriptionName = ref('')
+const subscriptionLoading = ref(false)
+const subscriptionError = ref(false)
 let generation = 0
 const points = computed(() => nodeDelayPoints(stored.value ?? props.history))
 const recent = computed(() => [...(stored.value ?? props.history ?? [])]
   .filter(sample => Number.isFinite(Date.parse(sample.time)))
   .sort((a, b) => Date.parse(b.time) - Date.parse(a.time)))
 function toggle(event: Event) { panel.value?.toggle(event) }
+async function loadSubscription(current = generation) {
+  const id = subscriptionId.value
+  if (!id || subscriptionName.value) return
+  subscriptionLoading.value = true
+  subscriptionError.value = false
+  try {
+    const { data } = await subscriptionService.getSubscriptionByID(id)
+    if (current === generation) subscriptionName.value = data.name
+  } catch {
+    if (current === generation) subscriptionError.value = true
+  } finally {
+    if (current === generation) subscriptionLoading.value = false
+  }
+}
 async function load() {
   const current = ++generation
+  void loadSubscription(current)
   loading.value = true
   error.value = ''
   try {
@@ -40,9 +61,16 @@ async function load() {
     if (current === generation) error.value = apiErrorMessage(err, t('proxies.loadFailed'))
   } finally { if (current === generation) loading.value = false }
 }
-watch(() => props.name, () => { generation++; stored.value = null; if (open.value) void load() })
+watch(() => props.name, () => {
+  generation++
+  stored.value = null
+  subscriptionName.value = ''
+  subscriptionError.value = false
+  subscriptionLoading.value = false
+  if (open.value) void load()
+})
 watch(() => props.history, () => { if (open.value) void load() })
-function close() { open.value = false; generation++; loading.value = false }
+function close() { open.value = false; generation++; loading.value = false; subscriptionLoading.value = false }
 </script>
 
 <template>
@@ -56,7 +84,17 @@ function close() { open.value = false; generation++; loading.value = false }
         <div class="flex items-start gap-2">
           <div class="min-w-0 flex-1">
             <h3 class="text-sm font-semibold text-text-primary">{{ t('proxies.quality.title') }}</h3>
-            <p class="break-words text-xs text-text-secondary">{{ displayName(name) }}</p>
+            <p class="mt-1 select-text break-all text-xs leading-relaxed text-text-secondary">{{ name }}</p>
+            <div v-if="subscriptionId" class="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-xs" :aria-busy="subscriptionLoading">
+              <span class="text-text-secondary">{{ t('proxies.quality.subscription') }}</span>
+              <RouterLink :to="focusLink(FOCUS_PAGES.subscriptions, subscriptionId)"
+                class="break-all rounded-control text-primary-600 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-primary-400" @click="panel?.hide()">
+                {{ subscriptionName || subscriptionId }}
+              </RouterLink>
+              <span v-if="subscriptionError" class="text-text-secondary">{{ t('proxies.quality.subscriptionLoadFailed') }}
+                <button type="button" class="rounded-control underline focus-visible:outline-2 focus-visible:outline-primary-500" @click="loadSubscription()">{{ t('proxies.retry') }}</button>
+              </span>
+            </div>
           </div>
           <button type="button" class="icon-action" :aria-label="t('common.close')" @click="panel?.hide()">
             <XMarkIcon class="h-4 w-4" aria-hidden="true" />

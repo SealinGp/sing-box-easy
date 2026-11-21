@@ -5,6 +5,8 @@ export default {
   quality: {
     open: 'View quality assessment and history for {node}',
     title: 'Quality assessment and history',
+    subscription: 'Subscription',
+    subscriptionLoadFailed: 'Could not load subscription name',
     settings: 'Quality criteria',
     good: 'Good', fair: 'Fair', poor: 'Poor', unknown: 'No observations; unrated',
     unavailable: 'Quality criteria could not be loaded. Retry in Settings.',
