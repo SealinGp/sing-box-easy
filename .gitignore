@@ -11,3 +11,5 @@ dist/
 
 # Standalone GitHub Pages demo build
 /pages-dist/
+
+/frontend/demo/components.d.ts

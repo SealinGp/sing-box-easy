@@ -34,7 +34,7 @@ export const rules: RouteRule[] = [
   { protocol: ['dns'], action: 'hijack-dns' },
   { ip_is_private: true, action: 'route', outbound: 'direct' },
   { domain_suffix: ['example.org', 'example.net'], action: 'route', outbound: '🤖 AI' },
-  { type: 'logical', mode: 'and', rules: [{ network: ['tcp'] }, { port: [443] }], action: 'route', outbound: '🚀 代理' },
+  { network: ['tcp'], port: [443], domain_suffix: ['media.example.com'], action: 'route', outbound: '🚀 代理' },
   { domain_keyword: ['ads', 'tracking'], action: 'reject' },
   { rule_set: ['geosite-cn'], action: 'route', outbound: 'direct' },
   { network: ['tcp', 'udp'], action: 'route', outbound: '自动选择' },

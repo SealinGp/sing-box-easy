@@ -5,14 +5,19 @@ import { members, outbounds, probeHistory, proxies, rules, servers, subscription
 const readonly = '静态演示：此操作需在安装后使用。 / Static demo: install the app to use this action.'
 /** Install before mounting any real product component. No request reaches a backend. */
 export function installDemoApi() {
+  let preferences = { overview_order: [] as string[], overview_hidden: [] as string[] }
   let settings = { node_quality: { ...DEFAULT_NODE_QUALITY } }
   const latest = () => Object.fromEntries(subscriptions.map(s => [s.id, probeHistory(s.id).at(-1)]))
   function read(url: string): unknown {
     const { pathname: path, searchParams: query } = new URL(url, 'https://demo.invalid')
     if (path === '/runtime/proxies') return proxies
     if (path === '/runtime/proxies/history') return { points: members.find(m => m.name === query.get('name'))?.history ?? [] }
+    if (path === '/user/me/preferences') return preferences
+    if (path === '/auth/status') return { auth_enabled: false, system_type: 'linux' }
+    if (path === '/experimental/clash-api') return { external_controller: '127.0.0.1:9090', default_mode: 'rule' }
+    if (path === '/experimental/v2ray-api') return { listen: '127.0.0.1:8085', stats: { enabled: true } }
     if (path === '/settings') return settings
-    if (path === '/service/status') return { status: 'running' }
+    if (path === '/service/status') return { status: 'running', pid: 2048, started_at: Math.floor(now / 1000) - 86400, memory_usage: 78 * 1024 * 1024 }
     if (path === '/outbounds') return { outbounds, endpoints: [], managed_tags: [] }
     if (path === '/subscriptions') return { subscriptions }
     if (path.startsWith('/subscriptions/')) return subscriptions.find(s => s.id === path.split('/')[2])
@@ -33,11 +38,12 @@ export function installDemoApi() {
     if (path === '/dns') return { servers, rules: [], final: '国内 DNS' }
     if (path === '/core') return { installed: true, version: '1.13.0', capabilities: {} }
     if (path === '/inbounds') return { inbounds: [] }
-    if (path === '/config') return { outbounds, route: { rules, final: '🚀 代理' }, dns: { servers } }
+    if (path === '/config') return { inbounds: [{ tag: 'tun-in', type: 'tun', address: ['172.19.0.1/30'] }], outbounds, route: { rules, final: '🚀 代理' }, dns: { servers } }
     throw new Error(readonly)
   }
   function write(url: string, payload: unknown): unknown {
     const body = payload as Record<string, unknown> | undefined
+    if (url === '/user/me/preferences' && body) { preferences = structuredClone(body) as typeof preferences; return preferences }
     if (url === '/settings' && body?.node_quality) {
       settings = structuredClone(body) as typeof settings
       return settings
