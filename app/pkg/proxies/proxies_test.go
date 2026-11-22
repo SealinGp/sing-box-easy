@@ -290,3 +290,11 @@ func TestTestGroupUnknownOrNonGroupIsMissing(t *testing.T) {
 		t.Errorf("nothing should have been dialled: %v", runtime.tested)
 	}
 }
+
+func TestProbeResponseTimeoutDoesNotClaimCoreIsOffline(t *testing.T) {
+	service := newService(&fakeRuntime{err: clashapi.ErrDelayResponseTimeout}, "")
+	_, err := service.TestNode(context.Background(), TestCommand{Name: "n"})
+	if faultKind(t, err) != fault.Failed || strings.Contains(err.Error(), "sing-box is not reachable") {
+		t.Fatalf("misleading error: %v", err)
+	}
+}

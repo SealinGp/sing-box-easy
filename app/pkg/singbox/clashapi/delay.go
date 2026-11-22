@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -21,6 +22,20 @@ var ErrProxyNotFound = errors.New("outbound not found in the running sing-box")
 // complete: a timeout, a refused connection, a TLS failure. This IS a node
 // being unavailable.
 var ErrDelayFailed = errors.New("url test failed")
+
+// ErrDelayResponseTimeout means the panel did not receive a conclusive probe
+// result. It is neither evidence of a failed node nor an offline controller.
+var ErrDelayResponseTimeout = errors.New("delay test response timed out")
+
+const delayResponseGrace = 2 * time.Second
+
+func delayTransportError(err error) error {
+	var timeout net.Error
+	if !errors.Is(err, context.Canceled) && (errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &timeout) && timeout.Timeout())) {
+		return fmt.Errorf("%w: %w", ErrDelayResponseTimeout, err)
+	}
+	return err
+}
 
 // DefaultDelayURL is the target sing-box itself defaults to.
 //
@@ -53,6 +68,8 @@ func (c *Client) Delay(ctx context.Context, tag, testURL string, timeout time.Du
 		timeout = 5 * time.Second
 	}
 
+	requestCtx, cancel := context.WithTimeout(ctx, timeout+delayResponseGrace)
+	defer cancel()
 	query := url.Values{}
 	query.Set("url", testURL)
 	query.Set("timeout", strconv.FormatInt(timeout.Milliseconds(), 10))
@@ -61,7 +78,7 @@ func (c *Client) Delay(ctx context.Context, tag, testURL string, timeout time.Du
 	// the latter encodes a space as "+", which a path parser reads literally.
 	path := "/proxies/" + url.PathEscape(tag) + "/delay?" + query.Encode()
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestCtx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to build delay request: %w", err)
 	}
@@ -69,11 +86,15 @@ func (c *Client) Delay(ctx context.Context, tag, testURL string, timeout time.Du
 		request.Header.Set("Authorization", "Bearer "+c.secret)
 	}
 
-	response, err := c.http.Do(request)
+	// URL tests may legitimately exceed the default timeout for memory reads.
+	// The request context owns the complete probe-plus-response budget.
+	client := *c.http
+	client.Timeout = 0
+	response, err := client.Do(request)
 	if err != nil {
-		// The controller itself is unreachable. Distinct from a node failing:
-		// the caller must abandon the whole run rather than record every node
-		// as down because the panel could not reach sing-box.
+		if classified := delayTransportError(err); errors.Is(classified, ErrDelayResponseTimeout) {
+			return 0, classified
+		}
 		return 0, fmt.Errorf("clash api unreachable at %s: %w", c.baseURL, err)
 	}
 	defer response.Body.Close()
@@ -96,7 +117,7 @@ func (c *Client) Delay(ctx context.Context, tag, testURL string, timeout time.Du
 		Delay int `json:"delay"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
-		return 0, fmt.Errorf("failed to decode delay response: %w", err)
+		return 0, fmt.Errorf("failed to decode delay response: %w", delayTransportError(err))
 	}
 	return body.Delay, nil
 }

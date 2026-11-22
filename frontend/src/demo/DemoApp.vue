@@ -15,7 +15,7 @@ try { if (localStorage.getItem('sb_demo_layout') === 'topbar') layout.value = 't
 watch(layout, value => { try { localStorage.setItem('sb_demo_layout', value) } catch { /* Keep the session choice. */ } })
 const nav = computed(() => [
   { path: '/dashboard/overview', label: zh.value ? '概览' : 'Overview', icon: ChartBarIcon },
-  { path: '/dashboard/proxies', label: zh.value ? '代理节点' : 'Proxies', icon: SignalIcon },
+  { path: '/dashboard/proxies', label: zh.value ? '节点' : 'Nodes', icon: SignalIcon },
   { path: '/dashboard/outbounds/subscriptions', label: zh.value ? '订阅' : 'Subscriptions', icon: ServerStackIcon },
   { path: '/dashboard/route/rules', label: zh.value ? '路由规则' : 'Routing rules', icon: ShareIcon },
   { path: '/dashboard/dns/servers', label: 'DNS', icon: GlobeAltIcon },

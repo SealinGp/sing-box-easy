@@ -329,6 +329,9 @@ func (s *Service) selectionPersisted() bool {
 }
 
 func unavailable(err error) error {
+	if errors.Is(err, clashapi.ErrDelayResponseTimeout) || errors.Is(err, context.DeadlineExceeded) {
+		return &fault.Error{Kind: fault.Failed, Message: "测速响应超时，未收到该次测速结果，请稍后重试。 / Delay test response timed out; this probe has no confirmed result. Please retry.", Cause: err}
+	}
 	message := err.Error()
 	if !errors.Is(err, clashapi.ErrUnauthorized) {
 		message = "sing-box is not reachable: " + message

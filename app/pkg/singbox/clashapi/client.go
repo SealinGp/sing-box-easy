@@ -28,8 +28,8 @@ import (
 	"github.com/sagernet/sing-box/option"
 )
 
-// defaultTimeout bounds one request. sing-box answers these from memory, so
-// anything slower is an unreachable controller, not a slow one.
+// defaultTimeout bounds controller requests. Delay adds its own probe budget
+// and distinguishes an inconclusive response timeout from controller failures.
 const defaultTimeout = 10 * time.Second
 
 // ErrDisabled is returned when the config has no clash_api block, so there is

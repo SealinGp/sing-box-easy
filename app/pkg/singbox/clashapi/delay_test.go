@@ -98,3 +98,47 @@ func TestDelaySendsBearer(t *testing.T) {
 		t.Errorf("Authorization = %q", gotAuth)
 	}
 }
+
+func TestDelayResponseTimeoutIsNotAConfirmedNodeFailure(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() })
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	_, err := client.Delay(ctx, "n", DefaultDelayURL, time.Second)
+	if !errors.Is(err, ErrDelayResponseTimeout) || errors.Is(err, ErrDelayFailed) {
+		t.Fatalf("inconclusive timeout was misclassified: %v", err)
+	}
+}
+func TestDelayCanceledIsNotANodeFailure(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) { t.Error("canceled call reached controller") })
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := client.Delay(ctx, "n", DefaultDelayURL, time.Second)
+	if !errors.Is(err, context.Canceled) || errors.Is(err, ErrDelayFailed) || errors.Is(err, ErrDelayResponseTimeout) {
+		t.Fatalf("cancellation misclassified: %v", err)
+	}
+}
+func TestDelayBodyTimeoutIsInconclusive(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	_, err := client.Delay(ctx, "n", DefaultDelayURL, time.Second)
+	if !errors.Is(err, ErrDelayResponseTimeout) {
+		t.Fatalf("body timeout lost classification: %v", err)
+	}
+}
+
+func TestDelayUsesProbeBudgetInsteadOfControllerReadTimeout(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(30 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"delay":25}`))
+	})
+	client.http.Timeout = 5 * time.Millisecond
+	delay, err := client.Delay(context.Background(), "n", DefaultDelayURL, 100*time.Millisecond)
+	if err != nil || delay != 25 {
+		t.Fatalf("controller read timeout truncated probe: %d %v", delay, err)
+	}
+}

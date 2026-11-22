@@ -10,6 +10,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useNodeQualityStore } from '../../stores/nodeQuality'
 import { useI18n } from 'vue-i18n'
+import ProxyGroupsSkeleton from '../../components/ProxyGroupsSkeleton.vue'
 import ProxyGroupCard from '../../components/ProxyGroupCard.vue'
 import { useRuntimeProxies } from '../../composables/useRuntimeProxies'
 import { useNotify } from '../../composables/useNotify'
@@ -27,6 +28,8 @@ const running = computed(() => serviceStore.status?.status === 'running')
 
 const { view, loading, error, testing, testingNodes, testingAll, switching, load, select, testGroup, testNode, testAll } =
   useRuntimeProxies(running, () => t('proxies.loadFailed'))
+
+const initialLoading = computed(() => (!serviceStore.status && !serviceStore.error) || (running.value && loading.value && !view.value))
 
 const query = ref('')
 const sort = ref<MemberSort>('default')
@@ -222,8 +225,10 @@ const onTestAll = async () => {
       {{ view.selection_persisted ? $t('proxies.persisted') : $t('proxies.notPersisted') }}
     </p>
 
+    <ProxyGroupsSkeleton v-if="initialLoading" />
+
     <div
-      v-if="!running"
+      v-else-if="!running"
       class="rounded-surface border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
     >
       {{ $t('proxies.stopped') }}
@@ -235,10 +240,6 @@ const onTestAll = async () => {
     >
       <p>{{ error }}</p>
       <button type="button" class="mt-1 text-xs underline" @click="load()">{{ $t('proxies.retry') }}</button>
-    </div>
-
-    <div v-else-if="loading && !view" class="flex justify-center py-10">
-      <div class="h-7 w-7 animate-spin rounded-pill border-b-2 border-primary-500"></div>
     </div>
 
     <template v-else-if="view">
