@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import TooltipTarget from "./TooltipTarget.vue"
+import ProxyAutoSelection from './ProxyAutoSelection.vue'
 import ProxyNodeHistory from './ProxyNodeHistory.vue'
 /**
  * One group of the running sing-box: its current node, and its members either
@@ -41,6 +42,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  (e: 'automaticChanged'): void
   (e: 'toggle'): void
   (e: 'test'): void
   (e: 'testNode', name: string): void
@@ -176,6 +178,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
         <span>{{ $t('proxies.fromNodeRules') }}</span>
       </RouterLink>
       <span class="ml-auto flex items-center gap-1.5">
+        <ProxyAutoSelection v-if="group.switchable" :group="group" @updated="emit('automaticChanged')" />
         <!--
           The search opens WHERE IT WAS ASKED FOR. The control is anchored on
           its right edge, so the field grows LEFTWARDS out of the button and the

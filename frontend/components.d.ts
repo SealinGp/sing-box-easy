@@ -84,6 +84,7 @@ declare module 'vue' {
     ProbeNodeResults: typeof import('./src/components/ProbeNodeResults.vue')['default']
     ProbeSettingsCard: typeof import('./src/components/ProbeSettingsCard.vue')['default']
     ProbeTrendChart: typeof import('./src/components/ProbeTrendChart.vue')['default']
+    ProxyAutoSelection: typeof import('./src/components/ProxyAutoSelection.vue')['default']
     ProxyGroupCard: typeof import('./src/components/ProxyGroupCard.vue')['default']
     ProxyNodeHistory: typeof import('./src/components/ProxyNodeHistory.vue')['default']
     QualityPanelShell: typeof import('./src/components/QualityPanelShell.vue')['default']

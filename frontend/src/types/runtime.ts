@@ -24,6 +24,7 @@ export interface RuntimeMember {
 }
 
 export interface RuntimeGroup {
+  auto_selection?: AutoSelectionStatus
   name: string
   type: string
   /** The member currently in use. */
@@ -89,4 +90,15 @@ export interface ConnectionsFrame {
   at: number
   totals: ConnectionTotals
   connections: ConnectionRow[]
+}
+
+export interface AutoSelectionStatus {
+  enabled: boolean
+  interval_seconds: number
+  reason: 'disabled' | 'waiting' | 'no_candidate' | 'retained' | 'switched' | 'error' | 'group_missing'
+  last_checked?: string
+  next_check?: string
+  last_switched?: string
+  selected?: string
+  error?: string
 }

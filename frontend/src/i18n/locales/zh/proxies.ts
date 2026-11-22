@@ -1,5 +1,14 @@
 // 运行时代理页（Proxies.vue）：正在运行的 sing-box 的分组与节点。
 export default {
+  auto: {
+    manualOverride: '手动选节点会关闭本组自动切换。',
+    title: '质量自动选择', open: '设置 {group} 的选择方式', active: '质量自动', manual: '手动选择', enable: '按质量自动切换',
+    interval: '评估与切换间隔（分钟）', intervalError: '请输入 1–1440 的整数', saveFailed: '保存自动选择失败', saved: '已保存',
+    checked: '最近评估', next: '下次评估', switched: '最近切换', standards: '查看节点质量标准',
+    help: '后台运行，无需保持页面打开。仅从本组的实际代理节点中选择：采样数足够、达标率达到质量标准，且最近一次探测成功。最新样本须在 15 分钟或两倍自动探测间隔内（取较大值）。当前节点合格就保持；否则按达标率、P95 延迟择优。没有合格候选时保持原选择。手动点击节点会关闭本组自动选择。评估间隔不会改变测速间隔。',
+    reasons: { disabled: '手动选择', waiting: '等待后台首次评估', retained: '当前节点合格，保持选择', switched: '已切换至合格节点', no_candidate: '暂无合格候选，保持原选择', group_missing: '分组未运行或已不是 Selector，暂停切换', error: '评估或切换失败，将在下个间隔重试' },
+  },
+
   focusUnavailable: '当前运行的代理分组中没有「{name}」。',
   viewOutbounds: '查看出站配置',
   quality: {

@@ -1,6 +1,6 @@
 import type { ApiService } from './api'
 import type { BasicResponse } from '../types/api'
-import type { ConnectionsFrame, GroupDelays, NodeDelay, NodeDelaySample, RuntimeProxies } from '../types/runtime'
+import type { AutoSelectionStatus, ConnectionsFrame, GroupDelays, NodeDelay, NodeDelaySample, RuntimeProxies } from '../types/runtime'
 import { openStream, type StreamHandlers } from './stream'
 
 /**
@@ -33,6 +33,11 @@ export class RuntimeService {
     const response = await this.api.get<BasicResponse<{ points: NodeDelaySample[] }>>(
       `/runtime/proxies/history?name=${encodeURIComponent(name)}`,
     )
+    return response.data
+  }
+
+  async setAutoSelection(group: string, enabled: boolean, interval_seconds: number): Promise<BasicResponse<AutoSelectionStatus>> {
+    const response = await this.api.put<BasicResponse<AutoSelectionStatus>>('/runtime/proxies/auto-selection', { group, enabled, interval_seconds })
     return response.data
   }
 

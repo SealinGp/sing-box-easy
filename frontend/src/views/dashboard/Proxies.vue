@@ -255,7 +255,7 @@ const onTestAll = async () => {
       </div>
       <div v-else ref="layout" class="flex items-start gap-3">
         <div v-for="(column, index) in columns" :key="index" class="flex min-w-0 flex-1 basis-0 flex-col gap-3">
-        <ProxyGroupCard
+        <ProxyGroupCard @automatic-changed="load"
           v-for="entry in column"
           :key="entry.group.name"
           :group="entry.group"

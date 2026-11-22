@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/autoselect"
 	"github.com/SealinGp/sing-box-easy/app/pkg/fault"
 	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
@@ -45,8 +46,9 @@ type Settings interface {
 
 // Service serves the runtime proxies page.
 type Service struct {
-	settings Settings
-	history  *nodehistory.Store
+	settings  Settings
+	automatic *autoselect.Manager
+	history   *nodehistory.Store
 	// connect builds the Clash API client. A field so tests can substitute it.
 	connect func(externalController, secret string) (Runtime, error)
 }
@@ -108,6 +110,14 @@ func (s *Service) View(ctx context.Context) (View, error) {
 	if err := s.attachHistory(&view); err != nil {
 		return View{}, fault.New(fault.Failed, err.Error())
 	}
+	if s.automatic != nil {
+		states := s.automatic.Statuses()
+		for i := range view.Groups {
+			if state, ok := states[view.Groups[i].Name]; ok {
+				view.Groups[i].AutoSelection = &state
+			}
+		}
+	}
 	return view, nil
 }
 
@@ -120,6 +130,11 @@ func (s *Service) Select(ctx context.Context, command SelectCommand) error {
 	runtime, err := s.runtime()
 	if err != nil {
 		return err
+	}
+	if s.automatic != nil {
+		if err := s.automatic.Pause(group); err != nil {
+			return fault.New(fault.Failed, err.Error())
+		}
 	}
 	err = runtime.SelectProxy(ctx, group, name)
 	switch {

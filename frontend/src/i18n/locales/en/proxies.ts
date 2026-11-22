@@ -1,5 +1,14 @@
 // Runtime proxies page (Proxies.vue): groups and nodes of the running sing-box.
 export default {
+  auto: {
+    manualOverride: 'Selecting a node manually disables auto-selection for this group.',
+    title: 'Quality auto-selection', open: 'Configure selection for {group}', active: 'Quality auto', manual: 'Manual', enable: 'Switch automatically by quality',
+    interval: 'Evaluation and switching interval (minutes)', intervalError: 'Enter an integer from 1 to 1440', saveFailed: 'Could not save auto-selection', saved: 'Saved',
+    checked: 'Last evaluation', next: 'Next evaluation', switched: 'Last switch', standards: 'View node quality standards',
+    help: 'Runs in the background without this page open. Considers only real proxy nodes in this group with a full sample window, the required pass rate and a successful latest probe. Samples must be within 15 minutes or twice the scheduled probe interval, whichever is greater. Keeps a qualified current node; otherwise ranks by pass rate, then P95 latency. No eligible candidate means no switch. Clicking a node disables auto-selection for this group. Evaluation does not trigger probes.',
+    reasons: { disabled: 'Manual selection', waiting: 'Waiting for first evaluation', retained: 'Current node qualifies; keeping selection', switched: 'Switched to a qualified node', no_candidate: 'No eligible candidate; keeping selection', group_missing: 'Group missing or no longer a Selector; switching paused', error: 'Evaluation or switch failed; retrying next interval' },
+  },
+
   focusUnavailable: '“{name}” is not listed in any running proxy group.',
   viewOutbounds: 'View outbound configuration',
   quality: {

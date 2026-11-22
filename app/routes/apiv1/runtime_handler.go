@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/SealinGp/sing-box-easy/app/pkg/autoselect"
 	"github.com/SealinGp/sing-box-easy/app/pkg/proxies"
 	"github.com/SealinGp/sing-box-easy/app/pkg/traffic"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -113,4 +114,21 @@ func (h *Handler) CloseRuntimeConnections(ctx context.Context, c *app.RequestCon
 		return
 	}
 	respOK[any](ctx, c, nil)
+}
+
+func (h *Handler) SetRuntimeAutoSelection(ctx context.Context, c *app.RequestContext) {
+	var command struct {
+		Group string `json:"group"`
+		autoselect.Policy
+	}
+	if err := c.Bind(&command); err != nil {
+		respErr(ctx, c, CodeBadRequest, err.Error())
+		return
+	}
+	state, err := h.proxiesModule.SetAutoSelection(ctx, command.Group, command.Policy)
+	if err != nil {
+		respondOperationError(ctx, c, err)
+		return
+	}
+	respOK(ctx, c, state)
 }

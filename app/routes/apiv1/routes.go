@@ -156,6 +156,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.POST("/runtime/proxies/delay", handler.TestRuntimeProxy)
 	auth.POST("/runtime/proxies/group-delay", handler.TestRuntimeGroup)
 	admin.PUT("/runtime/proxies/selection", handler.SelectRuntimeProxy)
+	admin.PUT("/runtime/proxies/auto-selection", handler.SetRuntimeAutoSelection)
 	auth.GET("/runtime/connections/stream", handler.StreamRuntimeConnections)
 	admin.DELETE("/runtime/connections", handler.CloseRuntimeConnections)
 	admin.DELETE("/runtime/connections/:id", handler.CloseRuntimeConnection)

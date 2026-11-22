@@ -1,3 +1,4 @@
+import { evaluateDemoSelection } from './autoSelection'
 import { apiService } from '../services/api'
 import { DEFAULT_NODE_QUALITY } from '../utils/nodeQuality'
 import { members, outbounds, probeHistory, proxies, rules, servers, subscriptions, now } from './data'
@@ -10,7 +11,7 @@ export function installDemoApi() {
   const latest = () => Object.fromEntries(subscriptions.map(s => [s.id, probeHistory(s.id).at(-1)]))
   function read(url: string): unknown {
     const { pathname: path, searchParams: query } = new URL(url, 'https://demo.invalid')
-    if (path === '/runtime/proxies') return proxies
+    if (path === '/runtime/proxies') { evaluateDemoSelection(proxies, settings.node_quality); return proxies }
     if (path === '/runtime/proxies/history') return { points: members.find(m => m.name === query.get('name'))?.history ?? [] }
     if (path === '/user/me/preferences') return preferences
     if (path === '/auth/status') return { auth_enabled: false, system_type: 'linux' }
@@ -48,9 +49,19 @@ export function installDemoApi() {
       settings = structuredClone(body) as typeof settings
       return settings
     }
+    if (url === '/runtime/proxies/auto-selection') {
+      const group = proxies.groups.find(g => g.name === body?.group && g.switchable)
+      if (!group) throw new Error(readonly)
+      group.auto_selection = { enabled: Boolean(body?.enabled), interval_seconds: Number(body?.interval_seconds) || 300,
+        reason: body?.enabled ? 'waiting' : 'disabled' }
+      return group.auto_selection
+    }
     if (url === '/runtime/proxies/selection') {
       const group = proxies.groups.find(g => g.name === body?.group)
-      if (group?.switchable && group.members.some(m => m.name === body?.name)) group.now = String(body?.name)
+      if (group?.switchable && group.members.some(m => m.name === body?.name)) {
+        group.now = String(body?.name)
+        if (group.auto_selection) { group.auto_selection.enabled = false; group.auto_selection.reason = 'disabled' }
+      }
       return {}
     }
     if (url === '/runtime/proxies/delay') {

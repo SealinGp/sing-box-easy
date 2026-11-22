@@ -12,6 +12,7 @@
 package proxies
 
 import (
+	"github.com/SealinGp/sing-box-easy/app/pkg/autoselect"
 	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/clashapi"
 )
@@ -41,8 +42,9 @@ type Member struct {
 
 // Group is one selector/urltest-style group of the running sing-box.
 type Group struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	AutoSelection *autoselect.Status `json:"auto_selection,omitempty"`
+	Name          string             `json:"name"`
+	Type          string             `json:"type"`
 	// Now is the member currently in use.
 	Now string `json:"now"`
 	// Delay is the latency of the node Now ultimately resolves to.

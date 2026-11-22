@@ -1,12 +1,12 @@
 package bootstrap
 
 import (
-	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"strings"
 	"time"
 
 	"github.com/SealinGp/sing-box-easy/app/pkg/database"
 	"github.com/SealinGp/sing-box-easy/app/pkg/diagnostics"
+	"github.com/SealinGp/sing-box-easy/app/pkg/nodehistory"
 	"github.com/SealinGp/sing-box-easy/app/pkg/platform/sysinfo"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/outbounds"
 	"github.com/SealinGp/sing-box-easy/app/pkg/singbox/config/sections"
@@ -198,6 +198,9 @@ func (h *Modules) Init() error {
 	if err := h.SettingsManager.Init(); err != nil {
 		return err
 	}
+	if err := h.Proxies.ConfigureAutoSelection(h.SettingsManager); err != nil {
+		return err
+	}
 	h.ConfigManager.SetKeepVersions(h.SettingsManager.GetConfigVersionsKeep())
 
 	// Initialize node-rules tables + seed the mandatory fallback Filter.
@@ -222,11 +225,16 @@ func (h *Modules) Start() error {
 		h.SubscriptionManager.StopBackground()
 		return err
 	}
+	h.Proxies.StartAutoSelection()
 	return nil
 }
 
 // Close drains workers before the caller closes the database.
-func (h *Modules) Close() { h.SubscriptionManager.StopBackground(); h.VersionCleaner.Stop() }
+func (h *Modules) Close() {
+	h.Proxies.StopAutoSelection()
+	h.SubscriptionManager.StopBackground()
+	h.VersionCleaner.Stop()
+}
 func resolveAuthEnabled(mode string, systemType sysinfo.SystemType) bool {
 	switch mode {
 	case appconfig.AuthDisabled:
