@@ -8,7 +8,9 @@ export default {
     subscription: '所属订阅',
     subscriptionLoadFailed: '订阅名称加载失败',
     settings: '质量标准',
-    good: '良好', fair: '一般', poor: '较差', unknown: '暂无探测记录，不评级',
+    good: '推荐', poor: '未达推荐水位', insufficient: '样本不足', unknown: '暂无探测记录，不评级',
+    passRate: '达标率 {percent} · {passed}/{count} 次',
+    requiredSamples: '需满 {count} 次再评估推荐',
     unavailable: '无法读取节点质量标准，请到设置页重试。',
   },
   history: {

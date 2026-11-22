@@ -12,11 +12,11 @@ type NodeQuality struct {
 	Samples     int `json:"samples"`
 	MaxDelayMs  int `json:"max_delay_ms"`
 	GoodPercent int `json:"good_percent"`
-	FairPercent int `json:"fair_percent"`
+	FairPercent int `json:"fair_percent"` // Legacy wire field; no longer affects recommendations.
 }
 
 func DefaultNodeQuality() NodeQuality {
-	return NodeQuality{Samples: 10, MaxDelayMs: 500, GoodPercent: 80, FairPercent: 50}
+	return NodeQuality{Samples: 100, MaxDelayMs: 500, GoodPercent: 97, FairPercent: 50}
 }
 
 func (q NodeQuality) Validate() error {
@@ -26,8 +26,8 @@ func (q NodeQuality) Validate() error {
 	if q.MaxDelayMs < 1 || q.MaxDelayMs > 60000 {
 		return fmt.Errorf("max_delay_ms must be between 1 and 60000")
 	}
-	if q.FairPercent < 1 || q.GoodPercent > 100 || q.GoodPercent <= q.FairPercent {
-		return fmt.Errorf("percentages must satisfy 1 <= fair_percent < good_percent <= 100")
+	if q.GoodPercent < 1 || q.GoodPercent > 100 {
+		return fmt.Errorf("recommendation percentage must be between 1 and 100")
 	}
 	return nil
 }

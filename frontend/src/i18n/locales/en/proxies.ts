@@ -8,7 +8,9 @@ export default {
     subscription: 'Subscription',
     subscriptionLoadFailed: 'Could not load subscription name',
     settings: 'Quality criteria',
-    good: 'Good', fair: 'Fair', poor: 'Poor', unknown: 'No observations; unrated',
+    good: 'Recommended', poor: 'Below recommendation watermark', insufficient: 'Insufficient samples', unknown: 'No observations; unrated',
+    passRate: 'Pass rate {percent} · {passed}/{count} probes',
+    requiredSamples: 'Recommendation requires {count} probes',
     unavailable: 'Quality criteria could not be loaded. Retry in Settings.',
   },
   history: {

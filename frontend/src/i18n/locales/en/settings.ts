@@ -2,15 +2,14 @@
 export default {
   nodeQuality: {
     title: 'Node quality criteria',
-    help: 'Use the latest N observations. A positive delay at or below the limit passes; timeouts fail. Fewer than N observations use the actual count; no observations means unrated. These criteria apply to all nodes. Saving recalculates ratings without starting probes.',
+    help: 'Use the latest N probes. Successful probes at or below the latency limit pass; timeouts remain in the denominator. Smaller samples show their actual pass rate without a formal recommendation. The watermark describes historical performance, not a future guarantee. Defaults: 100 probes, 97%. Saving recalculates ratings without starting probes. Existing custom settings are retained.',
     samples: 'Recent observations',
     delay: 'Passing delay limit (ms)',
-    good: '👍 Good pass rate ≥ (%)',
-    fair: '🟡 Fair pass rate ≥ (%)',
-    poor: 'Below the fair threshold means 👎 Poor. Smaller samples use their actual count.',
+    watermark: 'Recommendation watermark',
+    requiredPasses: 'At least {passed} of {count} probes must have latency ≤ {delay}ms. No recommendation until the window is full.',
     samplesError: 'Enter an integer from 1 to 100.',
     delayError: 'Enter an integer from 1 to 60000.',
-    percentError: 'Enter integers with 1 ≤ Fair < Good ≤ 100.',
+    percentError: 'The recommendation watermark must be an integer from 1 to 100.',
     defaults: 'Restore defaults',
   },
   versionHistory: {

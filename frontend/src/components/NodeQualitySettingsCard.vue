@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNodeQualityStore } from '../stores/nodeQuality'
-import { DEFAULT_NODE_QUALITY, nodeQualityErrors } from '../utils/nodeQuality'
+import { DEFAULT_NODE_QUALITY, NODE_QUALITY_WATERMARKS, nodeQualityErrors } from '../utils/nodeQuality'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
 import Input from './Input.vue'
 import Button from './Button.vue'
@@ -17,6 +17,8 @@ const error = ref('')
 const saved = ref(false)
 const errors = computed(() => nodeQualityErrors(draft))
 const invalid = computed(() => Object.values(errors.value).some(Boolean))
+const watermarks = computed(() => [...new Set<number>([...NODE_QUALITY_WATERMARKS, draft.good_percent])].sort((a, b) => a - b))
+const requiredPasses = computed(() => Math.ceil(draft.samples * draft.good_percent / 100))
 async function load() {
   loading.value = true
   await store.load()
@@ -56,12 +58,19 @@ async function save() {
           :label="t('settings.nodeQuality.samples')" :error="errors.samples ? t('settings.nodeQuality.samplesError') : ''" />
         <Input v-model="draft.max_delay_ms" type="number" :min="1" :max="60000" required :disabled="saving"
           :label="t('settings.nodeQuality.delay')" :error="errors.max_delay_ms ? t('settings.nodeQuality.delayError') : ''" />
-        <Input v-model="draft.good_percent" type="number" :min="2" :max="100" required :disabled="saving"
-          :label="t('settings.nodeQuality.good')" :error="errors.good_percent ? t('settings.nodeQuality.percentError') : ''" />
-        <Input v-model="draft.fair_percent" type="number" :min="1" :max="99" required :disabled="saving"
-          :label="t('settings.nodeQuality.fair')" :error="errors.fair_percent ? t('settings.nodeQuality.percentError') : ''" />
       </div>
-      <p class="text-xs text-text-secondary">{{ t('settings.nodeQuality.poor') }}</p>
+      <fieldset :disabled="saving" class="space-y-2">
+        <legend class="mb-2 text-sm font-medium text-text-primary">{{ t('settings.nodeQuality.watermark') }}</legend>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <label v-for="watermark in watermarks" :key="watermark" class="flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-control border px-3 py-2 text-sm"
+            :class="draft.good_percent === watermark ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-border text-text-secondary'">
+            <input v-model="draft.good_percent" type="radio" name="node-quality-watermark" :value="watermark" class="accent-primary-600" @change="saved = false" />
+            {{ watermark }}%
+          </label>
+        </div>
+        <p v-if="errors.good_percent" role="alert" class="text-xs text-red-600">{{ t('settings.nodeQuality.percentError') }}</p>
+      </fieldset>
+      <p v-if="!invalid" class="text-xs text-text-secondary">{{ t('settings.nodeQuality.requiredPasses', { count: draft.samples, passed: requiredPasses, delay: draft.max_delay_ms }) }}</p>
       <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
       <p v-if="saved" role="status" class="text-sm text-green-600">{{ t('settings.toast.savedTitle') }}</p>
       <div class="flex flex-wrap gap-2">

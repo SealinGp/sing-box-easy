@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { HandThumbUpIcon, HandThumbDownIcon, MinusCircleIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline'
+import { HandThumbUpIcon, HandThumbDownIcon, ClockIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline'
 import { useNodeQuality } from '../composables/useNodeQuality'
 import type { NodeDelaySample } from '../types/runtime'
 
 const props = defineProps<{ history?: NodeDelaySample[]; actionLabel?: string; expanded?: boolean }>()
 const { rating, description } = useNodeQuality(() => props.history)
-const icons = { good: HandThumbUpIcon, fair: MinusCircleIcon, poor: HandThumbDownIcon, unknown: QuestionMarkCircleIcon }
-const tones = { good: 'text-green-600 dark:text-green-400', fair: 'text-amber-600 dark:text-amber-400', poor: 'text-red-600 dark:text-red-400', unknown: 'text-text-secondary' }
+const icons = { good: HandThumbUpIcon, insufficient: ClockIcon, poor: HandThumbDownIcon, unknown: QuestionMarkCircleIcon }
+const tones = { good: 'text-green-600 dark:text-green-400', insufficient: 'text-text-secondary', poor: 'text-red-600 dark:text-red-400', unknown: 'text-text-secondary' }
 const label = computed(() => props.actionLabel ? `${description.value} · ${props.actionLabel}` : description.value)
 </script>
 

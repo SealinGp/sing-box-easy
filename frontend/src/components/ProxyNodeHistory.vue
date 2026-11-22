@@ -14,6 +14,7 @@ import { runtimeService, subscriptionService } from '../services'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
 import { nodeSubscriptionId } from '../utils/nodeSubscription'
 import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
+import { useNodeQuality } from '../composables/useNodeQuality'
 
 const props = defineProps<{ name: string; history?: NodeDelaySample[] }>()
 const { t, locale } = useI18n()
@@ -22,6 +23,7 @@ const open = ref(false)
 const label = computed(() => t('proxies.quality.open', { node: displayName(props.name) }))
 const stored = ref<NodeDelaySample[] | null>(null)
 const qualityHistory = computed(() => stored.value ?? props.history)
+const { rating, summary: qualitySummary } = useNodeQuality(() => qualityHistory.value)
 const qualityStore = useNodeQualityStore()
 const loading = ref(false)
 const error = ref('')
@@ -99,6 +101,11 @@ function close() { open.value = false; generation++; loading.value = false; subs
           <button type="button" class="icon-action" :aria-label="t('common.close')" @click="panel?.hide()">
             <XMarkIcon class="h-4 w-4" aria-hidden="true" />
           </button>
+        </div>
+        <div v-if="qualityStore.ready && rating.count" class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
+          <span class="font-medium" :class="rating.level === 'good' ? 'text-green-600 dark:text-green-400' : rating.level === 'poor' ? 'text-red-600 dark:text-red-400' : 'text-text-secondary'">{{ t(`proxies.quality.${rating.level}`) }}</span>
+          <span class="text-text-secondary">{{ qualitySummary }}</span>
+          <span v-if="!rating.complete" class="text-text-secondary">{{ t('proxies.quality.requiredSamples', { count: qualityStore.rules.samples }) }}</span>
         </div>
         <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }} <button type="button" class="underline" @click="load">{{ t('proxies.retry') }}</button></p>
         <p v-if="!loading && !points.length && !error" class="py-4 text-sm text-text-secondary">{{ t('proxies.history.empty') }}</p>
