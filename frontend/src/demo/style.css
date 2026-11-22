@@ -1,0 +1,3 @@
+@import '../style.css';
+/* The standalone Vite root is demo/, while the reused components live in src/. */
+@source '../';

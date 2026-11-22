@@ -8,3 +8,6 @@ dist/
 # The embedded-UI placeholder is real source, not a build artifact.
 !app/webui/dist/
 .DS_Store
+
+# Standalone GitHub Pages demo build
+/pages-dist/
