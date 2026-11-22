@@ -51,9 +51,6 @@ onMounted(() => useServiceStore().fetch())
       </div>
     </header>
     <div class="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
-      <aside class="mb-5 rounded-surface border border-border bg-bg-secondary px-4 py-3 text-sm text-text-secondary">
-        {{ zh ? '安装前先逛一逛。全部为虚构数据，不连接设备。流量、测速和网络信息均为模拟；节点切换及质量标准仅在当前页面会话生效，刷新即还原；配置写入、订阅更新等操作需安装后使用。' : 'Explore before installing. All data is fictional; no device is connected. Traffic, tests and network information are simulated. Node selection and quality standards last for this session only and reset on reload. Install the app to write configuration or refresh subscriptions.' }}
-      </aside>
       <DemoNavigation :items="nav" :zh="zh" :class="{ 'lg:hidden': layout === 'sidebar' }" />
       <main id="demo-content" tabindex="-1" class="min-w-0">
         <h1 :class="['/dashboard/route/rules', '/dashboard/dns/servers', '/dashboard/settings'].includes(route.path) ? 'sr-only' : 'mb-4 text-2xl font-semibold'">{{ title }}</h1>
