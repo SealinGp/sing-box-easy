@@ -157,6 +157,42 @@ func TestLatest(t *testing.T) {
 	}
 }
 
+func TestLatestIgnoresFutureSamplesAfterClockCorrection(t *testing.T) {
+	s := newStore(t)
+	now := time.Now().Truncate(time.Second)
+	for _, row := range []struct {
+		id     string
+		at     time.Time
+		sample Sample
+	}{
+		{"subA", now.Add(-time.Minute), Sample{Total: 28, Reachable: 26, AvgMs: 722}},
+		{"subA", now.Add(7 * time.Hour), Sample{Total: 28, Reachable: 0}},
+		{"futureOnly", now.Add(8 * time.Hour), Sample{Total: 10, Reachable: 0}},
+		{"down", now.Add(-time.Minute), Sample{Total: 4, Reachable: 0}},
+	} {
+		if err := s.Insert(row.id, row.at, row.sample); err != nil {
+			t.Fatal(err)
+		}
+	}
+	latest, err := s.Latest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(latest) != 2 || latest["subA"].Reachable != 26 || latest["subA"].Total != 28 || latest["subA"].AvgMs != 722 {
+		t.Fatalf("future outage masked current quality: %+v", latest)
+	}
+	if _, ok := latest["futureOnly"]; ok {
+		t.Fatal("future-only subscription must not report a measurement yet")
+	}
+	if latest["down"].Reachable != 0 || latest["down"].Total != 4 {
+		t.Fatalf("a real zero-availability sample must remain visible: %+v", latest["down"])
+	}
+	points, err := s.Series("subA", now.Add(-time.Hour), now, 0)
+	if err != nil || len(points) != 1 || points[0].Sample != latest["subA"].Sample {
+		t.Fatalf("summary differs from current history: points=%+v latest=%+v err=%v", points, latest["subA"], err)
+	}
+}
+
 // TestTrimByAge enforces the retention window.
 func TestTrimByAge(t *testing.T) {
 	s := newStore(t)

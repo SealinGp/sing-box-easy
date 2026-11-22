@@ -143,16 +143,18 @@ func (s *ProbeStore) rawSeries(subID string, from, to time.Time) ([]Point, error
 // by subscription id. One query rather than one per subscription: the list page
 // and the Overview card both want the whole set at once.
 func (s *ProbeStore) Latest() (map[string]Point, error) {
+	// Ignore future-dated samples left by a clock correction. Series already
+	// excludes them; otherwise an old outage can mask current successful runs.
 	// The inner MAX(at) per sub_id is joined back to pick that row. Ties (two
 	// runs in the same second, which the 1-minute interval floor makes
 	// impossible in practice) collapse harmlessly to one row.
 	const query = `
 SELECT p.sub_id, p.at, p.total, p.reachable, p.avg_ms, p.min_ms, p.max_ms
 FROM subscription_probe_samples p
-JOIN (SELECT sub_id, MAX(at) AS at FROM subscription_probe_samples GROUP BY sub_id) m
+JOIN (SELECT sub_id, MAX(at) AS at FROM subscription_probe_samples WHERE at <= ? GROUP BY sub_id) m
   ON m.sub_id = p.sub_id AND m.at = p.at`
 
-	rows, err := s.e.QueryInterface(query)
+	rows, err := s.e.QueryInterface(query, time.Now().Unix())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read latest probe samples: %w", err)
 	}
