@@ -252,7 +252,7 @@ func (m *Manager) Tick(ctx context.Context, now time.Time) {
 		if err == nil && selected != "" {
 			state.Selected = selected
 		}
-		if err == nil && reason == "switched" {
+		if err == nil && isSwitch(reason) {
 			state.LastSwitched = now
 			logger.Info("Quality auto-selection switched node", zap.String("group", group), zap.String("node", selected))
 		}
@@ -288,7 +288,7 @@ func (m *Manager) evaluate(ctx context.Context, name string, now time.Time) (str
 		maxAge = 15 * time.Minute
 	}
 	selected, reason := Decide(*group, list, points, rules, now, maxAge)
-	if reason != "switched" {
+	if !isSwitch(reason) {
 		return selected, reason, nil
 	}
 	// Re-read membership/current selection immediately before applying the decision.
@@ -307,3 +307,5 @@ func (m *Manager) evaluate(ctx context.Context, name string, now time.Time) (str
 	}
 	return "", "", fmt.Errorf("group changed during quality evaluation; retrying at next interval")
 }
+
+func isSwitch(reason string) bool { return reason == "switched" || reason == "fallback_switched" }

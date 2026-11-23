@@ -197,3 +197,22 @@ func TestInitRejectsCorruptOrInvalidStoredPolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestFallbackSwitchAndRetain(t *testing.T) {
+	m, _, r, now := managerFixture(t)
+	m.history = fakeHistory{"a": samples(now, 100, 100, 800)}
+	ctx := context.Background()
+	if _, err := m.Configure(ctx, "g", Policy{true, 300}); err != nil {
+		t.Fatal(err)
+	}
+	m.Tick(ctx, now)
+	first := m.Statuses()["g"]
+	if r.now != "a" || first.Reason != "fallback_switched" || !first.LastSwitched.Equal(now) {
+		t.Fatal(first)
+	}
+	m.Tick(ctx, now.Add(5*time.Minute))
+	retained := m.Statuses()["g"]
+	if r.switched != 1 || retained.Reason != "fallback_retained" || !retained.LastSwitched.Equal(now) {
+		t.Fatal(retained)
+	}
+}

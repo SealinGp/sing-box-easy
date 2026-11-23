@@ -5,8 +5,8 @@ export default {
     title: '质量自动选择', open: '设置 {group} 的选择方式', active: '质量自动', manual: '手动选择', enable: '按质量自动切换',
     interval: '评估与切换间隔（分钟）', intervalError: '请输入 1–1440 的整数', saveFailed: '保存自动选择失败', saved: '已保存',
     checked: '最近评估', next: '下次评估', switched: '最近切换', standards: '查看节点质量标准',
-    help: '后台运行，无需保持页面打开。仅从本组的实际代理节点中选择：采样数足够、达标率达到质量标准，且最近一次探测成功。最新样本须在 15 分钟或两倍自动探测间隔内（取较大值）。当前节点合格就保持；否则按达标率、P95 延迟择优。没有合格候选时保持原选择。手动点击节点会关闭本组自动选择。评估间隔不会改变测速间隔。',
-    reasons: { disabled: '手动选择', waiting: '等待后台首次评估', retained: '当前节点合格，保持选择', switched: '已切换至合格节点', no_candidate: '暂无合格候选，保持原选择', group_missing: '分组未运行或已不是 Selector，暂停切换', error: '评估或切换失败，将在下个间隔重试' },
+    help: '后台按设定间隔评估。只比较样本完整、最近一次探测成功的实际节点。最新探测须在 15 分钟或两倍探测间隔内（取较大值）。优先保留推荐节点；需要切换时按达标率、成功探测 P95 延迟排序。没有推荐节点时，在有达标记录且距最高达标率 1 个百分点以内的节点中选 P95 最低者；全部零达标时先比成功率，再比 P95。',
+    reasons: { fallback_retained: '未达推荐水位，择优后保持当前节点', fallback_switched: '未达推荐水位，已择优切换', disabled: '手动选择', waiting: '等待后台首次评估', retained: '当前节点合格，保持选择', switched: '已切换至合格节点', no_candidate: '暂无合格候选，保持原选择', group_missing: '分组未运行或已不是 Selector，暂停切换', error: '评估或切换失败，将在下个间隔重试' },
   },
 
   focusUnavailable: '当前运行的代理分组中没有「{name}」。',

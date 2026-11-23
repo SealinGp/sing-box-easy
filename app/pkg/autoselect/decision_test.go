@@ -31,8 +31,12 @@ func TestDecide(t *testing.T) {
 		want, reason string
 	}{
 		{"97 inclusive", map[string][]nodehistory.Point{"a": samples(now, 100, 97, 500)}, "a", "switched"},
-		{"96 rejected", map[string][]nodehistory.Point{"a": samples(now, 100, 96, 100)}, "", "no_candidate"},
-		{"slow rejected", map[string][]nodehistory.Point{"a": samples(now, 100, 100, 501)}, "", "no_candidate"},
+		{"below watermark fallback", map[string][]nodehistory.Point{"a": samples(now, 100, 96, 100)}, "a", "fallback_switched"},
+		{"all slow fallback", map[string][]nodehistory.Point{"a": samples(now, 100, 100, 501)}, "a", "fallback_switched"},
+		{"one point band", map[string][]nodehistory.Point{"a": samples(now, 100, 71, 200), "b": samples(now, 100, 72, 400)}, "a", "fallback_switched"},
+		{"outside band", map[string][]nodehistory.Point{"a": samples(now, 100, 70, 100), "b": samples(now, 100, 72, 400)}, "b", "fallback_switched"},
+		{"all slow favor availability", map[string][]nodehistory.Point{"a": samples(now, 100, 95, 600), "b": samples(now, 100, 99, 800)}, "b", "fallback_switched"},
+		{"retain equally ranked fallback", map[string][]nodehistory.Point{"a": samples(now, 100, 100, 600), "current": samples(now, 100, 100, 600)}, "current", "fallback_retained"},
 		{"incomplete", map[string][]nodehistory.Point{"a": samples(now, 99, 99, 100)}, "", "no_candidate"},
 		{"stale", map[string][]nodehistory.Point{"a": samples(now.Add(-time.Hour), 100, 100, 100)}, "", "no_candidate"},
 		{"future", map[string][]nodehistory.Point{"a": samples(now.Add(time.Hour), 100, 100, 100)}, "", "no_candidate"},
