@@ -24,7 +24,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   size: 'default',
 })
-const emit = defineEmits<{ refresh: [] }>()
+const emit = defineEmits<{ refresh: []; 'update:detailVisible': [visible: boolean] }>()
 
 const showQuality = ref(false)
 
@@ -35,6 +35,7 @@ function openQuality() {
 // Probe Now can change the summary while the dialog is open. Refresh the
 // caller's shared status map after it closes so this row shows the same sample.
 watch(showQuality, (open, wasOpen) => {
+  emit('update:detailVisible', open)
   if (wasOpen && !open) emit('refresh')
 })
 
