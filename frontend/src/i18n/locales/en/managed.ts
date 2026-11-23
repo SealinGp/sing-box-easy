@@ -1,4 +1,7 @@
 export default {
+  ruleSetSearch: 'Search or paste multiple rule sets',
+  ruleSetSkipped: 'Skipped unmatched rule sets: {tags}',
+  priorityLabel: 'Rule priority',
  missing_dependency: 'A referenced DNS server, outbound or rule set is missing',
   detachGroup: 'Stop managing group and its policies · keep all rules',
   accept: 'Accept compatible DNS changes',

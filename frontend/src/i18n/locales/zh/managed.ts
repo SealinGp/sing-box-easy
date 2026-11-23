@@ -1,4 +1,7 @@
 export default {
+  ruleSetSearch: '搜索或粘贴多行规则集',
+  ruleSetSkipped: '已跳过未匹配的规则集：{tags}',
+  priorityLabel: '规则优先级',
  missing_dependency: '引用的 DNS 服务器、出站或规则集已缺失',
   detachGroup: '停止管理分组及其策略 · 保留所有规则',
   accept: '接受兼容的 DNS 更改',

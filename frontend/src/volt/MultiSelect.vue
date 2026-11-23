@@ -18,8 +18,10 @@ import { ptViewMerge } from './utils';
 import { computed } from 'vue';
 import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
-interface Props extends /* @vue-ignore */ MultiSelectProps {}
-defineProps<Props>();
+interface Props extends /* @vue-ignore */ MultiSelectProps {
+    filterPaste?: (event: ClipboardEvent) => void;
+}
+const props = defineProps<Props>();
 
 /*
  * Themed to match `volt/Select.vue`, which it deliberately mirrors — the two
@@ -45,7 +47,7 @@ defineProps<Props>();
  * See src/volt/Select.vue for the same reasoning applied there first.
  */
 const interfaceMotion = useInterfaceMotion();
-const baseTheme: MultiSelectPassThroughOptions = {
+const baseTheme = {
     root: ({ props }) => ({
         class: `volt-select relative inline-flex items-stretch cursor-pointer select-none text-sm
             transition-[border-color,box-shadow] duration-200
@@ -161,9 +163,13 @@ const baseTheme: MultiSelectPassThroughOptions = {
         leaveActiveClass: '',
         leaveToClass: ''
     }
-};
+} satisfies MultiSelectPassThroughOptions;
 const theme = computed<MultiSelectPassThroughOptions>(() => ({
     ...baseTheme,
+    pcFilter: {
+        ...baseTheme.pcFilter,
+        root: { class: baseTheme.pcFilter?.root, onPaste: props.filterPaste }
+    },
     transition: interfaceMotion ? popoverMotion : baseTheme.transition,
 }));
 </script>
