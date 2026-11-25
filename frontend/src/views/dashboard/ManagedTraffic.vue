@@ -148,7 +148,7 @@ function createGroup(event: Event) {
           >{{ t('lab.resolverGroups') }} →</RouterLink
         >
       </template>
-      <ManagedPlanPreview v-if="plan && !panelOpen && !policy" :plan="plan" :busy="busy"
+      <ManagedPlanPreview v-if="plan && !panelOpen && !policy" :plan="plan" :busy="busy" :error="error"
         @apply="commit" @back="clearPlan" />
     </template>
     <Popover

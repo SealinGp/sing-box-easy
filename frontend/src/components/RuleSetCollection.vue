@@ -23,7 +23,7 @@ const columns = computed(() => [
   { key: 'tag', label: t('route.ruleSets.fields.tag'), class: 'w-56' },
   { key: 'type', label: t('route.ruleSets.fields.type'), class: 'w-24' },
   { key: 'format', label: t('route.ruleSets.fields.format'), class: 'w-24' },
-  { key: 'url', label: t('route.ruleSets.fields.url'), class: 'w-64' },
+  { key: 'url', label: t('localRules.location'), class: 'w-64' },
   { key: 'detour', label: t('route.ruleSets.fields.downloadDetour'), class: 'w-40' },
   { key: 'interval', label: t('route.ruleSets.fields.updateInterval'), class: 'w-28' },
   { key: 'actions', label: t('common.actions'), class: 'col-actions w-36', minWidth: 144 },
@@ -41,7 +41,7 @@ const columns = computed(() => [
       <td>{{ ruleSet.tag }}</td>
       <td>{{ ruleSet.type }}</td>
       <td>{{ ruleSet.format || '—' }}</td>
-      <td>{{ ruleSet.url || '—' }}</td>
+      <td>{{ ruleSet.path || ruleSet.url || '—' }}</td>
       <td>{{ ruleSet.download_detour || '—' }}</td>
       <td>{{ ruleSet.update_interval || '—' }}</td>
       <td class="col-actions"><div class="flex items-center justify-end gap-1" :inert="busy">

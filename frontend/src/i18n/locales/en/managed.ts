@@ -1,4 +1,11 @@
 export default {
+  routeOrder: 'Route rule placement',
+  dnsOrder: 'DNS rule placement',
+  beforeRule: 'Before this rule · {rule}',
+  afterAllRules: 'After all rules',
+  allTraffic: 'All traffic',
+  diffTitle: 'Configuration diff',
+
   ruleSetSearch: 'Search or paste multiple rule sets',
   ruleSetSkipped: 'Skipped unmatched rule sets: {tags}',
   priorityLabel: 'Rule priority',

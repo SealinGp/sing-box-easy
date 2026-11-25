@@ -162,6 +162,8 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	admin.DELETE("/runtime/connections/:id", handler.CloseRuntimeConnection)
 
 	// Route Rule-sets
+	admin.GET("/route/local-rule-file", handler.ReadLocalRuleFile)
+	admin.PUT("/route/local-rule-file", handler.WriteLocalRuleFile)
 	auth.GET("/route/rule-sets", handler.GetRuleSets)
 	admin.POST("/route/rule-sets/refresh", handler.RefreshRuleSet)
 	auth.POST("/route/rule-sets", handler.AddRuleSet)

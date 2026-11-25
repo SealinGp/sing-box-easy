@@ -7,7 +7,7 @@ import type { RoutingCondition } from '../utils/routeRulePresentation'
 import { humanizeFieldName } from '../utils/fieldLabels'
 import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 
-const props = defineProps<{ node: RoutingCondition; compact?: boolean }>()
+const props = withDefaults(defineProps<{ node: RoutingCondition; compact?: boolean; labelPrefix?: string }>(), { labelPrefix: 'route.rules.fields' })
 const { t, te } = useI18n()
 const field = computed(() => props.node.kind === 'field' ? props.node : null)
 const group = computed(() => props.node.kind === 'group' ? props.node : null)
@@ -19,7 +19,7 @@ const values = computed(() => {
 })
 const label = computed(() => {
   const key = field.value?.key ?? ''
-  const path = `route.rules.fields.${key}`
+  const path = `${props.labelPrefix}.${key}`
   return (te(path) ? t(path) : humanizeFieldName(key)).replace(/[:：]\s*$/, '')
 })
 const operator = computed(() => {
@@ -44,7 +44,7 @@ const groupLabel = computed(() => t(`route.rules.sentence.${{
         <span v-if="group.children.length > 1 || group.mode === 'not'" class="text-text-secondary">(</span>
         <template v-for="(child, index) in group.children" :key="index">
           <span v-if="index" class="mx-1 text-xs font-medium text-primary-600 dark:text-primary-400">{{ connector }}</span>
-          <RoutingConditionNode :node="child" compact />
+          <RoutingConditionNode :node="child" :label-prefix="labelPrefix" compact />
         </template>
         <span v-if="group.children.length > 1 || group.mode === 'not'" class="text-text-secondary">)</span>
       </template>
@@ -72,7 +72,7 @@ const groupLabel = computed(() => t(`route.rules.sentence.${{
       <div class="space-y-1.5 p-3">
         <template v-for="(child, index) in group.children" :key="index">
           <p v-if="index" class="text-[11px] font-medium text-text-secondary">{{ connector }}</p>
-          <RoutingConditionNode :node="child" />
+          <RoutingConditionNode :node="child" :label-prefix="labelPrefix" />
         </template>
       </div>
     </div>

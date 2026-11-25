@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TooltipTarget from "./TooltipTarget.vue"
-import Tooltip from './Tooltip.vue'
+import SubscriptionNameLink from './SubscriptionNameLink.vue'
 import CardActions from './CardActions.vue'
 import TruncatedText from './TruncatedText.vue'
 import SubscriptionActions from './SubscriptionActions.vue'
@@ -14,7 +14,7 @@ import Table from "./Table.vue";
 import CopyIcon from "./CopyIcon.vue";
 import SubscriptionQualityCell from "./SubscriptionQualityCell.vue";
 import SubscriptionQuotaDetails from "./SubscriptionQuotaDetails.vue";
-import { ArrowTopRightOnSquareIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { ClockIcon } from '@heroicons/vue/24/outline'
 const { page } = defineProps<{ page: UnwrapRef<ReturnType<typeof useSubscriptionsPage>> }>()
 const { t } = useI18n()
 const { summarizePlan, officialLink, formatDate, getSubscriptionStatus } = page
@@ -37,7 +37,7 @@ const columns = computed(() => [
 <Table class="subscription-list table-surface" table-class="table-fixed" :columns="columns" column-storage-key="subscriptions" :loading="page.isLoading && !subscriptions.length" :empty="!subscriptions.length">
 <template #empty><p>{{ t('subscriptions.empty.title') }}</p><Button class="mt-3" @click="openAddModal">{{ t('subscriptions.add') }}</Button></template>
 <tr v-for="subscription in subscriptions" :key="subscription.id" :class="{ 'focus-target': isFocused(subscription.id) }">
-<td><TruncatedText :text="subscription.name" /></td>
+<td data-cell-tooltip="false"><SubscriptionNameLink :name="subscription.name" :href="officialLink(subscription)" /></td>
 <td><StatusIndicator :variant="getSubscriptionStatus(subscription).type" :busy="isUpdating.includes(subscription.id)"><TruncatedText :text="getSubscriptionStatus(subscription).text" /></StatusIndicator></td>
 <td data-cell-tooltip="false"><SubscriptionQualityCell size="list" :point="probeLatest[subscription.id]" :subscription="subscription" @refresh="loadProbeStatus" /></td>
 <td data-cell-tooltip="false"><SubscriptionQuotaDetails compact :show-expiry="false" :plan="summarizePlan(subscription)" :subscription-name="subscription.name" /></td>
@@ -55,25 +55,7 @@ const columns = computed(() => [
 <input type="checkbox" class="collection-checkbox" :aria-label="t('common.collection.select')" :checked="selected.has(subscription.id)" @change="toggle(subscription.id)" />
 <section>
             <div class="flex flex-col gap-1 max-w-[18rem]">
-<Tooltip v-if="officialLink(subscription)" class="min-w-0">
-<template #content>{{ $t('subscriptions.tooltip.openSite', { name: subscription.name }) }}</template>
-<template #default="{ describedBy }"><a
-                :href="officialLink(subscription)!"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="group inline-flex items-center gap-1 min-w-0 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
-                :aria-describedby="describedBy"
-              >
-                <span class="truncate">{{ subscription.name }}</span>
-                <ArrowTopRightOnSquareIcon class="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
-              </a></template></Tooltip>
-              <TooltipTarget as="span"
-                v-else
-                class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                :text="subscription.name"
-              >
-                {{ subscription.name }}
-              </TooltipTarget>
+<SubscriptionNameLink :name="subscription.name" :href="officialLink(subscription)" />
 <div class="flex items-center gap-1 min-w-0">
                 <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                   {{ $t("subscriptions.table.id") }}

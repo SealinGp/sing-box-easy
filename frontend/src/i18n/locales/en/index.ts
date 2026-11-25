@@ -1,3 +1,4 @@
+import localRules from './localRules'
 import managed from './managed'
 import lab from './lab'
 // English message catalog — merges all namespace modules into one object.
@@ -36,6 +37,7 @@ import dualStack from './dualStack'
 import ruleSet from './ruleSet'
 
 export default {
+  localRules,
  managed,
   lab,
   common,

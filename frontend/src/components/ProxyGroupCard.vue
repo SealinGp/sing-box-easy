@@ -279,7 +279,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     -->
     <div class="fold fold-nodes" :inert="!open">
       <div>
-        <div class="group-scroll quiet-scrollbar grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
+        <div class="group-scroll quiet-scrollbar mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
           <TooltipTarget
             :as="group.switchable ? 'button' : 'div'"
             v-for="member in shownMembers"

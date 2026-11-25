@@ -1,0 +1,18 @@
+/* Fill cards vertically, then add columns as the available content width grows. */
+.masonry-container {
+  container-type: inline-size;
+}
+.masonry-layout {
+  column-count: 1;
+  column-gap: 1rem;
+}
+.masonry-layout > * {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+@container (min-width: 768px) {
+  .masonry-layout { column-count: 2; }
+}
+@container (min-width: 1152px) {
+  .masonry-layout { column-count: 3; }
+}

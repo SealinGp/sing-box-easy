@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, Card, Input, Textarea, IconButton } from '..'
-import FieldHelp from '../FieldHelp.vue'
+import RulePositionSelect from './RulePositionSelect.vue'
 import Select from '../../volt/Select.vue'
 import PolicyRuleSetSelect from './PolicyRuleSetSelect.vue'
 import ManagedPlanPreview from './ManagedPlanPreview.vue'
@@ -32,7 +32,6 @@ function changeConditionKind(condition: ConditionDraft, kind: string) {
   condition.value = condition.drafts[kind] ?? ''
   condition.kind = kind
 }
-const serialized = (value: unknown) => JSON.stringify(value, null, 2)
 function dnsSearchKeydown(event: KeyboardEvent) {
   if (event.key === 'Tab' && !event.shiftKey) {
     event.preventDefault(); event.stopPropagation()
@@ -51,7 +50,7 @@ function dnsCreateKeydown(event: KeyboardEvent) {
 
 <template>
   <Card class="scroll-mt-4">
-    <div class="grid min-w-0 gap-5" :class="{ 'xl:grid-cols-2': plan }">
+    <div class="grid min-w-0 gap-5" >
           <form class="min-w-0 space-y-5" :inert="busy" @submit.prevent="$emit('preview')">
             <div class="grid gap-5 md:grid-cols-2">
               <div class="space-y-4">
@@ -191,35 +190,10 @@ function dnsCreateKeydown(event: KeyboardEvent) {
                   />
                 </div>
 
-                <div class="flex items-center gap-1 text-sm">
-                  {{ t('managed.priorityLabel') }}
-                  <FieldHelp :label="t('managed.priorityLabel')" :text="t('managed.priority')" />
-                </div>
-                <Input
-                  v-model="policy.route_index"
-                  type="number"
-                  :min="0"
-                  :max="snapshot.route_rules.length"
-                  :label="t('managed.routePosition')"
-                /><Input
-                  v-if="policy.group_id || policy.dns_server"
-                  v-model="policy.dns_index"
-                  type="number"
-                  :min="0"
-                  :max="snapshot.dns_rules.length"
-                  :label="t('managed.dnsPosition')"
-                />
-                <details class="text-xs">
-                  <summary class="cursor-pointer text-primary">
-                    {{ t('managed.existingRules') }}
-                  </summary>
-                  <pre class="mt-2 max-h-72 overflow-auto">{{
-                    serialized({
-                      route: snapshot.route_rules,
-                      dns: snapshot.dns_rules,
-                    })
-                  }}</pre>
-                </details>
+                <RulePositionSelect v-model="policy.route_index" :rules="snapshot.route_rules"
+                  :label="t('managed.routeOrder')" />
+                <RulePositionSelect v-if="policy.group_id || policy.dns_server"
+                  v-model="policy.dns_index" :rules="snapshot.dns_rules" :label="t('managed.dnsOrder')" />
               </div>
             </div>
             <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
@@ -234,7 +208,7 @@ function dnsCreateKeydown(event: KeyboardEvent) {
               }}</Button>
             </div>
           </form>
-      <ManagedPlanPreview v-if="plan" :plan="plan" :busy="busy"
+      <ManagedPlanPreview v-if="plan" :plan="plan" :busy="busy" :error="error"
         @apply="$emit('apply')" @back="$emit('back')" />
     </div>
   </Card>

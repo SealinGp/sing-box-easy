@@ -1,0 +1,23 @@
+export default {
+  pathRequired: '请填写已有规则文件路径，或创建规则文件。',
+  "title": "本地规则文件",
+  "name": "规则集名称",
+  "path": "保存路径",
+  "editMode": "编辑方式",
+  "visual": "可视化",
+  "rule": "匹配条件 {n}",
+  "remove": "移除",
+  "addField": "添加匹配条件",
+  "addRule": "添加另一条规则",
+  "preview": "预览并保存",
+  "validation": "保存前由 sing-box 校验；已有文件会备份。新建规则集后需应用配置。",
+  "advanced": "此内容包含高级字段或简写格式，请在 JSON 中编辑；草稿已保留。",
+  "nameRequired": "请填写规则集名称。",
+  "invalid": "需要 version 整数和 rules 数组。",
+  "empty": "每条规则至少填写一个条件。",
+  "create": "创建规则文件",
+  "edit": "编辑规则内容",
+  "saved": "规则文件已保存。",
+  "existingPath": "已有规则文件路径",
+  "location": "URL / 文件路径"
+}

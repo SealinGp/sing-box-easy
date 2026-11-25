@@ -1,0 +1,17 @@
+export const fields = [
+  { key: 'domain', label: '完整域名', example: 'example.com' },
+  { key: 'domain_suffix', label: '域名后缀', example: 'example.org' },
+  { key: 'domain_keyword', label: '域名关键词', example: 'shopify' },
+  { key: 'domain_regex', label: '域名正则', example: '^stun\\..+' },
+  { key: 'ip_cidr', label: '目标 IP 网段', example: '192.168.1.0/24' },
+  { key: 'source_ip_cidr', label: '来源 IP 网段', example: '10.0.0.0/8' },
+  { key: 'port', label: '目标端口', example: '443', numeric: true },
+  { key: 'port_range', label: '目标端口范围', example: '1000:2000' },
+  { key: 'source_port', label: '来源端口', example: '8080', numeric: true },
+  { key: 'source_port_range', label: '来源端口范围', example: '1000:2000' },
+  { key: 'network', label: '网络协议', example: 'tcp' },
+  { key: 'query_type', label: 'DNS 查询类型', example: 'A' },
+  { key: 'process_name', label: '进程名称', example: 'curl' },
+  { key: 'process_path', label: '进程路径', example: '/usr/bin/curl' },
+  { key: 'process_path_regex', label: '进程路径正则', example: '^/usr/bin/.+' },
+]

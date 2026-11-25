@@ -10,12 +10,18 @@ const ALTERNATIVES = [
   ['source_port', 'source_port_range'],
 ]
 
-export function routeConditionGroups(rule: Record<string, unknown>): string[][] {
-  const keys: string[] = ALL_MATCHER_KEYS.filter(key => key !== 'invert' && isFieldFilled(rule[key]))
+interface ConditionOptions {
+  keys: (rule: Record<string, unknown>) => readonly string[]
+  alternatives: string[][]
+}
+const ROUTE_OPTIONS: ConditionOptions = { keys: () => ALL_MATCHER_KEYS, alternatives: ALTERNATIVES }
+
+export function routeConditionGroups(rule: Record<string, unknown>, options = ROUTE_OPTIONS): string[][] {
+  const keys: string[] = options.keys(rule).filter(key => key !== 'invert' && isFieldFilled(rule[key]))
   const emitted = new Set<string>()
   return keys.flatMap(key => {
     if (emitted.has(key)) return []
-    const family = ALTERNATIVES.find(group => group.includes(key)) ?? [key]
+    const family = options.alternatives.find(group => group.includes(key)) ?? [key]
     const group = family.filter(member => keys.includes(member))
     group.forEach(member => emitted.add(member))
     return [group]
@@ -27,13 +33,13 @@ export type RoutingCondition =
   | { kind: 'group'; mode: 'and' | 'or' | 'not' | 'configured'; children: RoutingCondition[] }
 
 /** Preserve parentheses and inversion when presenting a rule as a sentence. */
-export function routeConditionTree(rule: Record<string, unknown>): RoutingCondition {
+export function routeConditionTree(rule: Record<string, unknown>, options = ROUTE_OPTIONS): RoutingCondition {
   let node: RoutingCondition
   if (rule.type === 'logical') {
     node = { kind: 'group', mode: rule.mode === 'or' ? 'or' : 'and',
-      children: (Array.isArray(rule.rules) ? rule.rules : []).map(child => routeConditionTree(child)) }
+      children: (Array.isArray(rule.rules) ? rule.rules : []).map(child => routeConditionTree(child, options)) }
   } else {
-    const children: RoutingCondition[] = routeConditionGroups(rule).map(keys => {
+    const children: RoutingCondition[] = routeConditionGroups(rule, options).map(keys => {
       const fields: RoutingCondition[] = keys.map(key => ({ kind: 'field', key, value: rule[key] }))
       return fields.length === 1 ? fields[0]! : { kind: 'group', mode: 'or', children: fields }
     })

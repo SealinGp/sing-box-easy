@@ -1,4 +1,11 @@
 export default {
+  routeOrder: '路由规则执行位置',
+  dnsOrder: 'DNS 规则执行位置',
+  beforeRule: '在此规则之前 · {rule}',
+  afterAllRules: '放在所有规则之后',
+  allTraffic: '所有流量',
+  diffTitle: '配置差异对比',
+
   ruleSetSearch: '搜索或粘贴多行规则集',
   ruleSetSkipped: '已跳过未匹配的规则集：{tags}',
   priorityLabel: '规则优先级',

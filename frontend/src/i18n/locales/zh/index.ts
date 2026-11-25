@@ -1,3 +1,4 @@
+import localRules from './localRules'
 import managed from './managed'
 import lab from './lab'
 // 中文消息目录 —— 合并所有命名空间模块为一个对象。
@@ -36,6 +37,7 @@ import dualStack from './dualStack'
 import ruleSet from './ruleSet'
 
 export default {
+  localRules,
  managed,
   lab,
   common,

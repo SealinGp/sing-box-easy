@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor'
 
 interface Props {
   modelValue: string
+  modelUri?: string
   language?: string
   theme?: string
   options?: any
@@ -61,7 +62,7 @@ const baseOptions = (): monaco.editor.IStandaloneEditorConstructionOptions => ({
 onMounted(() => {
   // Create the shared model explicitly (instead of passing `value:`) so we can
   // attach it to multiple editors.
-  model = monaco.editor.createModel(props.modelValue, props.language)
+  model = monaco.editor.createModel(props.modelValue, props.language, props.modelUri ? monaco.Uri.parse(props.modelUri) : undefined)
 
   if (primaryContainer.value) {
     primaryEditor = monaco.editor.create(primaryContainer.value, {

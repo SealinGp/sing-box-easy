@@ -1,0 +1,23 @@
+export default {
+  pathRequired: 'Enter an existing file path or create a rule file.',
+  "title": "Local rule file",
+  "name": "Rule-set name",
+  "path": "Save path",
+  "editMode": "Editor",
+  "visual": "Visual",
+  "rule": "Matching rule {n}",
+  "remove": "Remove",
+  "addField": "Add condition",
+  "addRule": "Add another rule",
+  "preview": "Preview and save",
+  "validation": "Validated by sing-box before saving. Existing files are backed up. Apply configuration after adding a rule set.",
+  "advanced": "Advanced fields or shorthand detected. Edit in JSON; your draft is preserved.",
+  "nameRequired": "Enter a rule-set name.",
+  "invalid": "An integer version and a rules array are required.",
+  "empty": "Add at least one condition to each rule.",
+  "create": "Create rule file",
+  "edit": "Edit rule content",
+  "saved": "Rule file saved.",
+  "existingPath": "Existing rule file path",
+  "location": "URL / file path"
+}

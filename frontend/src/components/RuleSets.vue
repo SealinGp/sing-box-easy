@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LocalRuleFileEditor from './rulesets/LocalRuleFileEditor.vue'
 import FieldHelp from './FieldHelp.vue'
 import ModulePresets from './ModulePresets.vue'
 import RuleSetCollection from './RuleSetCollection.vue'
@@ -33,6 +34,19 @@ const { outbounds } = storeToRefs(outboundsStore)
 // State for dialog
 const showAddRuleSetDialog = ref(false)
 const editingRuleSet = ref<{ tag: string; ruleSet: RuleSet } | null>(null)
+
+const localEditor = ref<{ initialTag: string; existing: boolean } | null>(null)
+const localSavedMessage = ref('')
+const currentRuleSetPath = computed({
+  get: () => (editingRuleSet.value?.ruleSet ?? ruleSetForm.value).path ?? '',
+  set: (value) => { (editingRuleSet.value?.ruleSet ?? ruleSetForm.value).path = value },
+})
+async function localSaved() {
+  localEditor.value = null
+  dialogVisible.value = false
+  localSavedMessage.value = t('localRules.saved')
+  await routeStore.fetchRuleSets()
+}
 
 // Form data
 const ruleSetForm = ref<RuleSet>({ tag: '', type: 'remote', format: 'source' })
@@ -155,12 +169,17 @@ const dialogVisible = computed({
 
 // Functions
 function startEditRuleSet(ruleSet: RuleSet) {
+  if (ruleSet.type === 'local' && (ruleSet.format === 'source' || (!ruleSet.format && ruleSet.path?.endsWith('.json')))) {
+    localEditor.value = { initialTag: ruleSet.tag, existing: true }
+    return
+  }
   editingRuleSet.value = { tag: ruleSet.tag, ruleSet: { ...ruleSet } }
 }
 
 // Remote rule sets are fetched server-side by sing-box. Restrict to http(s)
 // so the URL field can't be coerced into a file:// / gopher:// scheme.
 function validateRuleSetUrl(form: RuleSet): string | null {
+  if (form.type === 'local') return form.path?.trim() ? null : t('localRules.pathRequired')
   if (form.type !== 'remote') return null
   if (!form.url || !form.url.trim()) return t('route.ruleSets.validation.urlRequired')
   try {
@@ -174,6 +193,17 @@ function validateRuleSetUrl(form: RuleSet): string | null {
   return null
 }
 
+function ruleSetPayload(form: RuleSet): RuleSet {
+  const result = { ...form }
+  if (result.type === 'local') {
+    delete result.url
+    delete result.download_detour
+    delete result.update_interval
+    result.format = result.path?.endsWith('.srs') ? 'binary' : 'source'
+  } else delete result.path
+  return result
+}
+
 async function handleAddRuleSet() {
   const urlError = validateRuleSetUrl(ruleSetForm.value)
   if (urlError) {
@@ -183,7 +213,7 @@ async function handleAddRuleSet() {
   // Capture the tag before dialogVisible reset clears the form.
   const addedTag = ruleSetForm.value.tag
   try {
-    await routeStore.addRuleSet(ruleSetForm.value)
+    await routeStore.addRuleSet(ruleSetPayload(ruleSetForm.value))
     toast.add({
       severity: 'success',
       summary: t('common.success'),
@@ -225,7 +255,7 @@ async function handleUpdateRuleSet() {
       return
     }
     try {
-      await routeStore.updateRuleSet(editingRuleSet.value.tag, editingRuleSet.value.ruleSet)
+      await routeStore.updateRuleSet(editingRuleSet.value.tag, ruleSetPayload(editingRuleSet.value.ruleSet))
       toast.add({
         severity: 'success',
         summary: t('common.success'),
@@ -351,10 +381,13 @@ onMounted(() => {
         </div>
       </div>
 
+      <p v-if="localSavedMessage" role="status" class="mb-3 text-sm text-primary-600">{{ localSavedMessage }}</p>
       <RuleSetCollection :rule-sets="ruleSets" :loading="loading" :is-focused="isFocused" :references="referenceInfo"
         @edit="startEditRuleSet" @delete="handleDeleteRuleSet" @references="loadRuleSetReferences" />
     </Card>
 
+    <LocalRuleFileEditor v-if="localEditor" v-bind="localEditor"
+      @close="localEditor = null" @saved="localSaved" />
     <!-- Add/Edit Rule Set Dialog -->
     <ContextPanel
       v-model:visible="dialogVisible"
@@ -394,6 +427,11 @@ onMounted(() => {
           :placeholder="$t('route.ruleSets.form.urlPlaceholder')"
         />
 
+        <div v-if="currentRuleSetType === 'local'" class="space-y-3">
+          <Button v-if="!editingRuleSet" :label="t('localRules.create')"
+            @click="localEditor = { initialTag: currentRuleSetTag, existing: false }" />
+          <Input v-model="currentRuleSetPath" :label="t('localRules.existingPath')" placeholder="/etc/sing-box/rules.json" />
+        </div>
         <!--
           download_detour decides which outbound sing-box dials to FETCH this
           rule-set. It only applies to remote sets, and getting it wrong is how
@@ -424,6 +462,7 @@ onMounted(() => {
         </div>
 
         <Input
+          v-if="currentRuleSetType === 'remote'"
           v-model="currentRuleSetUpdateInterval"
           field-size="compact"
           :label="$t('route.ruleSets.form.updateInterval')"
