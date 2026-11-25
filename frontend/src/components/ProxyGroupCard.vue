@@ -177,6 +177,11 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
         <AdjustmentsHorizontalIcon class="h-3 w-3" />
         <span>{{ $t('proxies.fromNodeRules') }}</span>
       </RouterLink>
+      <span v-if="group.auto_selection?.previous && group.auto_selection?.last_switched"
+        role="status" class="w-full break-words text-xs text-primary-600 dark:text-primary-400">
+        {{ $t('proxies.auto.transition', { from: group.auto_selection.previous, to: group.auto_selection.last_switch_to }) }}
+        · {{ new Date(group.auto_selection.last_switched).toLocaleTimeString() }}
+      </span>
       <span class="ml-auto flex items-center gap-1.5">
         <ProxyAutoSelection v-if="group.switchable" :group="group" @updated="emit('automaticChanged')" />
         <!--

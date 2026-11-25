@@ -5,8 +5,9 @@ export default {
     title: 'Quality auto-selection', open: 'Configure selection for {group}', active: 'Quality auto', manual: 'Manual', enable: 'Switch automatically by quality',
     interval: 'Evaluation and switching interval (minutes)', intervalError: 'Enter an integer from 1 to 1440', saveFailed: 'Could not save auto-selection', saved: 'Saved',
     checked: 'Last evaluation', next: 'Next evaluation', switched: 'Last switch', standards: 'View node quality standards',
-    help: 'Evaluates measured nodes with a full window and a successful latest probe within 15 minutes or twice the probe interval, whichever is longer. Keeps a recommended node or ranks replacements by pass rate, then P95 latency. With no recommendation, picks the lowest successful-probe P95 among positive pass rates within one percentage point of the best. If none passed, ranks by success rate, then P95.',
-    reasons: { fallback_retained: 'Below the watermark; current node ranks best', fallback_switched: 'Below the watermark; switched to the best available node', disabled: 'Manual selection', waiting: 'Waiting for first evaluation', retained: 'Current node qualifies; keeping selection', switched: 'Switched to a qualified node', no_candidate: 'No eligible candidate; keeping selection', group_missing: 'Group missing or no longer a Selector; switching paused', error: 'Evaluation or switch failed; retrying next interval' },
+    help: 'Tests the current node each cycle and retries failures immediately. Two failures trigger candidate probes and recovery without requiring a full history. Quality optimization requires the same candidate in two cycles, five minutes since the last switch, and a verified improvement of at least 20% and 50 ms.',
+    transition: 'Auto switch {from} → {to}',
+    reasons: { failover: 'Current node failed twice; switched to a verified node', confirming: 'Confirming quality improvement next cycle', cooldown: 'Observing the node after switching', no_improvement: 'Insufficient measured improvement; keeping current node', no_healthy_candidate: 'Current node failed; no verified alternative', fallback_retained: 'Below the watermark; current node ranks best', fallback_switched: 'Below the watermark; switched to the best available node', disabled: 'Manual selection', waiting: 'Waiting for first evaluation', retained: 'Current node qualifies; keeping selection', switched: 'Switched to a qualified node', no_candidate: 'No eligible candidate; keeping selection', group_missing: 'Group missing or no longer a Selector; switching paused', error: 'Evaluation or switch failed; retrying next interval' },
   },
 
   focusUnavailable: '“{name}” is not listed in any running proxy group.',
@@ -31,7 +32,7 @@ export default {
     empty: 'No saved observations yet. Scheduled and manual tests will add history.',
     single: 'Only one observation is available; no trend yet.',
     samples: 'Measurements',
-    sources: { subscription: 'Automatic test', manual: 'Manual test', 'manual-group': 'Manual test', runtime: 'Runtime cache', unknown: 'Unknown source' },
+    sources: { 'auto-selection': 'Auto-selection probe', subscription: 'Automatic test', manual: 'Manual test', 'manual-group': 'Manual test', runtime: 'Runtime cache', unknown: 'Unknown source' },
   },
   searchPlaceholder: 'Search groups or nodes',
   sort: {

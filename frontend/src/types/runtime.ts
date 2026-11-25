@@ -95,7 +95,10 @@ export interface ConnectionsFrame {
 export interface AutoSelectionStatus {
   enabled: boolean
   interval_seconds: number
-  reason: 'disabled' | 'waiting' | 'no_candidate' | 'retained' | 'switched' | 'fallback_retained' | 'fallback_switched' | 'error' | 'group_missing'
+  previous?: string
+  last_switch_reason?: string
+  last_switch_to?: string
+  reason: 'failover' | 'confirming' | 'cooldown' | 'no_improvement' | 'no_healthy_candidate' | 'disabled' | 'waiting' | 'no_candidate' | 'retained' | 'switched' | 'fallback_retained' | 'fallback_switched' | 'error' | 'group_missing'
   last_checked?: string
   next_check?: string
   last_switched?: string

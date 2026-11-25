@@ -19,5 +19,5 @@ export function nodeDelayPoints(history: readonly NodeDelaySample[] = []): Probe
 
 /** Old runtime cache entries do not always identify how they were measured. */
 export function nodeProbeSource(source?: string): string {
-  return ['subscription', 'manual', 'manual-group', 'runtime'].includes(source ?? '') ? source! : 'unknown'
+  return ['auto-selection', 'subscription', 'manual', 'manual-group', 'runtime'].includes(source ?? '') ? source! : 'unknown'
 }

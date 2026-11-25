@@ -25,12 +25,15 @@ type Policy struct {
 }
 type Status struct {
 	Policy
-	Reason       string    `json:"reason"`
-	LastChecked  time.Time `json:"last_checked,omitempty"`
-	NextCheck    time.Time `json:"next_check,omitempty"`
-	LastSwitched time.Time `json:"last_switched,omitempty"`
-	Selected     string    `json:"selected,omitempty"`
-	Error        string    `json:"error,omitempty"`
+	Reason           string    `json:"reason"`
+	LastChecked      time.Time `json:"last_checked,omitempty"`
+	NextCheck        time.Time `json:"next_check,omitempty"`
+	LastSwitched     time.Time `json:"last_switched,omitempty"`
+	Selected         string    `json:"selected,omitempty"`
+	Previous         string    `json:"previous,omitempty"`
+	LastSwitchTo     string    `json:"last_switch_to,omitempty"`
+	LastSwitchReason string    `json:"last_switch_reason,omitempty"`
+	Error            string    `json:"error,omitempty"`
 }
 type Settings interface {
 	Get(string) (string, error)
@@ -41,6 +44,7 @@ type Settings interface {
 type Runtime interface {
 	Proxies(context.Context) ([]clashapi.Proxy, error)
 	SelectProxy(context.Context, string, string) error
+	Delay(context.Context, string, string, time.Duration) (int, error)
 }
 type History interface {
 	Recent([]string, int) (map[string][]nodehistory.Point, error)
@@ -56,10 +60,11 @@ type Manager struct {
 	states      map[string]Status
 	cancel      context.CancelFunc
 	done        chan struct{}
+	pending     map[string]string
 }
 
 func New(settingsStore Settings, history History, connect func() (Runtime, error)) *Manager {
-	return &Manager{settings: settingsStore, history: history, connect: connect, policies: map[string]Policy{}, states: map[string]Status{}}
+	return &Manager{settings: settingsStore, history: history, connect: connect, policies: map[string]Policy{}, states: map[string]Status{}, pending: map[string]string{}}
 }
 func (m *Manager) Init() error {
 	raw, err := m.settings.Get(key)
@@ -142,6 +147,9 @@ func (m *Manager) Configure(ctx context.Context, group string, p Policy) (Status
 	previous := m.state(group)
 	state.LastSwitched = previous.LastSwitched
 	state.Selected = previous.Selected
+	state.Previous = previous.Previous
+	state.LastSwitchReason = previous.LastSwitchReason
+	state.LastSwitchTo = previous.LastSwitchTo
 	m.setStatus(group, state)
 	return state, nil
 }
@@ -241,7 +249,7 @@ func (m *Manager) Tick(ctx context.Context, now time.Time) {
 		state.LastChecked = now
 		state.NextCheck = now.Add(time.Duration(p.IntervalSeconds) * time.Second)
 		state.Error = ""
-		runCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		runCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		selected, reason, err := m.evaluate(runCtx, group, now)
 		cancel()
 		state.Reason = reason
@@ -253,6 +261,9 @@ func (m *Manager) Tick(ctx context.Context, now time.Time) {
 			state.Selected = selected
 		}
 		if err == nil && isSwitch(reason) {
+			state.Previous = m.state(group).Previous
+			state.LastSwitchReason = reason
+			state.LastSwitchTo = selected
 			state.LastSwitched = now
 			logger.Info("Quality auto-selection switched node", zap.String("group", group), zap.String("node", selected))
 		}
@@ -287,7 +298,10 @@ func (m *Manager) evaluate(ctx context.Context, name string, now time.Time) (str
 	if maxAge < 15*time.Minute {
 		maxAge = 15 * time.Minute
 	}
-	selected, reason := Decide(*group, list, points, rules, now, maxAge)
+	selected, reason, err := m.chooseLive(ctx, runtime, *group, list, points, rules, now, maxAge)
+	if err != nil {
+		return "", "", err
+	}
 	if !isSwitch(reason) {
 		return selected, reason, nil
 	}
@@ -300,7 +314,13 @@ func (m *Manager) evaluate(ctx context.Context, name string, now time.Time) (str
 		if g.Name == name && g.Type == "Selector" && g.Now == group.Now {
 			for _, tag := range g.All {
 				if tag == selected {
-					return selected, reason, runtime.SelectProxy(ctx, name, selected)
+					err := runtime.SelectProxy(ctx, name, selected)
+					if err == nil {
+						state := m.state(name)
+						state.Previous = group.Now
+						m.setStatus(name, state)
+					}
+					return selected, reason, err
 				}
 			}
 		}
@@ -308,4 +328,6 @@ func (m *Manager) evaluate(ctx context.Context, name string, now time.Time) (str
 	return "", "", fmt.Errorf("group changed during quality evaluation; retrying at next interval")
 }
 
-func isSwitch(reason string) bool { return reason == "switched" || reason == "fallback_switched" }
+func isSwitch(reason string) bool {
+	return reason == "switched" || reason == "fallback_switched" || reason == "failover"
+}

@@ -80,7 +80,7 @@ export function visibleGroups(groups: readonly RuntimeGroup[], query: string, so
       ? group.members
       : group.members.filter((member) => member.name.toLowerCase().includes(needle))
     if (!groupMatches && members.length === 0) continue
-    result.push({ group, members: sortMembers(members, sort) })
+    result.push({ group, members: sortMembers(members, sort).sort((a, b) => Number(b.name === group.now) - Number(a.name === group.now)) })
   }
   return result
 }

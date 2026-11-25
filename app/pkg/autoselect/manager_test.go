@@ -39,6 +39,7 @@ type fakeRuntime struct {
 	calls, switched int
 	fail, changed   bool
 	now             string
+	dead            bool
 }
 
 func (r *fakeRuntime) Proxies(context.Context) ([]clashapi.Proxy, error) {
@@ -88,7 +89,7 @@ func TestPolicyAndScheduler(t *testing.T) {
 		t.Fatal("did not select")
 	}
 	state := m.Statuses()["g"]
-	if state.Reason != "switched" || state.LastSwitched.IsZero() || !state.NextCheck.Equal(now.Add(5*time.Minute)) {
+	if state.Reason != "failover" || state.LastSwitched.IsZero() || !state.NextCheck.Equal(now.Add(5*time.Minute)) {
 		t.Fatalf("%+v", state)
 	}
 	calls := r.calls
@@ -154,9 +155,10 @@ func TestDisableWorksOffline(t *testing.T) {
 func TestNoCandidateKeepsCurrent(t *testing.T) {
 	m, _, r, now := managerFixture(t)
 	m.history = fakeHistory{}
+	r.dead = true
 	_, _ = m.Configure(context.Background(), "g", Policy{true, 300})
 	m.Tick(context.Background(), now)
-	if r.switched != 0 || m.Statuses()["g"].Reason != "no_candidate" {
+	if r.switched != 0 || m.Statuses()["g"].Reason != "no_healthy_candidate" {
 		t.Fatal("unsafe fallback")
 	}
 }
@@ -207,7 +209,7 @@ func TestFallbackSwitchAndRetain(t *testing.T) {
 	}
 	m.Tick(ctx, now)
 	first := m.Statuses()["g"]
-	if r.now != "a" || first.Reason != "fallback_switched" || !first.LastSwitched.Equal(now) {
+	if r.now != "a" || first.Reason != "failover" || !first.LastSwitched.Equal(now) {
 		t.Fatal(first)
 	}
 	m.Tick(ctx, now.Add(5*time.Minute))
@@ -215,4 +217,14 @@ func TestFallbackSwitchAndRetain(t *testing.T) {
 	if r.switched != 1 || retained.Reason != "fallback_retained" || !retained.LastSwitched.Equal(now) {
 		t.Fatal(retained)
 	}
+}
+
+func (r *fakeRuntime) Delay(_ context.Context, tag, _ string, _ time.Duration) (int, error) {
+	if tag == "" || r.dead {
+		return 0, clashapi.ErrDelayFailed
+	}
+	return 100, nil
+}
+func (r blockingRuntime) Delay(context.Context, string, string, time.Duration) (int, error) {
+	return 100, nil
 }

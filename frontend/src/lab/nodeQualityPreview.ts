@@ -20,7 +20,7 @@ export function installNodeQualityPreview() {
   const view: RuntimeProxies = {
     selection_persisted: true,
     groups: [
-      { name: '演示 · 节点质量', type: 'Selector', now: members[0]!.name, delay: 160, switchable: true, members },
+      { name: '演示 · 节点质量', type: 'Selector', now: members[1]!.name, delay: 460, switchable: true, members, auto_selection: { enabled: true, interval_seconds: 60, reason: 'failover', previous: members[2]!.name, selected: members[1]!.name, last_switch_to: members[1]!.name, last_switch_reason: 'failover', last_switched: new Date().toISOString() } },
       { name: '演示 · 自动选择', type: 'URLTest', now: members[0]!.name, delay: 160, switchable: false, members },
     ],
   }
@@ -32,6 +32,11 @@ export function installNodeQualityPreview() {
     const target = view.groups.find(item => item.name === group)
     if (target?.switchable) target.now = name
     return ok({})
+  }
+  runtimeService.setAutoSelection = async (group, enabled, interval_seconds) => {
+    const target = view.groups.find(item => item.name === group)!
+    target.auto_selection = { ...target.auto_selection, enabled, interval_seconds, reason: enabled ? 'waiting' : 'disabled' }
+    return ok(target.auto_selection)
   }
   runtimeService.testNode = async name => ok({ name, delay: members.find(item => item.name === name)?.delay ?? 0 })
   runtimeService.testGroup = async group => ok({ group, delays: Object.fromEntries(members.filter(item => item.delay > 0).map(item => [item.name, item.delay])) })
@@ -50,5 +55,17 @@ export function installNodeQualityPreview() {
     links.append(link)
   }
   banner.append(links)
+  const simulate = document.createElement('button')
+  simulate.textContent = '模拟一次故障切换'
+  simulate.style.cssText = 'padding:6px 10px;border:1px solid currentColor;border-radius:6px;cursor:pointer'
+  simulate.onclick = () => {
+    const group = view.groups[0]!
+    const previous = group.now
+    group.now = previous === members[0]!.name ? members[1]!.name : members[0]!.name
+    group.delay = members.find(item => item.name === group.now)!.delay
+    group.auto_selection = { enabled: true, interval_seconds: 60, reason: 'failover', previous,
+      selected: group.now, last_switch_to: group.now, last_switch_reason: 'failover', last_switched: new Date().toISOString() }
+  }
+  banner.append(simulate)
   document.body.append(banner)
 }

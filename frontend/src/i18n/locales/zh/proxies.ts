@@ -5,8 +5,9 @@ export default {
     title: '质量自动选择', open: '设置 {group} 的选择方式', active: '质量自动', manual: '手动选择', enable: '按质量自动切换',
     interval: '评估与切换间隔（分钟）', intervalError: '请输入 1–1440 的整数', saveFailed: '保存自动选择失败', saved: '已保存',
     checked: '最近评估', next: '下次评估', switched: '最近切换', standards: '查看节点质量标准',
-    help: '后台按设定间隔评估。只比较样本完整、最近一次探测成功的实际节点。最新探测须在 15 分钟或两倍探测间隔内（取较大值）。优先保留推荐节点；需要切换时按达标率、成功探测 P95 延迟排序。没有推荐节点时，在有达标记录且距最高达标率 1 个百分点以内的节点中选 P95 最低者；全部零达标时先比成功率，再比 P95。',
-    reasons: { fallback_retained: '未达推荐水位，择优后保持当前节点', fallback_switched: '未达推荐水位，已择优切换', disabled: '手动选择', waiting: '等待后台首次评估', retained: '当前节点合格，保持选择', switched: '已切换至合格节点', no_candidate: '暂无合格候选，保持原选择', group_missing: '分组未运行或已不是 Selector，暂停切换', error: '评估或切换失败，将在下个间隔重试' },
+    help: '每轮实测当前节点，失败立即复测。连续失败时并发探测候选并切至可用节点，无需等待历史样本齐全。正常节点的质量优化需连续两轮选中同一候选，切换间隔至少 5 分钟，且候选实测至少快 20% 和 50 ms。',
+    transition: '自动切换 {from} → {to}',
+    reasons: { failover: '当前节点探测连续失败，已切换至实测可用节点', confirming: '等待下一轮确认质量改善', cooldown: '切换后稳定观察中', no_improvement: '候选实测改善不足，保持当前节点', no_healthy_candidate: '当前节点故障，暂无实测可用候选', fallback_retained: '未达推荐水位，择优后保持当前节点', fallback_switched: '未达推荐水位，已择优切换', disabled: '手动选择', waiting: '等待后台首次评估', retained: '当前节点合格，保持选择', switched: '已切换至合格节点', no_candidate: '暂无合格候选，保持原选择', group_missing: '分组未运行或已不是 Selector，暂停切换', error: '评估或切换失败，将在下个间隔重试' },
   },
 
   focusUnavailable: '当前运行的代理分组中没有「{name}」。',
@@ -31,7 +32,7 @@ export default {
     empty: '此节点暂无已保存的延迟记录，下次自动或手动测速后开始积累。',
     single: '目前只有一次采样，尚无趋势。',
     samples: '采样记录',
-    sources: { subscription: '自动测试', manual: '手动测速', 'manual-group': '手动测速', runtime: '运行时缓存', unknown: '来源未知' },
+    sources: { 'auto-selection': '自动切换探测', subscription: '自动测试', manual: '手动测速', 'manual-group': '手动测速', runtime: '运行时缓存', unknown: '来源未知' },
   },
   searchPlaceholder: '搜索分组或节点',
   sort: {
