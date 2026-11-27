@@ -1,3 +1,4 @@
+import orphanSubscriptions from './orphanSubscriptions'
 import localRules from './localRules'
 import managed from './managed'
 import lab from './lab'
@@ -37,6 +38,7 @@ import dualStack from './dualStack'
 import ruleSet from './ruleSet'
 
 export default {
+  orphanSubscriptions,
   localRules,
  managed,
   lab,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import SubscriptionOrphans from '../../components/SubscriptionOrphans.vue'
 import SubscriptionCollection from '../../components/SubscriptionCollection.vue'
 import FieldHelp from '../../components/FieldHelp.vue'
 import Button from "../../components/Button.vue";
@@ -75,6 +76,7 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
       </div>
     </div>
 
+    <SubscriptionOrphans :refresh-key="subscriptions.map(s => s.id + s.last_update).join('|') + isLoading + isUpdating.join('|')" @cleaned="loadSubscriptions" />
     <SubscriptionCollection :page="collection" />
 
     <!-- Info-label keywords editor -->

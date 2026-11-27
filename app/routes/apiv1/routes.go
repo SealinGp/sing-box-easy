@@ -204,6 +204,8 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 	auth.POST("/service/restart", handler.RestartService)
 
 	// Subscription Management APIs
+	auth.GET("/subscription-orphans", handler.GetOrphanSubscriptions)
+	admin.POST("/subscription-orphans/cleanup", handler.CleanupOrphanSubscriptions)
 	auth.GET("/subscriptions", handler.GetSubscriptions)
 	auth.POST("/subscriptions", handler.AddSubscription)
 	auth.GET("/subscriptions/:id", handler.GetSubscriptionByID)

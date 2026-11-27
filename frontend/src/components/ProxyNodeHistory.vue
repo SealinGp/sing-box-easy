@@ -15,7 +15,7 @@ import { runtimeService, subscriptionService, subProbeService } from '../service
 import type { Subscription } from '../types/api'
 import type { ProbePoint } from '../types/subprobe'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
-import { nodeSubscriptionId } from '../utils/nodeSubscription'
+import { nodeNameWithoutSubscription, nodeSubscriptionId } from '../utils/nodeSubscription'
 import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 import { useNodeQuality } from '../composables/useNodeQuality'
 
@@ -149,7 +149,7 @@ watch(() => props.history, () => {
         <div class="flex items-start gap-2">
           <div class="min-w-0 flex-1">
             <h3 class="text-sm font-semibold text-text-primary">{{ t('proxies.quality.title') }}</h3>
-            <p class="mt-1 select-text break-all text-xs leading-relaxed text-text-secondary">{{ name }}</p>
+            <p class="mt-1 select-text break-all text-xs leading-relaxed text-text-secondary">{{ nodeNameWithoutSubscription(name) }}</p>
             <div
               v-if="subscriptionId"
               class="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-xs"

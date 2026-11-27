@@ -2,6 +2,7 @@
 import TooltipTarget from "./TooltipTarget.vue"
 import ProxyAutoSelection from './ProxyAutoSelection.vue'
 import ProxyNodeHistory from './ProxyNodeHistory.vue'
+import ProxyNodeOrigin from './ProxyNodeOrigin.vue'
 /**
  * One group of the running sing-box: its current node, and its members either
  * as a strip of latency blocks (collapsed) or as cards (expanded).
@@ -179,7 +180,10 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
       </RouterLink>
       <span v-if="group.auto_selection?.previous && group.auto_selection?.last_switched"
         role="status" class="w-full break-words text-xs text-primary-600 dark:text-primary-400">
-        {{ $t('proxies.auto.transition', { from: group.auto_selection.previous, to: group.auto_selection.last_switch_to }) }}
+        <i18n-t keypath="proxies.auto.transition" tag="span" scope="global">
+          <template #from><ProxyNodeOrigin :name="group.auto_selection.previous" /></template>
+          <template #to><ProxyNodeOrigin :name="group.auto_selection.last_switch_to || ''" /></template>
+        </i18n-t>
         · {{ new Date(group.auto_selection.last_switched).toLocaleTimeString() }}
       </span>
       <span class="ml-auto flex items-center gap-1.5">
