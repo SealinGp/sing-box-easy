@@ -8,7 +8,7 @@ import { useDNSStore } from '../stores/dns'
 import { useRouteStore } from '../stores/route'
 import { storeToRefs } from 'pinia'
 import { findOrphanRespondRules } from '../utils/parallelResolve'
-import { readQueryTypes, writeQueryTypes } from '../utils/dnsQueryType'
+import { readDNSRuleDraft, writeDNSRuleDraft, invalidDNSConditionGroup } from '../utils/dnsRuleDraft'
 import {
   actionOf,
   applyActionDefaults,
@@ -62,27 +62,6 @@ export function useDNSRules() {
    */
   const currentRule = ref<Record<string, any>>(emptyRuleForm())
 
-  /**
-   * Wire fields sing-box accepts as either a scalar or an array.
-   *
-   * The five conditions have always needed this. `answer`/`ns`/`extra` need it too
-   * and are new here: badoption.Listable collapses a single-entry list to a bare
-   * string on marshal, so a predefined rule with one answer reads back as
-   * `"answer": "a.example. 3600 IN A 192.0.2.1"`. Left uncoerced, the chips box
-   * would render one chip per CHARACTER.
-   */
-  /**
-   * Conditions, which DNSRuleConditions v-models as arrays. Always materialized,
-   * present in the rule or not — its ChipsFields cannot bind to undefined.
-   */
-  const CONDITION_FIELDS = ['rule_set', 'domain', 'domain_suffix', 'domain_keyword', 'geosite'] as const
-
-  /**
-   * The predefined action's record lists. Coerced only when present, so opening a
-   * route rule does not add three empty keys to it.
-   */
-  const ACTION_LIST_FIELDS = ['answer', 'ns', 'extra'] as const
-
   /** The action driving the schema. Absent means route — see `actionOf`. */
   const currentAction = computed<DNSRuleActionTypeName>(() => actionOf(currentRule.value))
 
@@ -118,10 +97,7 @@ export function useDNSRules() {
     currentRule.value = applyActionDefaults(pruned, action)
   }
 
-  function toArrayField(v: unknown): string[] {
-    if (v === undefined || v === null) return []
-    return Array.isArray(v) ? (v as string[]) : [String(v)]
-  }
+
 
   // Delete confirmation
   const showDeleteConfirm = ref(false)
@@ -234,21 +210,7 @@ export function useDNSRules() {
     // on create and on an action change, never on open. Seeding one here is
     // exactly how a predefined rule with no `rcode` — which means NOERROR — used
     // to be silently rewritten to NXDOMAIN by opening it and pressing Update.
-    const loaded: Record<string, any> = { ...raw }
-
-    // sing-box accepts a scalar or an array for these; normalize to an array. This
-    // once kept only the first entry, so opening and saving a rule that matched two
-    // rule sets silently dropped one of them.
-    for (const key of CONDITION_FIELDS) {
-      loaded[key] = toArrayField(loaded[key])
-    }
-    for (const key of ACTION_LIST_FIELDS) {
-      if (key in loaded) loaded[key] = toArrayField(loaded[key])
-    }
-    // Numbers become strings for the select; handleSaveRule converts back.
-    loaded.query_type = readQueryTypes(loaded.query_type)
-
-    currentRule.value = loaded
+    currentRule.value = readDNSRuleDraft(raw)
     conditionsKey.value++
     showRuleModal.value = true
   }
@@ -259,6 +221,7 @@ export function useDNSRules() {
   }
 
   const handleSaveRule = async () => {
+    if (loading.value) return
     // Keep only the fields valid for the selected action. sing-box strict-parses
     // DNS rules and rejects any field that does not belong to the action —
     // `method` is reject-only ("unknown field method" on a route rule).
@@ -269,32 +232,12 @@ export function useDNSRules() {
     // — unlike the switch and the EDITED_FIELDS allowlist it worked with — keeps
     // every key no action owns: all the match conditions, and `type`/`mode`/`rules`
     // on a logical rule.
-    const processedRule: Record<string, unknown> = pruneForeignFields(
-      currentRule.value,
-      currentAction.value,
-    )
-
-    // A numeric type must go out as a JSON number — sing-box decodes a number or
-    // a known NAME, and rejects the string "32768". See utils/dnsQueryType.
-    if (Array.isArray(processedRule.query_type)) {
-      processedRule.query_type = writeQueryTypes(processedRule.query_type as string[])
-    }
-
-    // An empty value is the absence of a setting, not a setting of "". Writing it
-    // through would persist it into config.json as an explicit one — and for a
-    // `false` switch, sing-box's omitempty means absent and false already
-    // serialize identically.
-    Object.keys(processedRule).forEach((key) => {
-      const v = processedRule[key]
-      if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) {
-        delete processedRule[key]
-      }
-    })
+    const processedRule = writeDNSRuleDraft(pruneForeignFields(currentRule.value, currentAction.value))
 
     // Three constraints sing-box only enforces while decoding, which `sing-box
     // check` reports as an opaque upstream string. Caught here so the operator
     // sees which field is wrong. See validateDNSRuleAction for each one's source.
-    const invalid = validateDNSRuleAction(processedRule)
+    const invalid = invalidDNSConditionGroup(processedRule) ? 'dns.rules.logical.empty' : validateDNSRuleAction(processedRule)
     if (invalid) {
       toast.add({
         severity: 'error',

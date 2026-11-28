@@ -5,7 +5,9 @@ import Card from './Card.vue'
 import List from './List.vue'
 import DNSRuleItem from './DNSRuleItem.vue'
 import { ContextPanel, Select } from '../volt'
-import DNSRuleConditions from './DNSRuleConditions.vue'
+import DNSConditionEditor from './DNSConditionEditor.vue'
+import RoutingConditionNode from './RoutingConditionNode.vue'
+import { dnsConditionTree } from '../utils/dnsRulePresentation'
 import SchemaFieldsEditor from './SchemaFieldsEditor.vue'
 import RuleFlowPreview from './RuleFlowPreview.vue'
 import DNSParallelGroupDialog from './DNSParallelGroupDialog.vue'
@@ -90,18 +92,23 @@ const { loading, dnsRules, showRuleModal, conditionsKey, isEditMode, currentRule
     <!-- Add/Edit DNS Rule Modal -->
     <ContextPanel
       :visible="showRuleModal"
-      @update:visible="(v: boolean) => { if (!v) closeRuleModal() }"
+      :closable="!loading" :dismissable="!loading" :close-on-escape="!loading"
+      @update:visible="(v: boolean) => { if (!v && !loading) closeRuleModal() }"
       :header="isEditMode ? $t('dns.rules.modal.edit') : $t('dns.rules.modal.add')"
       modal
       class="w-full max-w-2xl"
     >
-      <div class="space-y-4">
+      <fieldset :disabled="loading" :inert="loading" class="min-w-0 space-y-4">
         <!--
           The rule restated as sing-box will run it. The form shows which fields
           exist; this says what they DO. Same component the route rule dialog
           uses — only the outcome phrase and the condition list differ.
         -->
-        <RuleFlowPreview
+        <div v-if="currentRule.type === 'logical'" class="space-y-2 rounded-control bg-bg-secondary p-3 text-sm">
+          <RoutingConditionNode :node="dnsConditionTree(currentRule)" label-prefix="dns.rules.form.fields" />
+          <p class="font-medium">{{ flowOutcome }}</p>
+        </div>
+        <RuleFlowPreview v-else
           :rule="currentRule"
           :condition-keys="conditionKeys"
           label-prefix="dns.rules.form.fields"
@@ -124,25 +131,16 @@ const { loading, dnsRules, showRuleModal, conditionsKey, isEditMode, currentRule
               >1</span
             >
             <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {{ $t('dns.rules.form.whenHeading') }}
+              {{ $t(currentRule.type === 'logical' ? 'dns.rules.logical.when' : 'dns.rules.form.whenHeading') }}
             </h4>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
+            <span v-if="currentRule.type !== 'logical'" class="text-xs text-gray-500 dark:text-gray-400">
               {{ $t('dns.rules.form.whenHint') }}
             </span>
           </div>
 
           <!-- Remounted per modal open (:key) so the collapse state is decided
                from the rule as loaded, not from the previous edit. -->
-          <DNSRuleConditions
-            :key="conditionsKey"
-            v-model:rule-set="currentRule.rule_set"
-            v-model:domain="currentRule.domain"
-            v-model:domain-suffix="currentRule.domain_suffix"
-            v-model:domain-keyword="currentRule.domain_keyword"
-            v-model:geosite="currentRule.geosite"
-            v-model:query-type="currentRule.query_type"
-            :rule-set-options="ruleSetOptions"
-          />
+          <DNSConditionEditor :key="conditionsKey" v-model="currentRule" :rule-set-options="ruleSetOptions" />
         </section>
 
         <section class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -187,11 +185,11 @@ const { loading, dnsRules, showRuleModal, conditionsKey, isEditMode, currentRule
             :fields="actionFields"
           />
         </section>
-      </div>
+      </fieldset>
 
       <template #footer>
-        <Button @click="closeRuleModal" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleSaveRule" variant="primary" :disabled="loading">
+        <Button @click="closeRuleModal" :disabled="loading" variant="secondary">{{ $t('common.cancel') }}</Button>
+        <Button @click="handleSaveRule" variant="primary" :disabled="loading" :loading="loading">
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>
