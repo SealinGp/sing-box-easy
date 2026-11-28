@@ -63,7 +63,7 @@ func (h *Handler) DeleteSubscription(ctx context.Context, c *app.RequestContext)
 	id := c.Param("id")
 
 	if err := h.subscriptions.Delete(id); err != nil {
-		respErr(ctx, c, CodeInternalError, err.Error())
+		respondOperationError(ctx, c, err)
 		return
 	}
 

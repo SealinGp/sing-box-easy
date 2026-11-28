@@ -12,6 +12,12 @@ func (s *Store) MarkDeleting(id string) error {
 	_, err := s.e.Exec("INSERT OR IGNORE INTO subscription_pending_deletions (id) VALUES (?)", id)
 	return err
 }
+
+// CancelDeletion releases a rejected request before any config was committed.
+func (s *Store) CancelDeletion(id string) error {
+	_, err := s.e.ID(id).Delete(&PendingDeletion{})
+	return err
+}
 func (s *Store) PendingDeletions() ([]string, error) {
 	var rows []PendingDeletion
 	if err := s.e.Find(&rows); err != nil {
