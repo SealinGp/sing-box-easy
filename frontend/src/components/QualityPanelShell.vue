@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useWorkspaceActive } from '../composables/workspaceContext'
+const workspaceActive = useWorkspaceActive()
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ContextPanel from '../volt/ContextPanel.vue'
@@ -42,7 +44,7 @@ onBeforeUnmount(() => { cleanup(); media.removeEventListener('change', resize) }
 <template>
   <template v-if="compact">
     <Teleport v-if="visible" :to="host ?? 'body'" :disabled="!host">
-      <section ref="content" tabindex="-1" class="my-3 w-[calc(100vw-3rem)] max-w-xl rounded-surface border border-border bg-bg-secondary p-4" :aria-label="header" @keydown.esc.stop="close">
+      <section v-show="workspaceActive" ref="content" tabindex="-1" class="my-3 w-[calc(100vw-3rem)] max-w-xl rounded-surface border border-border bg-bg-secondary p-4" :aria-label="header" @keydown.esc.stop="close">
         <div class="mb-4 flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold">{{ header }}</h3>
           <button type="button" class="icon-action" :aria-label="t('common.close')" @click="close">×</button>

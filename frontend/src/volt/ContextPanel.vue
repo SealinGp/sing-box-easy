@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useAttrs, useId, watch } from 'vue'
+import { computed, provide, nextTick, ref, useAttrs, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { twMerge } from 'tailwind-merge'
 import type { DialogProps } from 'primevue/dialog'
 import Dialog from './Dialog.vue'
 import Popover from './Popover.vue'
+import { workspaceEditKey, useWorkspaceActive, useWorkspaceDirty } from '../composables/workspaceContext'
 import { useOverlayAnchor } from '../composables/useOverlayAnchor'
 
 // Contextual forms keep the header/footer API of Dialog, but open at their
@@ -23,6 +24,10 @@ const attrs = useAttrs()
 const titleId = useId()
 const { t } = useI18n()
 const findAnchor = useOverlayAnchor()
+const workspaceActive = useWorkspaceActive()
+const edited = ref(false)
+provide(workspaceEditKey, () => { edited.value = true })
+useWorkspaceDirty(() => props.visible && edited.value)
 const anchored = ref(false)
 const popover = ref<InstanceType<typeof Popover> | null>(null)
 const panelClass = computed(() => twMerge(
@@ -31,11 +36,13 @@ const panelClass = computed(() => twMerge(
 ))
 const close = () => emit('update:visible', false)
 function onPopoverHide() {
+  if (!workspaceActive.value) return
   if (props.visible) close()
   emit('hide')
 }
 let opening = 0
 watch(() => props.visible, async (visible) => {
+  edited.value = false
   const turn = ++opening
   if (!visible) { popover.value?.hide(); return }
   const anchor = findAnchor()
@@ -55,7 +62,7 @@ watch(() => props.visible, async (visible) => {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="h-4 w-4" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
       </button>
     </div>
-    <div class="panel-form-body min-h-0 flex-1 overflow-y-auto px-4 py-3 text-text-primary"><slot /></div>
+    <div @input.capture="edited = true" @change.capture="edited = true" class="panel-form-body min-h-0 flex-1 overflow-y-auto px-4 py-3 text-text-primary"><slot /></div>
     <div v-if="$slots.footer" class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3"><slot name="footer" /></div>
   </Popover>
   <Dialog v-else v-bind="$attrs" :visible="visible" :header="header" :closable="closable" :close-on-escape="closeOnEscape" :dismissable-mask="dismissable"

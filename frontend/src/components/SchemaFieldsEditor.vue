@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { watch as watchDraft } from 'vue'
+import { useWorkspaceEdit } from '../composables/workspaceContext'
+const markDraftEdited = useWorkspaceEdit()
 /**
  * The type-aware body of a schema-driven dialog.
  *
@@ -63,6 +66,7 @@ function setValidity(key: string, valid: boolean) {
   emit('validity', invalidFields.size === 0)
 }
 const model = defineModel<Record<string, unknown>>({ required: true })
+watchDraft(model, () => markDraftEdited(), { deep: true })
 
 const { t, te } = useI18n()
 

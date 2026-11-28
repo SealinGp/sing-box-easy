@@ -27,7 +27,6 @@ export function useTableColumns(region: Ref<HTMLElement | null>, enabled: () => 
       handle.role = 'separator'
       handle.setAttribute('aria-orientation', 'vertical')
       handle.setAttribute('aria-label', header.textContent?.trim() ?? '')
-      header.style.position = 'relative'
       header.append(handle)
       const resize = (width: number) => { widths[index] = Math.max(minimums[index]!, Math.min(800, width)); handle.setAttribute('aria-valuenow', String(Math.round(widths[index]!))); paint() }
       handle.setAttribute('aria-valuemin', String(minimums[index]))

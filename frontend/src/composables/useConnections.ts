@@ -1,3 +1,4 @@
+import { useWorkspaceActive } from './workspaceContext'
 import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import { openConnectionsStream } from '../services/runtime'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -28,6 +29,7 @@ export function useConnections(enabled: Ref<boolean>, fallbackError: () => strin
   /** Frozen display. The stream stays open so resuming is instant. */
   const paused = ref(false)
 
+  const workspaceActive = useWorkspaceActive()
   let controller: AbortController | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   // The raw rows of the last APPLIED frame; the baseline for the next diff.
@@ -58,7 +60,7 @@ export function useConnections(enabled: Ref<boolean>, fallbackError: () => strin
 
   const open = () => {
     close()
-    if (!enabled.value) return
+    if (!enabled.value || !workspaceActive.value) return
 
     const current = new AbortController()
     controller = current
@@ -83,14 +85,15 @@ export function useConnections(enabled: Ref<boolean>, fallbackError: () => strin
           if (controller !== current) return
           connecting.value = false
           controller = null
-          if (enabled.value) reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS)
+          if (enabled.value && workspaceActive.value) reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS)
         },
       },
       current.signal,
     )
   }
 
-  watch(enabled, (on) => {
+  watch([enabled, workspaceActive], ([on, active]) => {
+    if (!active) { close(); return }
     if (on) {
       open()
       return

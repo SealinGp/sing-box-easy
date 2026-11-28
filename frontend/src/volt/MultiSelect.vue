@@ -1,5 +1,7 @@
 <template>
     <MultiSelect
+        ref="multiSelect"
+        @update:modelValue="markEdited(multiSelect?.$el)"
         unstyled
         :pt="theme"
         :ptOptions="{
@@ -14,14 +16,18 @@
 
 <script setup lang="ts">
 import MultiSelect, { type MultiSelectPassThroughOptions, type MultiSelectProps } from 'primevue/multiselect';
+import { useWorkspaceActive, useWorkspaceEdit } from '../composables/workspaceContext';
+const markEdited = useWorkspaceEdit();
 import { ptViewMerge } from './utils';
-import { computed } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ MultiSelectProps {
     filterPaste?: (event: ClipboardEvent) => void;
 }
 const props = defineProps<Props>();
+const multiSelect = ref<InstanceType<typeof MultiSelect> & { $el: HTMLElement }>();
+watch(useWorkspaceActive(), active => { if (!active) multiSelect.value?.hide() });
 
 /*
  * Themed to match `volt/Select.vue`, which it deliberately mirrors — the two

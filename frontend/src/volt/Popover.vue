@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useAttrs, useId } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch, useAttrs, useId } from 'vue'
 import PrimePopover, { type PopoverPassThroughOptions, type PopoverProps } from 'primevue/popover'
 import { popoverMotion } from '../composables/useInterfaceMotion'
 import { ptViewMerge } from './utils'
 import { twMerge } from 'tailwind-merge'
 import '../style/panel-forms.css'
+import { useWorkspaceActive } from '../composables/workspaceContext'
 import { popoverPlacement, type PopoverSide } from '../utils/popoverPlacement'
 
 interface Props extends /* @vue-ignore */ PopoverProps {
@@ -21,6 +22,11 @@ const props = withDefaults(defineProps<Props>(), {
   interaction: 'form',
 })
 const emit = defineEmits<{ show: []; hide: [] }>()
+const workspaceActive = useWorkspaceActive()
+watch(workspaceActive, async active => {
+  if (!active) { returnFocus = false; removeListeners() }
+  else if (shown) { await nextTick(); onShow(true) }
+})
 const attrs = useAttrs()
 const autoId = useId()
 const id = computed(() => String(attrs.id ?? autoId))
@@ -64,6 +70,11 @@ function onPointerDown(event: PointerEvent) {
   returnFocus = pointerStartedInside
 }
 function onOutsideClick(event: MouseEvent) {
+  if (!workspaceActive.value) return
+  // Confirmation dialogs belong to the current operation, not an outside dismissal.
+  if (props.interaction === 'form' && event.target instanceof Element && event.target.closest('[aria-modal="true"], .shared-confirmation')) return
+  // Workspace navigation suspends contextual forms instead of cancelling their drafts.
+  if (props.interaction === 'form' && event.target instanceof Element && event.target.closest('.workspace-tabs, .workspace-actions, .nav-destination, .nav-brand, .navigation-search')) return
   const inside = ownsTarget(event.target) || (event.detail > 0 && pointerStartedInside)
   pointerStartedInside = false
   if (!inside && props.dismissable !== false) hide()
@@ -93,6 +104,9 @@ const theme = computed<PopoverPassThroughOptions>(() => ({
   root: {
     class: twMerge('liquid-glass-float rounded-surface w-80 max-w-[calc(100vw-2rem)] max-h-[70dvh] overflow-y-auto', props.panelClass),
     'aria-modal': 'false',
+    'aria-hidden': workspaceActive.value ? undefined : 'true',
+    inert: !workspaceActive.value,
+    style: workspaceActive.value ? undefined : { display: 'none' },
 
   },
   content: twMerge('panel-form-body p-4', props.contentClass),
@@ -122,7 +136,7 @@ function onKeydown(event: KeyboardEvent) {
   event.stopPropagation()
   hide()
 }
-function onShow() {
+function onShow(resuming = false) {
   // PrimeVue otherwise hides on anchor scroll or desktop resize, even when
   // dismissable=false. Keep drafts mounted and reposition with the anchor.
   const overlay = panel.value as (InstanceType<typeof PrimePopover> & {
@@ -156,7 +170,7 @@ function onShow() {
     alignmentFrame = requestAnimationFrame(alignWithinViewport)
   })
   if (root) resizeObserver.observe(root)
-  emit('show')
+  if (!resuming) emit('show')
 }
 function onHide() {
   // Do not steal focus from a person who clicked elsewhere to dismiss.
@@ -188,7 +202,7 @@ function showAt(target: HTMLElement) {
 }
 function alignWithinViewport() {
   const root = document.getElementById(id.value)
-  if (!root || !trigger) return
+  if (!root || !trigger || !workspaceActive.value) return
   const anchor = trigger.getBoundingClientRect()
   // Measure untransformed dimensions: entry animation scales the bounding rect.
   root.style.maxWidth = ''
@@ -213,7 +227,7 @@ defineExpose({ toggle, showAt, hide })
 
 <template>
   <PrimePopover ref="panel" :id="id" :dismissable="false" :close-on-escape="false" unstyled :pt="theme" :pt-options="{mergeProps: ptViewMerge}"
-    @show="onShow" @hide="onHide" @keydown.capture="onKeydown">
+    @show="onShow()" @hide="onHide" @keydown.capture="onKeydown">
     <slot />
   </PrimePopover>
 </template>

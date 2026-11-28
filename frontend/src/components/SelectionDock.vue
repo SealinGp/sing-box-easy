@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useWorkspaceActive } from '../composables/workspaceContext'
+const workspaceActive = useWorkspaceActive()
 import { XMarkIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
 import { useI18n } from 'vue-i18n'
 import TooltipTarget from './TooltipTarget.vue'
@@ -11,7 +13,7 @@ const { t } = useI18n()
 <template>
   <Teleport to="body">
     <Transition name="selection-dock">
-      <section v-if="count" class="selection-dock liquid-glass-float" role="region"
+      <section v-if="count && workspaceActive" class="selection-dock liquid-glass-float" role="region"
         :aria-label="t('common.collection.actions')" :aria-busy="busy">
         <div class="selection-dock-controls">
           <span class="shrink-0 text-sm font-medium" role="status">{{ t('common.collection.selected', { count }) }}</span>

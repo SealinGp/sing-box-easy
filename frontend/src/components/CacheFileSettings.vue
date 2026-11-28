@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { configSnapshot } from '../utils/configSnapshot'
 import FieldHelp from './FieldHelp.vue'
 import Reveal from './Reveal.vue'
 import SaveFeedback from './SaveFeedback.vue'
@@ -14,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
 const { t } = useI18n()
+const snapshot = configSnapshot(() => t('nav.stalePage'))
 
 // Local state
 const loading = ref(false)
@@ -34,6 +36,7 @@ const fetchCacheFile = async () => {
   loadError.value = ''
   try {
     const { data } = await experimentalService.getCacheFile()
+    snapshot.remember(data)
     if (data) {
       settings.value = { ...data }
     }
@@ -53,7 +56,11 @@ const fetchCacheFile = async () => {
 // Update cache file config
 const handleSave = async () => {
   if (saving.value || loading.value || loadError.value) return
-  await persist(() => experimentalService.updateCacheFile({ ...settings.value }),
+  await persist(async () => {
+    snapshot.assertCurrent((await experimentalService.getCacheFile()).data)
+    await experimentalService.updateCacheFile({ ...settings.value })
+    snapshot.remember((await experimentalService.getCacheFile()).data)
+  },
     t('experimental.cache.toast.updatedOk'), t('experimental.cache.toast.updateFailed'))
 }
 

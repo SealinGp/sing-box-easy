@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { configSnapshot } from '../utils/configSnapshot'
 import FieldHelp from './FieldHelp.vue'
 import Reveal from './Reveal.vue'
 import SaveFeedback from './SaveFeedback.vue'
@@ -14,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
 const { t } = useI18n()
+const snapshot = configSnapshot(() => t('nav.stalePage'))
 
 // Local state
 const loading = ref(false)
@@ -39,6 +41,7 @@ const fetchV2RayAPI = async () => {
   loadError.value = ''
   try {
     const { data } = await experimentalService.getV2RayAPI()
+    snapshot.remember(data)
     if (data) {
       settings.value = { ...data }
 
@@ -109,7 +112,11 @@ const handleSave = async () => {
     }
   }
 
-  await persist(() => experimentalService.updateV2RayAPI(config),
+  await persist(async () => {
+    snapshot.assertCurrent((await experimentalService.getV2RayAPI()).data)
+    await experimentalService.updateV2RayAPI(config)
+    snapshot.remember((await experimentalService.getV2RayAPI()).data)
+  },
     t('experimental.v2ray.toast.updatedOk'), t('experimental.v2ray.toast.updateFailed'))
 }
 

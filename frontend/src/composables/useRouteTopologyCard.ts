@@ -1,3 +1,4 @@
+import { useWorkspaceActive } from './workspaceContext'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { configService } from '../services'
@@ -312,6 +313,8 @@ const toggleLegend = () => {
  * windows exactly where they were.
  */
 const expanded = ref(false)
+const workspaceActive = useWorkspaceActive()
+watch(workspaceActive, active => { if (!active) expanded.value = false })
 
 const toggleExpanded = () => {
   expanded.value = !expanded.value

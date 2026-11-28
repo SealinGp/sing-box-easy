@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useWorkspaceDirty } from '../composables/workspaceContext'
 import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
@@ -22,12 +23,16 @@ const saving = ref(false)
 const error = ref('')
 const success = ref(false)
 const open = ref(false)
+const baseline = ref('')
+const draftSignature = () => JSON.stringify([enabled.value, minutes.value])
+useWorkspaceDirty(() => open.value && draftSignature() !== baseline.value)
 const invalid = computed(() => enabled.value && (!Number.isInteger(minutes.value) || minutes.value < 1 || minutes.value > 1440))
 watch(() => props.group.auto_selection, () => { saved.value = null })
 function show() {
   open.value = true
   enabled.value = status.value?.enabled ?? false
   minutes.value = (status.value?.interval_seconds || 300) / 60
+  baseline.value = draftSignature()
   error.value = ''; success.value = false
 }
 async function save() {
@@ -35,7 +40,7 @@ async function save() {
   saving.value = true; error.value = ''; success.value = false
   try {
     const { data } = await runtimeService.setAutoSelection(props.group.name, enabled.value, enabled.value ? Math.round(minutes.value * 60) : (status.value?.interval_seconds || 300))
-    saved.value = data; success.value = true; emit('updated')
+    saved.value = data; baseline.value = draftSignature(); success.value = true; emit('updated')
   } catch (err) { error.value = apiErrorMessage(err, t('proxies.auto.saveFailed')) }
   finally { saving.value = false }
 }

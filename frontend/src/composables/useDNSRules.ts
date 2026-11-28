@@ -1,3 +1,4 @@
+import { configSnapshot } from '../utils/configSnapshot'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSRule } from '../types/api'
@@ -24,6 +25,7 @@ import { dnsConditionKeys, dnsRuleOutcome } from '../utils/dnsRulePresentation'
 export function useDNSRules() {
   const toast = useToast()
   const { t } = useI18n()
+  const snapshot = configSnapshot(() => t('nav.stalePage'))
   const dnsStore = useDNSStore()
   const routeStore = useRouteStore()
   // The server list is no longer read here — the `dns-server` control in
@@ -109,6 +111,7 @@ export function useDNSRules() {
     try {
       const { data } = await dnsService.getDNSRules()
       dnsRules.value = data.rules || []
+      snapshot.remember(data.rules || [])
       reorder.syncKeys(dnsRules.value.length)
     } catch (err: any) {
       toast.add({
@@ -251,6 +254,7 @@ export function useDNSRules() {
     loading.value = true
     try {
       if (isEditMode.value) {
+        snapshot.assertCurrent((await dnsService.getDNSRules()).data.rules || [])
         await dnsService.updateDNSRule(editingIndex.value, processedRule)
         toast.add({
           severity: 'success',
@@ -295,6 +299,7 @@ export function useDNSRules() {
     if (deletingIndex.value === -1) return
     loading.value = true
     try {
+      snapshot.assertCurrent((await dnsService.getDNSRules()).data.rules || [])
       await dnsService.deleteDNSRule(deletingIndex.value)
       toast.add({
         severity: 'success',
@@ -392,7 +397,9 @@ export function useDNSRules() {
    */
   async function persistOrder(order: number[]) {
     try {
+      snapshot.assertCurrent((await dnsService.getDNSRules()).data.rules || [])
       await dnsService.reorderDNSRules(order)
+      snapshot.remember((await dnsService.getDNSRules()).data.rules || [])
       toast.add({
         severity: 'success',
         summary: t('common.success'),

@@ -27,7 +27,7 @@ function onVisibilityChange(visible: boolean) {
     @update:visible="onVisibilityChange"
     modal
     :header="state.title || t('common.confirmTitle')"
-    class="w-full max-w-md"
+    class="shared-confirmation w-full max-w-md"
   >
     <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
       {{ state.message }}

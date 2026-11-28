@@ -1,3 +1,4 @@
+import { useWorkspaceActive } from './workspaceContext'
 import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import { openConnectionsStream } from '../services/runtime'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -22,6 +23,7 @@ export function useConnectionStats(enabled: Ref<boolean>, fallbackError: () => s
   const history = shallowRef<TrafficSample[]>([])
   const error = ref('')
 
+  const workspaceActive = useWorkspaceActive()
   let controller: AbortController | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -36,7 +38,7 @@ export function useConnectionStats(enabled: Ref<boolean>, fallbackError: () => s
 
   const open = () => {
     close()
-    if (!enabled.value) return
+    if (!enabled.value || !workspaceActive.value) return
     const current = new AbortController()
     controller = current
 
@@ -58,7 +60,7 @@ export function useConnectionStats(enabled: Ref<boolean>, fallbackError: () => s
         onClose: () => {
           if (controller !== current) return
           controller = null
-          if (enabled.value) reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS)
+          if (enabled.value && workspaceActive.value) reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS)
         },
       },
       current.signal,
@@ -66,7 +68,8 @@ export function useConnectionStats(enabled: Ref<boolean>, fallbackError: () => s
     )
   }
 
-  watch(enabled, (on) => {
+  watch([enabled, workspaceActive], ([on, active]) => {
+    if (!active) { close(); return }
     if (on) {
       open()
       return

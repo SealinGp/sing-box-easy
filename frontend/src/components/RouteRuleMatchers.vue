@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { watch as watchDraft } from 'vue'
+import { useWorkspaceEdit } from '../composables/workspaceContext'
+const markDraftEdited = useWorkspaceEdit()
 /**
  * Reusable editor for a route rule's *matching criteria*. Self-contained: pass
  * any RouteRule via v-model and render it anywhere (route rules dialog, init
@@ -85,6 +88,7 @@ const props = defineProps<{
 }>()
 
 const model = defineModel<RouteRule>({ required: true })
+watchDraft(model, () => markDraftEdited(), { deep: true })
 const { t } = useI18n()
 
 // Resolved once: the field list is a pure function of the curation, and this

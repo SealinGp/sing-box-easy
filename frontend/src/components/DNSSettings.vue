@@ -89,13 +89,15 @@ watch(() => dnsConfig.value, (newConfig) => {
 
 const handleSave = async () => {
   if (saving.value || loading.value || loadError.value) return
-  const updatedDNS = {
-    ...dnsConfig.value,
-    ...settings.value,
-    disable_expire: !settings.value.disable_cache && settings.value.disable_expire,
-  } as DNS
-
-  await persist(() => dnsService.updateDNS(updatedDNS),
+  const draft = { ...settings.value }
+  await persist(async () => {
+    // Other workspace pages may have changed servers or rules since this form opened.
+    const latest = await dnsService.getDNS()
+    await dnsService.updateDNS({
+      ...latest.data, ...draft,
+      disable_expire: !draft.disable_cache && draft.disable_expire,
+    } as DNS)
+  },
     t('dns.settings.toast.updatedOk'), t('dns.settings.toast.updateFailed'))
 }
 

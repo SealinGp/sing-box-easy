@@ -1,6 +1,7 @@
 import Popover from '../volt/Popover.vue'
+import { useWorkspaceActive, useWorkspaceDirty } from './workspaceContext'
 import { trafficPolicyService, type ManagedPolicy } from '../services/trafficPolicy'
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { configService, serviceControlService } from '../services'
 import { type SingBoxConfig, type ConfigVersion } from '../types/api'
@@ -46,6 +47,8 @@ export function useConfigEditor() {
   const validating = ref(false)
   const restarting = ref(false)
   const hasChanges = ref(false)
+  useWorkspaceDirty(() => hasChanges.value)
+  const workspaceActive = useWorkspaceActive()
   const isFullscreen = ref(false)
   const isSplit = ref(false)
   const editorTheme = ref<'vs-dark' | 'vs-light'>('vs-dark')
@@ -118,6 +121,10 @@ export function useConfigEditor() {
     }
   }
 
+  watch(workspaceActive, active => {
+    if (active && !hasChanges.value && !saving.value) void loadConfig()
+  })
+
   const handleContentChange = (value: string) => {
     configContent.value = value
     hasChanges.value = value !== originalContent.value
@@ -129,6 +136,10 @@ export function useConfigEditor() {
     saving.value = true
     try {
       const config = JSON.parse(submitted) as SingBoxConfig
+      const latest = await configService.getConfig()
+      if (JSON.stringify(latest.data, null, 2) !== originalContent.value && !await confirm({
+        message: t('nav.configChanged'), confirmLabel: t('config.save'), tone: 'danger',
+      })) return
       const impact = await trafficPolicyService.impact(config)
       if (impact.policies.length) {
         rawReview.value={...impact,content:submitted}
@@ -397,6 +408,7 @@ export function useConfigEditor() {
 
   // Keyboard shortcut
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (!workspaceActive.value) return
     // Ctrl+S or Cmd+S to save
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault()

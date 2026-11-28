@@ -1,5 +1,19 @@
 // Sidebar brand/footer + Dashboard navigation labels.
 export default {
+  closeThisTab: 'Close tab',
+  closeAllTabs: 'Close all tabs',
+  stalePage: 'This data changed on another page or device. Nothing was submitted. Keep a copy of your draft, then close and reopen this tab to review the latest data.',
+  configChanged: 'The configuration changed on another page or device. Saving this draft will overwrite those changes. Continue?',
+  workTabs: 'Open pages',
+  pinned: 'Pinned',
+  unsaved: 'Unsaved changes',
+  closeTab: 'Close {name}',
+  pinTab: 'Pin current tab',
+  unpinTab: 'Unpin current tab',
+  closeOtherTabs: 'Close all other tabs',
+  discardTabs: 'These pages have unsaved changes. Closing them will discard those changes.',
+  discardAndClose: 'Discard and close',
+
   more: 'More',
   monitor: 'Monitor',
   connections: 'Connections',

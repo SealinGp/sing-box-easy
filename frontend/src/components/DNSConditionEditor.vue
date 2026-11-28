@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { watch as watchDraft } from 'vue'
+import { useWorkspaceEdit } from '../composables/workspaceContext'
+const markDraftEdited = useWorkspaceEdit()
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DNSRuleConditions from './DNSRuleConditions.vue'
@@ -8,6 +11,7 @@ import { Select } from '../volt'
 import { readDNSRuleDraft, invalidDNSConditionGroup, type DNSRuleDraft } from '../utils/dnsRuleDraft'
 
 const rule = defineModel<DNSRuleDraft>({ required: true })
+watchDraft(rule, () => markDraftEdited(), { deep: true })
 defineProps<{ ruleSetOptions: { value: string; label: string }[] }>()
 const { t } = useI18n()
 const modes = computed(() => [

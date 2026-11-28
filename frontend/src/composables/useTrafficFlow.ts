@@ -1,3 +1,4 @@
+import { useWorkspaceActive } from './workspaceContext'
 /**
  * Owns one live traffic stream for the Overview diagram.
  *
@@ -32,6 +33,7 @@ export function useTrafficFlow(enabled: Ref<boolean>, filter: Ref<TrafficFilter>
   const error = ref('')
   const connecting = ref(false)
 
+  const workspaceActive = useWorkspaceActive()
   let controller: AbortController | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -51,7 +53,7 @@ export function useTrafficFlow(enabled: Ref<boolean>, filter: Ref<TrafficFilter>
 
   const open = () => {
     close()
-    if (!enabled.value) return
+    if (!enabled.value || !workspaceActive.value) return
 
     const current = new AbortController()
     controller = current
@@ -74,7 +76,7 @@ export function useTrafficFlow(enabled: Ref<boolean>, filter: Ref<TrafficFilter>
           if (controller !== current) return
           connecting.value = false
           controller = null
-          if (enabled.value) {
+          if (enabled.value && workspaceActive.value) {
             reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS)
           }
         },
@@ -83,7 +85,8 @@ export function useTrafficFlow(enabled: Ref<boolean>, filter: Ref<TrafficFilter>
     )
   }
 
-  watch(enabled, (on) => {
+  watch([enabled, workspaceActive], ([on, active]) => {
+    if (!active) { close(); return }
     if (on) {
       open()
     } else {

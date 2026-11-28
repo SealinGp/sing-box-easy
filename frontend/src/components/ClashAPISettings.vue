@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { configSnapshot } from '../utils/configSnapshot'
 import FieldHelp from './FieldHelp.vue'
 import Reveal from './Reveal.vue'
 import SaveFeedback from './SaveFeedback.vue'
@@ -23,6 +24,7 @@ import {
 
 const toast = useToast()
 const { t } = useI18n()
+const snapshot = configSnapshot(() => t('nav.stalePage'))
 
 // Local state
 const loading = ref(false)
@@ -75,6 +77,7 @@ const fetchClashAPI = async () => {
   loadError.value = ''
   try {
     const { data } = await experimentalService.getClashAPI()
+    snapshot.remember(data)
     enabled.value = Boolean(data?.external_controller)
     if (data) {
       settings.value = { ...data }
@@ -113,7 +116,11 @@ const handleSave = async () => {
     config.access_control_allow_origin = []
   }
 
-  await persist(() => experimentalService.updateClashAPI(enabled.value ? config : {}),
+  await persist(async () => {
+    snapshot.assertCurrent((await experimentalService.getClashAPI()).data)
+    await experimentalService.updateClashAPI(enabled.value ? config : {})
+    snapshot.remember((await experimentalService.getClashAPI()).data)
+  },
     t('experimental.clash.toast.updatedOk'), t('experimental.clash.toast.updateFailed'))
 }
 

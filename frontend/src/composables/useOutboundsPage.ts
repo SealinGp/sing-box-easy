@@ -318,11 +318,11 @@ const handleSave = async () => {
   }
 };
 
-const deleteOutbound = async (outboundIndex: number, outbound: Outbound) => {
+const deleteOutbound = async (_outboundIndex: number, outbound: Outbound) => {
   localLoading.value = true;
 
   try {
-    const val = outboundIndex > -1 ? outboundIndex : outbound.tag;
+    const val = outbound.tag;
     await outboundsStore.deleteOutbound(val);
     toast.add({
       severity: "success",

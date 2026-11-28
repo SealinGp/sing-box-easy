@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useWorkspaceEdit } from '../composables/workspaceContext'
+const markEdited = useWorkspaceEdit()
 import IconButton from './IconButton.vue'
 
 /**
@@ -57,7 +59,7 @@ const { rows, errors, edit, add, remove } = useHostsDraft(
       <IconButton
         action="delete"
         type="button"
-        @click="remove(row.id)"
+        @click="markEdited(); remove(row.id)"
         :label="t('common.delete')"
       />
     </div>
@@ -65,7 +67,7 @@ const { rows, errors, edit, add, remove } = useHostsDraft(
     <button
       type="button"
       class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-control border border-dashed border-gray-300 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
-      @click="add"
+      @click="markEdited(); add()"
     >
       <PlusIcon class="h-3.5 w-3.5" />
       {{ t('dns.servers.form.addHost') }}

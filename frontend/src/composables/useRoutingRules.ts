@@ -1,3 +1,4 @@
+import { configSnapshot } from '../utils/configSnapshot'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue'
@@ -55,6 +56,7 @@ export function useRoutingRules() {
 
   const toast = useToast()
   const { t } = useI18n()
+  const snapshot = configSnapshot(() => t('nav.stalePage'))
 
   // Local state
   const loading = ref(false)
@@ -114,6 +116,7 @@ export function useRoutingRules() {
     try {
       const { data } = await routeService.getRouteRules()
       rules.value = (data.rules || []).map(normalizeRouteRule)
+      snapshot.remember(data.rules || [])
       reorder.syncKeys(rules.value.length)
     } catch (err: any) {
       toast.add({
@@ -165,6 +168,7 @@ export function useRoutingRules() {
     submitting.value = true
     formError.value = ''
     try {
+      snapshot.assertCurrent((await routeService.getRouteRules()).data.rules || [])
       await routeService.updateRouteRule(index, rule)
       toast.add({
         severity: 'success',
@@ -187,6 +191,7 @@ export function useRoutingRules() {
   const handleDeleteRule = async (index: number) => {
     loading.value = true
     try {
+      snapshot.assertCurrent((await routeService.getRouteRules()).data.rules || [])
       await routeService.deleteRouteRule(index)
       toast.add({
         severity: 'success',
@@ -405,7 +410,9 @@ export function useRoutingRules() {
    */
   async function persistOrder(order: number[]) {
     try {
+      snapshot.assertCurrent((await routeService.getRouteRules()).data.rules || [])
       await routeService.reorderRouteRules(order)
+      snapshot.remember((await routeService.getRouteRules()).data.rules || [])
       toast.add({
         severity: 'success',
         summary: t('common.success'),

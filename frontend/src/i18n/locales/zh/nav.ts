@@ -1,5 +1,19 @@
 // 侧边栏品牌/底部 + 仪表盘导航标签。
 export default {
+  closeThisTab: '关闭菜单',
+  closeAllTabs: '关闭所有菜单',
+  stalePage: '此页面的数据已在其他页面或设备中更改，未提交本次操作。请先保留草稿，再关闭并重新打开此页签核对。',
+  configChanged: '配置已在其他页面或设备中更新。保存当前草稿会覆盖那些更改，仍要继续吗？',
+  workTabs: '工作页签',
+  pinned: '已固定',
+  unsaved: '未保存',
+  closeTab: '关闭{name}',
+  pinTab: '固定当前页签',
+  unpinTab: '取消固定',
+  closeOtherTabs: '关闭其他所有菜单',
+  discardTabs: '这些页面有未保存的修改。关闭后将丢弃这些修改。',
+  discardAndClose: '丢弃并关闭',
+
   more: '更多',
   monitor: '运行监控',
   connections: '连接与节点',

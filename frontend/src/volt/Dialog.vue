@@ -1,5 +1,5 @@
 <template>
-    <Dialog unstyled :draggable="draggable" :pt="theme" :ptOptions="{ mergeProps: ptViewMerge }">
+    <Dialog ref="dialog" unstyled :visible="visible" :modal="modal && workspaceActive" :close-on-escape="closeOnEscape && workspaceActive" @update:visible="value => emit('update:visible', value)" @input.capture="edited = true" @change.capture="edited = true" :draggable="draggable" :pt="theme" :ptOptions="{ mergeProps: ptViewMerge }">
         <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
             <slot :name="slotName" v-bind="slotProps ?? {}" />
         </template>
@@ -7,7 +7,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
+import { computed, provide, ref, watch, nextTick, useAttrs } from 'vue';
+import { workspaceEditKey, useWorkspaceActive, useWorkspaceDirty } from '../composables/workspaceContext';
 import { twMerge } from 'tailwind-merge';
 import Dialog, { type DialogPassThroughOptions, type DialogProps } from 'primevue/dialog';
 import { ptViewMerge } from './utils';
@@ -15,12 +16,27 @@ import { dialogMotion, useInterfaceMotion } from '../composables/useInterfaceMot
 
 interface Props extends /* @vue-ignore */ DialogProps {
     draggable?: boolean;
+    visible?: boolean;
+    modal?: boolean;
+    closeOnEscape?: boolean;
 }
 // Not draggable unless a caller asks. PrimeVue defaults `draggable` to true and
 // starts the drag on any mousedown in the header, so selecting the title (or
 // anything else up there) to copy it moved the whole dialog instead. Declared
 // here rather than passed through, so the default is ours, not PrimeVue's.
-withDefaults(defineProps<Props>(), { draggable: false });
+const props = withDefaults(defineProps<Props>(), { draggable: false, visible: false, modal: false, closeOnEscape: true });
+const emit = defineEmits<{ 'update:visible': [value: boolean] }>();
+const workspaceActive = useWorkspaceActive();
+const dialog = ref<InstanceType<typeof Dialog> & { unbindDocumentState(): void; enableDocumentSettings(): void }>();
+watch(workspaceActive, async active => {
+    if (!props.visible) return;
+    if (!active) dialog.value?.unbindDocumentState();
+    else { await nextTick(); dialog.value?.enableDocumentSettings(); }
+}, { flush: 'sync' });
+const edited = ref(false)
+provide(workspaceEditKey, () => { edited.value = true });
+watch(() => props.visible, () => { edited.value = false });
+useWorkspaceDirty(() => props.visible && edited.value);
 
 // A caller's `class` is a FALLTHROUGH ATTRIBUTE, not a pt entry, so it never
 // reaches `ptViewMerge`/`twMerge` — PrimeVue concatenates it onto the root
@@ -84,7 +100,8 @@ const baseTheme: DialogPassThroughOptions = {
 // bg-white/bg-gray-800 pair it used to hard-code.
 const theme = computed<DialogPassThroughOptions>(() => ({
     ...baseTheme,
-    root: twMerge(ROOT_BASE, attrs.class as string | undefined),
+    root: { class: twMerge(ROOT_BASE, attrs.class as string | undefined), inert: !workspaceActive.value },
+    mask: { class: baseTheme.mask, style: workspaceActive.value ? undefined : { display: 'none' } },
     transition: interfaceMotion ? dialogMotion : baseTheme.transition,
 }));
 </script>

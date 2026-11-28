@@ -5,7 +5,7 @@ import { GlobeAltIcon, MapIcon, BeakerIcon, UserCircleIcon } from '@heroicons/vu
 import Sidebar from '../components/Sidebar.vue'
 import Topbar from '../components/Topbar.vue'
 import NavigationSearch from '../components/NavigationSearch.vue'
-import PageTransition from '../components/PageTransition.vue'
+import Workspace from '../components/Workspace.vue'
 import { useDeployment } from '../composables/useDeployment'
 import { createMenu, type MenuItem } from '../navigation/menu'
 import '../style/navigation.css'
@@ -60,9 +60,7 @@ onBeforeUnmount(() => {
     <Topbar v-if="useTopbar" :menu-items="menuItems" @search="searchOpen = !searchOpen" />
     <Sidebar v-else :menu-items="menuItems" @search="searchOpen = !searchOpen" />
     <main id="dashboard-content" tabindex="-1" class="dashboard-content">
-      <RouterView v-slot="{ Component, route }">
-        <PageTransition :fill="route.path === '/dashboard/config'" :view-key="route.matched[1]?.path || route.path"><component :is="Component" /></PageTransition>
-      </RouterView>
+      <Workspace />
     </main>
     <NavigationSearch v-model="searchOpen" :groups="searchGroups" />
   </div>

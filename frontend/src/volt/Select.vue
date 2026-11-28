@@ -1,6 +1,7 @@
 <template>
     <Select
         ref="select"
+        @update:modelValue="markEdited(select?.$el)"
         unstyled
         :pt="theme"
         :ptOptions="{
@@ -15,8 +16,10 @@
 
 <script setup lang="ts">
 import Select, { type SelectPassThroughOptions, type SelectProps } from 'primevue/select';
+import { useWorkspaceActive, useWorkspaceEdit } from '../composables/workspaceContext';
+const markEdited = useWorkspaceEdit();
 import { ptViewMerge } from './utils';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, watch, onBeforeUnmount, ref } from 'vue';
 import { popoverMotion, useInterfaceMotion } from '../composables/useInterfaceMotion';
 
 interface Props extends /* @vue-ignore */ SelectProps {
@@ -25,7 +28,8 @@ interface Props extends /* @vue-ignore */ SelectProps {
     filterKeydown?: (event: KeyboardEvent) => void;
 }
 const props = defineProps<Props>();
-const select = ref<InstanceType<typeof Select>>();
+const select = ref<InstanceType<typeof Select> & { $el: HTMLElement }>();
+watch(useWorkspaceActive(), active => { if (!active) select.value?.hide() });
 // Allows footer actions to dismiss the picker before opening a contextual form.
 let overlayActive = false;
 let closeWaiters: (() => void)[] = [];

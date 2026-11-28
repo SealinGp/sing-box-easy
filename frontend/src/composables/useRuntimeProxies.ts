@@ -1,3 +1,4 @@
+import { useWorkspaceActive } from './workspaceContext'
 import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import { runtimeService } from '../services'
 import { apiErrorMessage } from '../utils/apiErrorMessage'
@@ -29,6 +30,7 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
   /** `group\u0000name` of a switch in flight. */
   const switching = ref('')
 
+  const workspaceActive = useWorkspaceActive()
   let timer: ReturnType<typeof setInterval> | null = null
   // Bumped on every load so a slow reply cannot overwrite a newer one.
   let generation = 0
@@ -140,7 +142,8 @@ export function useRuntimeProxies(enabled: Ref<boolean>, fallbackError: () => st
     }, REFRESH_MS)
   }
 
-  watch(enabled, (on) => {
+  watch([enabled, workspaceActive], ([on, active]) => {
+    if (!active) { stop(); generation++; loading.value = false; return }
     if (on) {
       start()
     } else {

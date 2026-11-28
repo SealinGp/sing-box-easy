@@ -1,7 +1,9 @@
-import { ref } from 'vue'
+import { getCurrentInstance, inject, ref } from 'vue'
+import { workspaceKey } from './workspaceContext'
 
 /** Saving keeps the form mounted and errors next to the submitting control. */
 export function useInlineSave() {
+  const workspace = getCurrentInstance() ? inject(workspaceKey, null) : null
   const saving = ref(false)
   const saveError = ref('')
   const savedMessage = ref('')
@@ -14,9 +16,11 @@ export function useInlineSave() {
   async function persist(operation: () => Promise<unknown>, success: string, fallback: string) {
     if (saving.value) return false
     clearSaveFeedback()
+    const version = workspace?.editVersion.value
     saving.value = true
     try {
       await operation()
+      if (workspace && workspace.editVersion.value === version) workspace.inlineDirty.value = false
       savedMessage.value = success
       return true
     } catch (error) {

@@ -9,9 +9,8 @@ import type { SystemType } from '../types/api'
  * Two things depend on it:
  *  - `authEnabled`: whether there is a login flow at all. `true` is the safe
  *    default, so a failed fetch never silently opens the UI.
- *  - `systemType`: the platform family. OpenWrt routers render a top bar
- *    instead of a sidebar, because LuCI already occupies the left edge of the
- *    operator's screen.
+ *  - `systemType`: the platform family, used for setup defaults. Desktop
+ *    navigation uses a sidebar unless the user explicitly prefers a top bar.
  */
 const authEnabled = ref(true)
 const systemType = ref<SystemType>('unknown')
@@ -60,9 +59,7 @@ const setLayoutOverride = (value: LayoutOverride) => {
 
 /** Platform detection also controls setup defaults; appearance must not change it. */
 const isOpenWrt = computed(() => systemType.value === 'openwrt')
-const prefersTopbar = computed(() => layoutOverride.value === 'auto'
-  ? isOpenWrt.value
-  : layoutOverride.value === 'topbar')
+const prefersTopbar = computed(() => layoutOverride.value === 'topbar')
 
 let loaded: Promise<void> | null = null
 

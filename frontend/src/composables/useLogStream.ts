@@ -20,6 +20,7 @@
  * diffed it. The stream has no such problem: the server sends each line once,
  * as it is written.
  */
+import { useWorkspaceActive } from './workspaceContext'
 import { onUnmounted, ref, watch, type Ref } from 'vue'
 import { openStream } from '../services/stream'
 import { serviceControlService } from '../services'
@@ -227,6 +228,12 @@ export function useLogStream(options: LogStreamOptions) {
     if (wasRunning) void start()
   })
 
+  const workspaceActive = useWorkspaceActive()
+  let resumeOnActivate = false
+  watch(workspaceActive, active => {
+    if (!active) { resumeOnActivate = !stopped; stop() }
+    else if (resumeOnActivate) void start()
+  })
   onUnmounted(stop)
 
   return { source, transport, errored, initialLoading, start, stop, refetch: pollOnce }

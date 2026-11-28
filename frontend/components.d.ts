@@ -155,5 +155,8 @@ declare module 'vue' {
     TruncatedText: typeof import('./src/components/TruncatedText.vue')['default']
     UsersEditor: typeof import('./src/components/UsersEditor.vue')['default']
     V2RayAPISettings: typeof import('./src/components/V2RayAPISettings.vue')['default']
+    Workspace: typeof import('./src/components/Workspace.vue')['default']
+    WorkspacePane: typeof import('./src/components/WorkspacePane.vue')['default']
+    WorkspaceTabs: typeof import('./src/components/WorkspaceTabs.vue')['default']
   }
 }
