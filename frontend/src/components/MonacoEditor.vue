@@ -5,6 +5,7 @@ import * as monaco from 'monaco-editor'
 interface Props {
   modelValue: string
   modelUri?: string
+  minHeight?: number
   language?: string
   theme?: string
   options?: any
@@ -17,6 +18,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  minHeight: 400,
   language: 'json',
   theme: 'vs-dark',
   options: () => ({}),
@@ -179,10 +181,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="wrapper" class="flex w-full h-full min-h-[400px]">
+  <div ref="wrapper" class="flex w-full h-full" :style="{ minHeight: `${minHeight}px` }">
     <div
       ref="primaryContainer"
-      class="h-full min-h-[400px]"
+      class="h-full min-h-0 min-w-0 shrink-0"
       :style="split ? { width: splitRatio * 100 + '%' } : { width: '100%' }"
     ></div>
 
@@ -196,7 +198,7 @@ onBeforeUnmount(() => {
     <div
       v-show="split"
       ref="secondaryContainer"
-      class="h-full min-h-[400px] flex-1"
+      class="h-full min-h-0 min-w-0 flex-1"
     ></div>
   </div>
 </template>

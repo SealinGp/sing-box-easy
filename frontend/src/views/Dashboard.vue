@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
     <Sidebar v-else :menu-items="menuItems" @search="searchOpen = !searchOpen" />
     <main id="dashboard-content" tabindex="-1" class="dashboard-content">
       <RouterView v-slot="{ Component, route }">
-        <PageTransition :view-key="route.matched[1]?.path || route.path"><component :is="Component" /></PageTransition>
+        <PageTransition :fill="route.path === '/dashboard/config'" :view-key="route.matched[1]?.path || route.path"><component :is="Component" /></PageTransition>
       </RouterView>
     </main>
     <NavigationSearch v-model="searchOpen" :groups="searchGroups" />

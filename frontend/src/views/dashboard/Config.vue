@@ -21,12 +21,8 @@ const { t, configContent, loading, saving, rawImpactPanel, saveAnchor, rawReview
     </div>
   </Popover>
 
-  <!--
-    Outer wrapper is pinned to 100vh and laid out as a single flex column so
-    the editor child can claim all the leftover viewport height instead of
-    waiting for a parent `h-full` chain that may or may not resolve. The
-    fullscreen toggle still wins via `fixed inset-0 z-50` when active.
-  -->
+  <!-- PageTransition supplies the available workspace height; flex assigns
+       the remainder after the toolbar/status to Monaco. -->
   <div
     class="p-4 h-full min-h-[24rem] flex flex-col overflow-hidden"
     :class="{ 'fixed inset-0 z-50 bg-gray-50 dark:bg-gray-900': isFullscreen }"
@@ -157,6 +153,7 @@ const { t, configContent, loading, saving, rawImpactPanel, saveAnchor, rawReview
             :theme="editorTheme"
             :options="editorOptions"
             :split="isSplit"
+            :min-height="0"
             class="h-full"
           />
         </div>

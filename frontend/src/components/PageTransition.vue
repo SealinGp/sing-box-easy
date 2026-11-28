@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineProps<{ viewKey: string }>()
+defineProps<{ viewKey: string; fill?: boolean }>()
 const stack = ref<HTMLElement | null>(null)
 
 function beforeLeave(element: Element) {
@@ -21,7 +21,7 @@ function entered() {
 </script>
 
 <template>
-  <div ref="stack" class="ui-page-stack">
+  <div ref="stack" class="ui-page-stack" :class="{ 'ui-page-fill': fill }">
     <!-- Only the incoming view animates. Synchronous removal prevents a paint
          with overlapping pages; the height guard keeps loading content stable. -->
     <Transition name="ui-route" @before-leave="beforeLeave" @leave="leave"
