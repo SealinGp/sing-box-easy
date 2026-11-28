@@ -72,13 +72,13 @@ small { font-size: 11px; color: var(--color-text-secondary); overflow: hidden; t
 .flow-chevron.expanded { transform: rotate(90deg); }
 .flow-detail { padding: 14px 16px; border-left: 3px solid var(--color-primary); background: color-mix(in srgb, var(--color-primary) 4%, transparent); }
 .closed .flow-line { color: var(--color-text-secondary); }
-:global(.flow-compact) .flow-line, :global(.flow-dense) .flow-line { min-height: 48px; padding-block: 6px; }
-:global(.flow-compact) .flow-source { flex-direction: row; align-items: baseline; gap: 0; }
+:global(.flow-compact .flow-line), :global(.flow-dense .flow-line) { min-height: 48px; padding-block: 6px; }
+:global(.flow-compact .flow-source) { flex-direction: row; align-items: baseline; gap: 0; }
 @media (max-width: 700px) {
   .flow-line { grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1.3fr) 14px; gap: 8px; padding: 10px; }
   .flow-rates { grid-column: 1 / 4; grid-row: 2; flex-direction: row; gap: 14px; text-align: left; }
   .flow-chevron { grid-column: 4; grid-row: 1; }
-  .flow-source, :global(.flow-compact) .flow-source { flex-direction: column; gap: 2px; align-items: stretch; }
+  .flow-source, :global(.flow-compact .flow-source) { flex-direction: column; gap: 2px; align-items: stretch; }
   .flow-detail { padding: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .flow-chevron { transition: none; } }
