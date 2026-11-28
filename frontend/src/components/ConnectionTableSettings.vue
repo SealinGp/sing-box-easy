@@ -16,6 +16,7 @@ import Button from './Button.vue'
 import { ALL_COLUMNS, moveColumn, placeColumn, type ColumnKey, type TableSettings } from '../utils/connectionsTable'
 
 const props = defineProps<{
+  flowOnly?: boolean
   visible: boolean
   anchor: HTMLElement | null
   settings: TableSettings
@@ -70,7 +71,7 @@ const setLabel = (ip: string, value: string) => {
   <Popover ref="panel" :aria-label="$t('connections.settings.title')" class="connection-settings-popover" @hide="shown = false">
     <h3 class="mb-4 text-lg font-semibold">{{ $t('connections.settings.title') }}</h3>
     <div class="space-y-4 text-sm">
-      <section>
+      <section v-if="!flowOnly">
         <h4 class="mb-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">{{ $t('connections.settings.shown') }}</h4>
         <div class="flex min-h-[42px] flex-wrap gap-1.5 rounded-control border border-dashed border-gray-300 p-2 dark:border-gray-600">
           <span
@@ -93,7 +94,7 @@ const setLabel = (ip: string, value: string) => {
         </div>
       </section>
 
-      <section>
+      <section v-if="!flowOnly">
         <h4 class="mb-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">{{ $t('connections.settings.available') }}</h4>
         <div class="flex min-h-[42px] flex-wrap gap-1.5 rounded-control border border-dashed border-gray-300 p-2 dark:border-gray-600">
           <button

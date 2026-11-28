@@ -1,5 +1,17 @@
 // Runtime connections page (Connections.vue): live connections of the running sing-box.
 export default {
+  flow: {
+    "view": "Connection view",
+    "groups": "By device",
+    "compact": "Compact",
+    "count": "{n} on this page",
+    "sort": "Sort by",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "{page} / {pages} · {total} connections"
+},
   tabs: {
     label: 'Connection state',
     active: 'Active',
@@ -76,7 +88,7 @@ export default {
     close: 'Close this connection',
   },
   settings: {
-    title: 'Connection table settings',
+    title: 'Connection display settings',
     shown: 'Shown columns (drag, or use ‹ › to reorder)',
     available: 'Available columns',
     allShown: 'Every column is shown',

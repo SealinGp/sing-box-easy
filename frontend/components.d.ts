@@ -29,6 +29,8 @@ declare module 'vue' {
     ConfirmDialog: typeof import('./src/components/ConfirmDialog.vue')['default']
     ConnectionDetailFold: typeof import('./src/components/ConnectionDetailFold.vue')['default']
     ConnectionDetails: typeof import('./src/components/ConnectionDetails.vue')['default']
+    ConnectionFlowRow: typeof import('./src/components/ConnectionFlowRow.vue')['default']
+    ConnectionsFlow: typeof import('./src/components/ConnectionsFlow.vue')['default']
     ConnectionSourcePicker: typeof import('./src/components/ConnectionSourcePicker.vue')['default']
     ConnectionsOverviewCard: typeof import('./src/components/ConnectionsOverviewCard.vue')['default']
     ConnectionsTable: typeof import('./src/components/ConnectionsTable.vue')['default']

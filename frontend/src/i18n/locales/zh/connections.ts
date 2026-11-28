@@ -1,5 +1,17 @@
 // 运行时连接页（Connections.vue）：正在运行的 sing-box 的活跃连接。
 export default {
+  flow: {
+    "view": "连接视图",
+    "groups": "按设备分组",
+    "compact": "紧凑连接",
+    "count": "本页 {n} 条",
+    "sort": "排序",
+    "ascending": "升序",
+    "descending": "降序",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "{page} / {pages} 页 · 共 {total} 条"
+},
   tabs: {
     label: '连接状态',
     active: '活跃',
@@ -76,7 +88,7 @@ export default {
     close: '关闭这条连接',
   },
   settings: {
-    title: '连接表格设置',
+    title: '连接显示设置',
     shown: '显示中的列（拖动或用 ‹ › 调整顺序）',
     available: '可添加的列',
     allShown: '所有列都已显示',

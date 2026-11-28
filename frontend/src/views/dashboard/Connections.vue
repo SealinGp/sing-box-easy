@@ -18,7 +18,8 @@ import { useI18n } from 'vue-i18n'
 import { InformationCircleIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import ConnectionSourcePicker from '../../components/ConnectionSourcePicker.vue'
 import ConnectionTableSettings from '../../components/ConnectionTableSettings.vue'
-import ConnectionsTable from '../../components/ConnectionsTable.vue'
+import ConnectionsFlow from '../../components/ConnectionsFlow.vue'
+import { connectionView } from '../../utils/connectionFlow'
 import { useConnections } from '../../composables/useConnections'
 import { useConnectionLinks } from '../../composables/useConnectionLinks'
 import { useFillHeight } from '../../composables/useFillHeight'
@@ -68,6 +69,11 @@ watch([selectedId, active, closed], () => {
     retainedDetail.value = { ...retainedDetail.value, closed: true, closedAt: now.value, up_rate: 0, down_rate: 0 }
   }
 })
+function readView() {
+  try { return connectionView(localStorage.getItem('sbe-connections-view')) } catch { return connectionView(null) }
+}
+const mode = ref(readView())
+watch(mode, value => { try { localStorage.setItem('sbe-connections-view', value) } catch { /* Optional preference. */ } })
 const settingsOpen = ref(false)
 const settingsAnchor = ref<HTMLElement | null>(null)
 const closing = ref<ReadonlySet<string>>(new Set())
@@ -78,10 +84,18 @@ const closingAll = ref(false)
  * rebuild tens of thousands of cells every second; the sort puts the rows that
  * matter first, and the footer says how many were left out.
  */
-const RENDER_LIMIT = 300
+const RENDER_LIMIT = 60
+const page = ref(1)
 
 const pool = computed(() => poolFor(tab.value, active.value, closed.value))
-const devices = computed(() => sourceOptions(pool.value, settings.value.labels))
+const devices = computed(() => {
+  const options = sourceOptions(pool.value, settings.value.labels)
+  const retained = selectedId.value ? retainedDetail.value : null
+  if (retained && !options.some(option => option.ip === retained.source_ip)) {
+    options.push({ ip: retained.source_ip, label: settings.value.labels[retained.source_ip] || retained.source_ip, count: 0 })
+  }
+  return options
+})
 
 // A device whose connections all ended leaves the filter pointing at nothing,
 // which would read as an empty table with no visible reason.
@@ -123,13 +137,22 @@ const ordered = computed(() => {
   return [...visible].sort((a, b) => position(a.id) - position(b.id))
 })
 
-const drawn = computed(() => ordered.value.slice(0, RENDER_LIMIT))
+const heldPage = ref<Set<string> | null>(null)
+const drawn = computed(() => heldPage.value
+  ? ordered.value.filter(row => heldPage.value!.has(row.id))
+  : ordered.value.slice((page.value - 1) * RENDER_LIMIT, page.value * RENDER_LIMIT))
+
+watch([() => ordered.value.length, selectedId], ([length, selected]) => {
+  if (!selected) page.value = Math.min(page.value, Math.max(1, Math.ceil(length / RENDER_LIMIT)))
+})
+watch(page, () => { selectedId.value = ''; releaseOrder(); tableRegion.value?.scrollTo({ top: 0 }) })
 
 const holdOrder = () => {
   heldOrder.value = new Map(ordered.value.map((row, index) => [row.id, index]))
 }
 const releaseOrder = () => {
   heldOrder.value = null
+  heldPage.value = null
 }
 
 const counts = computed<Record<ConnectionTab, number>>(() => ({
@@ -160,6 +183,7 @@ const onSelect = (id: string) => {
     releaseOrder()
     return
   }
+  heldPage.value = new Set(drawn.value.map(row => row.id))
   // Capture the order as it is on screen NOW, before anything can move.
   if (!heldOrder.value) holdOrder()
   selectedId.value = id
@@ -168,6 +192,7 @@ const onSelect = (id: string) => {
 // A new tab, search or device is a new list: holding the old order over it
 // would be sorting by positions that no longer mean anything.
 watch([tab, query, source], () => {
+  page.value = 1
   selectedId.value = ''
   releaseOrder()
 })
@@ -310,33 +335,51 @@ const tipTone = computed<TipTone>(() =>
       </button>
     </div>
 
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="inline-flex rounded-control border border-border p-0.5" :aria-label="$t('connections.flow.view')" role="group">
+        <button v-for="view in (['groups', 'compact'] as const)" :key="view" type="button" :aria-pressed="mode === view"
+          class="rounded px-3 py-1.5 text-xs" :class="mode === view ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'text-text-secondary'" @click="mode = view">
+          {{ $t(`connections.flow.${view}`) }}
+        </button>
+      </div>
+      <label class="ml-auto flex items-center gap-2 text-xs">
+        {{ $t('connections.flow.sort') }}
+        <select :value="sortKey" class="max-w-36 rounded-control border border-border bg-bg-secondary px-2 py-1.5" @change="onSort(($event.target as HTMLSelectElement).value as ColumnKey)">
+          <option v-for="key in ['downRate', 'upRate', 'source', 'host', 'duration', 'start']" :key="key" :value="key">{{ $t(`connections.columns.${key}`) }}</option>
+        </select>
+      </label>
+      <TooltipTarget as="button" type="button" class="h-8 w-8 rounded-control border border-border" :aria-label="$t(ascending ? 'connections.flow.descending' : 'connections.flow.ascending')" :text="$t(ascending ? 'connections.flow.descending' : 'connections.flow.ascending')" @click="onSort(sortKey)">{{ ascending ? '↑' : '↓' }}</TooltipTarget>
+    </div>
     <!--
       The table scrolls INSIDE this region, sized by `useFillHeight` to the
       space left in the window — the same behaviour as the Outbounds list, so
       the toolbar stays put and only the rows move.
     -->
-    <div ref="tableRegion" class="scroll-region rounded-table border border-border bg-bg-secondary">
-      <ConnectionsTable
+    <div ref="tableRegion" class="scroll-region rounded-table border border-border bg-bg-secondary"
+      @pointerenter="!selectedId && holdOrder()" @pointerleave="!selectedId && releaseOrder()">
+      <ConnectionsFlow
+        :mode="mode"
         :rows="drawn"
         :settings="settings"
-        :sort-key="sortKey"
-        :ascending="ascending"
         :selected-id="selectedId"
         :now="now"
         :closing="closing"
-        @sort="onSort"
         @select="onSelect"
         @close="closeOne"
       />
-      <p v-if="rows.length === 0" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+      <p v-if="drawn.length === 0" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
         {{ pool.length === 0 ? $t(`connections.empty.${tab}`) : $t('connections.noMatch') }}
-      </p>
-      <p v-else-if="rows.length > drawn.length" class="border-t border-gray-200 px-4 py-2 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-        {{ $t('connections.truncated', { shown: drawn.length, total: rows.length }) }}
       </p>
     </div>
 
+    <div v-if="ordered.length > RENDER_LIMIT" class="flex items-center justify-center gap-3 text-xs">
+      <button type="button" :disabled="page === 1" class="rounded-control border border-border px-3 py-2 disabled:opacity-40" @click="page--">{{ $t('connections.flow.previous') }}</button>
+      <span>{{ $t('connections.flow.page', { page, pages: Math.max(page, Math.ceil(ordered.length / RENDER_LIMIT)), total: rows.length }) }}</span>
+      <button type="button" :disabled="page * RENDER_LIMIT >= ordered.length" class="rounded-control border border-border px-3 py-2 disabled:opacity-40" @click="page++">{{ $t('connections.flow.next') }}</button>
+    </div>
+
     <ConnectionTableSettings
+      flow-only
       v-model:visible="settingsOpen"
       :anchor="settingsAnchor"
       :settings="settings"
