@@ -10,8 +10,8 @@
 | --- | --- |
 | 系统 | Debian 11+ / Ubuntu 20.04+，x86_64 或 arm64 |
 | 权限 | 需要 root（或 sudo）以安装 systemd 服务 |
-| sing-box 内核 | 需要单独安装，见下 |
-| 依赖 | `curl`、`tar`（通常已自带） |
+| sing-box 内核 | 向导可选择版本安装，也可跳过后在面板设置页安装 |
+| 依赖 | `curl`、`tar`、`python3`、`sha256sum` |
 
 程序本身是静态编译的单文件，不依赖 libc 版本，也不需要 CGO / SQLite 运行库。
 
@@ -26,41 +26,44 @@ curl -fsSL https://sing-box.app/install.sh | sh
 sing-box version
 ```
 
-> 面板的 API 版本对应 sing-box **1.12.x**。1.13 起 DNS 配置结构有较大变化，可能与面板生成的配置不兼容。
+> 用途模板已用 sing-box **1.14.1** 校验。不同版本支持的协议、字段和构建选项仍以所安装内核为准。
 
 ---
 
 ## 2. 一键安装（推荐）
 
-脚本会自动识别系统与架构、下载最新 Release、解压到当前目录、生成 `app.yml`，并注册 systemd 服务（无 systemd 时回退为后台进程），最后做一次健康检查。
+从 v1.19.0 起，脚本逐步询问安装位置、面板空闲端口、配置路径、管理员账号和密码、设备用途、sing-box 版本。回车采用当前建议值；密码隐藏输入并二次确认。已存在 app.yml 默认保留，已有数据库继续使用原账号。
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/SealinGp/sing-box-easy/main/scripts/install.sh
 bash install.sh
 ```
 
-若在默认路径 `/etc/sing-box/config.json` 找不到 sing-box 配置，脚本会提示你输入完整路径。
+设备用途：
 
-常用可选项：
+- **出口服务器**：Shadowsocks 2022、随机密码、TCP/UDP 空闲入站端口、Google TLS DNS、直连出站；显式设置默认域名解析器。安装后放行入站端口，在入站页复制客户端节点。
+- **客户端 / 局域网网关**：导入订阅或节点链接，TUN 接管流量，自动选择代理，Google DNS 经代理访问，本机解析器负责代理地址解析。仅支持独立代理节点；已有分组、detour 链请用完整配置编辑器维护。
+- **仅面板 / 保留配置**：不生成用途配置。跳过内核安装会显示本机实际地址及端口的 `/dashboard/settings` 链接。
 
-```bash
-# 安装指定版本（默认最新 Release）
-bash install.sh v1.2.5
+客户端可选择绑定本机内网 IP 提供 DNS。网关模式仍需设置内网设备的网关/DNS、系统 IP 转发和防火墙；脚本不会自动修改防火墙。客户端启动 TUN 前会提示路由影响，默认不启动。替换已有内核配置前会备份。
 
-# 预设 sing-box 配置路径，跳过交互（适合非交互 / 管道执行）
-SINGBOX_CONFIG=/etc/sing-box/config.json bash install.sh
+环境变量可预填，交互时仍可修改：
 
-# 自定义端口与安装目录
-PORT=9090 INSTALL_DIR=/opt/sing-box-easy bash install.sh
-```
-
-| 环境变量 | 默认值 | 说明 |
+| 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `INSTALL_DIR` | 当前目录 | 程序、`app.yml`、`dist/` 的存放位置 |
-| `PORT` | `8080` | 面板监听端口 |
-| `SINGBOX_CONFIG` | `/etc/sing-box/config.json` | sing-box 配置路径 |
+| `INSTALL_DIR` | 当前目录 | 面板目录 |
+| `PORT` | 随机空闲端口 | 面板端口，手动值也会检查占用 |
+| `SINGBOX_CONFIG` | `/etc/sing-box/config.json` | 内核配置路径 |
+| `ADMIN_USER` | `admin` | 首次初始化账号 |
+| `ADMIN_PASS` | 无 | 首次初始化密码；交互输入更合适 |
+| `DEPLOYMENT_ROLE` | `keep` | `exit` / `client` / `keep` |
+| `PROXY_PORT` | `0` | 出口入站端口，0 自动选择 |
+| `SUBSCRIPTION_URL` | 无 | 客户端订阅或节点链接，本次导入，不建立自动更新订阅 |
+| `LAN_ADDRESS` | 无 | 可选内网 DNS 监听地址 |
+| `SINGBOX_VERSION` | 交互选择 | 版本号或 `skip` |
+| `NONINTERACTIVE` | `0` | 1 使用预设，首次安装必须提供密码 |
 
-> 已存在的 `app.yml` **不会**被覆盖，升级时你的设置会保留。
+安装包会核对 SHA-256。密码通过权限 0600 的临时引导文件传给面板，不写进命令行参数或日志；健康检查成功后删除。自动安装权限不足时会使用 sudo。
 
 ---
 

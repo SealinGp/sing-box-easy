@@ -1,0 +1,21 @@
+export default {
+  credentialsRequired: "Required credentials are missing. Complete the inbound user first.",
+  naive: "Naive needs a compatible client build. This panel does not yet support importing Naive outbounds.",
+  "title": "Copy client node",
+  "server": "Server address reachable by the client",
+  "user": "Inbound user",
+  "addressHint": "Use a public IP or domain. With port forwarding, also check the external port after copying.",
+  "pasteHint": "Paste into Add outbound → Paste node JSON on the client.",
+  "generate": "Generate node",
+  "copy": "Copy node JSON",
+  "serverRequired": "Enter a reachable IP address or domain.",
+  "portRequired": "This inbound has no usable listening port.",
+  "userRequired": "Select an inbound user.",
+  "specialShadowsocks": "Managed or relay Shadowsocks needs separately configured client credentials.",
+  "shadowtls": "ShadowTLS wraps another proxy protocol. It cannot be exported as one complete proxy node.",
+  "unsupported": "This inbound cannot become a remote proxy outbound (for example TUN, transparent or direct listeners).",
+  "ech": "ECH requires public client configuration. Server private keys cannot be copied.",
+  "clientCertificate": "Client certificate authentication requires a separate client certificate and key.",
+  "realityKey": "Invalid Reality private key; cannot derive the client public key.",
+  "verifySNI": "No TLS server name is configured. Check server_name matches the certificate domain."
+}

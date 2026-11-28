@@ -28,8 +28,9 @@ func (h *Service) UpdateDNS(ctx context.Context, body []byte) (any, error) {
 	if err := requireJSONObject(body); err != nil {
 		return nil, fault.New(fault.Input, "invalid DNS configuration: "+err.Error())
 	}
-	err = h.configManager.UpdateConfigSection(ctx, "dns", func(stdjson.RawMessage) (stdjson.RawMessage, error) {
-		return cloneRaw(body), nil
+	err = h.updateDNSDocument(ctx, func(dns map[string]stdjson.RawMessage) error {
+		clear(dns)
+		return stdjson.Unmarshal(body, &dns)
 	})
 	if err != nil {
 		return nil, err
@@ -385,17 +386,27 @@ func (h *Service) updateDNSDocument(
 	ctx context.Context,
 	update func(map[string]stdjson.RawMessage) error,
 ) error {
-	return h.configManager.UpdateConfigSection(ctx, "dns", func(raw stdjson.RawMessage) (stdjson.RawMessage, error) {
+	return h.configManager.UpdateConfigSections(ctx, func(sections map[string]stdjson.RawMessage) error {
 		dns := map[string]stdjson.RawMessage{}
+		raw := sections["dns"]
 		if len(raw) > 0 && string(raw) != "null" {
 			if err := stdjson.Unmarshal(raw, &dns); err != nil {
-				return nil, fmt.Errorf("decode DNS configuration: %w", err)
+				return fmt.Errorf("decode DNS configuration: %w", err)
 			}
 		}
+		previousServers := rawList(dns, "servers")
 		if err := update(dns); err != nil {
-			return nil, err
+			return err
 		}
-		return stdjson.Marshal(dns)
+		if err := preserveImplicitDNSResolver(sections, previousServers, rawList(dns, "servers")); err != nil {
+			return err
+		}
+		encoded, err := stdjson.Marshal(dns)
+		if err != nil {
+			return err
+		}
+		sections["dns"] = encoded
+		return nil
 	})
 }
 

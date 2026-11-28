@@ -1,3 +1,6 @@
+import clientExport from './clientExport'
+import outboundJson from './outboundJson'
+import deploymentProfile from './deploymentProfile'
 import orphanSubscriptions from './orphanSubscriptions'
 import localRules from './localRules'
 import managed from './managed'
@@ -38,6 +41,9 @@ import dualStack from './dualStack'
 import ruleSet from './ruleSet'
 
 export default {
+  clientExport,
+  outboundJson,
+  deploymentProfile,
   orphanSubscriptions,
   localRules,
  managed,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DeploymentProfile from '../../components/DeploymentProfile.vue'
 import ModulePresets from '../../components/ModulePresets.vue'
 import StatusIndicator from '../../components/StatusIndicator.vue'
 import IconButton from '../../components/IconButton.vue'
@@ -11,7 +12,7 @@ import Input from '../../components/Input.vue'
 import Badge from '../../components/Badge.vue'
 import Table from '../../components/Table.vue'
 import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
-import CopyIcon from '../../components/CopyIcon.vue'
+import InboundClientExport from '../../components/InboundClientExport.vue'
 import { PlusIcon } from '@heroicons/vue/24/outline'
 import { inboundService } from '../../services'
 import { useToast } from 'primevue/usetoast'
@@ -239,60 +240,13 @@ watch(showDeleteConfirm, (newValue) => {
   }
 })
 
-const clientConfigText = (inbound: Inbound): string => {
-  const anyInbound = inbound as any
-  const server = !anyInbound.listen || anyInbound.listen === '0.0.0.0' || anyInbound.listen === '::' || anyInbound.listen === '127.0.0.1'
-    ? window.location.hostname || 'YOUR_SERVER_IP'
-    : anyInbound.listen
-
-  const outbound: any = {
-    type: anyInbound.type === 'mixed' ? 'socks' : anyInbound.type,
-    tag: `${anyInbound.tag}-out`,
-    server: server,
-    server_port: anyInbound.listen_port,
-  }
-
-  // Copy standard user credentials if available
-  const firstUser = (inbound as any).users?.[0]
-  if (firstUser) {
-    if (firstUser.uuid) outbound.uuid = firstUser.uuid
-    if (firstUser.password) outbound.password = firstUser.password
-    if (firstUser.username) outbound.username = firstUser.username
-    else if (firstUser.name) outbound.username = firstUser.name
-  }
-
-  // Copy other top level credentials/attributes
-  if ((inbound as any).method) outbound.method = (inbound as any).method
-  if ((inbound as any).password) outbound.password = (inbound as any).password
-  if ((inbound as any).uuid) outbound.uuid = (inbound as any).uuid
-  if ((inbound as any).security) outbound.security = (inbound as any).security
-
-  // Copy TLS settings if present, pruning server-side keys
-  if ((inbound as any).tls) {
-    const tls = { ...((inbound as any).tls) }
-    tls.enabled = true
-    tls.server_name = server
-    delete tls.certificate
-    delete tls.certificate_path
-    delete tls.key
-    delete tls.key_path
-    outbound.tls = tls
-  }
-
-  // Copy transport settings if present
-  if ((inbound as any).transport) {
-    outbound.transport = (inbound as any).transport
-  }
-
-  return JSON.stringify(outbound, null, 2)
-}
-
 onMounted(fetchInbounds)
 </script>
 
 <template>
   <div class="page-shell">
     <div class="flex flex-wrap justify-end items-center gap-2 mb-2">
+      <DeploymentProfile @applied="fetchInbounds" />
       <ModulePresets kind="inbounds" @applied="fetchInbounds" />
       <Button @click="openAddModal" variant="primary">
         <PlusIcon class="h-5 w-5 mr-2" />
@@ -334,7 +288,7 @@ onMounted(fetchInbounds)
           </td>
           <td class="col-actions font-medium">
             <div class="flex items-center justify-end gap-1">
-              <CopyIcon :text="clientConfigText(inbound)" :label="$t('inbounds.tooltip.copyConfig')" />
+              <InboundClientExport :inbound="inbound" />
               <IconButton action="edit" @click="openEditModal(inbound)" />
               <IconButton action="delete" @click="openDeleteConfirm(inbound)" />
             </div>

@@ -85,7 +85,7 @@ export default {
   },
   importModal: {
     title: '导入出站',
-    instructions: '输入订阅链接或直接的节点链接（vmess://、ss://、trojan:// 等）。多个条目请每行一个。',
+    instructions: '粘贴原生出站 JSON（单个节点、数组或含 outbounds 的配置），或输入订阅 / 节点链接。多个链接请每行一个。',
     inputPlaceholder: "示例：\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ={'@'}192.168.1.1:8388#MyNode\ntrojan://password{'@'}example.com:443?sni=example.com#TrojanNode",
     parse: '解析',
     parsing: '正在解析...',

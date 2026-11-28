@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import OutboundJsonInput from './OutboundJsonInput.vue'
+import SaveFeedback from './SaveFeedback.vue'
 import IconButton from './IconButton.vue'
 import SubscriptionSource from './SubscriptionSource.vue'
 import { nodeNameWithoutSubscription } from '../utils/nodeSubscription'
@@ -16,6 +19,7 @@ import { FOCUS_PAGES, focusLink } from '../utils/focusTarget'
 import { useOutboundsPage } from '../composables/useOutboundsPage'
 import { useOutboundImport } from '../composables/useOutboundImport'
 const {
+  saveError,
   localLoading,
   showModal,
   isEditMode,
@@ -45,6 +49,8 @@ const {
   loading
 } = useOutboundsPage()
 const { showImportModal, importInput, parsing, parsedNodes, selectedNodes, importing, openImportModal, closeImportModal, parseSubscription, toggleNode, toggleSelectAll, handleImport, resetImportFlow } = useOutboundImport()
+const jsonInvalid = ref(false)
+watch(showModal, () => { jsonInvalid.value = false })
 </script>
 
 <template>
@@ -157,6 +163,7 @@ const { showImportModal, importInput, parsing, parsedNodes, selectedNodes, impor
       class="w-full max-w-3xl"
     >
       <fieldset :disabled="localLoading" :inert="localLoading" class="space-y-3 min-w-0">
+        <OutboundJsonInput v-if="!isEditMode && showModal" @parsed="node => currentOutbound = node" @invalid="value => jsonInvalid = value" />
         <Alert v-if="managedWarning" type="warning" :title="$t('outbounds.form.managedByRulesTitle')">
           {{ managedWarning }}
           <!-- The tag of a managed outbound is its Filter's or Group's name,
@@ -220,15 +227,16 @@ const { showImportModal, importInput, parsing, parsedNodes, selectedNodes, impor
           :empty-hint="$t('outbounds.form.noOptionsHint')"
         />
       </fieldset>
+      <SaveFeedback :error="saveError" class="mt-3" />
 
       <template #footer>
         <Button @click="closeModal" :disabled="localLoading" variant="secondary"
           >{{ $t('common.cancel') }}</Button
         >
         <Button
-          @click="handleSave"
+          @click="!jsonInvalid && handleSave()"
           variant="primary"
-          :disabled="localLoading"
+          :disabled="localLoading || jsonInvalid"
           :loading="localLoading"
         >
           {{ isEditMode ? $t('common.update') : $t('common.add') }}

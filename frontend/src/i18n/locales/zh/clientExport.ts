@@ -1,0 +1,21 @@
+export default {
+  credentialsRequired: "该用户缺少协议所需的认证信息，请先完善入站用户。",
+  naive: "Naive 出站需要支持该协议的客户端构建；当前面板尚未支持此出站类型，不能直接导入。",
+  "title": "复制客户端节点",
+  "server": "客户端可访问的服务器地址",
+  "user": "入站用户",
+  "addressHint": "使用公网 IP 或域名；有端口转发时，还需在复制后核对公网端口。",
+  "pasteHint": "在客户端「添加出站 → 粘贴节点 JSON」中粘贴。",
+  "generate": "生成节点",
+  "copy": "复制节点 JSON",
+  "serverRequired": "请填写客户端可访问的 IP 或域名。",
+  "portRequired": "该入站没有可用的监听端口。",
+  "userRequired": "请选择入站用户。",
+  "specialShadowsocks": "此 Shadowsocks 使用托管用户或中继，需要单独配置客户端凭据。",
+  "shadowtls": "ShadowTLS 是传输包装，需要与内部代理协议组合，不能作为单个完整代理节点复制。",
+  "unsupported": "此入站不能直接转换为远程代理出站（例如 TUN、透明代理或直连入口）。",
+  "ech": "此入站启用了 ECH，需要单独提供客户端 ECH 公共配置，不能复制服务端私钥。",
+  "clientCertificate": "此入站使用客户端证书认证，需要为客户端提供独立的证书和私钥。",
+  "realityKey": "Reality 私钥格式无效，无法生成客户端公钥。",
+  "verifySNI": "未设置 TLS 服务端名称，请核对这里的 server_name 与证书域名一致。"
+}

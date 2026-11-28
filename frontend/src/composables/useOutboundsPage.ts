@@ -14,6 +14,7 @@ const outboundsStore = useOutboundsStore();
 const { outbounds, loading, managedTags } = storeToRefs(outboundsStore);
 
 const localLoading = ref(false);
+const saveError = ref('');
 const toast = useToast();
 const { t, te } = useI18n();
 
@@ -233,6 +234,7 @@ function validateOutbound(outbound: Record<string, unknown>): string {
 const openAddModal = () => {
   if (localLoading.value) return;
   isEditMode.value = false;
+  saveError.value = '';
   currentOutbound.value = blankOutbound();
   showModal.value = true;
 };
@@ -240,6 +242,7 @@ const openAddModal = () => {
 const openEditModal = (outbound: Outbound) => {
   if (localLoading.value) return;
   isEditMode.value = true;
+  saveError.value = '';
   editingTag.value = outbound.tag;
   // sing-box accepts scalar OR array for `outbounds` on the wire; coerce to
   // array so the MultiSelect v-model sees the shape it expects and the save path
@@ -266,8 +269,10 @@ const closeModal = () => {
 
 const handleSave = async () => {
   if (localLoading.value) return;
+  saveError.value = '';
   const error = validateOutbound(currentOutbound.value);
   if (error) {
+    saveError.value = t(error);
     toast.add({
       severity: "error",
       summary: t('outbounds.validation.title'),
@@ -301,6 +306,7 @@ const handleSave = async () => {
     }
     closeModal();
   } catch (err: any) {
+    saveError.value = err.message || t('outbounds.toast.saveFailed');
     toast.add({
       severity: "error",
       summary: t('common.error'),
@@ -378,6 +384,7 @@ onMounted(() => {
 });
 
 return {
+  saveError,
   localLoading,
   showModal,
   isEditMode,

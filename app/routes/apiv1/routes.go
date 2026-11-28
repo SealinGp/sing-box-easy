@@ -38,6 +38,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Configuration Management APIs
 	auth.GET("/config", handler.GetConfig)
+	admin.POST("/config/profile", handler.PreviewDeploymentProfile)
 	auth.GET("/config/raw", handler.GetRawConfig)
 	auth.PUT("/config", handler.UpdateConfig)
 	auth.POST("/config/validate", handler.ValidateConfig)
@@ -63,6 +64,7 @@ func RegisterRoutes(h *server.Hertz, handler *Handler) {
 
 	// Node Parsing API
 	auth.POST("/nodes/parse", handler.ParseNodes)
+	auth.POST("/nodes/from-inbound", handler.PreviewClientProfile)
 
 	// Outbound Management APIs
 	auth.GET("/outbounds", handler.GetOutbounds)

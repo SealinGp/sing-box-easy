@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/SealinGp/sing-box-easy/app/pkg/deploymentprofile"
 	"os"
 
 	"github.com/SealinGp/sing-box-easy/app"
@@ -19,7 +21,16 @@ func main() {
 	configPath := flag.String("c", "app.yml", "Path to configuration file")
 	adminUser := flag.String("admin_user", "", "Default admin username to seed")
 	adminPass := flag.String("admin_pass", "", "Default admin password to seed")
+	adminPassFile := flag.String("admin_pass_file", "", "File containing the initial administrator password")
+	generateProfile := flag.Bool("generate_profile", false, "Generate a starter configuration from a JSON request on stdin")
+	profileOutput := flag.String("profile_output", "", "Output path for generated configuration")
 	flag.Parse()
+	if *generateProfile {
+		if err := deploymentprofile.WriteFromRequest(context.Background(), os.Stdin, *profileOutput); err != nil {
+			logger.Fatalf("Generate profile: %v", err)
+		}
+		return
+	}
 
 	logger.Infof("Starting sing-box-easy with config: %s", *configPath)
 
@@ -30,7 +41,10 @@ func main() {
 	}
 
 	config.AdminUser = *adminUser
-	config.AdminPass = *adminPass
+	config.AdminPass, err = appconfig.ReadBootstrapPassword(*adminPass, *adminPassFile)
+	if err != nil {
+		logger.Fatalf("Failed to read administrator credentials: %v", err)
+	}
 
 	// Re-initialize logger with the configured level now that we have it.
 	// DEBUG=true env var still wins so devs can crank up verbosity without

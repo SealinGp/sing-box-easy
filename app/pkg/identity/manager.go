@@ -102,7 +102,7 @@ func (m *ManagerXORM) seedDefaultAdmin() error {
 		logger.Warn("==================================================================")
 		logger.Warn("DEFAULT ADMINISTRATOR SEEDED!")
 		logger.Warn(fmt.Sprintf("Username: %s", adminUser))
-		logger.Warn(fmt.Sprintf("Password: %s", adminPass))
+		logger.Warn("Use the administrator password supplied during installation.")
 		logger.Warn("PLEASE CHANGE THIS PASSWORD IMMEDIATELY AFTER YOUR FIRST LOGIN!")
 		logger.Warn("==================================================================")
 	}

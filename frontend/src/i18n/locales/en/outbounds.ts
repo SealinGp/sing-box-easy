@@ -85,7 +85,7 @@ export default {
   },
   importModal: {
     title: 'Import Outbounds',
-    instructions: 'Enter subscription URL(s) or direct node links (vmess://, ss://, trojan://, etc.). One per line for multiple entries.',
+    instructions: 'Paste native outbound JSON (one node, an array or an outbounds configuration), or subscription / node links. Use one line per link.',
     inputPlaceholder: "Examples:\nhttps://example.com/subscribe?token=xxx\nvmess://eyJhZGQiOiIxMC4xMC4xMC4xMCIsImFpZCI6IjAiLCJob3N0IjoiIiwiaWQiOiI...\nss://YWVzLTI1Ni1nY206cGFzc3dvcmQ={'@'}192.168.1.1:8388#MyNode\ntrojan://password{'@'}example.com:443?sni=example.com#TrojanNode",
     parse: 'Parse',
     parsing: 'Parsing...',
