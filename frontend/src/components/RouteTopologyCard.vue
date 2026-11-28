@@ -1,369 +1,60 @@
 <script setup lang="ts">
-/**
- * Overview card: the config's traffic flow, drawn.
- *
- * The Route page lists `route.rules` as rows, which is the right shape for
- * editing one and the wrong shape for answering "what does this config
- * actually do". Two facts are invisible in a list and obvious in a picture:
- * that many rules share one outbound, and that the list is an ordered ladder
- * whose first match wins. Both are what someone is checking right after an edit.
- *
- * It reads `GET /config` directly rather than the three narrower endpoints —
- * the diagram needs `inbounds`, `outbounds`, `endpoints`, `route.rules` and
- * `route.final` to be from the SAME read, or a node can appear missing simply
- * because two requests straddled a config write.
- */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import {
-  ArrowPathIcon,
-  ArrowTopRightOnSquareIcon,
-  ArrowsPointingInIcon,
-  ArrowsPointingOutIcon,
-  ChevronRightIcon,
-  ExclamationTriangleIcon,
-  SignalIcon,
-  FunnelIcon,
-  MinusIcon,
-  PlusIcon,
-  XMarkIcon,
-} from '@heroicons/vue/24/outline'
+import { computed, nextTick, ref } from 'vue'
+import ProxyInspector from './ProxyInspector.vue'
+import { ArrowPathIcon, ArrowTopRightOnSquareIcon, ArrowsPointingInIcon, ArrowsPointingOutIcon, ExclamationTriangleIcon, SignalIcon, FunnelIcon, MinusIcon, PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import RouteFlowDiagram from './RouteFlowDiagram.vue'
+import RouteTopologyLegend from './RouteTopologyLegend.vue'
+import RouteTopologyExits from './RouteTopologyExits.vue'
 import { Select } from '../volt'
 import { FILTER_THRESHOLD } from '../utils/selectFilter'
-import { configService } from '../services'
-import { useServiceStore } from '../stores/service'
-import { useTrafficFlow } from '../composables/useTrafficFlow'
-import { useDiagramZoom } from '../composables/useDiagramZoom'
-import { apiErrorMessage } from '../utils/apiErrorMessage'
-import { buildRouteTopology } from '../utils/routeTopology'
-import { HEAT_STEPS, RANK_N, RATE_FLOOR, TOP_N, formatRate, heatFor } from '../utils/flowOverlay'
-import { HEAT_SWATCH, HEAT_TEXT, heatClass } from '../utils/flowHeat'
-import type { SingBoxConfig } from '../types/api'
-import type { TrafficFilter } from '../types/trafficFlow'
-
-const { t } = useI18n()
-
-const ROUTE_PAGE = '/dashboard/route'
-
-const config = ref<SingBoxConfig | null>(null)
-/** First paint only — a manual refresh keeps the diagram on screen. */
-const loading = ref(true)
-const refreshing = ref(false)
-const error = ref('')
-
-const topology = computed(() => buildRouteTopology(config.value))
-
-const hasSomethingToDraw = computed(
-  () => topology.value.rules.length > 0 || topology.value.inbounds.length > 0,
-)
-
-/**
- * Two diagnostics worth pulling out of the picture and into words.
- *
- * A missing outbound is only reported by sing-box at START, and an unreachable
- * rule is never reported at all — `sing-box check` passes on both. Someone
- * scanning the card should not have to spot a red node to learn about them.
- */
-const unreachableCount = computed(
-  () => topology.value.rules.filter((rule) => !rule.reachable).length,
-)
-
-const missingCount = computed(() => {
-  const missing = new Set(
-    topology.value.exits.filter((exit) => exit.kind === 'missing').map((exit) => exit.id),
-  )
-  return topology.value.rules.filter((rule) => rule.exitId && missing.has(rule.exitId)).length
-})
-
-const load = async (manual = false) => {
-  if (manual) refreshing.value = true
-  try {
-    const response = await configService.getConfig()
-    config.value = response.data ?? null
-    error.value = ''
-  } catch (err) {
-    console.error('Failed to load config for the route topology card:', err)
-    // Keep the last good drawing rather than blanking it — a failed re-read
-    // says nothing about whether the config it drew is still correct.
-    error.value = apiErrorMessage(err, t('routeFlow.loadFailed'))
-  } finally {
-    loading.value = false
-    refreshing.value = false
-  }
-}
-
-onMounted(() => load())
-
-/* ── Live overlay ─────────────────────────────────────────────────────────── */
-
-/**
- * The toggle is gated on sing-box actually running. The stream would only
- * fail otherwise — the Clash API is served by sing-box itself — and a button
- * that can be clicked but never works reads as a bug in the panel.
- */
-const serviceStore = useServiceStore()
-const running = computed(() => serviceStore.status?.status === 'running')
-
-/**
- * Live follows the service: on while sing-box is running, off when it is not.
- *
- * The card exists to answer "is my config doing what I meant", and the live
- * overlay is the half that answers it — asking for a click first made the
- * default view the one with less information in it. The gate is the same one
- * the button has: the stream is served by sing-box itself, so it is only ever
- * enabled while sing-box is up.
- *
- * `immediate` matters because the store may already know the status by the
- * time this card mounts (the Overview polls it elsewhere), in which case the
- * watcher would never fire and Live would stay off on a running host.
- */
-const liveEnabled = ref(false)
-
-watch(
-  running,
-  (isRunning) => {
-    // A stop turns it off rather than leaving the composable retrying against
-    // a controller that is not there; a start turns it back on, so the view
-    // recovers by itself after the restart the panel triggers on every save.
-    liveEnabled.value = isRunning
-  },
-  { immediate: true },
-)
-
-onMounted(() => serviceStore.startPolling())
-onBeforeUnmount(() => serviceStore.stopPolling())
-
-const toggleLive = () => {
-  if (!running.value) return
-  liveEnabled.value = !liveEnabled.value
-}
-
-/**
- * The host box is debounced into the stream's filter: each change is a new
- * server-side stream, and re-opening one per keystroke while someone types is
- * a burst of `/rules` reads for nothing.
- *
- * The source is NOT debounced. It is a pick from a list, not a keystroke
- * sequence, so there is no burst to absorb — and 400ms of nothing happening
- * after a deliberate click reads as a dropped click.
- */
-const FILTER_DEBOUNCE_MS = 400
-const sourceIpInput = ref('')
-const hostInput = ref('')
-const filter = ref<TrafficFilter>({ sourceIp: '', host: '' })
-let filterTimer: ReturnType<typeof setTimeout> | null = null
-
-watch(hostInput, (host) => {
-  if (filterTimer !== null) clearTimeout(filterTimer)
-  filterTimer = setTimeout(() => {
-    filter.value = { ...filter.value, host }
-  }, FILTER_DEBOUNCE_MS)
-})
-
-watch(sourceIpInput, (sourceIp) => {
-  filter.value = { ...filter.value, sourceIp }
-})
-
-const hasFilter = computed(() => sourceIpInput.value.trim() !== '' || hostInput.value.trim() !== '')
-
-const clearFilter = () => {
-  sourceIpInput.value = ''
-  hostInput.value = ''
-}
-
+import { useRouteTopologyCard } from '../composables/useRouteTopologyCard'
 const {
+  ROUTE_PAGE,
+  config,
+  loading,
+  refreshing,
+  error,
+  topology,
+  hasSomethingToDraw,
+  unreachableCount,
+  missingCount,
+  load,
+  running,
+  liveEnabled,
+  toggleLive,
+  sourceIpInput,
+  hostInput,
+  hasFilter,
+  clearFilter,
+  sourceOptions,
+  sourceLabel,
+  rate,
+  floorLabel,
+  totalDownClass,
+  heatScale,
+  unmatchedConnections,
+  zoom,
+  busyOnly,
+  hiddenRuleIndices,
+  hiddenCount,
+  expandBand,
+  legendOpen,
+  toggleLegend,
+  expanded,
+  toggleExpanded,
   overlay,
-  frame,
-  error: liveError,
-  connecting,
-} = useTrafficFlow(liveEnabled, filter, () => t('routeFlow.live.failed'))
-
-/**
- * The devices currently holding connections — the source filter's list.
- *
- * Built from the frame rather than typed, which is the whole point: the panel
- * already knows every client address in the snapshot, and typing one from
- * memory is how a filter ends up silently matching nothing. The server
- * collects them BEFORE applying the filter, so picking one does not empty the
- * list it was picked from.
- *
- * The selection is re-appended when it drops out of the frame. A device whose
- * last connection just closed would otherwise vanish from the picker while its
- * filter was still in force, leaving an empty diagram and no visible cause.
- */
-const sourceOptions = computed(() => {
-  const sources = frame.value?.sources ?? []
-  const options = sources.map((source) => ({
-    value: source.ip,
-    connections: source.connections,
-    down: source.down,
-  }))
-  if (sourceIpInput.value && !sources.some((source) => source.ip === sourceIpInput.value)) {
-    options.unshift({ value: sourceIpInput.value, connections: 0, down: 0 })
-  }
-  return [{ value: '', connections: 0, down: 0 }, ...options]
-})
-
-const sourceLabel = (value: string) => (value === '' ? t('routeFlow.live.allSources') : value)
-
-const rate = (bytesPerSec: number) => t('routeFlow.live.rate', { rate: formatRate(bytesPerSec) })
-
-/** The floor, spelled out in the legend — "quiet" is not a number. */
-const floorLabel = computed(() => rate(RATE_FLOOR))
-
-/**
- * The total's colour follows the same scale as the diagram, so the strip's
- * one accented number and the ribbons below it never disagree about whether
- * "a lot" is happening.
- */
-const totalHeat = computed(() =>
-  overlay.value ? heatFor(overlay.value.totals.down, overlay.value.totals.up) : 0,
-)
-const totalDownClass = computed(() =>
-  totalHeat.value === 0 ? 'text-primary-700 dark:text-primary-300' : heatClass(HEAT_TEXT, totalHeat.value),
-)
-
-/** The legend's colour scale: tier 1 starts at the floor, then each step. */
-const heatScale = computed(() =>
-  [RATE_FLOOR, ...HEAT_STEPS].map((threshold, i) => ({
-    threshold: formatRate(threshold),
-    swatch: heatClass(HEAT_SWATCH, (i + 1) as 1 | 2 | 3 | 4),
-  })),
-)
-
-/** Connections whose rule string has no row — lit by exit only. */
-const unmatchedConnections = computed(() =>
-  (overlay.value?.unmatched ?? []).reduce((sum, flow) => sum + flow.connections, 0),
-)
-
-/* ── Zoom ─────────────────────────────────────────────────────────────────── */
-
-/**
- * The diagram's own sizing shrinks a fixed 1290px canvas to whatever room the
- * card has, which is the right first look and the wrong one for reading a
- * single rule. See `useDiagramZoom` for why this scales-and-scrolls rather
- * than transforming a viewBox.
- */
-const zoom = useDiagramZoom()
-
-/* ── Busy only ────────────────────────────────────────────────────────────── */
-
-/**
- * Fold rules carrying nothing into collapsed bands while Live is on.
- *
- * The floor in `flowOverlay` quiets the ladder; it does not SHORTEN it, and 28
- * rungs of which 6 matter still has to be scrolled. This is the part that
- * answers "show me what is actually moving".
- *
- * Off by default, and live-only, because it is the one thing in this card that
- * breaks the promise the diagram otherwise keeps — that the picture is the same
- * shape with the overlay on and off. That comparison is what the card is for,
- * so changing the shape has to be something the operator asks for.
- */
-const busyOnly = ref(false)
-
-/** Bands the operator has clicked open. Cleared whenever the fold is re-armed. */
-const revealed = ref<Set<number>>(new Set())
-
-const hiddenRuleIndices = computed<ReadonlySet<number> | undefined>(() => {
-  if (!busyOnly.value || !liveEnabled.value || !overlay.value) return undefined
-  const hidden = new Set<number>()
-  for (const rule of topology.value.rules) {
-    if (overlay.value.ribbons.get(`rule:${rule.index}`)?.lit) continue
-    if (revealed.value.has(rule.index)) continue
-    hidden.add(rule.index)
-  }
-  return hidden
-})
-
-const hiddenCount = computed(() => hiddenRuleIndices.value?.size ?? 0)
-
-const expandBand = (indices: number[]) => {
-  revealed.value = new Set([...revealed.value, ...indices])
+  liveError,
+  connecting
+} = useRouteTopologyCard()
+const inspector = ref<InstanceType<typeof ProxyInspector>>()
+const inspectedExit = ref('')
+const inspectedOutbound = computed(() => config.value?.outbounds?.find(item => item.tag === inspectedExit.value))
+async function inspectExit(name: string, anchor: HTMLElement) {
+  inspectedExit.value = name
+  await nextTick()
+  inspector.value?.showAt(anchor)
 }
-
-// Re-arming the fold, or losing the data it is computed from, throws the
-// manual reveals away — otherwise yesterday's clicks quietly keep rules on
-// screen that today's traffic says are idle.
-watch([busyOnly, liveEnabled], () => {
-  revealed.value = new Set()
-})
-
-/* ── Legend ───────────────────────────────────────────────────────────────── */
-
-const LEGEND_KEY = 'sbe-routeflow-legend'
-
-/**
- * Whether the symbol key is showing.
- *
- * Open on a fresh install and closed forever after one click, rather than the
- * other way round: the symbols are genuinely needed for the first few visits,
- * and a key nobody can find is the same as no key. Once shelved it stays
- * shelved across sessions — the whole complaint about a permanent footer is
- * that it outlives its usefulness, and re-opening on every visit reproduces it.
- *
- * Read at setup, before the first paint, so the footer does not appear and then
- * disappear. Storage can throw outright (Safari private browsing) and can hold
- * anything, so both are handled — either way the default is to teach.
- */
-const readLegendOpen = (): boolean => {
-  try {
-    return localStorage.getItem(LEGEND_KEY) !== '0'
-  } catch {
-    return true
-  }
-}
-
-const legendOpen = ref(readLegendOpen())
-
-const toggleLegend = () => {
-  legendOpen.value = !legendOpen.value
-  try {
-    localStorage.setItem(LEGEND_KEY, legendOpen.value ? '1' : '0')
-  } catch (err) {
-    // Non-fatal: the choice still holds for this session.
-    console.warn('Could not persist the traffic-flow legend state:', err)
-  }
-}
-
-/* ── Full-window mode ─────────────────────────────────────────────────────── */
-
-/**
- * The card's body moves to a viewport-filling overlay, and back.
- *
- * It MOVES — one `<Teleport :disabled>` re-parents the same subtree — rather
- * than rendering a second copy, so the live stream, its overlay, the filter
- * text and the hover state all survive the switch. A dialog component would
- * mount fresh content and reconnect the stream for nothing.
- *
- * In-window rather than the Fullscreen API: an operator comparing this against
- * the Clash dashboard or a terminal wants the browser chrome and the other
- * windows exactly where they were.
- */
-const expanded = ref(false)
-
-const toggleExpanded = () => {
-  expanded.value = !expanded.value
-}
-
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && expanded.value) expanded.value = false
-}
-
-watch(expanded, (on) => {
-  // The page behind must not scroll under the overlay; the diagram's own
-  // wrapper is what scrolls if the ladder is taller than the window.
-  document.body.style.overflow = on ? 'hidden' : ''
-  if (on) window.addEventListener('keydown', onKeydown)
-  else window.removeEventListener('keydown', onKeydown)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown)
-  document.body.style.overflow = ''
-})
 </script>
 
 <template>
@@ -683,6 +374,7 @@ onBeforeUnmount(() => {
     </p>
 
     <template v-else>
+      <RouteTopologyExits :exits="topology.exits" @inspect="inspectExit" />
       <!--
         Docked, a tall ladder scrolls rather than shrinking: this repo's own
         config has 28 rules, and scaling that into a card makes every label
@@ -702,13 +394,14 @@ onBeforeUnmount(() => {
             zoom.panning.value ? 'cursor-grabbing' : zoom.panReady.value ? 'cursor-grab' : '',
           ]"
         >
-          <RouteFlowDiagram
+          <RouteFlowDiagram interactive-exits
             :topology="topology"
             :live="liveEnabled ? overlay : null"
             :fit="expanded"
             :scale="zoom.scale.value"
             :hidden-rule-indices="hiddenRuleIndices"
             @expand-band="expandBand"
+            @inspect-exit="inspectExit"
           />
         </div>
 
@@ -758,107 +451,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- Names the three columns, and says what the middle one's order means. -->
-      <div
-        class="flex items-center justify-between gap-2 mt-2 pt-2 text-[11px] text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-slate-700"
-      >
-        <span>{{ $t('routeFlow.columns.inbounds') }}</span>
-        <span class="text-center">{{ $t('routeFlow.columns.rules') }}</span>
-        <span>{{ $t('routeFlow.columns.outbounds') }}</span>
-      </div>
-
-      <!--
-        The key, on demand.
-
-        This is reference material: a new install needs it two or three times,
-        and after that it is a permanent five-item footer explaining symbols the
-        operator has long since learned. So it behaves like a manual — shelved
-        by default once shelved, one muted line away when a symbol IS unfamiliar
-        — and the choice persists, because re-collapsing it on every visit is
-        the same nuisance in slower motion.
-
-        The column strip above is deliberately NOT in here: it carries the claim
-        that the ladder is ordered and stops at the first match, which is the
-        diagram's whole thesis rather than a symbol key.
-      -->
-      <div class="flex items-center justify-between gap-2 mt-2">
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-          :aria-expanded="legendOpen"
-          @click="toggleLegend"
-        >
-          <ChevronRightIcon class="h-3 w-3 transition-transform" :class="legendOpen ? 'rotate-90' : ''" />
-          {{ $t('routeFlow.legend.title') }}
-        </button>
-        <span v-if="expanded" class="text-[11px] text-gray-400">{{ $t('routeFlow.fullWindow.escHint') }}</span>
-      </div>
-
-      <!-- What the non-obvious strokes mean. -->
-      <div v-if="legendOpen" class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-        <span class="inline-flex items-center gap-1.5">
-          <svg width="18" height="8" aria-hidden="true">
-            <line x1="0" y1="4" x2="18" y2="4" stroke-width="1.5" stroke-dasharray="4 3" class="stroke-gray-400 dark:stroke-slate-500" />
-          </svg>
-          {{ $t('routeFlow.legend.passthrough') }}
-        </span>
-        <span class="inline-flex items-center gap-1.5">
-          <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-          {{ $t('routeFlow.legend.scoped') }}
-        </span>
-        <span class="inline-flex items-center gap-1.5">
-          <span
-            class="px-1 rounded-full bg-primary-100 dark:bg-primary-900/60 text-primary-700 dark:text-primary-300 font-semibold tabular-nums"
-            >3</span
-          >
-          {{ $t('routeFlow.legend.converge', { n: 3 }) }}
-        </span>
-        <template v-if="liveEnabled">
-          <!--
-            The colour scale, with its thresholds. A scale nobody can read the
-            steps of is decoration; each swatch says the rate it starts at.
-          -->
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-flex items-center gap-1">
-              <span
-                v-for="step in heatScale"
-                :key="step.threshold"
-                class="inline-flex items-center gap-0.5"
-              >
-                <span class="h-2 w-2 rounded-sm" :class="step.swatch"></span>
-                <span class="tabular-nums">{{ step.threshold }}</span>
-              </span>
-            </span>
-            {{ $t('routeFlow.live.legendHeat') }}
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <!-- A lit ribbon with a comet on it — what the top N look like. -->
-            <svg width="22" height="8" aria-hidden="true">
-              <line x1="1" y1="4" x2="21" y2="4" stroke-width="2" stroke-linecap="round" class="stroke-primary-400 dark:stroke-primary-600 opacity-80" />
-              <line x1="7" y1="4" x2="15" y2="4" stroke-width="2" stroke-linecap="round" class="stroke-primary-600 dark:stroke-primary-300 opacity-40" />
-              <line x1="13" y1="4" x2="16" y2="4" stroke-width="3" stroke-linecap="round" class="stroke-primary-600 dark:stroke-primary-300" />
-            </svg>
-            {{ $t('routeFlow.live.legendMoving', { n: TOP_N }) }}
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span
-              class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary-600 dark:bg-primary-400 text-[8px] font-bold text-white dark:text-slate-900"
-              >1</span
-            >
-            {{ $t('routeFlow.live.legendRank', { n: RANK_N }) }}
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <svg width="22" height="8" aria-hidden="true">
-              <line x1="0" y1="4" x2="22" y2="4" stroke-width="2.5" class="stroke-primary-400 dark:stroke-primary-600" />
-            </svg>
-            {{ $t('routeFlow.live.legendLit', { rate: floorLabel }) }}
-          </span>
-        </template>
-        <span class="ml-auto text-gray-400">{{ $t('routeFlow.zoom.hint') }}</span>
-      </div>
+      <RouteTopologyLegend :legend-open="legendOpen" :expanded="expanded" :live-enabled="liveEnabled"
+        :heat-scale="heatScale" :floor-label="floorLabel" @toggle="toggleLegend" />
     </template>
       </div>
     </Teleport>
+    <ProxyInspector ref="inspector" :name="inspectedExit" :outbound="inspectedOutbound" external />
   </div>
 </template>
 

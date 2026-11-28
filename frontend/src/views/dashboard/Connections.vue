@@ -13,7 +13,7 @@ import TooltipTarget from "../../components/TooltipTarget.vue"
  * or a single site.
  */
 import Tooltip from '../../components/Tooltip.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { InformationCircleIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import ConnectionSourcePicker from '../../components/ConnectionSourcePicker.vue'
@@ -29,7 +29,7 @@ import { runtimeService } from '../../services'
 import { useServiceStore } from '../../stores/service'
 import {
   CLOSED_LIMIT, NUMERIC_COLUMNS, poolFor, sourceOptions, viewRows,
-  type ColumnKey, type ConnectionTab,
+  type ColumnKey, type ConnectionTab, type TrackedConnection,
 } from '../../utils/connectionsTable'
 
 const { t } = useI18n()
@@ -56,6 +56,18 @@ const source = ref('')
 const sortKey = ref<ColumnKey>('downRate')
 const ascending = ref(false)
 const selectedId = ref('')
+// A connection ending must not destroy a proxy card being inspected/switched.
+// Keep its final snapshot until the person closes the details or changes view.
+const retainedDetail = shallowRef<TrackedConnection | null>(null)
+watch([selectedId, active, closed], () => {
+  if (!selectedId.value) { retainedDetail.value = null; return }
+  const latest = active.value.find(row => row.id === selectedId.value)
+    ?? closed.value.find(row => row.id === selectedId.value)
+  if (latest) retainedDetail.value = latest
+  else if (retainedDetail.value?.id === selectedId.value && !retainedDetail.value.closed) {
+    retainedDetail.value = { ...retainedDetail.value, closed: true, closedAt: now.value, up_rate: 0, down_rate: 0 }
+  }
+})
 const settingsOpen = ref(false)
 const settingsAnchor = ref<HTMLElement | null>(null)
 const closing = ref<ReadonlySet<string>>(new Set())
@@ -101,11 +113,14 @@ const rows = computed(() => viewRows(active.value, closed.value, {
 const heldOrder = ref<Map<string, number> | null>(null)
 
 const ordered = computed(() => {
+  const retained = retainedDetail.value
+  const visible = retained?.closed && !rows.value.some(row => row.id === retained.id)
+    ? [...rows.value, retained] : rows.value
   const held = heldOrder.value
-  if (!held) return rows.value
+  if (!held) return visible
   const position = (id: string) => held.get(id) ?? Number.MAX_SAFE_INTEGER
   // Array.prototype.sort is stable, so newcomers keep their sorted order.
-  return [...rows.value].sort((a, b) => position(a.id) - position(b.id))
+  return [...visible].sort((a, b) => position(a.id) - position(b.id))
 })
 
 const drawn = computed(() => ordered.value.slice(0, RENDER_LIMIT))

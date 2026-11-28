@@ -128,7 +128,7 @@ const columns = computed(() => [
         </article>
 </div></template></Table></div></template>
 <style scoped>
-.subscription-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
+.subscription-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 560px)), 1fr)); gap: 16px; align-items: start; }
 .subscription-card { position: relative; min-width: 0; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-bg-secondary); display: flex; flex-direction: column; gap: 18px; }
 
 .subscription-card :deep(.max-w-\[18rem\]) { max-width: 100%; }

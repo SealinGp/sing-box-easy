@@ -34,3 +34,13 @@ Browser measurements use requestAnimationFrame intervals with no CPU throttling;
 ## Limits
 
 Mobile coverage used browser viewport/touch emulation, not physical iOS/Android devices. Real configuration changes and network-node switching were not used as UI test fixtures. The existing large-bundle build warning remains. Large simultaneous bulk changes are substantially faster but are not claimed to meet a universal full-frame-rate target.
+
+## In-place proxy inspection and collection density (v1.18.0)
+
+- Connections and topology exits share a contextual proxy inspector with the existing proxy-group card, search, latency testing, selection feedback and nested-group navigation. Automatic groups retain their non-manual behavior. Leaf exits show available address, subscription and quality information; phone topology has touch-sized exit shortcuts.
+- Keep the selected connection detail after it leaves the bounded history list. Preserve nested overlay ownership and reposition an already-open inspector when another exit is selected.
+- Outbound rows identify their owning subscription using the existing ownership suffix and one shared subscription-list request. Unknown subscription names fall back to their ID.
+- Reduce list-cell padding. Card mode offers per-page persisted compact/comfortable density (300/560 px minimum card width), including the subscription collection. Wide cards retain wrapped field values. Toolbar placement excludes itself on reload.
+- Extract topology and outbound controllers/legend into cohesive modules. Cancel delayed form cleanup on reopen; preserve shared options on type changes; guard duplicate submissions and keep busy forms from closing.
+- Browser checks covered successful/failed mock selection, duplicate clicks, automatic groups, nested history/settings overlays, connection termination beyond a 500-item history cap, source labels, card density/selection persistence and reload, mobile dark/reduced-motion popup bounds, topology anchor switching and rapid draft reopening. The mock type change retained server, port and bind interface. No real proxy selection was changed for testing.
+- Final checks: 606 frontend tests, production typecheck/build, diff whitespace check and the 500-line limit passed. Independent GPT source review reported no remaining release blockers.

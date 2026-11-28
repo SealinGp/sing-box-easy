@@ -40,6 +40,7 @@ const props = defineProps<{
   /** True when the node-rules engine generates this group. */
   managed?: boolean
   focusedNode?: string
+  inspectable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -48,6 +49,7 @@ const emit = defineEmits<{
   (e: 'test'): void
   (e: 'testNode', name: string): void
   (e: 'select', name: string): void
+  (e: 'inspect', name: string): void
 }>()
 
 const TIER_BADGE: Record<LatencyTier, string> = {
@@ -283,7 +285,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     -->
     <div class="fold fold-nodes" :inert="!open">
       <div>
-        <div v-memo="[shownMembers, testingNodes, switchingTo, group.now, focusedNode, group.switchable, locale]" class="group-scroll quiet-scrollbar mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
+        <div v-memo="[shownMembers, testingNodes, switchingTo, group.now, focusedNode, group.switchable, locale, inspectable]" class="group-scroll quiet-scrollbar mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
           <TooltipTarget
             :as="group.switchable ? 'button' : 'div'"
             v-for="member in shownMembers"
@@ -314,6 +316,12 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
                 {{ displayName(member.name) }}
               </TooltipTarget>
               <ProxyNodeHistory v-if="!member.group" :name="member.name" :history="member.history" />
+              <TooltipTarget v-else-if="inspectable" as="span" role="button" tabindex="0"
+                :text="$t('connections.details.openProxyGroup', { name: member.name })" :aria-label="$t('connections.details.openProxyGroup', { name: member.name })"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-primary-600 focus-visible:outline-2 focus-visible:outline-primary-500"
+                @click.stop="emit('inspect', member.name)" @keydown.enter.stop.prevent="emit('inspect', member.name)" @keydown.space.stop.prevent="emit('inspect', member.name)">
+                <MagnifyingGlassIcon class="h-3.5 w-3.5" aria-hidden="true" />
+              </TooltipTarget>
             </span>
             <span class="flex items-center justify-between gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
               <span class="flex min-w-0 items-center gap-1">

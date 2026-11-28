@@ -16,6 +16,7 @@ export default {
   selectOutbound: '选择 {tag}',
   empty: '尚未配置出站',
   table: {
+    subscription: '所属订阅',
     tag: '标签',
     type: '类型',
     server: '服务器',

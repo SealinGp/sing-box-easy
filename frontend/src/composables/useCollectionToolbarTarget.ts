@@ -12,7 +12,7 @@ export function useCollectionToolbarTarget(root: Ref<HTMLElement | null>) {
         // Never attach to another collection or to an editable form.
         if (!previous.matches('.collection-records, form') && !previous.querySelector('.collection-records, form')) {
           const buttons = [...previous.querySelectorAll<HTMLButtonElement>('button')]
-            .filter(button => !button.closest('[role="dialog"], .collection-view-toggle'))
+            .filter(button => !button.closest('[role="dialog"], .collection-toolbar'))
           const last = buttons.at(-1)
           const actions = last?.parentElement
           if (actions && getComputedStyle(actions).display.includes('flex')) {

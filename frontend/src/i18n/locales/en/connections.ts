@@ -56,7 +56,11 @@ export default {
   streamFailed: 'The connection stream dropped',
   closeFailed: 'Could not close the connection',
   details: {
-    openProxyGroup: 'Show {name} on the Proxies page',
+    openProxyGroup: 'Inspect and switch {name}',
+    switchScope: 'Switches the whole proxy group. Existing connections may keep their current route.',
+    switchedTo: 'Switched to {name}',
+    memberOf: 'Inspect or switch in these groups',
+    groupUnavailable: 'This group is no longer in the running configuration.',
     openRuleSet: 'Show {name} on the Rule Sets page',
     title: 'Connection details',
     dismiss: 'Hide',

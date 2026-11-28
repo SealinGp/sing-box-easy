@@ -32,6 +32,7 @@ export default defineComponent({
     const root = ref<HTMLElement | null>(null)
     const toolbarTarget = useCollectionToolbarTarget(root)
     const mode = ref<'list' | 'cards'>('list')
+    const cardDensity = ref<'compact' | 'comfortable'>('comfortable')
     const internalSelected = ref(new Set<string>())
     watch(() => props.selectedKeys, value => {
       if (value) internalSelected.value = new Set(value)
@@ -47,10 +48,15 @@ export default defineComponent({
     watch(key, (value, previous) => {
       if (previous !== undefined) selected.value = new Set()
       try { mode.value = localStorage.getItem(`${value}:view`) === 'cards' ? 'cards' : 'list' } catch {}
+      try { cardDensity.value = localStorage.getItem(`${value}:card-density`) === 'compact' ? 'compact' : 'comfortable' } catch {}
     }, { immediate: true })
     function changeMode(value: 'list' | 'cards') {
       mode.value = value
       try { localStorage.setItem(`${key.value}:view`, value) } catch {}
+    }
+    function changeDensity(value: 'compact' | 'comfortable') {
+      cardDensity.value = value
+      try { localStorage.setItem(`${key.value}:card-density`, value) } catch {}
     }
     useTableColumns(root, () => mode.value === 'list' && !props.loading, () => `${key.value}:columns`)
     onBeforeUnmount(() => clearTimeout(timer))
@@ -110,6 +116,10 @@ export default defineComponent({
         selectable && mode.value === 'cards' ? checkbox(checked.length === visible.length && !!visible.length, t('common.collection.selectAll'), selectAll, !!checked.length && checked.length < visible.length) : null,
         ownedSelection && mode.value === 'cards' ? h('span', { class: 'collection-owned-selection' }, selectionHeader?.children as VNode[]) : null,
         props.presentation ? h(CollectionViewToggle, { modelValue: mode.value, 'onUpdate:modelValue': changeMode }) : null,
+        props.presentation && mode.value === 'cards' ? h('div', { class: 'collection-density', role: 'group', 'aria-label': t('common.collection.density') },
+          (['compact', 'comfortable'] as const).map(value => h('button', {
+            type: 'button', 'aria-pressed': cardDensity.value === value, onClick: () => changeDensity(value),
+          }, t(`common.collection.${value}`)))) : null,
       ]) : null
       const labels = headers.map(header => nodeText(header.children))
       const showCards = props.presentation && mode.value === 'cards' && !props.loading
@@ -142,7 +152,7 @@ export default defineComponent({
         ])]),
         props.transition ? h(TransitionGroup, { tag: 'tbody', moveClass: 'ui-row-move' }, () => tableRows) : h('tbody', tableRows),
       ])
-      return h('div', { ref: root, class: ['collection-records', { 'has-selection-dock': selectable && checked.length > 0 }] }, [
+      return h('div', { ref: root, 'data-card-density': cardDensity.value, class: ['collection-records', { 'has-selection-dock': selectable && checked.length > 0 }] }, [
         selectable ? h(SelectionDock, { count: checked.length, busy: props.selectionDisabled, copied: copied.value, error: error.value, onCopy: copy, onClear: clear }, slots.selectionActions ? { default: () => slots.selectionActions?.({ selectedKeys: checked, clear }) } : undefined) : null,
         toolbar && toolbarTarget.value ? h(Teleport, { to: toolbarTarget.value }, [toolbar]) : toolbar,
         h('div', { key: showCards ? 'cards' : 'list', class: 'collection-view' }, [content])])

@@ -106,7 +106,7 @@
   .data-table :is(th, td).col-select {
     width: var(--table-select-width);
     min-width: var(--table-select-width);
-    padding-inline: 1rem;
+    padding-inline: 0.625rem;
     text-align: center;
     vertical-align: middle;
   }

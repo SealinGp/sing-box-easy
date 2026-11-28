@@ -16,6 +16,7 @@ export default {
   selectOutbound: 'Select {tag}',
   empty: 'No outbounds configured',
   table: {
+    subscription: 'Subscription',
     tag: 'Tag',
     type: 'Type',
     server: 'Server',

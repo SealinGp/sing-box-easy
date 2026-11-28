@@ -40,6 +40,17 @@ function ownsTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Node)) return false
   const root = document.getElementById(id.value)
   if (root?.contains(target) || trigger?.contains(target)) return true
+  // Teleported nested popovers (including node history and its own panels)
+  // remain part of the parent interaction even though they live under body.
+  let nested = (target instanceof Element ? target : target.parentElement)?.closest<HTMLElement>('[data-overlay-owner]')
+  const visited = new Set<string>()
+  while (nested?.dataset.overlayOwner) {
+    const owner = nested.dataset.overlayOwner
+    if (owner === id.value) return true
+    if (visited.has(owner)) break
+    visited.add(owner)
+    nested = document.getElementById(owner)?.closest<HTMLElement>('[data-overlay-owner]')
+  }
   return [...(root?.querySelectorAll('[aria-controls]') ?? [])].some(control =>
     (control.getAttribute('aria-controls') ?? '').split(/\s+/).some(controlledId => {
       const controlled = document.getElementById(controlledId)
@@ -124,6 +135,9 @@ function onShow() {
   window.addEventListener('resize', alignWithinViewport)
   document.addEventListener('scroll', onScroll, true)
   const root = document.getElementById(id.value)
+  const owner = trigger?.closest<HTMLElement>('[data-pc-name="popover"]')
+  if (root && owner?.id) root.dataset.overlayOwner = owner.id
+  else if (root) delete root.dataset.overlayOwner
   const first = root?.querySelector<HTMLElement>('[autofocus]')
     ?? root?.querySelector<HTMLElement>('input:not(:disabled):not([type="hidden"]), textarea:not(:disabled)')
     ?? root?.querySelector<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]')
@@ -168,6 +182,7 @@ function showAt(target: HTMLElement) {
       if (!target.isConnected) return
       shown = true
       panel.value?.show(event, target)
+      alignWithinViewport()
     })
   })
 }

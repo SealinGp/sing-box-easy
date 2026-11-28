@@ -3,6 +3,7 @@ import type { FlowOverlay } from '../utils/flowOverlay'
 
 export interface RouteFlowDiagramProps {
   topology: RouteTopology
+  interactiveExits?: boolean
   /**
    * The live overlay, when the card is watching real traffic. Null keeps the
    * drawing static. The picture never changes shape between the two — the

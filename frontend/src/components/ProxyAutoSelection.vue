@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import type { AutoSelectionStatus, RuntimeGroup } from '../types/runtime'
@@ -13,6 +13,7 @@ const props = defineProps<{ group: RuntimeGroup }>()
 const emit = defineEmits<{ updated: [] }>()
 const { t, locale } = useI18n()
 const panel = ref<InstanceType<typeof Popover>>()
+const panelId = useId()
 const saved = ref<AutoSelectionStatus | null>(null)
 const status = computed(() => saved.value ?? props.group.auto_selection)
 const enabled = ref(false)
@@ -44,10 +45,10 @@ const stamp = (value?: string) => value && !value.startsWith('0001-') ? new Date
   <span class="inline-flex" @click.stop @keydown.enter.stop @keydown.space.stop>
     <button type="button" class="inline-flex min-h-8 items-center gap-1 rounded-control border border-border px-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-primary-500"
       :class="status?.enabled ? 'text-primary-600 dark:text-primary-400' : 'text-text-secondary'" :aria-expanded="open"
-      :aria-label="t('proxies.auto.open', { group: group.name })" @click="panel?.toggle($event)">
+      :aria-controls="panelId" :aria-label="t('proxies.auto.open', { group: group.name })" @click="panel?.toggle($event)">
       <ArrowPathIcon class="h-3.5 w-3.5" aria-hidden="true" />{{ t(status?.enabled ? 'proxies.auto.active' : 'proxies.auto.manual') }}
     </button>
-    <Popover ref="panel" panel-class="w-[23rem]" :aria-label="t('proxies.auto.title')" @show="show" @hide="open = false">
+    <Popover ref="panel" :id="panelId" panel-class="w-[23rem]" :aria-label="t('proxies.auto.title')" @show="show" @hide="open = false">
       <form class="space-y-3 text-sm" :aria-busy="saving" @submit.prevent="save" @input="success = false">
         <div class="flex items-center gap-1">
           <h3 class="font-semibold text-text-primary">{{ t('proxies.auto.title') }}</h3>

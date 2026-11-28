@@ -56,7 +56,11 @@ export default {
   streamFailed: '连接数据流中断',
   closeFailed: '关闭连接失败',
   details: {
-    openProxyGroup: '在代理页查看 {name}',
+    openProxyGroup: '查看并切换 {name}',
+    switchScope: '切换整个代理组；已有连接不一定会改变线路。',
+    switchedTo: '已切换至 {name}',
+    memberOf: '在以下代理组中查看或切换',
+    groupUnavailable: '此代理组已不在当前运行配置中。',
     openRuleSet: '在规则集页查看 {name}',
     title: '连接详情',
     dismiss: '收起',

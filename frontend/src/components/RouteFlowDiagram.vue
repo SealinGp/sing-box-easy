@@ -3,7 +3,10 @@ import TooltipTarget from "./TooltipTarget.vue"
 import type { RouteFlowDiagramProps } from '../types/routeFlowDiagram'
 import { useRouteFlowDiagram } from '../composables/useRouteFlowDiagram'
 const props = defineProps<RouteFlowDiagramProps>()
-const emit = defineEmits<{ (event: 'expand-band', indices: number[]): void }>()
+const emit = defineEmits<{
+  (event: 'expand-band', indices: number[]): void
+  (event: 'inspect-exit', name: string, anchor: HTMLElement): void
+}>()
 const {
   layout,
   scaled,
@@ -391,6 +394,14 @@ const {
       >
         ↓{{ rate(liveExit(box.id)!.down) }}
       </text>
+      <foreignObject v-if="interactiveExits && box.exit.kind === 'outbound'" :x="box.x" :y="box.y" :width="box.width" :height="box.height">
+        <button xmlns="http://www.w3.org/1999/xhtml" type="button" class="h-full w-full rounded-lg border border-transparent bg-transparent text-right hover:border-primary-500 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+          :aria-label="$t('connections.details.openProxyGroup', { name: box.exit.label })" :title="$t('connections.details.openProxyGroup', { name: box.exit.label })" aria-haspopup="dialog"
+          @click.stop="emit('inspect-exit', box.exit.id, $event.currentTarget as HTMLElement)">
+          <span class="sr-only">{{ box.exit.label }}</span>
+          <span aria-hidden="true" class="absolute bottom-0 right-1 text-[11px] text-primary-600 dark:text-primary-300">›</span>
+        </button>
+      </foreignObject>
     </TooltipTarget>
 
     <!--

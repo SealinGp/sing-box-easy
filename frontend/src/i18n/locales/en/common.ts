@@ -2,7 +2,7 @@
 export default {
   actions: 'Actions',
   moreActions: 'More actions',
-  collection: { actions: 'Bulk actions', view: 'View', list: 'List', cards: 'Cards', select: 'Select record', selectAll: 'Select all visible records', clear: 'Clear selection', selected: '{count} selected' },
+  collection: { density: 'Card density', compact: 'Compact', comfortable: 'Spacious', actions: 'Bulk actions', view: 'View', list: 'List', cards: 'Cards', select: 'Select record', selectAll: 'Select all visible records', clear: 'Clear selection', selected: '{count} selected' },
   fieldHelp: "Help for {name}",
   save: 'Save',
   // Shown under every multi-value (chips) field — see components/ChipsField.vue.

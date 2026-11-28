@@ -13,6 +13,7 @@ import { formatRate } from '../utils/flowOverlay'
 import { durationOf, formatDuration, type TrackedConnection } from '../utils/connectionsTable'
 import { FOCUS_PAGES, focusLink, splitRuleByRuleSets } from '../utils/focusTarget'
 import { useConnectionLinks } from '../composables/useConnectionLinks'
+import ProxyInspector from './ProxyInspector.vue'
 
 defineProps<{
   connection: TrackedConnection
@@ -62,17 +63,7 @@ const { ruleSetTags, isGroup } = useConnectionLinks()
         <dd>
           <template v-for="(hop, index) in connection.chains" :key="index">
             <span v-if="index" class="text-gray-400"> → </span>
-            <!--
-              Only the FIRST hop — the outbound the rule named — and only when
-              it is a group: that is what has a card on the Proxies page. The
-              hops after it are that group's members, shown inside its card.
-            -->
-            <RouterLink
-              v-if="index === 0 && isGroup(hop)"
-              :to="focusLink(FOCUS_PAGES.proxies, hop)"
-              :title="$t('connections.details.openProxyGroup', { name: hop })"
-              class="detail-link"
-            >{{ displayName(hop) }}</RouterLink>
+            <ProxyInspector v-if="isGroup(hop)" :name="hop" />
             <span v-else :title="hop">{{ displayName(hop) }}</span>
           </template>
         </dd>
