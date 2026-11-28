@@ -43,7 +43,8 @@ const props = defineProps<{
   disabled?: boolean
 }>()
 
-const emit = defineEmits<{ change: [value: unknown] }>()
+const emit = defineEmits<{ change: [value: unknown]
+  validity: [valid: boolean] }>()
 
 const { t } = useI18n()
 
@@ -259,6 +260,7 @@ function onNumber(raw: string | number) {
 
   <HostsEditor
     v-else-if="field.control === 'hosts'"
+    @validity="valid => emit('validity', valid)"
     :modelValue="(value as Record<string, string | string[]> | undefined)"
     @update:modelValue="(v) => emit('change', v)"
   />

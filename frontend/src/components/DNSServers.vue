@@ -2,7 +2,7 @@
 import ModulePresets from './ModulePresets.vue'
 import IconButton from './IconButton.vue'
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNSServer } from '../types/api'
 import Button from './Button.vue'
@@ -172,7 +172,10 @@ const closeServerModal = () => {
   currentServer.value = blankServer()
 }
 
+const fieldsValid = ref(true)
+watch([showServerModal, currentType], () => { fieldsValid.value = true }, { flush: 'sync' })
 const handleSaveServer = async () => {
+  if (!fieldsValid.value || loading.value) return
   const error = validateDNSServer(currentServer.value)
   if (error) {
     toast.add({
@@ -383,6 +386,7 @@ onMounted(() => {
           not have.
         -->
         <SchemaFieldsEditor
+          @validity="valid => fieldsValid = valid"
           v-if="currentType"
           :key="currentType"
           v-model="currentServer"
@@ -393,7 +397,7 @@ onMounted(() => {
 
       <template #footer>
         <Button @click="closeServerModal" variant="secondary">{{ $t('common.cancel') }}</Button>
-        <Button @click="handleSaveServer" variant="primary" :disabled="loading">
+        <Button @click="handleSaveServer" variant="primary" :disabled="loading || !fieldsValid">
           {{ isEditMode ? $t('common.update') : $t('common.add') }}
         </Button>
       </template>

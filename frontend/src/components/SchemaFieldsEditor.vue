@@ -56,6 +56,12 @@ const props = defineProps<{
   emptyHint?: string
 }>()
 
+const emit = defineEmits<{ validity: [valid: boolean] }>()
+const invalidFields = new Set<string>()
+function setValidity(key: string, valid: boolean) {
+  if (valid) invalidFields.delete(key); else invalidFields.add(key)
+  emit('validity', invalidFields.size === 0)
+}
 const model = defineModel<Record<string, unknown>>({ required: true })
 
 const { t, te } = useI18n()
@@ -153,6 +159,7 @@ function setField(key: string, value: unknown) {
  * un-removable next time, since a written value counts as filled.
  */
 function removeField(key: string) {
+  setValidity(key, true)
   optional.remove(key)
   model.value = withoutField(model.value, key)
 }
@@ -175,6 +182,7 @@ function fieldLayout(field: ResolvedField) {
       :hint-display="retired(field) || isDeprecatedIn(field, singBoxVersion) || field.deprecated ? 'inline' : 'tooltip'"
     >
       <SchemaFieldControl
+        @validity="valid => setValidity(field.key, valid)"
         :field="field"
         :value="model[field.key]"
         :record="model"
@@ -194,6 +202,7 @@ function fieldLayout(field: ResolvedField) {
       @remove="removeField(field.key)"
     >
       <SchemaFieldControl
+        @validity="valid => setValidity(field.key, valid)"
         :field="field"
         :value="model[field.key]"
         :record="model"

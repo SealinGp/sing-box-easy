@@ -41,6 +41,7 @@ const props = defineProps<{
   managed?: boolean
   focusedNode?: string
   inspectable?: boolean
+  hideSearch?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -198,7 +199,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
           same spot closes it — the pointer does not have to travel to dismiss
           what it just opened.
         -->
-        <span class="group-search" :class="{ 'is-open': searching }" @click.stop>
+        <span v-if="!hideSearch" class="group-search" :class="{ 'is-open': searching }" @click.stop>
           <input
             ref="searchInput"
             v-model="query"

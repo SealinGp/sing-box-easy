@@ -73,6 +73,10 @@ export default {
       // ââ schema-driven form ââââââââââââââââââââââââââââââââââââââââââââââââ
       localHint:
         'A local resolver uses the host’s own DNS settings, so it has no address to configure. Everything below is an optional dialer setting.',
+      hostsDomainLabel: 'Domain',
+      hostsAddressLabel: 'IP addresses (comma separated)',
+      hostsDomainRequired: 'Enter a domain or remove this empty row.',
+      hostsDomainDuplicate: 'Duplicate domain. Use one row with multiple IP addresses.',
       addHost: 'Add host',
       hostsDomainPlaceholder: 'example.com',
       hostsAddressPlaceholder: '192.0.2.1',

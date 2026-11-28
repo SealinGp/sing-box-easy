@@ -72,6 +72,10 @@ export default {
 
       // ── 基于 schema 的表单 ──
       localHint: '本地解析器使用主机自身的 DNS 设置，因此无需配置地址。以下均为可选的连接选项。',
+      hostsDomainLabel: '域名',
+      hostsAddressLabel: 'IP 地址（多个用逗号分隔）',
+      hostsDomainRequired: '请填写域名，或删除这条空行。',
+      hostsDomainDuplicate: '域名重复，请修改；多个 IP 请填在同一行。',
       addHost: '添加主机',
       hostsDomainPlaceholder: 'example.com',
       hostsAddressPlaceholder: '192.0.2.1',
