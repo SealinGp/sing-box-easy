@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import Reveal from '../../components/Reveal.vue'
 import SubscriptionOrphans from '../../components/SubscriptionOrphans.vue'
 import SubscriptionCollection from '../../components/SubscriptionCollection.vue'
 import FieldHelp from '../../components/FieldHelp.vue'
@@ -17,7 +18,7 @@ import { ContextPanel } from '../../volt'
 import { useSubscriptionsPage } from '../../composables/useSubscriptionsPage'
 const page = useSubscriptionsPage()
 const collection = reactive(page)
-const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, saveSubscription, updateAllSubscriptions, } = page
+const { isSaving, saveError, subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, saveSubscription, updateAllSubscriptions, } = page
 </script>
 <template>
   <div>
@@ -83,9 +84,9 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
     <SubscriptionInfoKeywords v-model="showInfoKeywords" />
 
     <!-- Add/Edit Modal -->
-    <ContextPanel v-model:visible="showModal" :header="modalTitle" modal class="w-full max-w-lg">
+    <ContextPanel :visible="showModal" @update:visible="value => { if (!isSaving) showModal = value }" :closable="!isSaving" :dismissable="!isSaving" :close-on-escape="!isSaving" :header="modalTitle" modal class="w-full max-w-lg">
       <form @submit.prevent="saveSubscription">
-        <div class="space-y-4">
+        <fieldset :disabled="isSaving" class="min-w-0 space-y-4">
           <Input
             v-model="formData.name"
             :label="$t('subscriptions.form.name')"
@@ -117,7 +118,7 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
             :hint="$t('subscriptions.form.officialUrlHint')"
           />
 
-          <div class="flex items-center gap-4">
+          <div class="flex flex-wrap items-center gap-4">
             <label class="flex items-center">
               <input
                 v-model="formData.auto_update"
@@ -129,15 +130,14 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
               }}</span>
             </label>
 
-            <Input
-              v-if="formData.auto_update"
+            <Reveal :open="formData.auto_update" class="flex-1 min-w-32"><Input
               v-model="formData.update_interval"
               :label="$t('subscriptions.form.updateInterval')"
               placeholder="24h"
               class="flex-1"
               :error="formErrors.update_interval"
               :hint="$t('subscriptions.form.updateIntervalHint')"
-            />
+            /></Reveal>
           </div>
 
           <!-- Update method — for censored networks where direct fetch is
@@ -146,7 +146,7 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
             <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {{ $t("subscriptions.form.fetchMode") }}
             </label><FieldHelp :label="$t('subscriptions.form.fetchMode')" :text="$t('subscriptions.form.fetchModeHint')" /></div>
-            <Select
+            <Select :disabled="isSaving"
               class="w-full"
               v-model="formData.fetch_mode"
               :options="fetchModeOptions"
@@ -157,13 +157,12 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
 
           </div>
 
-          <Input
-            v-if="formData.fetch_mode === 'proxy'"
+          <Reveal :open="formData.fetch_mode === 'proxy'"><Input
             v-model="formData.proxy_url"
             :label="$t('subscriptions.form.proxyUrl')"
             placeholder="socks5://127.0.0.1:7893"
             :hint="$t('subscriptions.form.proxyUrlHint')"
-          />
+          /></Reveal>
 
           <!--
             Quality probing. The URL is per-subscription because a provider
@@ -184,25 +183,25 @@ const { subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formD
             </label><FieldHelp :label="$t('subProbe.form.enabled')" :text="$t('subProbe.form.enabledHint')" /></div>
 
 
-            <Input
-              v-if="formData.probe_enabled"
+            <Reveal :open="formData.probe_enabled"><Input
               v-model="formData.probe_url"
               class="mt-3"
               :label="$t('subProbe.form.url')"
               placeholder="https://www.gstatic.com/generate_204"
               :error="formErrors.probe_url"
               :hint="$t('subProbe.form.urlHint')"
-            />
+            /></Reveal>
           </div>
-        </div>
+        </fieldset>
       </form>
 
       <template #footer>
-        <Button variant="secondary" @click="showModal = false">
+        <p v-if="saveError" role="alert" class="w-full text-sm text-danger">{{ saveError }}</p>
+        <Button variant="secondary" :disabled="isSaving" @click="showModal = false">
           {{ $t("common.cancel") }}
         </Button>
         <Button
-          :loading="isLoading"
+          :loading="isSaving"
           :disabled="!isFormValid"
           @click="saveSubscription"
         >

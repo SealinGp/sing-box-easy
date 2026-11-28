@@ -14,9 +14,10 @@ interface Props extends /* @vue-ignore */ DialogProps {
   header?: string
   closable?: boolean
   dismissable?: boolean
+  closeOnEscape?: boolean
 }
 defineOptions({ inheritAttrs: false })
-const props = withDefaults(defineProps<Props>(), { visible: false, closable: true, dismissable: true })
+const props = withDefaults(defineProps<Props>(), { visible: false, closable: true, dismissable: true, closeOnEscape: true })
 const emit = defineEmits<{ 'update:visible': [boolean]; hide: []; show: [] }>()
 const attrs = useAttrs()
 const titleId = useId()
@@ -46,7 +47,7 @@ watch(() => props.visible, async (visible) => {
 </script>
 
 <template>
-  <Popover v-if="anchored" ref="popover" :dismissable="dismissable" :panel-class="panelClass" content-class="flex min-h-0 flex-col p-0"
+  <Popover v-if="anchored" ref="popover" :dismissable="dismissable" :close-on-escape="closeOnEscape" :panel-class="panelClass" content-class="flex min-h-0 flex-col p-0"
     :aria-labelledby="header || $slots.header ? titleId : undefined" @hide="onPopoverHide" @show="emit('show')">
     <div v-if="header || $slots.header" class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
       <div :id="titleId" class="min-w-0 text-base font-semibold text-text-primary"><slot name="header">{{ header }}</slot></div>
@@ -57,7 +58,7 @@ watch(() => props.visible, async (visible) => {
     <div class="panel-form-body min-h-0 flex-1 overflow-y-auto px-4 py-3 text-text-primary"><slot /></div>
     <div v-if="$slots.footer" class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3"><slot name="footer" /></div>
   </Popover>
-  <Dialog v-else v-bind="$attrs" :visible="visible" :header="header" :closable="closable"
+  <Dialog v-else v-bind="$attrs" :visible="visible" :header="header" :closable="closable" :close-on-escape="closeOnEscape" :dismissable-mask="dismissable"
     @update:visible="emit('update:visible', $event)" @hide="emit('hide')" @show="emit('show')">
     <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
       <div v-if="slotName === 'default'" class="panel-form-body"><slot v-bind="slotProps ?? {}" /></div>

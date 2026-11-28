@@ -9,6 +9,7 @@ import { popoverPlacement, type PopoverSide } from '../utils/popoverPlacement'
 
 interface Props extends /* @vue-ignore */ PopoverProps {
   dismissable?: boolean
+  closeOnEscape?: boolean
   /** Action menus dismiss even when the outside control stops click bubbling. */
   interaction?: 'form' | 'menu'
   panelClass?: string
@@ -16,6 +17,7 @@ interface Props extends /* @vue-ignore */ PopoverProps {
 }
 const props = withDefaults(defineProps<Props>(), {
   dismissable: true,
+  closeOnEscape: true,
   interaction: 'form',
 })
 const emit = defineEmits<{ show: []; hide: [] }>()
@@ -59,11 +61,17 @@ function onOutsideClick(event: MouseEvent) {
 function trackFocus(event: Event) {
   returnFocus = ownsTarget(event.target)
 }
+function onScroll(event: Event) {
+  if (document.getElementById(id.value)?.contains(event.target as Node)) return
+  cancelAnimationFrame(alignmentFrame)
+  alignmentFrame = requestAnimationFrame(alignWithinViewport)
+}
 function removeListeners() {
   document.removeEventListener('focusin', trackFocus, true)
   document.removeEventListener('pointerdown', onPointerDown, true)
   document.removeEventListener('click', onOutsideClick, props.interaction === 'menu')
   window.removeEventListener('resize', alignWithinViewport)
+  document.removeEventListener('scroll', onScroll, true)
   resizeObserver?.disconnect()
   cancelAnimationFrame(alignmentFrame)
 }
@@ -92,6 +100,7 @@ function hide() {
 }
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
+  if (!props.closeOnEscape) { event.stopPropagation(); return }
   // Select consumes Escape even when closed. Let an open picker dismiss its
   // own list first; otherwise Escape belongs to this contextual panel.
   const hasOpenPicker = [...document.querySelectorAll('[role="listbox"]')]
@@ -103,8 +112,17 @@ function onKeydown(event: KeyboardEvent) {
   hide()
 }
 function onShow() {
+  // PrimeVue otherwise hides on anchor scroll or desktop resize, even when
+  // dismissable=false. Keep drafts mounted and reposition with the anchor.
+  const overlay = panel.value as (InstanceType<typeof PrimePopover> & {
+    unbindScrollListener(): void
+    unbindResizeListener(): void
+  }) | null
+  overlay?.unbindScrollListener()
+  overlay?.unbindResizeListener()
   alignWithinViewport()
   window.addEventListener('resize', alignWithinViewport)
+  document.addEventListener('scroll', onScroll, true)
   const root = document.getElementById(id.value)
   const first = root?.querySelector<HTMLElement>('[autofocus]')
     ?? root?.querySelector<HTMLElement>('input:not(:disabled):not([type="hidden"]), textarea:not(:disabled)')
@@ -179,7 +197,7 @@ defineExpose({ toggle, showAt, hide })
 </script>
 
 <template>
-  <PrimePopover ref="panel" :id="id" :dismissable="false" unstyled :pt="theme" :pt-options="{mergeProps: ptViewMerge}"
+  <PrimePopover ref="panel" :id="id" :dismissable="false" :close-on-escape="false" unstyled :pt="theme" :pt-options="{mergeProps: ptViewMerge}"
     @show="onShow" @hide="onHide" @keydown.capture="onKeydown">
     <slot />
   </PrimePopover>

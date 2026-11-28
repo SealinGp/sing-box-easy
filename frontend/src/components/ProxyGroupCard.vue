@@ -64,7 +64,7 @@ const TIER_BLOCK: Record<LatencyTier, string> = {
   none: 'bg-gray-300 dark:bg-gray-600',
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const groupTier = computed(() => latencyTier(props.group.delay))
 
@@ -283,7 +283,7 @@ const toggleSearch = () => (searching.value ? closeSearch() : void openSearch())
     -->
     <div class="fold fold-nodes" :inert="!open">
       <div>
-        <div class="group-scroll quiet-scrollbar mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
+        <div v-memo="[shownMembers, testingNodes, switchingTo, group.now, focusedNode, group.switchable, locale]" class="group-scroll quiet-scrollbar mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 px-3 pt-0.5">
           <TooltipTarget
             :as="group.switchable ? 'button' : 'div'"
             v-for="member in shownMembers"

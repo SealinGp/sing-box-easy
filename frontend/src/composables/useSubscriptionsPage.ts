@@ -34,6 +34,8 @@ export function useSubscriptionsPage() {
 
   const subscriptions = ref<Subscription[]>([]);
   const isLoading = ref(false);
+  const isSaving = ref(false);
+  const saveError = ref('');
   const isUpdating = ref<string[]>([]);
   const showModal = ref(false);
   const editingSubscription = ref<Subscription | null>(null);
@@ -104,11 +106,15 @@ export function useSubscriptionsPage() {
   };
 
   const openAddModal = () => {
+    if (isSaving.value) return;
+    saveError.value = "";
     resetForm();
     showModal.value = true;
   };
 
   const openEditModal = (subscription: Subscription) => {
+    if (isSaving.value) return;
+    saveError.value = "";
     formData.value = {
       name: subscription.name,
       url: subscription.url,
@@ -161,7 +167,7 @@ export function useSubscriptionsPage() {
     // delay-test URL and substitutes its own default, so an accepted http value
     // would report latency for an endpoint the operator never chose. The backend
     // enforces this too; checking here puts the error on the field.
-    if (formData.value.probe_url.trim()) {
+    if (formData.value.probe_enabled && formData.value.probe_url.trim()) {
       try {
         const parsed = new URL(formData.value.probe_url.trim());
         if (parsed.protocol !== "https:") {
@@ -191,17 +197,20 @@ export function useSubscriptionsPage() {
   };
 
   const saveSubscription = async () => {
+    if (isSaving.value) return;
+    saveError.value = "";
     if (!validateForm()) {
       return;
     }
 
+    isSaving.value = true;
     try {
       const subscriptionData = {
         name: formData.value.name,
         url: formData.value.url,
         official_url: formData.value.official_url.trim(),
         auto_update: formData.value.auto_update,
-        update_interval: formData.value.update_interval, // Send as string
+        update_interval: formData.value.auto_update ? formData.value.update_interval : "24h",
         fetch_mode: formData.value.fetch_mode,
         // proxy_url only matters in proxy mode; send empty otherwise.
         proxy_url:
@@ -209,7 +218,7 @@ export function useSubscriptionsPage() {
             ? formData.value.proxy_url.trim()
             : "",
         probe_enabled: formData.value.probe_enabled,
-        probe_url: formData.value.probe_url.trim(),
+        probe_url: formData.value.probe_enabled ? formData.value.probe_url.trim() : "",
       };
 
       let response;
@@ -227,7 +236,9 @@ export function useSubscriptionsPage() {
       resetForm();
       await loadSubscriptions();
     } catch (error) {
-      notify.apiError(error, t("subscriptions.notify.saveError"));
+      saveError.value = error instanceof Error ? error.message : t("subscriptions.notify.saveError");
+    } finally {
+      isSaving.value = false;
     }
   };
 
@@ -347,5 +358,5 @@ export function useSubscriptionsPage() {
     loadSubscriptions();
     loadProbeStatus();
   });
-  return { summarizePlan, t, subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, openEditModal, saveSubscription, officialLink, deleteSubscription, updateSubscription, updateAllSubscriptions, formatDate, getSubscriptionStatus, probeLatest, loadProbeStatus }
+  return { isSaving, saveError, summarizePlan, t, subscriptions, isLoading, isUpdating, showModal, showInfoKeywords, formData, fetchModeOptions, formErrors, isEditing, modalTitle, isFormValid, loadSubscriptions, openAddModal, openEditModal, saveSubscription, officialLink, deleteSubscription, updateSubscription, updateAllSubscriptions, formatDate, getSubscriptionStatus, probeLatest, loadProbeStatus }
 }

@@ -1,3 +1,5 @@
+@import './navigation-search.css';
+
 /* An opaque, quiet frame around the working surfaces. */
 :root {
   --nav-surface:var(--color-bg-secondary);
@@ -103,11 +105,11 @@
    4px travel and 25ms stagger. Keep the Sandstone colors and reverse the whole
    reveal timeline on close instead of introducing a second exit path. */
 .navigation-sidebar {
-  --sidebar-state-duration:150ms;
-  --sidebar-state-ease:cubic-bezier(.25,.1,.25,1);
-  --sidebar-reveal-duration:400ms;
-  --sidebar-reveal-ease:cubic-bezier(.2,.8,0,1);
-  --sidebar-conceal-ease:cubic-bezier(1,0,.8,.2);
+  --sidebar-state-duration:var(--motion-feedback);
+  --sidebar-state-ease:var(--motion-continuous);
+  --sidebar-reveal-duration:var(--motion-panel);
+  --sidebar-reveal-ease:var(--motion-continuous);
+  --sidebar-conceal-ease:var(--motion-continuous);
   --sidebar-child-stagger:25ms;
   --sidebar-child-delay:40ms;
 }
@@ -255,7 +257,7 @@
   color:var(--nav-ink);
   text-decoration:none;
   border:1px solid transparent;
-  transition:background-color .12s ease,color .12s ease;
+  transition:background-color var(--motion-feedback) var(--motion-continuous),color var(--motion-feedback) var(--motion-continuous);
 }
 .nav-destination:hover {
   background:var(--nav-active);
@@ -406,7 +408,7 @@
   background:var(--nav-active);
 }
 .nav-active-indicator.is-animated {
-  transition:transform .28s cubic-bezier(.22,1,.36,1),width .28s cubic-bezier(.22,1,.36,1),height .28s cubic-bezier(.22,1,.36,1),opacity .15s ease;
+  transition:transform var(--motion-panel) var(--motion-continuous),width var(--motion-panel) var(--motion-continuous),height var(--motion-panel) var(--motion-continuous),opacity var(--motion-feedback) var(--motion-continuous);
 }
 .tab-active-indicator {
   background:transparent;
@@ -431,80 +433,6 @@
 .navigation-sidebar :focus-visible,.navigation-topbar :focus-visible,.navigation-search :focus-visible {
   outline:2px solid var(--nav-focus);
   outline-offset:2px;
-}
-.navigation-search {
-  color:var(--color-text-primary);
-}
-.navigation-search-popover { width: min(32rem, calc(100vw - 2rem)); }
-.palette-input {
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:10px 12px;
-  border:1px solid var(--color-border);
-  border-radius:8px;
-}
-.palette-input:focus-within {
-  border-color:var(--color-primary);
-  box-shadow:0 0 0 2px color-mix(in srgb,var(--color-primary) 12%,transparent);
-}
-.navigation-search .palette-input input {
-  border:0 !important;
-  border-radius:0 !important;
-  box-shadow:none !important;
-  padding:2px 0;
-  min-height:24px;
-  width:100%;
-  min-width:0;
-  background:transparent !important;
-  outline:none !important;
-  font-size:14px;
-}
-.palette-results {
-  max-height:min(50dvh,380px);
-  overflow-y:auto;
-  margin:10px -4px 0;
-  padding:0 4px;
-}
-.palette-result {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:9px 12px;
-  margin:2px 0;
-  border-radius:7px;
-  cursor:pointer;
-}
-.palette-result.selected {
-  background:color-mix(in srgb,var(--color-primary) 12%,transparent);
-  color:var(--color-primary);
-}
-.palette-result-title {
-  flex:1;
-  min-width:0;
-  font-size:13px;
-  overflow-wrap:anywhere;
-}
-.palette-result-title small {
-  display:block;
-  font-size:10px;
-  color:var(--color-text-secondary);
-  margin-top:2px;
-}
-.palette-empty {
-  text-align:center;
-  padding:30px 10px;
-  color:var(--color-text-secondary);
-  font-size:13px;
-}
-.palette-footer {
-  display:flex;
-  gap:16px;
-  margin-top:12px;
-  padding-top:10px;
-  border-top:1px solid var(--color-border);
-  font-size:10px;
-  color:var(--color-text-secondary);
 }
 @media (max-width:767px) {
   .topbar-brand-row {

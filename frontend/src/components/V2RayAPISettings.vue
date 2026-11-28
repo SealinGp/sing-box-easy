@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
-import { ref, onMounted } from 'vue'
+import Reveal from './Reveal.vue'
+import SaveFeedback from './SaveFeedback.vue'
+import { useInlineSave } from '../composables/useInlineSave'
+import { watch, ref, onMounted } from 'vue'
 import type { V2RayAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -14,6 +17,8 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const loadError = ref('')
+const { saving, saveError, savedMessage, clearSaveFeedback, persist } = useInlineSave()
 const settings = ref<V2RayAPI>({
   listen: '',
   stats: {
@@ -31,6 +36,7 @@ const usersText = ref('')
 // Fetch V2Ray API config
 const fetchV2RayAPI = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const { data } = await experimentalService.getV2RayAPI()
     if (data) {
@@ -54,6 +60,7 @@ const fetchV2RayAPI = async () => {
       }
     }
   } catch (err: any) {
+    loadError.value = err.message || t('experimental.v2ray.toast.fetchFailed')
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -67,6 +74,7 @@ const fetchV2RayAPI = async () => {
 
 // Update V2Ray API config
 const handleSave = async () => {
+  if (saving.value || loading.value || loadError.value) return
   const config: V2RayAPI = {
     listen: settings.value.listen,
     stats: {
@@ -101,27 +109,11 @@ const handleSave = async () => {
     }
   }
 
-  loading.value = true
-  try {
-    await experimentalService.updateV2RayAPI(config)
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('experimental.v2ray.toast.updatedOk'),
-      life: 3000
-    })
-    await fetchV2RayAPI()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('experimental.v2ray.toast.updateFailed'),
-      life: 3000
-    })
-  } finally {
-    loading.value = false
-  }
+  await persist(() => experimentalService.updateV2RayAPI(config),
+    t('experimental.v2ray.toast.updatedOk'), t('experimental.v2ray.toast.updateFailed'))
 }
+
+watch([settings, inboundsText, outboundsText, usersText], clearSaveFeedback, { deep: true })
 
 // Load data on mount
 onMounted(() => {
@@ -138,13 +130,19 @@ onMounted(() => {
         <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else-if="loadError" class="space-y-3">
+        <p role="alert" class="text-sm text-danger">{{ loadError }}</p>
+        <Button variant="secondary" @click="fetchV2RayAPI">{{ $t('common.refresh') }}</Button>
+      </div>
+
+      <fieldset v-else :disabled="saving" @input="clearSaveFeedback" @change="clearSaveFeedback" class="min-w-0 space-y-4">
         <!-- API Listen Address -->
         <div>
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.v2ray.listen') }}
           </label><FieldHelp :label="$t('experimental.v2ray.listen')" :text="$t('experimental.v2ray.listenHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.v2ray.listen')"
             v-model="settings.listen"
             placeholder="127.0.0.1:8080"
           />
@@ -174,12 +172,14 @@ onMounted(() => {
               </div>
             </div>
 
+            <Reveal :open="!!settings.stats?.enabled"><div class="space-y-4">
             <!-- Monitored Inbounds -->
             <div>
               <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.v2ray.stats.inbounds') }}
               </label><FieldHelp :label="$t('experimental.v2ray.stats.inbounds')" :text="$t('experimental.v2ray.stats.inboundsHelp')" /></div>
               <Input
+            :aria-label="$t('experimental.v2ray.stats.inbounds')"
                 v-model="inboundsText"
                 :placeholder="$t('experimental.v2ray.stats.inboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
@@ -193,6 +193,7 @@ onMounted(() => {
                 {{ $t('experimental.v2ray.stats.outbounds') }}
               </label><FieldHelp :label="$t('experimental.v2ray.stats.outbounds')" :text="$t('experimental.v2ray.stats.outboundsHelp')" /></div>
               <Input
+            :aria-label="$t('experimental.v2ray.stats.outbounds')"
                 v-model="outboundsText"
                 :placeholder="$t('experimental.v2ray.stats.outboundsPlaceholder')"
                 :disabled="!settings.stats?.enabled"
@@ -206,12 +207,14 @@ onMounted(() => {
                 {{ $t('experimental.v2ray.stats.users') }}
               </label><FieldHelp :label="$t('experimental.v2ray.stats.users')" :text="$t('experimental.v2ray.stats.usersHelp')" /></div>
               <Input
+            :aria-label="$t('experimental.v2ray.stats.users')"
                 v-model="usersText"
                 :placeholder="$t('experimental.v2ray.stats.usersPlaceholder')"
                 :disabled="!settings.stats?.enabled"
               />
 
             </div>
+            </div></Reveal>
           </div>
         </div>
 
@@ -223,14 +226,15 @@ onMounted(() => {
         </div>
 
         <!-- Save Button -->
-        <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <SaveFeedback :error="saveError" :message="savedMessage" />
           <!-- `action` drops the drop shadow: the footer sits inside the panel,
                so a raised pill reads as floating above it. -->
-          <Button @click="handleSave" variant="primary" action :disabled="loading">
+          <Button @click="handleSave" variant="primary" action :loading="saving">
             {{ $t('experimental.v2ray.save') }}
           </Button>
         </div>
-      </div>
+      </fieldset>
     </Card>
   </div>
 </template>

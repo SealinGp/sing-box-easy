@@ -45,6 +45,7 @@ export default {
     restartFailed: '重启服务失败',
   },
   confirm: {
+    reset: '放弃尚未保存的修改，恢复到上次保存的配置？',
     rollback: '回滚到版本 #{id}？当前配置会先保存为新版本，因此此操作可撤销。',
     restart: '现在重启 sing-box 服务？',
     delete: '删除版本 #{id}？此操作将永久移除该快照且不可撤销。不会影响当前生效的配置。',

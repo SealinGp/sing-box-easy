@@ -23,3 +23,15 @@ test('retains side as asynchronous details grow', () => {
   expect(expanded.top).toBe(initial.top)
   expect(expanded.maxHeight).toBe(346)
 })
+test('keeps a draft visible when its anchor scrolls above the viewport', () => {
+  const result = popoverPlacement({ left: 500, right: 600, top: -200, bottom: -170 }, viewport, size, 'top')
+  expect(result.side).toBe('bottom')
+  expect(result.top).toBeGreaterThanOrEqual(16)
+  expect(result.maxHeight).toBeGreaterThanOrEqual(size.height)
+})
+test('flips a draft above an anchor that scrolls below the viewport', () => {
+  const result = popoverPlacement({ left: 500, right: 600, top: 1000, bottom: 1030 }, viewport, size, 'bottom')
+  expect(result.side).toBe('top')
+  expect(result.top + size.height).toBeLessThanOrEqual(viewport.height - 16)
+  expect(result.maxHeight).toBeGreaterThanOrEqual(size.height)
+})

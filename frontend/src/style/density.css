@@ -225,9 +225,9 @@
      * the file) can switch it off for the row under the cursor.
      */
     transition:
-      opacity 150ms ease,
-      background-color 150ms ease,
-      border-color 150ms ease;
+      opacity var(--motion-feedback) var(--motion-continuous),
+      background-color var(--motion-feedback) var(--motion-continuous),
+      border-color var(--motion-feedback) var(--motion-continuous);
   }
 
   /*
@@ -344,14 +344,14 @@
    * on the compositor and a 40-row list stays smooth.
    */
   .row-move {
-    transition: transform 200ms cubic-bezier(0.2, 0, 0.2, 1);
+    transition: transform var(--motion-panel) var(--motion-continuous);
   }
 
   /* A newly added row fades in rather than appearing mid-list fully formed. */
   .row-enter-active {
     transition:
-      transform 200ms cubic-bezier(0.2, 0, 0.2, 1),
-      opacity 200ms ease;
+      transform var(--motion-panel) var(--motion-continuous),
+      opacity var(--motion-panel) var(--motion-continuous);
   }
 
   .row-enter-from {
@@ -445,7 +445,7 @@
     color: var(--color-text-secondary);
     background: transparent;
     cursor: pointer;
-    transition: color 140ms, background-color 140ms, transform 140ms;
+    transition: color var(--motion-feedback) var(--motion-continuous), background-color var(--motion-feedback) var(--motion-continuous), transform var(--motion-feedback) var(--motion-continuous);
   }
   .icon-action:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
   .icon-action-danger { color: var(--color-danger); }

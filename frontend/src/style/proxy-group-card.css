@@ -13,8 +13,8 @@
   border: 1px solid transparent;
   border-radius: 8px;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--motion-feedback) var(--motion-continuous),
+    background-color var(--motion-feedback) var(--motion-continuous);
 }
 .group-search.is-open {
   border-color: var(--color-border-dark);
@@ -33,7 +33,7 @@
   justify-content: center;
   border-radius: 7px;
   color: var(--color-text-secondary);
-  transition: color 0.15s ease;
+  transition: color var(--motion-feedback) var(--motion-continuous);
 }
 .group-search-toggle:hover {
   color: var(--color-primary);
@@ -45,8 +45,8 @@
 .group-search-glyph {
   position: absolute;
   transition:
-    opacity 0.18s ease,
-    transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+    opacity var(--motion-feedback) var(--motion-continuous),
+    transform var(--motion-panel) var(--motion-continuous);
 }
 .glyph-close {
   opacity: 0;
@@ -79,9 +79,9 @@
   outline: none;
   opacity: 0;
   transition:
-    width 0.26s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.16s ease,
-    padding 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    width var(--motion-panel) var(--motion-continuous),
+    opacity var(--motion-feedback) var(--motion-continuous),
+    padding var(--motion-panel) var(--motion-continuous);
 }
 .group-search.is-open .group-search-input {
   width: 136px;
@@ -119,7 +119,7 @@
 /* The badge is the test button: it has to look pressable, not like a label. */
 .lat-button {
   cursor: pointer;
-  transition: box-shadow 0.15s ease, filter 0.15s ease;
+  transition: box-shadow var(--motion-feedback) var(--motion-continuous), filter var(--motion-feedback) var(--motion-continuous);
 }
 .lat-button:hover:not(:disabled):not([aria-disabled='true']) {
   box-shadow: 0 0 0 1.5px currentColor;
@@ -158,6 +158,7 @@
   max-height: 20rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  contain: layout paint;
   /* Room for the current member's focus/selection outline at the edges. */
   padding-bottom: 2px;
 }
@@ -168,8 +169,8 @@
   grid-template-rows: 0fr;
   opacity: 0;
   transition:
-    grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.2s ease;
+    grid-template-rows var(--motion-panel) var(--motion-continuous),
+    opacity var(--motion-feedback) var(--motion-continuous);
 }
 .fold > div {
   min-height: 0;
@@ -185,3 +186,25 @@
     transition: none;
   }
 }
+
+/* Offscreen members keep their last measured size; only visible cards paint.
+ * This bounds work when a subscription contains hundreds of nodes. */
+.group-scroll > * {
+  content-visibility: auto;
+  /* Intrinsic size is the content box: 68 + 16 padding + 2 border = 86. */
+  contain-intrinsic-block-size: auto 68px;
+  min-block-size: 86px;
+}
+
+/* Bulk expand is immediate; individual groups retain spatial disclosure. */
+.proxy-group.bulk-layout .fold { transition: none; }
+
+/* Hidden member trees do not participate in layout. Discrete visibility keeps
+ * the closing contents painted until the fold finishes, including reversals. */
+.group-scroll {
+  content-visibility: hidden;
+  contain-intrinsic-block-size: auto 320px;
+  transition: content-visibility var(--motion-panel) allow-discrete;
+}
+.proxy-group.is-open .group-scroll { content-visibility: visible; }
+.proxy-group.bulk-layout .group-scroll { transition: none; }

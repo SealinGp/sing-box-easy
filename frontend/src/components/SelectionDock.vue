@@ -38,7 +38,7 @@ const { t } = useI18n()
 .selection-dock-controls, .selection-dock-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .selection-dock-actions { flex: 1; flex-wrap: wrap; }
 .selection-dock .collection-tool:disabled { opacity: .45; cursor: wait; }
-.selection-dock-enter-active, .selection-dock-leave-active { transition: opacity 180ms ease, translate 180ms ease; }
+.selection-dock-enter-active, .selection-dock-leave-active { transition: opacity var(--motion-feedback) var(--motion-continuous), translate var(--motion-feedback) var(--motion-continuous); }
 .selection-dock-enter-from, .selection-dock-leave-to { opacity: 0; translate: 0 10px; }
 @media (max-width: 520px) { .selection-dock-controls { flex-wrap: wrap; gap: 8px; } .selection-dock-actions { gap: 8px; } }
 @media (prefers-reduced-motion: reduce) { .selection-dock-enter-active, .selection-dock-leave-active { transition: none; } }

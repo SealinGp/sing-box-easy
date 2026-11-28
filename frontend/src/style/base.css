@@ -50,7 +50,7 @@ body {
 
 @keyframes slide-up {
   from {
-    transform: translateY(10px);
+    transform: translateY(6px);
     opacity: 0;
   }
   to {
@@ -68,11 +68,11 @@ body {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in var(--motion-view) var(--motion-enter);
 }
 
 .animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+  animation: slide-up var(--motion-panel) var(--motion-enter);
 }
 
 /*
@@ -85,7 +85,7 @@ body {
  * formed before it animates, which is worse than not animating at all.
  */
 .animate-reveal {
-  animation: slide-up 0.28s ease-out both;
+  animation: slide-up var(--motion-panel) var(--motion-enter) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

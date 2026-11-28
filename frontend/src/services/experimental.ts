@@ -18,6 +18,7 @@ const withoutBlankOptionals = (cacheFile: CacheFile): CacheFile => {
   for (const key of CACHE_FILE_OMIT_WHEN_BLANK) {
     if (cleaned[key] === '') delete cleaned[key]
   }
+  if (!cleaned.enabled || !cleaned.store_rdrc) delete cleaned.rdrc_timeout
   return cleaned
 }
 

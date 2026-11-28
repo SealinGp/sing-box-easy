@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
+import SaveFeedback from './SaveFeedback.vue'
+import Button from './Button.vue'
+import { useInlineSave } from '../composables/useInlineSave'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from './Card.vue'
@@ -13,6 +16,9 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const loadError = ref('')
+const { saving, saveError, savedMessage, persist } = useInlineSave()
+let persisted = { final: '', auto_detect_interface: false, default_domain_resolver: '' }
 const finalRoute = ref<string>('')
 const autoDetectInterface = ref<boolean>(false)
 const defaultDomainResolver = ref<string>('')
@@ -52,6 +58,7 @@ const resolverOptions = computed(() => [
 
 const fetchAll = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const [finalRes, outboundsRes, dnsRes] = await Promise.all([
       routeService.getRouteFinal(),
@@ -61,6 +68,7 @@ const fetchAll = async () => {
     finalRoute.value = finalRes.data.final || ''
     autoDetectInterface.value = !!finalRes.data.auto_detect_interface
     defaultDomainResolver.value = finalRes.data.default_domain_resolver || ''
+    persisted = { final: finalRoute.value, auto_detect_interface: autoDetectInterface.value, default_domain_resolver: defaultDomainResolver.value }
 
     outboundTags.value = (outboundsRes.data.outbounds || []).map((o) => ({
       tag: o.tag,
@@ -70,6 +78,7 @@ const fetchAll = async () => {
       .map((s) => s.tag)
       .filter((tag): tag is string => !!tag)
   } catch (err: any) {
+    loadError.value = err.message || t('route.finalPolicy.toast.fetchFailed')
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -87,26 +96,14 @@ const save = async (payload: {
   auto_detect_interface?: boolean
   default_domain_resolver?: string
 }) => {
-  loading.value = true
-  try {
-    await routeService.updateRouteSettings(payload)
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('route.finalPolicy.toast.updated'),
-      life: 3000,
-    })
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('route.finalPolicy.toast.updateFailed'),
-      life: 3000,
-    })
-    // Re-sync from server so the UI reflects the actual persisted state.
-    await fetchAll()
-  } finally {
-    loading.value = false
+  if (saving.value || loading.value || loadError.value) return
+  const ok = await persist(() => routeService.updateRouteSettings(payload),
+    t('route.finalPolicy.toast.updated'), t('route.finalPolicy.toast.updateFailed'))
+  if (ok) persisted = { ...persisted, ...payload }
+  else {
+    finalRoute.value = persisted.final
+    autoDetectInterface.value = persisted.auto_detect_interface
+    defaultDomainResolver.value = persisted.default_domain_resolver
   }
 }
 
@@ -133,9 +130,13 @@ onMounted(() => {
         <div class="inline-block animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else-if="loadError" class="space-y-3">
+        <p role="alert" class="text-sm text-danger">{{ loadError }}</p>
+        <Button variant="secondary" @click="fetchAll">{{ $t('common.refresh') }}</Button>
+      </div>
+      <div v-else class="space-y-4" :aria-busy="saving">
         <!-- Final outbound -->
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
             {{ $t('route.finalPolicy.label') }}
           </label>
@@ -150,14 +151,14 @@ onMounted(() => {
             :filterPlaceholder="$t('common.search')"
             :emptyFilterMessage="$t('common.noMatch')"
             :placeholder="$t('route.finalPolicy.placeholder')"
-            class="w-72"
-            :disabled="loading"
+            class="w-full sm:w-72 min-w-0"
+            :disabled="saving"
             @change="onFinalChange"
           />
         </div>
 
         <!-- Auto-detect interface -->
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1"><label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
             {{ $t('route.finalPolicy.autoDetectInterface') }}
           </label><FieldHelp :label="$t('route.finalPolicy.autoDetectInterface')" :text="$t('route.finalPolicy.autoDetectInterfaceHint')" /></div>
@@ -165,8 +166,9 @@ onMounted(() => {
             <input
               v-model="autoDetectInterface"
               type="checkbox"
+              :aria-label="$t('route.finalPolicy.autoDetectInterface')"
               class="toggle toggle-primary"
-              :disabled="loading"
+              :disabled="saving"
               @change="onAutoDetectChange"
             />
 
@@ -174,7 +176,7 @@ onMounted(() => {
         </div>
 
         <!-- Default domain resolver -->
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1"><label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-44 shrink-0">
             {{ $t('route.finalPolicy.defaultDomainResolver') }}
           </label><FieldHelp :label="$t('route.finalPolicy.defaultDomainResolver')" :text="$t('route.finalPolicy.defaultDomainResolverHint')" /></div>
@@ -188,14 +190,16 @@ onMounted(() => {
               :filterPlaceholder="$t('common.search')"
               :emptyFilterMessage="$t('common.noMatch')"
               :placeholder="$t('route.finalPolicy.none')"
-              class="w-72"
-              :disabled="loading"
+              class="w-full sm:w-72 min-w-0"
+              :disabled="saving"
               @change="onResolverChange"
             />
 
           </div>
         </div>
       </div>
+      <p v-if="saving" role="status" class="mt-3 text-sm text-text-secondary">{{ $t('common.saving') }}</p>
+      <SaveFeedback class="mt-3" :error="saveError" :message="savedMessage" />
     </Card>
   </div>
 </template>

@@ -7,7 +7,7 @@
  * groups ARE; this page shows and steers what sing-box is DOING with them. A
  * switch here is never written to config.json.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useNodeQualityStore } from '../../stores/nodeQuality'
 import { useI18n } from 'vue-i18n'
 import ProxyGroupsSkeleton from '../../components/ProxyGroupsSkeleton.vue'
@@ -139,8 +139,18 @@ const allOpen = computed(() => {
   return groups.length > 0 && groups.every((group) => isOpen(group.name, group.switchable))
 })
 
-const toggleAll = () => {
+// A bulk view change should not animate the height of every long column.
+const bulkLayout = ref(false)
+let bulkFrame = 0
+onBeforeUnmount(() => cancelAnimationFrame(bulkFrame))
+const toggleAll = async () => {
+  cancelAnimationFrame(bulkFrame)
+  bulkLayout.value = true
   openSet.value = allOpen.value ? new Set() : new Set((view.value?.groups ?? []).map((group) => group.name))
+  await nextTick()
+  bulkFrame = requestAnimationFrame(() => {
+    bulkFrame = requestAnimationFrame(() => { bulkLayout.value = false })
+  })
 }
 
 const switchingTo = (group: string) => {
@@ -254,7 +264,7 @@ const onTestAll = async () => {
       >
         {{ view.groups.length === 0 ? $t('proxies.noGroups') : $t('proxies.noMatch') }}
       </div>
-      <div v-else ref="layout" class="flex items-start gap-3">
+      <div v-else ref="layout" class="proxy-groups flex items-start gap-3" :class="{ 'bulk-layout': bulkLayout }">
         <div v-for="(column, index) in columns" :key="index" class="flex min-w-0 flex-1 basis-0 flex-col gap-3">
         <ProxyGroupCard @automatic-changed="load"
           v-for="entry in column"
@@ -267,7 +277,7 @@ const onTestAll = async () => {
           :switching-to="switchingTo(entry.group.name)"
           :managed="managed.has(entry.group.name)"
           :focused-node="focusIsGroup ? '' : focus"
-          :class="{ 'focus-target': isFocused(entry.group.name) }"
+          :class="{ 'focus-target': isFocused(entry.group.name), 'bulk-layout': bulkLayout }"
           @toggle="toggle(entry.group.name)"
           @test="onTest(entry.group.name)"
           @test-node="onTestNode"

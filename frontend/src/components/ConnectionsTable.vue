@@ -17,7 +17,8 @@ import StatusIndicator from './StatusIndicator.vue'
  * left edge (`.detail-pin`) rather than stretched across the scrolled width,
  * where half of it would sit off-screen.
  */
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
+import ConnectionDetailFold from './ConnectionDetailFold.vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import ConnectionDetails from './ConnectionDetails.vue'
 import { displayName } from '../utils/proxyGroups'
@@ -45,33 +46,15 @@ const emit = defineEmits<{
   (e: 'close', id: string): void
 }>()
 
-/**
- * The row whose details are folding shut.
- *
- * A table row cannot animate its own height, and removing it the moment the
- * selection clears would make everything below jump up by the panel's height
- * in one frame. So the row that just lost the selection is kept for the length
- * of the closing animation, then dropped. Opening needs no such state: the
- * panel animates as it mounts.
- */
-const LEAVE_MS = 220
-const leavingId = ref('')
-let leaveTimer: ReturnType<typeof setTimeout> | null = null
-
-watch(() => props.selectedId, (_next, previous) => {
-  if (leaveTimer !== null) clearTimeout(leaveTimer)
-  leavingId.value = previous
-  leaveTimer = previous
-    ? setTimeout(() => {
-        leavingId.value = ''
-        leaveTimer = null
-      }, LEAVE_MS)
-    : null
+// Keep only closing details alive until their actual transition finishes.
+const leavingIds = ref(new Set<string>())
+watch(() => props.selectedId, (next, previous) => {
+  if (previous) leavingIds.value.add(previous)
+  leavingIds.value.delete(next)
 })
-
-onBeforeUnmount(() => {
-  if (leaveTimer !== null) clearTimeout(leaveTimer)
-})
+function collapsed(id: string) {
+  if (id !== props.selectedId) leavingIds.value.delete(id)
+}
 
 /** Above this a download is worth the eye; the same 100 KB/s the preview used. */
 const HOT_RATE = 100 * 1024
@@ -96,6 +79,9 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
         class="cursor-pointer"
         :class="{ selected: row.id === selectedId, gone: row.closed }"
         :aria-expanded="row.id === selectedId"
+        tabindex="0"
+        @keydown.enter.self.prevent="emit('select', row.id)"
+        @keydown.space.self.prevent="emit('select', row.id)"
         @mousedown.left="emit('select', row.id)"
       >
         <td class="align-middle">
@@ -105,7 +91,7 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
           <button
             v-else
             type="button"
-            class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-pill border border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:border-gray-600"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-pill border border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:border-gray-600"
             :disabled="closing.has(row.id)"
             :aria-label="$t('connections.closeOne', { host: hostOf(row) })"
             @mousedown.stop
@@ -149,9 +135,9 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
           <td v-else-if="key === 'start'" class="text-right tabular-nums">{{ clock(row.start) }}</td>
         </template>
       </tr>
-      <tr v-if="row.id === selectedId || row.id === leavingId" class="detail-row" :class="{ 'is-leaving': row.id !== selectedId }">
+      <tr v-if="row.id === selectedId || leavingIds.has(row.id)" class="detail-row" :class="{ 'is-leaving': row.id !== selectedId }">
         <td :colspan="settings.columns.length + 1">
-          <div class="detail-fold"><div>
+          <ConnectionDetailFold :open="row.id === selectedId" @collapsed="collapsed(row.id)">
           <div class="detail-pin">
             <ConnectionDetails
               :connection="row"
@@ -162,7 +148,7 @@ const clock = (ms: number) => (ms ? new Date(ms).toLocaleTimeString(undefined, {
               @close="emit('close', row.id)"
             />
           </div>
-          </div></div>
+          </ConnectionDetailFold>
         </td>
       </tr>
       </template>
@@ -205,52 +191,6 @@ tbody tr.detail-row > td {
   padding: 0;
   /* Reads as the lower half of the selected row, not as a row of its own. */
   box-shadow: inset 3px 0 0 var(--color-primary);
-}
-/*
- * Height animation for something whose height is not known: a one-row grid
- * going 0fr → 1fr. Same technique and easing as the Proxies cards, so the two
- * pages open things the same way.
- *
- * `overflow: clip`, not `hidden`: `hidden` would make this the scroll container
- * for the sticky `.detail-pin` below and un-pin it from the table's left edge.
- */
-.detail-fold {
-  display: grid;
-  grid-template-rows: 1fr;
-  animation: detail-open 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-}
-.detail-fold > div {
-  min-height: 0;
-  overflow: clip;
-}
-tbody tr.detail-row.is-leaving .detail-fold {
-  animation: detail-close 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-}
-@keyframes detail-open {
-  from {
-    grid-template-rows: 0fr;
-    opacity: 0;
-  }
-  to {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
-}
-@keyframes detail-close {
-  from {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
-  to {
-    grid-template-rows: 0fr;
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .detail-fold,
-  tbody tr.detail-row.is-leaving .detail-fold {
-    animation: none;
-  }
 }
 .detail-pin {
   position: sticky;

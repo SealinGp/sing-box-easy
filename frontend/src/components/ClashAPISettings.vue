@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
-import { ref, computed, onMounted } from 'vue'
+import Reveal from './Reveal.vue'
+import SaveFeedback from './SaveFeedback.vue'
+import { useInlineSave } from '../composables/useInlineSave'
+import { watch, ref, computed, onMounted } from 'vue'
 import type { ClashAPI } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -23,6 +26,8 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const loadError = ref('')
+const { saving, saveError, savedMessage, clearSaveFeedback, persist } = useInlineSave()
 const enabled = ref(false)
 const settings = ref<ClashAPI>({
   external_controller: '',
@@ -67,6 +72,7 @@ const modeOptions = computed(() => [
 // Fetch Clash API config
 const fetchClashAPI = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const { data } = await experimentalService.getClashAPI()
     enabled.value = Boolean(data?.external_controller)
@@ -80,6 +86,7 @@ const fetchClashAPI = async () => {
       }
     }
   } catch (err: any) {
+    loadError.value = err.message || t('experimental.clash.toast.fetchFailed')
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -93,6 +100,7 @@ const fetchClashAPI = async () => {
 
 // Update Clash API config
 const handleSave = async () => {
+  if (saving.value || loading.value || loadError.value) return
   const config = { ...settings.value }
 
   // Convert origins text to array
@@ -105,27 +113,11 @@ const handleSave = async () => {
     config.access_control_allow_origin = []
   }
 
-  loading.value = true
-  try {
-    await experimentalService.updateClashAPI(enabled.value ? config : {})
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('experimental.clash.toast.updatedOk'),
-      life: 3000
-    })
-    await fetchClashAPI()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('experimental.clash.toast.updateFailed'),
-      life: 3000
-    })
-  } finally {
-    loading.value = false
-  }
+  await persist(() => experimentalService.updateClashAPI(enabled.value ? config : {}),
+    t('experimental.clash.toast.updatedOk'), t('experimental.clash.toast.updateFailed'))
 }
+
+watch([settings, enabled, allowOriginText], clearSaveFeedback, { deep: true })
 
 // Load data on mount
 onMounted(() => {
@@ -142,8 +134,14 @@ onMounted(() => {
         <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else-if="loadError" class="space-y-3">
+        <p role="alert" class="text-sm text-danger">{{ loadError }}</p>
+        <Button variant="secondary" @click="fetchClashAPI">{{ $t('common.refresh') }}</Button>
+      </div>
+
+      <fieldset v-else :disabled="saving" @input="clearSaveFeedback" @change="clearSaveFeedback" class="min-w-0 space-y-4">
         <label class="flex items-center gap-2 text-sm font-medium text-text-primary"><input v-model="enabled" type="checkbox" class="h-4 w-4 accent-primary" />{{ $t('workspace.clashEnabled') }}</label>
+        <Reveal :open="enabled"><div class="space-y-4">
         <!-- External Controller -->
         <div>
           <div class="flex items-center gap-1"><label class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -164,6 +162,7 @@ onMounted(() => {
             </a>
           </label><FieldHelp :label="$t('experimental.clash.externalController')" :text="$t('experimental.clash.externalControllerHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.clash.externalController')"
             v-model="settings.external_controller"
             placeholder="127.0.0.1:9090"
           />
@@ -187,6 +186,7 @@ onMounted(() => {
             {{ $t('experimental.clash.externalUi') }}
           </label><FieldHelp :label="$t('experimental.clash.externalUi')" :text="$t('experimental.clash.externalUiHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.clash.externalUi')"
             v-model="settings.external_ui"
             placeholder="/usr/share/sing-box/ui"
           />
@@ -198,7 +198,7 @@ onMounted(() => {
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.externalUiDownloadUrl') }}
           </label><FieldHelp :label="$t('experimental.clash.externalUiDownloadUrl')" :text="$t('experimental.clash.externalUiDownloadUrlHelp')" /></div>
-          <DashboardUrlSelect v-model="settings.external_ui_download_url" />
+          <DashboardUrlSelect :disabled="saving" v-model="settings.external_ui_download_url" />
           <!-- Fetch the chosen dashboard into `external_ui` without leaving the page. -->
           <!-- The download writes `external_ui` server-side; mirror that back
                into the field rather than refetching, which would discard any
@@ -218,6 +218,7 @@ onMounted(() => {
             {{ $t('experimental.clash.externalUiDownloadDetour') }}
           </label><FieldHelp :label="$t('experimental.clash.externalUiDownloadDetour')" :text="$t('experimental.clash.externalUiDownloadDetourHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.clash.externalUiDownloadDetour')"
             v-model="settings.external_ui_download_detour"
             placeholder="proxy"
           />
@@ -230,6 +231,7 @@ onMounted(() => {
             {{ $t('experimental.clash.secret') }}
           </label><FieldHelp :label="$t('experimental.clash.secret')" :text="$t('experimental.clash.secretHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.clash.secret')"
             v-model="settings.secret"
             type="password"
             :placeholder="$t('experimental.clash.secretPlaceholder')"
@@ -242,7 +244,7 @@ onMounted(() => {
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.clash.defaultMode') }}
           </label><FieldHelp :label="$t('experimental.clash.defaultMode')" :text="$t('experimental.clash.defaultModeHelp')" /></div>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.default_mode" :options="modeOptions" />
+          <Select :disabled="saving" class="w-full" optionLabel="label" optionValue="value" v-model="settings.default_mode" :options="modeOptions" />
 
         </div>
 
@@ -257,6 +259,7 @@ onMounted(() => {
                 {{ $t('experimental.clash.cors.allowOrigin') }}
               </label><FieldHelp :label="$t('experimental.clash.cors.allowOrigin')" :text="$t('experimental.clash.cors.allowOriginHelp')" /></div>
               <Input
+            :aria-label="$t('experimental.clash.cors.allowOrigin')"
                 v-model="allowOriginText"
                 :placeholder="$t('experimental.clash.cors.allowOriginPlaceholder')"
               />
@@ -283,15 +286,18 @@ onMounted(() => {
           </div>
         </div>
 
+        </div></Reveal>
+
         <!-- Save Button -->
-        <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <SaveFeedback :error="saveError" :message="savedMessage" />
           <!-- `action` drops the drop shadow: the footer sits inside the panel,
                so a raised pill reads as floating above it. -->
-          <Button @click="handleSave" variant="primary" action :disabled="loading">
+          <Button @click="handleSave" variant="primary" action :loading="saving">
             {{ $t('experimental.clash.save') }}
           </Button>
         </div>
-      </div>
+      </fieldset>
     </Card>
   </div>
 </template>

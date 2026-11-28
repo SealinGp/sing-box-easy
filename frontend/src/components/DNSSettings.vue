@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
+import Reveal from './Reveal.vue'
+import SaveFeedback from './SaveFeedback.vue'
+import { useInlineSave } from '../composables/useInlineSave'
 import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DNS } from '../types/api'
@@ -20,6 +23,8 @@ const { dnsServers } = storeToRefs(dnsStore)
 
 // Local state
 const loading = ref(false)
+const loadError = ref('')
+const { saving, saveError, savedMessage, clearSaveFeedback, persist } = useInlineSave()
 const dnsConfig = ref<DNS | null>(null)
 
 const strategyOptions = computed(() => [
@@ -51,10 +56,12 @@ const settings = ref({
 // Fetch DNS config
 const fetchDNSConfig = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const { data } = await dnsService.getDNS()
     dnsConfig.value = data
   } catch (err: any) {
+    loadError.value = err.message || t('dns.settings.toast.fetchFailed')
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -81,32 +88,18 @@ watch(() => dnsConfig.value, (newConfig) => {
 })
 
 const handleSave = async () => {
+  if (saving.value || loading.value || loadError.value) return
   const updatedDNS = {
     ...dnsConfig.value,
     ...settings.value,
+    disable_expire: !settings.value.disable_cache && settings.value.disable_expire,
   } as DNS
 
-  loading.value = true
-  try {
-    await dnsService.updateDNS(updatedDNS)
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('dns.settings.toast.updatedOk'),
-      life: 3000
-    })
-    await fetchDNSConfig()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('dns.settings.toast.updateFailed'),
-      life: 3000
-    })
-  } finally {
-    loading.value = false
-  }
+  await persist(() => dnsService.updateDNS(updatedDNS),
+    t('dns.settings.toast.updatedOk'), t('dns.settings.toast.updateFailed'))
 }
+
+watch([settings], clearSaveFeedback, { deep: true })
 
 // Load data on mount
 onMounted(() => {
@@ -124,13 +117,18 @@ onMounted(() => {
         <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-3">
+      <div v-else-if="loadError" class="space-y-3">
+        <p role="alert" class="text-sm text-danger">{{ loadError }}</p>
+        <Button variant="secondary" @click="fetchDNSConfig">{{ $t('common.refresh') }}</Button>
+      </div>
+
+      <fieldset v-else :disabled="saving" @input="clearSaveFeedback" @change="clearSaveFeedback" class="min-w-0 space-y-3">
         <!-- Domain Strategy -->
         <div>
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.strategy') }}
           </label><FieldHelp :label="$t('dns.settings.strategy')" :text="$t('dns.settings.strategyHelp')" /></div>
-          <Select class="w-full" optionLabel="label" optionValue="value" v-model="settings.strategy" :options="strategyOptions" />
+          <Select :disabled="saving" class="w-full" optionLabel="label" optionValue="value" v-model="settings.strategy" :options="strategyOptions" />
 
         </div>
 
@@ -139,7 +137,7 @@ onMounted(() => {
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $t('dns.settings.finalServer') }}
           </label><FieldHelp :label="$t('dns.settings.finalServer')" :text="$t('dns.settings.finalServerHelp')" /></div>
-          <Select
+          <Select :disabled="saving"
             class="w-full"
             optionLabel="label"
             optionValue="value"
@@ -174,7 +172,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="flex items-start">
+            <Reveal :open="!settings.disable_cache"><div class="flex items-start">
               <div class="flex items-center h-5">
                 <input
                   type="checkbox"
@@ -189,19 +187,20 @@ onMounted(() => {
                 </label><FieldHelp :label="$t('dns.settings.disableExpire')" :text="$t('dns.settings.disableExpireHelp')" /></div>
 
               </div>
-            </div>
+            </div></Reveal>
           </div>
         </div>
 
         <!-- Save Button -->
-        <div class="flex justify-end pt-3 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <SaveFeedback :error="saveError" :message="savedMessage" />
           <!-- `action` drops the drop shadow: the footer sits inside the panel,
                so a raised pill reads as floating above it. -->
-          <Button @click="handleSave" variant="primary" size="sm" action :disabled="loading">
+          <Button @click="handleSave" variant="primary" size="sm" action :loading="saving">
             {{ $t('dns.settings.save') }}
           </Button>
         </div>
-      </div>
+      </fieldset>
     </Card>
   </div>
 </template>

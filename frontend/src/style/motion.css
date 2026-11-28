@@ -4,6 +4,7 @@
  */
 :root {
   --motion-feedback: 140ms;
+  --motion-exit-duration: 120ms;
   --motion-panel: 220ms;
   --motion-page: 260ms;
   --motion-view: 140ms;
@@ -20,8 +21,8 @@
 }
 .ui-popover-leave-active, .ui-dialog-leave-active,
 .ui-page-leave-active, .ui-row-leave-active, .ui-field-leave-active {
-  transition: opacity var(--motion-panel) var(--motion-exit),
-    transform var(--motion-panel) var(--motion-exit);
+  transition: opacity var(--motion-exit-duration) var(--motion-exit),
+    transform var(--motion-exit-duration) var(--motion-exit);
   pointer-events: none;
 }
 .ui-popover-enter-from, .ui-popover-leave-to {
@@ -59,6 +60,15 @@
   transform: translateY(-2px);
 }
 .ui-field-leave-active { position: absolute; }
+.ui-control-content { transition: opacity var(--motion-feedback) var(--motion-continuous); }
+.ui-icon-swap { display: inline-grid; place-items: center; }
+.ui-icon-swap > * { grid-area: 1 / 1; }
+.ui-icon-enter-active, .ui-icon-leave-active {
+  transition: opacity var(--motion-feedback) var(--motion-continuous),
+    transform var(--motion-feedback) var(--motion-continuous);
+}
+.ui-icon-enter-from, .ui-icon-leave-to { opacity: 0; transform: scale(.85); }
+.ui-icon-leave-active { pointer-events: none; }
 .ui-table-body { position: relative; }
 .ui-row-move { transition: transform var(--motion-panel) var(--motion-continuous); }
 tr.ui-row-leave-active { display: table; table-layout: fixed; }
@@ -85,10 +95,11 @@ tr.ui-row-leave-active { display: table; table-layout: fixed; }
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows var(--motion-page) var(--motion-continuous),
+  visibility: hidden;
+  transition: visibility 0s linear var(--motion-panel), grid-template-rows var(--motion-panel) var(--motion-continuous),
     opacity var(--motion-panel) var(--motion-continuous);
 }
-.ui-disclosure.is-open { grid-template-rows: 1fr; opacity: 1; }
+.ui-disclosure.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition-delay: 0s; }
 .ui-disclosure > div { min-height: 0; overflow: hidden; }
 
 @layer components {
@@ -122,4 +133,14 @@ tr.ui-row-leave-active { display: table; table-layout: fixed; }
     transform: none !important;
   }
   .ui-route-enter-from { opacity: 1; }
+}
+
+/* Cover utility and third-party transitions too, including ping and SVG flow.
+ * No delayed visibility or smooth scrolling remains in reduced-motion mode. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

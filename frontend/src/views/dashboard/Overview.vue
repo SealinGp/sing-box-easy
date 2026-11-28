@@ -82,7 +82,7 @@ onMounted(load)
 /* Vue measures keyed card positions and slides each tile to its new slot.
    The inner surface owns lift, leaving the outer transform free for FLIP. */
 .overview-sort-move {
-  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--motion-panel) var(--motion-continuous);
 }
 /* Keep long card bodies scrollable; topology still spans the available width. */
 .overview-grid {
@@ -101,7 +101,7 @@ onMounted(load)
   min-width: 0;
   position: relative;
   border-radius: var(--radius-surface);
-  transition: transform 180ms ease-out, opacity 180ms ease-out, box-shadow 180ms ease-out;
+  transition: transform var(--motion-feedback) var(--motion-continuous), opacity var(--motion-feedback) var(--motion-continuous), box-shadow var(--motion-feedback) var(--motion-continuous);
 }
 .overview-toolbar.is-arranging {
   position: sticky;

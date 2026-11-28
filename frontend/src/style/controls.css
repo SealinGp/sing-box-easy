@@ -40,9 +40,9 @@ select:not([data-pc-section]),
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   transition:
-    border-color 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    background-color 0.15s ease-out;
+    border-color var(--motion-feedback) var(--motion-continuous),
+    box-shadow var(--motion-feedback) var(--motion-continuous),
+    background-color var(--motion-feedback) var(--motion-continuous);
 }
 
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([data-pc-section]):not(

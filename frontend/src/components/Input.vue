@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, useAttrs, useId } from 'vue'
 import FieldHelp from './FieldHelp.vue'
 import { useInterfaceMotion } from '../composables/useInterfaceMotion'
 
 const interfaceMotion = useInterfaceMotion()
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const controlAttrs = () => Object.fromEntries(Object.entries(attrs).filter(([key]) => !['class', 'style'].includes(key)))
 
 interface Props {
   modelValue?: string | number
@@ -44,13 +47,14 @@ const emit = defineEmits<{
 
 // Ties <label>, the error/hint text, and the control together so the field is
 // announced correctly and clicking the label focuses the input.
-const inputId = useId()
+const generatedId = useId()
+const inputId = computed(() => String(attrs.id || generatedId))
 const fieldSize = computed(() => props.fieldSize ?? (
   props.type === 'number' || /^\d+(ms|s|m|h|d)$/.test(props.placeholder ?? '') ? 'compact'
     : props.type === 'url' || (props.placeholder ?? '').includes('://') ? 'wide' : 'normal'
 ))
 const describedById = computed(() =>
-  props.error || (props.hint && props.hintDisplay === 'inline') ? `${inputId}-desc` : undefined,
+  [attrs['aria-describedby'], props.error || (props.hint && props.hintDisplay === 'inline') ? `${inputId.value}-desc` : ''].filter(Boolean).join(' ') || undefined,
 )
 
 /*
@@ -69,7 +73,7 @@ const inputClasses = computed(() =>
 </script>
 
 <template>
-  <div class="form-field" :class="[`field-${fieldSize}`, fullWidth ? 'w-full' : '', interfaceMotion ? 'ui-field relative' : '']">
+  <div class="form-field" :style="attrs.style as any" :class="[attrs.class, `field-${fieldSize}`, fullWidth ? 'w-full' : '', interfaceMotion ? 'ui-field relative' : '']">
     <div v-if="label || hint" class="mb-1 flex items-center gap-1">
       <label v-if="label" :for="inputId" class="text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ label }}<span v-if="required" class="ml-1 text-red-500" aria-hidden="true">*</span>
@@ -77,6 +81,7 @@ const inputClasses = computed(() =>
       <FieldHelp v-if="hint && hintDisplay === 'tooltip'" :label="label || placeholder || ''" :text="hint" />
     </div>
     <input
+      v-bind="controlAttrs()"
       :id="inputId"
       :type="type"
       :min="min"
@@ -98,13 +103,13 @@ const inputClasses = computed(() =>
       "
     />
     <Transition name="ui-field" :css="interfaceMotion">
-    <p v-if="error" key="error" :id="describedById" role="alert" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
+    <p v-if="error" key="error" :id="`${inputId}-desc`" role="alert" class="mt-1.5 text-sm text-red-600 dark:text-red-400">
       {{ error }}
     </p>
     <p
       v-else-if="hint && hintDisplay === 'inline'"
       key="hint"
-      :id="describedById"
+      :id="`${inputId}-desc`"
       class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
     >
       {{ hint }}

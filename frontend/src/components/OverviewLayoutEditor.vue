@@ -165,5 +165,5 @@ onBeforeUnmount(() => { clear(); window.removeEventListener('keydown', escape); 
 .landing-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--color-text-secondary); }
 .landing-label strong { display: block; margin-top: 6px; color: var(--color-text-primary); }
 .sort-ghost { position: fixed; z-index: 9999; pointer-events: none; display: flex; align-items: center; gap: 12px; padding: 20px; max-width: 240px; border: 1px solid var(--glass-border-muted); border-radius: var(--radius-surface); background: var(--glass-bg-strong); box-shadow: 0 16px 40px #00000035; transform: rotate(2deg); font-weight: 600; }
-@media (prefers-reduced-motion: no-preference) { .sort-card-move { transition: transform 180ms ease; } }
+@media (prefers-reduced-motion: no-preference) { .sort-card-move { transition: transform var(--motion-feedback) var(--motion-continuous); } }
 </style>

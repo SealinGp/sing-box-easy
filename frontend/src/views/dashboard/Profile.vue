@@ -216,7 +216,7 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <template>
-  <div class="page-shell max-w-6xl mx-auto space-y-4 animate-fade-in">
+  <div class="page-shell max-w-6xl mx-auto space-y-4">
     <!-- Header -->
     <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
       <div>
@@ -232,12 +232,12 @@ const formatDate = (dateStr: string) => {
 
     <!-- Alert Messages -->
     <div v-if="successMsg" class="p-4 rounded-surface bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-pill bg-green-500 animate-ping"></span>
+      <span class="w-1.5 h-1.5 rounded-pill bg-green-500"></span>
       <span>{{ successMsg }}</span>
     </div>
 
     <div v-if="errorMsg" class="p-4 rounded-surface bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-pill bg-red-500 animate-ping"></span>
+      <span class="w-1.5 h-1.5 rounded-pill bg-red-500"></span>
       <span>{{ errorMsg }}</span>
     </div>
 
@@ -245,14 +245,14 @@ const formatDate = (dateStr: string) => {
     <div v-if="isAdmin" class="flex border-b border-gray-200 dark:border-gray-800 gap-4">
       <button
         @click="activeTab = 'profile'"
-        class="pb-3 text-sm font-semibold border-b-2 transition-all px-2 focus:outline-none cursor-pointer"
+        class="pb-3 text-sm font-semibold border-b-2 transition-colors px-2 focus:outline-none cursor-pointer"
         :class="activeTab === 'profile' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
       >
         {{ $t('profile.tabs.profile') }}
       </button>
       <button
         @click="activeTab = 'users'"
-        class="pb-3 text-sm font-semibold border-b-2 transition-all px-2 focus:outline-none cursor-pointer"
+        class="pb-3 text-sm font-semibold border-b-2 transition-colors px-2 focus:outline-none cursor-pointer"
         :class="activeTab === 'users' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'"
       >
         {{ $t('profile.tabs.users') }}

@@ -16,17 +16,19 @@ import TooltipTarget from "./TooltipTarget.vue"
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { ServiceStatus } from '../types/api'
+import { storeToRefs } from 'pinia'
+import { useServiceStore } from '../stores/service'
+import SaveFeedback from './SaveFeedback.vue'
+import { useInlineSave } from '../composables/useInlineSave'
 import Button from './Button.vue'
 import { serviceControlService } from '../services'
-import { useNotify } from '../composables/useNotify'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { Cog6ToothIcon, CodeBracketIcon, CommandLineIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
-const status = ref<ServiceStatus | null>(null)
+const serviceStore = useServiceStore()
+const { status } = storeToRefs(serviceStore)
+const { saving: actionLoading, saveError, savedMessage, persist } = useInlineSave()
 const loading = ref(false)
-const actionLoading = ref(false)
-const notify = useNotify()
 const { t, locale } = useI18n()
 
 // "14 minutes ago", derived from the process start time the backend reports.
@@ -72,14 +74,7 @@ const statusIcon = '●'
 
 const fetchStatus = async () => {
   loading.value = true
-  try {
-    const { data } = await serviceControlService.getServiceStatus()
-    status.value = data
-  } catch (err) {
-    notify.apiError(err, t('overview.toast.fetchFailed'))
-  } finally {
-    loading.value = false
-  }
+  try { await serviceStore.fetch() } finally { loading.value = false }
 }
 
 /**
@@ -92,16 +87,7 @@ async function runAction(
   successKey: string,
   failureKey: string,
 ) {
-  actionLoading.value = true
-  try {
-    await action()
-    notify.success(t(successKey))
-    await fetchStatus()
-  } catch (err) {
-    notify.apiError(err, t(failureKey))
-  } finally {
-    actionLoading.value = false
-  }
+  await persist(async () => { await action(); await fetchStatus() }, t(successKey), t(failureKey))
 }
 
 const handleStart = () =>
@@ -134,7 +120,7 @@ onMounted(fetchStatus)
       {{ $t('overview.serviceStatus') }}
     </h3>
 
-    <div v-if="loading" class="flex items-center justify-center py-3">
+    <div v-if="loading && !status" class="flex items-center justify-center py-3">
       <div class="animate-spin rounded-pill h-6 w-6 border-b-2 border-primary-600"></div>
     </div>
 
@@ -142,7 +128,7 @@ onMounted(fetchStatus)
       <div class="flex items-center gap-2">
         <span :class="statusColor" class="text-base leading-none">{{ statusIcon }}</span>
         <span :class="statusColor" class="text-lg font-bold capitalize">
-          {{ statusLabel }}
+          {{ serviceStore.error ? $t('overview.status.unknown') : statusLabel }}
         </span>
       </div>
 
@@ -206,6 +192,7 @@ onMounted(fetchStatus)
         <Button
           @click="fetchStatus"
           :disabled="loading || actionLoading"
+          :loading="loading"
           variant="secondary"
           size="sm"
           action
@@ -214,6 +201,8 @@ onMounted(fetchStatus)
           {{ $t('overview.refreshStatus') }}
         </Button>
       </div>
+
+      <SaveFeedback :error="saveError || (serviceStore.error ? $t('overview.toast.fetchFailed') : '')" :message="savedMessage" />
 
       <!-- Wraps rather than scrolls: three links do not fit one column at the
            narrow end of the grid. -->
@@ -249,6 +238,10 @@ onMounted(fetchStatus)
           {{ $t('overview.rawConfig') }}
         </RouterLink>
       </div>
+    </div>
+    <div v-else class="space-y-2">
+      <p role="alert" class="text-sm text-danger">{{ $t('overview.toast.fetchFailed') }}</p>
+      <Button variant="secondary" @click="fetchStatus">{{ $t('common.refresh') }}</Button>
     </div>
   </div>
 </template>

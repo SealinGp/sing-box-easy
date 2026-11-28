@@ -67,7 +67,7 @@ const baseTheme: DialogPassThroughOptions = {
     },
     content: `px-4 py-3 overflow-y-auto flex-1
         text-gray-900 dark:text-gray-100`,
-    footer: `flex items-center justify-end gap-2 px-4 py-3
+    footer: `flex flex-wrap items-center justify-end gap-2 px-4 py-3
         border-t border-border`,
     transition: {
         enterFromClass: 'opacity-0 scale-95',

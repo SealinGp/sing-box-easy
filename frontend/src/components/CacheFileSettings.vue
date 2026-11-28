@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import FieldHelp from './FieldHelp.vue'
-import { ref, onMounted } from 'vue'
+import Reveal from './Reveal.vue'
+import SaveFeedback from './SaveFeedback.vue'
+import { useInlineSave } from '../composables/useInlineSave'
+import { watch, ref, onMounted } from 'vue'
 import type { CacheFile } from '../types/api'
 import Button from './Button.vue'
 import Card from './Card.vue'
@@ -14,6 +17,8 @@ const { t } = useI18n()
 
 // Local state
 const loading = ref(false)
+const loadError = ref('')
+const { saving, saveError, savedMessage, clearSaveFeedback, persist } = useInlineSave()
 const settings = ref<CacheFile>({
   enabled: false,
   path: '',
@@ -26,12 +31,14 @@ const settings = ref<CacheFile>({
 // Fetch cache file config
 const fetchCacheFile = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const { data } = await experimentalService.getCacheFile()
     if (data) {
       settings.value = { ...data }
     }
   } catch (err: any) {
+    loadError.value = err.message || t('experimental.cache.toast.fetchFailed')
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -45,27 +52,12 @@ const fetchCacheFile = async () => {
 
 // Update cache file config
 const handleSave = async () => {
-  loading.value = true
-  try {
-    await experimentalService.updateCacheFile(settings.value)
-    toast.add({
-      severity: 'success',
-      summary: t('common.success'),
-      detail: t('experimental.cache.toast.updatedOk'),
-      life: 3000
-    })
-    await fetchCacheFile()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('experimental.cache.toast.updateFailed'),
-      life: 3000
-    })
-  } finally {
-    loading.value = false
-  }
+  if (saving.value || loading.value || loadError.value) return
+  await persist(() => experimentalService.updateCacheFile({ ...settings.value }),
+    t('experimental.cache.toast.updatedOk'), t('experimental.cache.toast.updateFailed'))
 }
+
+watch([settings], clearSaveFeedback, { deep: true })
 
 // Load data on mount
 onMounted(() => {
@@ -82,7 +74,12 @@ onMounted(() => {
         <div class="animate-spin rounded-pill h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else-if="loadError" class="space-y-3">
+        <p role="alert" class="text-sm text-danger">{{ loadError }}</p>
+        <Button variant="secondary" @click="fetchCacheFile">{{ $t('common.refresh') }}</Button>
+      </div>
+
+      <fieldset v-else :disabled="saving" @input="clearSaveFeedback" @change="clearSaveFeedback" class="min-w-0 space-y-4">
         <!-- Enable Cache File -->
         <div class="flex items-start">
           <div class="flex items-center h-5">
@@ -101,12 +98,14 @@ onMounted(() => {
           </div>
         </div>
 
+        <Reveal :open="!!settings.enabled"><div class="space-y-4">
         <!-- Cache Path -->
         <div>
           <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('experimental.cache.path') }}
           </label><FieldHelp :label="$t('experimental.cache.path')" :text="$t('experimental.cache.pathHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.cache.path')"
             v-model="settings.path"
             placeholder="/etc/sing-box/cache.db"
             :disabled="!settings.enabled"
@@ -120,6 +119,7 @@ onMounted(() => {
             {{ $t('experimental.cache.cacheId') }}
           </label><FieldHelp :label="$t('experimental.cache.cacheId')" :text="$t('experimental.cache.cacheIdHelp')" /></div>
           <Input
+            :aria-label="$t('experimental.cache.cacheId')"
             v-model="settings.cache_id"
             :placeholder="$t('experimental.cache.cacheIdPlaceholder')"
             :disabled="!settings.enabled"
@@ -171,29 +171,33 @@ onMounted(() => {
             </div>
 
             <!-- RDRC Timeout -->
-            <div>
+            <Reveal :open="!!settings.store_rdrc">
               <div class="flex items-center gap-1"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('experimental.cache.advanced.rdrcTimeout') }}
               </label><FieldHelp :label="$t('experimental.cache.advanced.rdrcTimeout')" :text="$t('experimental.cache.advanced.rdrcTimeoutHelp')" /></div>
               <Input
+            :aria-label="$t('experimental.cache.advanced.rdrcTimeout')"
                 v-model="settings.rdrc_timeout"
                 placeholder="7d"
                 :disabled="!settings.enabled || !settings.store_rdrc"
               />
 
-            </div>
+            </Reveal>
           </div>
         </div>
 
+        </div></Reveal>
+
         <!-- Save Button -->
-        <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <SaveFeedback :error="saveError" :message="savedMessage" />
           <!-- `action` drops the drop shadow: the footer sits inside the panel,
                so a raised pill reads as floating above it. -->
-          <Button @click="handleSave" variant="primary" action :disabled="loading">
+          <Button @click="handleSave" variant="primary" action :loading="saving">
             {{ $t('experimental.cache.save') }}
           </Button>
         </div>
-      </div>
+      </fieldset>
     </Card>
   </div>
 </template>

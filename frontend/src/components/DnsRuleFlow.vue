@@ -246,7 +246,7 @@ const finalHighlighted = computed(
       <RuleLadder :rungs="rungs" :matched-index="matchedIndex" :run-token="runToken">
         <template #fallthrough="{ revealed }">
           <div
-            class="rounded-control border border-dashed px-3 py-2 transition-all duration-200"
+            class="rounded-control border border-dashed px-3 py-2 transition-colors duration-200"
             :class="
               finalHighlighted && revealed
                 ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'

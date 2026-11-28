@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageTransition from '../../components/PageTransition.vue'
 import IconButton from '../../components/IconButton.vue'
 import PopConfirm from '../../components/PopConfirm.vue'
 import Button from '../../components/Button.vue'
@@ -13,7 +14,7 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
 </script>
 <template>
 
-  <div class="space-y-3 animate-fade-in">
+  <div class="space-y-3">
     <!-- Header: subtitle + actions -->
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('nodeRules.subtitle') }}</p>
@@ -51,11 +52,11 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
 
     <!-- Alert Messages -->
     <div v-if="notice" class="px-3 py-2 rounded-control bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-400 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-pill bg-primary-500 animate-ping"></span>
+      <span class="w-1.5 h-1.5 rounded-pill bg-primary-500"></span>
       <span>{{ notice }}</span>
     </div>
     <div v-if="error" class="px-3 py-2 rounded-control bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm animate-fade-in flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-pill bg-red-500 animate-ping"></span>
+      <span class="w-1.5 h-1.5 rounded-pill bg-red-500"></span>
       <span>{{ error }}</span>
     </div>
 
@@ -65,7 +66,7 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
       page jump. The cost is a ~150ms gap, which is what the leave/enter
       durations below are tuned around.
     -->
-    <Transition name="mode-swap" mode="out-in">
+    <PageTransition :view-key="mode">
       <div v-if="mode === 'edit'" key="edit" class="space-y-3">
         <!-- Templates -->
         <section v-if="templates.length" class="space-y-2 bg-gray-50/50 dark:bg-slate-900/40 border border-gray-100 dark:border-gray-800/80 px-3 py-2.5 rounded-surface">
@@ -74,7 +75,7 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
             <button
               v-for="tpl in templates"
               :key="tpl.id"
-              class="border border-primary-200 dark:border-primary-800 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-700 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
+              class="border border-primary-200 dark:border-primary-800 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-700 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-colors cursor-pointer"
               :title="tpl.description"
               @click="addTemplate(tpl.id)"
             >
@@ -312,7 +313,7 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
           </div>
         </section>
       </div>
-    </Transition>
+    </PageTransition>
 
     <!-- Create/Edit Filter Modal -->
     <NodeRulesEditors />
@@ -321,50 +322,6 @@ const { t, store, filters, groups, templates, preview, loading, error, applying,
 
 </template>
 <style scoped>
-/*
- * Edit ⇄ Preview.
- *
- * 220ms in / 150ms out on the same curve the select panel and the nav pill use
- * — below ~150ms a transition stops reading as motion and just looks like a
- * flicker. The two directions travel opposite ways so the swap
- * reads as one view moving aside for the other rather than two unrelated fades.
- */
-.mode-swap-enter-active {
-  transition:
-    opacity 0.22s ease-out,
-    transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.mode-swap-leave-active {
-  transition:
-    opacity 0.15s ease-in,
-    transform 0.15s ease-in;
-}
-
-.mode-swap-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.mode-swap-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
-/* Same treatment the sidebar gives its pill: keep the cross-fade, drop the
-   travel, and shorten it. */
-@media (prefers-reduced-motion: reduce) {
-  .mode-swap-enter-active,
-  .mode-swap-leave-active {
-    transition: opacity 0.12s linear;
-  }
-
-  .mode-swap-enter-from,
-  .mode-swap-leave-to {
-    transform: none;
-  }
-}
-
 .node-rule-card {
   box-shadow:
     0 8px 22px rgba(15, 23, 42, 0.045),

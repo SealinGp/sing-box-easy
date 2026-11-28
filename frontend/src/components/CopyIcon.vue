@@ -97,7 +97,7 @@ async function copy() {
     :aria-label="title"
     @click.stop.prevent="copy"
   >
-    <ActionIcon :action="state === 'copied' ? 'check' : state === 'failed' ? 'close' : 'copy'" :style="iconStyle" />
+    <span class="ui-icon-swap" aria-hidden="true"><Transition name="ui-icon"><ActionIcon :key="state" :action="state === 'copied' ? 'check' : state === 'failed' ? 'close' : 'copy'" :style="iconStyle" /></Transition></span>
     <!-- Announced to screen readers, which cannot see the icon swap. -->
     <span class="sr-only" aria-live="polite">
       {{ state === 'idle' ? '' : title }}

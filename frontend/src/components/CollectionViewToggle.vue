@@ -18,9 +18,9 @@ const { t } = useI18n()
 </template>
 <style>
 .collection-view-toggle { position: relative; isolation: isolate; display: inline-flex; flex-shrink: 0; padding: 3px; gap: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-bg-tertiary); }
-.collection-view-slider { position: absolute; left: 3px; top: 3px; width: 32px; height: 28px; border-radius: max(2px, calc(var(--radius-control) - 3px)); background: var(--color-bg-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 10%), inset 0 0 0 1px var(--color-border); pointer-events: none; transition: transform 220ms var(--motion-continuous, cubic-bezier(.4, 0, .2, 1)); }
+.collection-view-slider { position: absolute; left: 3px; top: 3px; width: 32px; height: 28px; border-radius: max(2px, calc(var(--radius-control) - 3px)); background: var(--color-bg-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 10%), inset 0 0 0 1px var(--color-border); pointer-events: none; transition: transform var(--motion-panel) var(--motion-continuous); }
 .collection-view-toggle.is-cards .collection-view-slider { transform: translateX(34px); }
-.collection-view-toggle button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 28px; border-radius: max(2px, calc(var(--radius-control) - 3px)); background: transparent; cursor: pointer; color: var(--color-text-secondary); transition: color 140ms ease; }
+.collection-view-toggle button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 28px; border-radius: max(2px, calc(var(--radius-control) - 3px)); background: transparent; cursor: pointer; color: var(--color-text-secondary); transition: color var(--motion-feedback) var(--motion-continuous); }
 .collection-view-toggle button:hover { color: var(--color-text-primary); }
 .collection-view-toggle button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .collection-view-toggle button[aria-pressed="true"] { color: var(--color-primary); }

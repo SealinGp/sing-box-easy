@@ -45,6 +45,7 @@ export default {
     restartFailed: 'Failed to restart service',
   },
   confirm: {
+    reset: 'Discard unsaved edits and restore the last saved configuration?',
     rollback: 'Roll back to version #{id}? Your current config is saved as a new version first, so this is reversible.',
     restart: 'Restart the sing-box service now?',
     delete: 'Delete version #{id}? This permanently removes the snapshot and cannot be undone. Your live config is not affected.',

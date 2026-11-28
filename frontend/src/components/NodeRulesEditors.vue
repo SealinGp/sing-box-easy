@@ -76,14 +76,14 @@ const { t, filters, keywords, outboundTypeOptions, matcherTypeOptions, editingFi
             <button
               type="button"
               @click="addMatcher('keyword')"
-              class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
+              class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-colors cursor-pointer"
             >
               + Add Keyword
             </button>
             <button
               type="button"
               @click="addMatcher('emoji')"
-              class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
+              class="border border-primary-200 dark:border-primary-800 hover:bg-primary-50 dark:hover:bg-primary-950/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-1 rounded-control transition-colors cursor-pointer"
             >
               + Add Emoji
             </button>
@@ -155,7 +155,7 @@ const { t, filters, keywords, outboundTypeOptions, matcherTypeOptions, editingFi
             <button
               type="button"
               @click="addExclude('keyword')"
-              class="border border-red-200 dark:border-red-900/50 hover:bg-red-50/10 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-1 rounded-control transition-all cursor-pointer"
+              class="border border-red-200 dark:border-red-900/50 hover:bg-red-50/10 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-1 rounded-control transition-colors cursor-pointer"
             >
               + Add Exclude Keyword
             </button>
@@ -240,7 +240,7 @@ const { t, filters, keywords, outboundTypeOptions, matcherTypeOptions, editingFi
               :key="f.id"
               type="button"
               @click="toggleGroupFilter(f.id)"
-              class="px-2 py-1 text-xs font-semibold rounded-control border transition-all cursor-pointer"
+              class="px-2 py-1 text-xs font-semibold rounded-control border transition-colors cursor-pointer"
               :class="groupForm.filter_ids.includes(f.id)
               ? 'bg-primary-600 border-primary-600 text-white'
               : 'bg-gray-50 dark:bg-slate-800 border-border text-gray-750 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'"

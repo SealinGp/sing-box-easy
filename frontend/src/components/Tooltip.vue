@@ -193,8 +193,8 @@ onBeforeUnmount(() => { close(); listeners(true) })
 .tooltip-anchor { min-width: 0; }
 .field-tooltip { position: fixed; z-index: 10000; max-height: calc(100dvh - 16px); overflow: auto; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-bg-secondary); color: var(--color-text-primary); box-shadow: 0 4px 18px rgb(0 0 0 / 12%); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .field-tooltip-pointer { pointer-events: none; }
-.field-tooltip-enter-active { transition: opacity 160ms var(--motion-enter), transform 160ms var(--motion-enter); }
-.field-tooltip-leave-active { transition: opacity 160ms var(--motion-exit), transform 160ms var(--motion-exit); pointer-events: none; }
+.field-tooltip-enter-active { transition: opacity var(--motion-feedback) var(--motion-enter), transform var(--motion-feedback) var(--motion-enter); }
+.field-tooltip-leave-active { transition: opacity var(--motion-exit-duration) var(--motion-exit), transform var(--motion-exit-duration) var(--motion-exit); pointer-events: none; }
 .field-tooltip-enter-from, .field-tooltip-leave-to { opacity: 0; transform: translateY(var(--tooltip-offset, 4px)) scale(.98); }
 @media (prefers-reduced-motion: reduce) { .field-tooltip-enter-active, .field-tooltip-leave-active { transition: none; } .field-tooltip-enter-from, .field-tooltip-leave-to { transform: none; } }
 </style>

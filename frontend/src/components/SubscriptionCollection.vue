@@ -135,8 +135,8 @@ const columns = computed(() => [
 .subscription-list :deep(td) { height: 52px; vertical-align: middle; overflow: hidden; }
 .subscription-value, .subscription-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .subscription-name { color: var(--color-primary-600); cursor: pointer; text-align: left; }
-.collection-enter-active { transition: opacity 220ms var(--motion-enter), transform 220ms var(--motion-enter); }
-.collection-leave-active { transition: opacity 120ms var(--motion-exit), transform 120ms var(--motion-exit); pointer-events: none; }
+.collection-enter-active { transition: opacity var(--motion-panel) var(--motion-enter), transform var(--motion-panel) var(--motion-enter); }
+.collection-leave-active { transition: opacity var(--motion-exit-duration) var(--motion-exit), transform var(--motion-exit-duration) var(--motion-exit); pointer-events: none; }
 .collection-enter-from, .collection-leave-to { opacity: 0; transform: translateY(6px) scale(.995); }
 @media (prefers-reduced-motion: reduce) { .collection-enter-active, .collection-leave-active { transition: none; transform: none; } }
 </style>

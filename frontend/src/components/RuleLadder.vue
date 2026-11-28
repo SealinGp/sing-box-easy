@@ -114,14 +114,14 @@ const stateLabel = (state: LadderState) => t(`rule.ladder.state.${state}`)
     <div
       v-for="rung in rungs"
       :key="rung.index"
-      class="rounded-control border px-3 py-2 transition-all duration-200"
+      class="rounded-control border px-3 py-2 transition-colors duration-200"
       :class="[frameClass(rung), rung.deciding && sequencer.isRevealed(rung.index) ? 'ring-2 ring-emerald-500/40' : '']"
     >
       <div class="flex items-start gap-2">
         <!-- The lamp. Fixed width so the ladder reads as a column of indicators
              rather than as text that happens to be coloured. -->
         <span
-          class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-pill transition-all duration-200"
+          class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-pill transition-colors duration-200"
           :class="lampClass(rung)"
           aria-hidden="true"
         ></span>
