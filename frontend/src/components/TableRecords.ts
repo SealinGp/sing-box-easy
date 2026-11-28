@@ -8,6 +8,7 @@ import CollectionCell from './CollectionCell.vue'
 import CollectionViewToggle from './CollectionViewToggle.vue'
 import { elements, nodeText, containsCheckbox } from '../utils/tableVNodes'
 import { useCollectionToolbarTarget } from '../composables/useCollectionToolbarTarget'
+import { useRowHighlight } from '../composables/useRowHighlight'
 import { useTableColumns } from '../composables/useTableColumns'
 import type { TableColumn } from './Table.vue'
 
@@ -30,6 +31,7 @@ export default defineComponent({
     const { t } = useI18n()
     const route = useRoute()
     const root = ref<HTMLElement | null>(null)
+    useRowHighlight(root, '.data-table > tbody > tr:not(:has(td[colspan]))')
     const toolbarTarget = useCollectionToolbarTarget(root)
     const mode = ref<'list' | 'cards'>('list')
     const cardDensity = ref<'compact' | 'comfortable'>('comfortable')

@@ -118,7 +118,7 @@
   --space-card: 1rem; /*    card padding   — was p-6 / 1.5rem */
   --space-stack: 1rem; /*   section gap    — was space-y-6    */
 
-  --table-cell-px: 0.625rem;
+  --table-cell-px: 0.375rem;
   --table-cell-py: 0.375rem;
   --table-edge-px: 0.75rem;
   --table-select-width: 2.75rem;

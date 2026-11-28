@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import type { MenuGroup } from '../navigation/menu'
+import { useNavIndicator } from '../composables/useNavIndicator'
+import { useRowHighlight } from '../composables/useRowHighlight'
 import { isMenuActive } from '../navigation/menu'
 import NavUtilities from './NavUtilities.vue'
 const props = defineProps<{ menuItems: MenuGroup[] }>()
@@ -11,6 +13,11 @@ defineEmits<{ search: [] }>()
 const route = useRoute()
 const { t } = useI18n()
 const groups = ref<HTMLElement | null>(null)
+const groupContent = ref<HTMLElement | null>(null)
+const activeIndicator = ref<HTMLElement | null>(null)
+useRowHighlight(groups, '.nav-destination')
+const { measure } = useNavIndicator({ scroller: groups, content: groupContent, indicator: activeIndicator, selector: '[aria-current="page"]' })
+watch(() => route.path, measure, { flush: 'post' })
 // These are the existing tab destinations, also reachable from their section.
 const subpages = computed(() => {
   const pages = (section: string, entries: [string, string][]) => entries.map(([path, key]) => ({ path: `/dashboard/${section}/${path}`, name: t(key) }))
@@ -32,6 +39,7 @@ function onSubnavTransitionEnd(event: TransitionEvent) {
 const sectionId = (path: string) => `sidebar-pages-${path.split('/').pop()}`
 const isCurrent = (path: string) => isMenuActive(path, route.path) && (!subpages.value[path] || expanded.value !== path)
 watch(() => route.path, () => { expanded.value = activeSection() })
+watch(expanded, () => nextTick(measure), { flush: 'post' })
 watch(expanded, (next, previous) => {
   // A closed submenu must not retain keyboard focus inside its inert content.
   const closing = previous ? document.getElementById(sectionId(previous)) : null
@@ -66,6 +74,8 @@ onBeforeUnmount(() => { cancelAnimationFrame(readyFrame); viewportObserver?.disc
       <span>{{ $t('nav.search') }}</span><kbd>⌘ / Ctrl K</kbd>
     </button>
     <nav ref="groups" class="sidebar-groups" :aria-label="$t('nav.navigation')">
+      <span ref="activeIndicator" class="nav-active-indicator sidebar-route-indicator" aria-hidden="true" />
+      <div ref="groupContent">
       <section v-for="group in menuItems" :key="group.id" :aria-labelledby="'sidebar-' + group.id">
         <h2 :id="'sidebar-' + group.id" class="nav-group-label">{{ group.name }}</h2>
         <ul>
@@ -97,6 +107,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(readyFrame); viewportObserver?.disc
           </li>
         </ul>
       </section>
+      </div>
     </nav>
     <NavUtilities />
   </aside>

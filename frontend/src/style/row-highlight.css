@@ -1,0 +1,17 @@
+.has-moving-highlight { position:relative; isolation:isolate; }
+.has-moving-highlight > .row-moving-highlight { position:absolute; top:0; left:0; z-index:-1; pointer-events:none; opacity:0; background:var(--table-row-hover); border-radius:0; }
+.has-moving-highlight > .row-moving-highlight.is-animated { transition:transform 160ms cubic-bezier(.2,.8,.2,1),width 160ms ease,height 160ms ease,opacity 100ms ease; }
+/* The single shared surface sits below the text; selection and drag states stay distinct. */
+.has-moving-highlight .data-table tbody tr:hover:not([data-selected='true']):not(.is-dragging) td { background:transparent; }
+.navigation-sidebar .has-moving-highlight > .row-moving-highlight { position:absolute; top:0; left:0; z-index:-1; pointer-events:none; opacity:0; background:color-mix(in srgb,var(--nav-active) 55%,transparent); border-radius:6px; }
+.navigation-sidebar .has-moving-highlight .nav-destination:is(:hover,:focus-visible)::before,
+.navigation-sidebar .has-moving-highlight .sidebar-item-row:is(:hover,:has(:focus-visible))::before { opacity:0; }
+.sidebar-route-indicator { background:var(--nav-active); }
+.sidebar-route-indicator::before { content:""; position:absolute; left:0; top:7px; bottom:7px; width:2px; border-radius:2px; background:var(--nav-focus); }
+.navigation-sidebar .has-moving-highlight .nav-destination.selected::before,
+.navigation-sidebar .has-moving-highlight .nav-destination.selected::after,
+.navigation-sidebar .has-moving-highlight .sidebar-item-row.is-current::before,
+.navigation-sidebar .has-moving-highlight .sidebar-item-row.is-current::after { opacity:0; }
+@media(prefers-reduced-motion:reduce) {
+  .has-moving-highlight > .row-moving-highlight.is-animated { transition:none; }
+}
